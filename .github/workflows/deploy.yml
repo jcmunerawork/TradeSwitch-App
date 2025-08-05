@@ -29,12 +29,12 @@ jobs:
         run: npx ng build --configuration production --base-href "/tradeManager-web/"
 
       - name: 🧩 Add .nojekyll file
-        run: echo "" > dist/tradeManager-web/browser/.nojekyll
+        run: echo "" > dist/trade-manager/browser/.nojekyll
 
       - name: 📤 Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/tradeManager-web/browser
+          path: dist/trade-manager/browser
 
       - name: ⚙️ Setup GitHub Pages
         uses: actions/configure-pages@v4
