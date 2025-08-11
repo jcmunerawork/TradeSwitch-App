@@ -54,7 +54,11 @@ export class RiskPerTradeComponent implements OnInit {
   }
 
   toggleDropdown() {
-    this.dropdownOpen = !this.dropdownOpen;
+    if (this.config.isActive) {
+      this.dropdownOpen = !this.dropdownOpen;
+    } else {
+      this.dropdownOpen = false;
+    }
   }
 
   selectCurrency(currency: { code: string; country: string }) {

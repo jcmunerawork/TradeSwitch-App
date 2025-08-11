@@ -7,12 +7,27 @@ export enum RuleType {
   TRADING_HOURS = 'TRADING HOURS',
 }
 
+export enum Days {
+  MONDAY = 'Monday',
+  TUESDAY = 'Tuesday',
+  WEDNESDAY = 'Wednesday',
+  THURSDAY = 'Thursday',
+  FRIDAY = 'Friday',
+  SATURDAY = 'Saturday',
+  SUNDAY = 'Sunday',
+}
+
 export interface MaxDailyTradesConfig {
   isActive: boolean;
   type: RuleType;
   maxDailyTrades: number;
 }
 
+export interface DaysAllowedConfig {
+  isActive: boolean;
+  type: RuleType;
+  tradingDays: string[];
+}
 export interface RiskRewardConfig {
   isActive: boolean;
   riskRewardRatio: string;
@@ -29,4 +44,5 @@ export interface StrategyState {
   riskReward: RiskRewardConfig;
   maxDailyTrades: MaxDailyTradesConfig;
   riskPerTrade: RiskPerTradeConfig;
+  daysAllowed: DaysAllowedConfig;
 }

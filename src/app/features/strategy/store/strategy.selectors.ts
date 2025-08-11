@@ -17,3 +17,8 @@ export const riskPerTrade = createSelector(
   selectStrategy,
   (state) => state.riskPerTrade
 );
+
+export const daysAllowed = createSelector(
+  selectStrategy,
+  (state) => state.daysAllowed
+);

@@ -1,10 +1,11 @@
 import { createReducer, on } from '@ngrx/store';
 import {
+  setDaysAllowedConfig,
   setMaxDailyTradesConfig,
   setRiskPerTradeConfig,
   setRiskRewardConfig,
 } from './strategy.actions';
-import { RuleType, StrategyState } from '../models/strategy.model';
+import { Days, RuleType, StrategyState } from '../models/strategy.model';
 
 export const initialStrategyState: StrategyState = {
   maxDailyTrades: {
@@ -23,6 +24,11 @@ export const initialStrategyState: StrategyState = {
     maxRiskPercentage: 3,
     type: RuleType.MAX_RISK_PER_TRADE,
   },
+  daysAllowed: {
+    isActive: false,
+    type: RuleType.DAYS_ALLOWED,
+    tradingDays: [Days.MONDAY, Days.TUESDAY],
+  },
 };
 
 export const strategyReducer = createReducer(
@@ -38,5 +44,9 @@ export const strategyReducer = createReducer(
   on(setRiskPerTradeConfig, (state, { config }) => ({
     ...state,
     riskPerTrade: config,
+  })),
+  on(setDaysAllowedConfig, (state, { config }) => ({
+    ...state,
+    daysAllowed: config,
   }))
 );
