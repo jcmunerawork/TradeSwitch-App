@@ -7,3 +7,8 @@ export const selectMaxDailyTrades = createSelector(
   selectStrategy,
   (state) => state.maxDailyTrades
 );
+
+export const riskReward = createSelector(
+  selectStrategy,
+  (state) => state.riskReward
+);

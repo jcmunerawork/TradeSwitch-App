@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { SettingsService } from '../../service/strategy.service';
 import { selectMaxDailyTrades } from '../../store/strategy.selectors';
-import { MaxDailyTradesConfig } from '../../models/strategy.model';
+import { MaxDailyTradesConfig, RuleType } from '../../models/strategy.model';
 import { setMaxDailyTradesConfig } from '../../store/strategy.actions';
 import { CommonModule } from '@angular/common';
 
@@ -14,7 +14,11 @@ import { CommonModule } from '@angular/common';
   standalone: true,
 })
 export class MaxDailyTradesComponent implements OnInit {
-  config: MaxDailyTradesConfig = { isActive: false, value: 1 };
+  config: MaxDailyTradesConfig = {
+    isActive: false,
+    maxDailyTrades: 1,
+    type: RuleType.MAX_DAILY_TRADES,
+  };
 
   constructor(private store: Store, private settingsService: SettingsService) {}
 
@@ -31,7 +35,10 @@ export class MaxDailyTradesComponent implements OnInit {
 
   onChangeValue(event: Event) {
     const numValue = Number((event.target as HTMLInputElement).value);
-    const newConfig = { ...this.config, value: numValue < 1 ? 1 : numValue };
+    const newConfig: MaxDailyTradesConfig = {
+      ...this.config,
+      maxDailyTrades: numValue < 1 ? 1 : numValue,
+    };
     this.updateConfig(newConfig);
   }
 
@@ -46,6 +53,5 @@ export class MaxDailyTradesComponent implements OnInit {
 
   private updateConfig(config: MaxDailyTradesConfig) {
     this.store.dispatch(setMaxDailyTradesConfig({ config }));
-    this.settingsService.saveMaxDailyTradesConfig(config);
   }
 }

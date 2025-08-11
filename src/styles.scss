@@ -8,3 +8,73 @@
   padding: 0;
   box-sizing: border-box;
 }
+
+// Custom Checkbox global style
+
+.custom-checkbox input[type="checkbox"] {
+  display: none;
+}
+
+.custom-checkbox .checkmark {
+  display: inline-block;
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+  aspect-ratio: 1/1;
+  background: transparent;
+  border-radius: 0.125rem;
+  border: 1.5px dashed #b3b3b3;
+  position: relative;
+  transition: background 0.2s;
+  vertical-align: middle;
+}
+
+.custom-checkbox input[type="checkbox"]:checked + .checkmark::after {
+  content: "";
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 4px;
+  width: 0.2rem;
+  height: 0.4rem;
+  border-right: 2px solid #181818;
+  border-bottom: 2px solid #181818;
+  transform: rotate(45deg);
+}
+
+.custom-checkbox input[type="checkbox"]:checked + .checkmark {
+  background: #97ff4b;
+  border: none;
+}
+
+// custom number input
+
+.custom-number-input {
+  width: 60px;
+  width: 4.3125rem;
+  height: 2rem;
+  border-radius: 0.375rem;
+  border: 1px solid #8e8e93;
+  background-color: transparent;
+}
+
+.custom-number-input::-webkit-inner-spin-button,
+.custom-number-input::-webkit-outer-spin-button {
+  opacity: 1;
+  filter: invert(90%);
+}
+
+/* Remove spinner arrows on Firefox */
+.custom-number-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Optional: Add focus effect */
+.custom-number-input:focus {
+  border-color: #67a4f7;
+  box-shadow: 0 0 0 2px rgba(103, 164, 247, 0.2);
+}
+
+.deactivated {
+  color: #b3b3b3;
+}
