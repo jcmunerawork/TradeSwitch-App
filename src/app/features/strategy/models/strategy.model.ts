@@ -18,8 +18,15 @@ export interface RiskRewardConfig {
   riskRewardRatio: string;
   type: RuleType;
 }
+export interface RiskPerTradeConfig {
+  isActive: boolean;
+  maxRiskPerTrade: number;
+  maxRiskPercentage: number;
+  type: RuleType;
+}
 
 export interface StrategyState {
   riskReward: RiskRewardConfig;
   maxDailyTrades: MaxDailyTradesConfig;
+  riskPerTrade: RiskPerTradeConfig;
 }

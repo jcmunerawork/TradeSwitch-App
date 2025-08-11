@@ -48,6 +48,14 @@ $weight-regular: 400; // Regular
   line-height: 14px;
 }
 
+.inputText {
+  font-family: $font-interface;
+  font-size: 1rem;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 14px;
+}
+
 .titleText {
   font-family: $font-interface;
   font-size: 3rem;

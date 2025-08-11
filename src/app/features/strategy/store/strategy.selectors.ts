@@ -12,3 +12,8 @@ export const riskReward = createSelector(
   selectStrategy,
   (state) => state.riskReward
 );
+
+export const riskPerTrade = createSelector(
+  selectStrategy,
+  (state) => state.riskPerTrade
+);

@@ -1,0 +1,83 @@
+<div class="config-row d-flex flex-col py-12 justify-between">
+  <div class="d-flex items-center">
+    <label class="custom-checkbox m-6">
+      <input
+        type="checkbox"
+        id="toggle-max-daily-trades"
+        [checked]="config.isActive"
+        (change)="onToggleActive($event)"
+      />
+      <span class="checkmark"></span>
+    </label>
+
+    <label
+      for="toggle-max-daily-trades"
+      [ngClass]="{ deactivated: !config.isActive }"
+    >
+      Limit my Risk per Trade:
+      <span class="ml-2">${{ initialRiskTrade }}</span>
+    </label>
+  </div>
+  <div class="risk-per-trade-container flex-row d-flex items-center inputText">
+    <input
+      type="number"
+      min="1"
+      id="risk-percentage-input"
+      [value]="config.maxRiskPercentage"
+      [disabled]="!config.isActive"
+      (change)="onChangeValue($event, true)"
+      class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
+    />
+    <input
+      type="number"
+      min="1"
+      id="risk-price-input"
+      [value]="config.maxRiskPerTrade"
+      [disabled]="!config.isActive"
+      (change)="onChangeValue($event, false)"
+      class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
+    />
+    <div
+      class="currency-dropdown regularText"
+      (click)="$event.stopPropagation()"
+    >
+      <button
+        class="dropdown-toggle d-flex items-center py-0 px-4 color-light-gray"
+        (click)="toggleDropdown()"
+      >
+        <img
+          [src]="
+            'https://cdn.jsdelivr.net/npm/country-flag-icons@1.5.6/flags/3x2/' +
+            selectedCurrency.country +
+            '.svg'
+          "
+          [alt]="selectedCurrency.country + ' Flag'"
+          class="currency-flag"
+        />
+        <span class="inputText">{{ selectedCurrency.code }}</span>
+        <span class="icon-chevron color-light-gray"></span>
+      </button>
+
+      <div class="dropdown-menu bg-bg-black inputText" *ngIf="dropdownOpen">
+        @for (currency of currencies; track $index) {
+        <div
+          class="dropdown-item color-light-gray"
+          (click)="selectCurrency(currency)"
+          [class.selected]="currency.code === selectedCurrency.code"
+        >
+          <img
+            [src]="
+              'https://cdn.jsdelivr.net/npm/country-flag-icons@1.5.6/flags/3x2/' +
+              currency.country +
+              '.svg'
+            "
+            [alt]="currency.country + ' Flag'"
+            class="currency-flag"
+          />
+          {{ currency.code }}
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

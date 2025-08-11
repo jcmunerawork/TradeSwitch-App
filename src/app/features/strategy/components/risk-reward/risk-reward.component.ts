@@ -28,6 +28,8 @@ export class RiskRewardComponent implements OnInit {
 
   inputSecondRatioValue: number = 0;
 
+  initialRatio: string | undefined;
+
   constructor(private store: Store, private settingsService: SettingsService) {}
 
   ngOnInit(): void {
@@ -66,6 +68,9 @@ export class RiskRewardComponent implements OnInit {
       .pipe()
       .subscribe((config) => {
         this.config = config;
+        if (!this.initialRatio) {
+          this.initialRatio = config.riskRewardRatio;
+        }
         const numberArray = config.riskRewardRatio
           .split(':')
           .map((number) => parseInt(number, 10));

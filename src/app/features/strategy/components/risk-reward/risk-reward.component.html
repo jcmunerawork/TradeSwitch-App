@@ -14,7 +14,7 @@
       for="toggle-max-daily-trades"
       [ngClass]="{ deactivated: !config.isActive }"
     >
-      <span class="mr-2">{{ config.riskRewardRatio }}</span
+      <span class="mr-2">{{ initialRatio }}</span
       >Risk Reward</label
     >
   </div>
@@ -30,7 +30,7 @@
         [value]="inputFirstRatioValue"
         [disabled]="!config.isActive"
         (change)="onChangeValue($event, true)"
-        class="custom-number-input d-flex items-center justify-between py-8 px-4 color-light-gray"
+        class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
       />
       <span>:</span>
       <input
@@ -40,7 +40,7 @@
         [value]="inputSecondRatioValue"
         [disabled]="!config.isActive"
         (change)="onChangeValue($event, false)"
-        class="custom-number-input d-flex items-center justify-between py-8 px-4 color-light-gray"
+        class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
       />
     </div>
   </div>
