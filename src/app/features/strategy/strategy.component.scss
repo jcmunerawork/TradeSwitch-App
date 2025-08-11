@@ -1,0 +1,34 @@
+.rules {
+  .actual_rules {
+    border-radius: 8px;
+    border: 0.5px solid #2f2f2f;
+    background: linear-gradient(
+          to bottom right,
+          rgba(57, 103, 215, 0.1) 0%,
+          rgba(57, 103, 215, 0.01) 50%
+        )
+        bottom right / 50% 50% no-repeat,
+      linear-gradient(
+          to bottom left,
+          rgba(57, 103, 215, 0.1) 0%,
+          rgba(57, 103, 215, 0.01) 50%
+        )
+        bottom left / 50% 50% no-repeat,
+      linear-gradient(
+          to top left,
+          rgba(57, 103, 215, 0.1) 0%,
+          rgba(57, 103, 215, 0.01) 50%
+        )
+        top left / 50% 50% no-repeat,
+      linear-gradient(
+          to top right,
+          rgba(57, 103, 215, 0.1) 0%,
+          rgba(57, 103, 215, 0.01) 50%
+        )
+        top right / 50% 50% no-repeat;
+
+    width: 36.625rem;
+    padding: 1.875rem;
+    gap: 1.25rem;
+  }
+}

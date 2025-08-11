@@ -1,0 +1,160 @@
+// === Display utils ===
+.d-block {
+  display: block !important;
+}
+.d-inline {
+  display: inline !important;
+}
+.d-inline-block {
+  display: inline-block !important;
+}
+.d-flex {
+  display: flex !important;
+}
+.d-inline-flex {
+  display: inline-flex !important;
+}
+.d-none {
+  display: none !important;
+}
+
+// === Flex Direction ===
+.flex-row {
+  flex-direction: row !important;
+}
+.flex-row-rev {
+  flex-direction: row-reverse !important;
+}
+.flex-col {
+  flex-direction: column !important;
+}
+.flex-col-rev {
+  flex-direction: column-reverse !important;
+}
+
+// === Flex Justify Content ===
+.justify-start {
+  justify-content: flex-start !important;
+}
+.justify-end {
+  justify-content: flex-end !important;
+}
+.justify-center {
+  justify-content: center !important;
+}
+.justify-between {
+  justify-content: space-between !important;
+}
+.justify-around {
+  justify-content: space-around !important;
+}
+.justify-evenly {
+  justify-content: space-evenly !important;
+}
+
+// === Flex Align Items ===
+.items-start {
+  align-items: flex-start !important;
+}
+.items-center {
+  align-items: center !important;
+}
+.items-end {
+  align-items: flex-end !important;
+}
+.items-stretch {
+  align-items: stretch !important;
+}
+.items-baseline {
+  align-items: baseline !important;
+}
+
+// === Padding & Margin utilities ===
+$spacing: (
+  0,
+  2,
+  4,
+  6,
+  8,
+  10,
+  12,
+  14,
+  16,
+  18,
+  20,
+  22,
+  24,
+  26,
+  28,
+  30,
+  32,
+  34,
+  36,
+  38,
+  40,
+  42,
+  44,
+  46,
+  48,
+  50,
+  52,
+  54,
+  56,
+  58,
+  60,
+  62,
+  64
+);
+// Padding
+@each $space in $spacing {
+  .p-#{$space} {
+    padding: #{$space}px !important;
+  }
+  .pt-#{$space} {
+    padding-top: #{$space}px !important;
+  }
+  .pb-#{$space} {
+    padding-bottom: #{$space}px !important;
+  }
+  .pl-#{$space} {
+    padding-left: #{$space}px !important;
+  }
+  .pr-#{$space} {
+    padding-right: #{$space}px !important;
+  }
+  .px-#{$space} {
+    padding-left: #{$space}px !important;
+    padding-right: #{$space}px !important;
+  }
+  .py-#{$space} {
+    padding-top: #{$space}px !important;
+    padding-bottom: #{$space}px !important;
+  }
+}
+
+// Margin
+@each $space in $spacing {
+  .m-#{$space} {
+    margin: #{$space}px !important;
+  }
+  .mt-#{$space} {
+    margin-top: #{$space}px !important;
+  }
+  .mb-#{$space} {
+    margin-bottom: #{$space}px !important;
+  }
+  .ml-#{$space} {
+    margin-left: #{$space}px !important;
+  }
+  .mr-#{$space} {
+    margin-right: #{$space}px !important;
+  }
+  .mx-#{$space} {
+    margin-left: #{$space}px !important;
+    margin-right: #{$space}px !important;
+  }
+  .my-#{$space} {
+    margin-top: #{$space}px !important;
+    margin-bottom: #{$space}px !important;
+  }
+}

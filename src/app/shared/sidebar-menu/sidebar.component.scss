@@ -1,0 +1,97 @@
+.sidebar {
+  width: 16rem;
+  color: #fff;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem 1rem 4rem 1rem;
+  .icon-expand {
+    width: 100%;
+    font-size: 2rem;
+  }
+
+  .icon-strategy {
+    font-size: 1.5rem;
+  }
+
+  .icon-logout {
+    font-size: 1.5rem;
+
+    color: #e4515b;
+  }
+
+  .icon-config {
+    font-size: 1.5rem;
+  }
+
+  .logo {
+    width: 60%;
+    img {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  .menu {
+    list-style: none;
+    margin: 0;
+    flex: 1 1 auto;
+    width: 100%;
+
+    li {
+      width: 100%;
+      a {
+        color: #fff;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        padding: 0.7rem 1rem;
+        border-radius: 0.6rem;
+        transition: background 0.2s;
+        &.active,
+        .icon {
+          margin-right: 0.8rem;
+        }
+      }
+      &:hover {
+        background: #283046;
+      }
+    }
+  }
+
+  .bottom {
+    flex: 0 0 auto;
+    width: 100%;
+    border-top: 0.0625rem solid #454545;
+
+    .user {
+      display: flex;
+      align-items: center;
+
+      .avatar {
+        width: 2rem;
+        height: 2rem;
+        background: #283046;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 0.7rem;
+        font-weight: bold;
+      }
+    }
+    .settings,
+    .logout {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      color: #7fa72a;
+      text-decoration: none;
+    }
+    .logout {
+      color: #e4515b;
+    }
+  }
+}

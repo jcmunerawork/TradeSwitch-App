@@ -1,1 +1,10 @@
-/* You can add global styles to this file, and also import other style files */
+@use "colors";
+@use "icons";
+@use "typography";
+@use "grids";
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}

@@ -31,7 +31,10 @@
     "@angular/platform-server": "^20.1.0",
     "@angular/router": "^20.1.0",
     "@angular/ssr": "^20.1.4",
+    "@ngrx/store": "^20.0.0",
+    "@ngrx/store-devtools": "^20.0.0",
     "express": "^5.1.0",
+    "firebase": "^12.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"

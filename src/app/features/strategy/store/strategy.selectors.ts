@@ -1,0 +1,9 @@
+import { createFeatureSelector, createSelector } from '@ngrx/store';
+import { StrategyState } from '../models/strategy.model';
+
+export const selectStrategy = createFeatureSelector<StrategyState>('strategy');
+
+export const selectMaxDailyTrades = createSelector(
+  selectStrategy,
+  (state) => state.maxDailyTrades
+);

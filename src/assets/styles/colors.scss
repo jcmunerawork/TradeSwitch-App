@@ -1,0 +1,86 @@
+// COLORS.SCSS
+@use "sass:map";
+
+// Main Colors
+$lime-spark: #bcfe63;
+$trustwave-blue: #5186e3;
+$focus-black: #222325;
+$bg-black: #151516;
+$insight-white: #eaf2f8;
+$light-gray: #8e8e93;
+$gray: #848a92;
+$active-gray: #b3b3b3;
+
+// Primary Palette (Lime Spark)
+$primary-100: #eaffc7;
+$primary-200: #d5ff95;
+$primary-300: #bcfe63;
+$primary-400: #9bf526;
+$primary-500: #7adb07;
+$primary-600: #5db000;
+$primary-700: #468506;
+$primary-800: #32580f;
+$primary-900: #173102;
+
+// Secondary Palette (Trustwave Blue)
+$secondary-100: #dee9fb;
+$secondary-200: #c5dbf8;
+$secondary-300: #9ec4f2;
+$secondary-400: #6fa5eb;
+$secondary-500: #5186e3;
+$secondary-600: #3967d7;
+$secondary-700: #3054c5;
+$secondary-800: #3054c5;
+$secondary-900: #1d274e;
+
+// Background and Neutral Colors
+$background: $insight-white;
+$neutral: $focus-black;
+
+// Color Map
+$colors: (
+  "primary": $lime-spark,
+  "secondary": $trustwave-blue,
+  "background": $insight-white,
+  "neutral": $focus-black,
+  "primary-100": $primary-100,
+  "primary-200": $primary-200,
+  "primary-300": $primary-300,
+  "primary-400": $primary-400,
+  "primary-500": $primary-500,
+  "primary-600": $primary-600,
+  "primary-700": $primary-700,
+  "primary-800": $primary-800,
+  "primary-900": $primary-900,
+  "secondary-100": $secondary-100,
+  "secondary-200": $secondary-200,
+  "secondary-300": $secondary-300,
+  "secondary-400": $secondary-400,
+  "secondary-500": $secondary-500,
+  "secondary-600": $secondary-600,
+  "secondary-700": $secondary-700,
+  "secondary-800": $secondary-800,
+  "secondary-900": $secondary-900,
+  "gray": $gray,
+  "active-gray": $active-gray,
+  "bg-black": $bg-black,
+  "light-gray": $light-gray,
+);
+
+// Function to get color by name
+@function color($name) {
+  @return map.get($colors, $name);
+}
+
+@mixin generate-color-utilities($colors-map) {
+  @each $name, $hex in $colors-map {
+    .bg-#{$name} {
+      background-color: #{$hex} !important;
+    }
+    .color-#{$name} {
+      color: #{$hex} !important;
+    }
+  }
+}
+
+@include generate-color-utilities($colors);
