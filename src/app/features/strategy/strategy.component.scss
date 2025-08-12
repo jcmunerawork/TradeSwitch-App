@@ -1,5 +1,7 @@
 .rules {
-  .actual_rules {
+  gap: 60px;
+  .rules-container {
+    width: 50%;
     border-radius: 8px;
     border: 0.5px solid #2f2f2f;
     background: linear-gradient(
@@ -27,7 +29,41 @@
         )
         top right / 50% 50% no-repeat;
 
-    width: 36.625rem;
     padding: 1.875rem;
+  }
+}
+
+.edit-btn {
+  height: fit-content;
+  background: #9bf526;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: ease-in-out background-color 0.5s;
+}
+
+.edit-btn:hover {
+  background: #34c759;
+}
+
+.nonEditable {
+  cursor: not-allowed;
+}
+
+.edit-controls {
+  gap: 20px;
+  .discard-btn {
+    height: fit-content;
+    width: 10%;
+    background: rgba(188, 254, 99, 0.1);
+    border: 1px solid #9bf526;
+    border-radius: 6px;
+  }
+
+  .save-btn {
+    height: fit-content;
+    width: 10%;
+    border-radius: 6px;
+    border: none;
   }
 }

@@ -1,0 +1,21 @@
+@if (visible) {
+<div class="popup-overlay d-flex items-center justify-center">
+  <div class="popup-content p-24 regularText bg-bg-black">
+    <h2 class="logoTitle mb-24">Please check the extension</h2>
+    <p class="mb-24 color-secondary-200">
+      Strategy changes are disabled when the Chrome Extension is active and you
+      have an open trade.
+    </p>
+    <p class="color-secondary-200">
+      <b>To edit your strategy, please turn off the extension first.</b>
+    </p>
+    <button
+      class="popup-button regularText p-10 bg-primary-400"
+      (click)="close()"
+    >
+      Okay
+    </button>
+  </div>
+</div>
+
+}

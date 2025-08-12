@@ -32,3 +32,5 @@ export const assetsAllowed = createSelector(
   selectStrategy,
   (state) => state.assetsAllowed
 );
+
+export const allRules = createSelector(selectStrategy, (state) => state);

@@ -1,18 +1,82 @@
 <div class="regularText color-background">
-  <div class="mb-50">
-    <h2 class="titleText mb-30">My Strategy</h2>
-    <p>Design a strategy that supports your consistency with TradeSwitch.</p>
-  </div>
-  <div class="rules d-flex flex-row justify-between">
-    <div class="actual_rules d-flex flex-col justify-start">
-      <h2 class="subtitle mb-20">My Strategy</h2>
-      <app-max-daily-trades></app-max-daily-trades>
-      <app-risk-reward-ratio></app-risk-reward-ratio>
-      <app-risk-per-trade></app-risk-per-trade>
-      <app-days-allowed></app-days-allowed>
-      <app-hours-allowed></app-hours-allowed>
-      <app-assets-allowed></app-assets-allowed>
+  <div class="mb-50 d-flex justify-between">
+    <div>
+      <h2 class="titleText mb-30">My Strategy</h2>
+      <p>Design a strategy that supports your consistency with TradeSwitch.</p>
     </div>
-    <div class="available_rules"></div>
+    @if (!canEdit){
+    <button class="edit-btn inputText p-10" (click)="openEditPopup()">
+      Edit strategy
+    </button>
+    }
   </div>
+  <div class="rules d-flex flex-row mb-58">
+    <div
+      class="rules-container actual_rules d-flex flex-col justify-start"
+      [ngClass]="{ nonEditable: !canEdit }"
+    >
+      <h2 class="subtitle mb-20">My Strategy</h2>
+      @if (config.maxDailyTrades.isActive) {
+      <app-max-daily-trades></app-max-daily-trades>
+      } @if (config.riskReward.isActive) {
+      <app-risk-reward-ratio></app-risk-reward-ratio>
+      } @if (config.riskPerTrade.isActive) {
+      <app-risk-per-trade></app-risk-per-trade>
+      } @if (config.daysAllowed.isActive) {
+      <app-days-allowed></app-days-allowed>
+      } @if (config.assetsAllowed.isActive) {
+      <app-assets-allowed></app-assets-allowed>
+      } @if (config.hoursAllowed.isActive) {
+      <app-hours-allowed></app-hours-allowed>
+      }
+    </div>
+    <div
+      class="rules-container available_rules"
+      [ngClass]="{ nonEditable: !canEdit }"
+    >
+      <h2 class="subtitle mb-20">Available Rules</h2>
+      @if (!config.maxDailyTrades.isActive) {
+      <app-max-daily-trades></app-max-daily-trades>
+      } @if (!config.riskReward.isActive) {
+      <app-risk-reward-ratio></app-risk-reward-ratio>
+      } @if (!config.riskPerTrade.isActive) {
+      <app-risk-per-trade></app-risk-per-trade>
+      } @if (!config.daysAllowed.isActive) {
+      <app-days-allowed></app-days-allowed>
+      } @if (!config.assetsAllowed.isActive) {
+      <app-assets-allowed></app-assets-allowed>
+      } @if (!config.hoursAllowed.isActive) {
+      <app-hours-allowed></app-hours-allowed>
+      }
+    </div>
+  </div>
+  @if (canEdit){
+  <div class="edit-controls d-flex justify-end">
+    <button
+      class="discard-btn p-10 color-primary-400 inputText"
+      (click)="resetValues()"
+    >
+      Discard
+    </button>
+    <button
+      (click)="openConfirmPopup()"
+      class="save-btn p-10 bg-primary-400 color-bg-black inputText"
+    >
+      Save Strategy
+    </button>
+  </div>
+  }
 </div>
+
+<app-edit-popup
+  [visible]="editPopupVisible"
+  [close]="closePopup"
+></app-edit-popup>
+
+<app-confirm-popup
+  [visible]="confirmPopupVisible"
+  [cancel]="closeConfirmModal"
+  [close]="save"
+></app-confirm-popup>
+
+<app-loading-popup [visible]="loading"></app-loading-popup>

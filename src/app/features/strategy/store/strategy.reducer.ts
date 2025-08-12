@@ -1,5 +1,6 @@
 import { createReducer, on } from '@ngrx/store';
 import {
+  resetConfig,
   setAssetsAllowedConfig,
   setDaysAllowedConfig,
   setHoursAllowedConfig,
@@ -70,5 +71,8 @@ export const strategyReducer = createReducer(
   on(setAssetsAllowedConfig, (state, { config }) => ({
     ...state,
     assetsAllowed: config,
+  })),
+  on(resetConfig, (state, { config }) => ({
+    ...config,
   }))
 );

@@ -6,6 +6,7 @@ import {
   MaxDailyTradesConfig,
   RiskPerTradeConfig,
   RiskRewardConfig,
+  StrategyState,
 } from '../models/strategy.model';
 
 export const setMaxDailyTradesConfig = createAction(
@@ -36,4 +37,9 @@ export const setHoursAllowedConfig = createAction(
 export const setAssetsAllowedConfig = createAction(
   '[Strategy] Set Assets Allowed Config',
   props<{ config: AssetsAllowedConfig }>()
+);
+
+export const resetConfig = createAction(
+  '[Strategy] Reset Config',
+  props<{ config: StrategyState }>()
 );
