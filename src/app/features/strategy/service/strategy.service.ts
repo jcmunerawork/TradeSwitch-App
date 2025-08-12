@@ -1,17 +1,36 @@
-import { Injectable } from '@angular/core';
+import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import { MaxDailyTradesConfig, StrategyState } from '../models/strategy.model';
 import { firebaseApp } from '../../../firebase/firebase.init';
+import { isPlatformBrowser } from '@angular/common';
 
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
-  private db = getFirestore(firebaseApp);
+  private isBrowser: boolean;
+  private db: ReturnType<typeof getFirestore> | null = null;
 
-  async saveStrategyConfig(config: StrategyState) {
+  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+    this.isBrowser = isPlatformBrowser(this.platformId);
+    if (this.isBrowser) {
+      const { firebaseApp } = require('../../../firebase/firebase.init.ts');
+      this.db = getFirestore(firebaseApp);
+    }
+  }
+
+  async saveStrategyConfig(config: any) {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return;
+    }
     await setDoc(doc(this.db, 'configurations', 'test-user'), config);
   }
 
   async getStrategyConfig() {
-    return await getDoc(doc(this.db, 'configurations', 'test-user'));
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return null;
+    }
+    const snapshot = await getDoc(doc(this.db, 'configurations', 'test-user'));
+    return snapshot;
   }
 }

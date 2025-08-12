@@ -43,7 +43,6 @@ export class AssetsAllowedComponent implements OnInit {
 
   constructor(private store: Store, private settingsService: SettingsService) {}
 
-  @HostListener('document:click')
   closeDropdown() {
     this.dropdownOpen = false;
   }

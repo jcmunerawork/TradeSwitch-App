@@ -53,8 +53,8 @@ export class Strategy implements OnInit {
     this.strategySvc
       .getStrategyConfig()
       .then((docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data() as StrategyState;
+        if (docSnap && docSnap['exists']()) {
+          const data = docSnap['data']() as StrategyState;
           this.store.dispatch(resetConfig({ config: data }));
           this.loading = false;
         } else {
