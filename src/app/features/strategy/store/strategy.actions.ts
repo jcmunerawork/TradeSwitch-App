@@ -1,6 +1,7 @@
 import { createAction, props } from '@ngrx/store';
 import {
   DaysAllowedConfig,
+  hoursAllowedConfig,
   MaxDailyTradesConfig,
   RiskPerTradeConfig,
   RiskRewardConfig,
@@ -24,4 +25,9 @@ export const setRiskPerTradeConfig = createAction(
 export const setDaysAllowedConfig = createAction(
   '[Strategy] Set Days Allowed Config',
   props<{ config: DaysAllowedConfig }>()
+);
+
+export const setHoursAllowedConfig = createAction(
+  '[Strategy] Set Hours Allowed Config',
+  props<{ config: hoursAllowedConfig }>()
 );

@@ -1,0 +1,85 @@
+@use "colors";
+
+.config-row {
+  width: 100%;
+  border-bottom: 0.5px solid
+    var(
+      --miscellaneous-alert-menu-action-sheet-separators,
+      rgba(128, 128, 128, 0.55)
+    );
+}
+
+.timezone-select {
+  width: 12rem;
+  padding: 8px 16px;
+  background: #18181b;
+  color: #e3e3e3;
+  border: 1px solid #8e8e93;
+  border-radius: 8px;
+  font-size: 1rem;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  transition: border 0.2s;
+
+  background-image: url("data:image/svg+xml;utf8,<svg fill='gray' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5H7z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 22px 22px;
+}
+
+.timezone-select option {
+  background: #18181b;
+  color: #e3e3e3;
+}
+
+.time-input-row {
+  align-items: center;
+  width: 100%;
+}
+
+.time-input {
+  width: 100%;
+  padding: 8px 16px;
+  background: #18181b;
+  color: #e3e3e3;
+  border: 1px solid #8e8e93;
+  border-radius: 8px;
+  font-size: 1rem;
+  outline: none;
+  transition: border 0.2s;
+}
+
+#openTradingTime {
+  border-radius: 8px 0 0 8px;
+}
+
+#closeTradingTime {
+  border-radius: 0 8px 8px 0;
+}
+label {
+  color: #ccc;
+  font-size: 0.96rem;
+}
+
+::ng-deep ngx-material-timepicker-content {
+  .timepicker__main {
+    background: #18181b !important;
+    color: #e3e3e3 !important;
+  }
+
+  .timepicker__header {
+    background-color: #24242a !important;
+    color: #e3e3e3 !important;
+  }
+}
+
+::ng-deep ngx-material-timepicker-button {
+  .timepicker-button {
+    color: #18181b !important;
+  }
+}
+
+::ng-deep ngx-material-timepicker-face {
+  --clock-hand-color: #24242a;
+}

@@ -1,0 +1,64 @@
+<div class="config-row d-flex flex-col py-12 justify-between">
+  <div class="d-flex justify-between mb-4">
+    <div class="d-flex items-center">
+      <label class="custom-checkbox m-6">
+        <input
+          type="checkbox"
+          id="toggle-hours-allowed"
+          [checked]="config.isActive"
+          (change)="onToggleActive($event)"
+        />
+        <span class="checkmark"></span>
+      </label>
+
+      <label
+        for="toggle-hours-allowed"
+        [ngClass]="{ deactivated: !config.isActive }"
+        >Only allow trades between:</label
+      >
+    </div>
+    <div>
+      <select
+        id="timezone"
+        [ngModel]="config.timezone"
+        [disabled]="!config.isActive"
+        (ngModelChange)="onTimezoneChange($event)"
+        class="timezone-select inputText color-light-gray"
+      >
+        @for (tz of timezones; track $index) {
+        <option [value]="tz.value">
+          {{ tz.label }}
+        </option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="d-flex">
+    <div class="time-input-row d-flex flex-row">
+      <input
+        [ngxTimepicker]="picker1"
+        [format]="12"
+        [disabled]="!config.isActive"
+        [ngModel]="config.tradingOpenTime"
+        (ngModelChange)="onTimeChange('tradingOpenTime', $event)"
+        class="inputText time-input color-light-gray"
+        id="openTradingTime"
+      />
+      <ngx-material-timepicker #picker1></ngx-material-timepicker>
+    </div>
+
+    <div class="time-input-row color-light-gray">
+      <input
+        [ngxTimepicker]="pickerClose"
+        [format]="12"
+        [disabled]="!config.isActive"
+        [ngModel]="config.tradingCloseTime"
+        (ngModelChange)="onTimeChange('tradingCloseTime', $event)"
+        class="timepicker-input inputText time-input color-light-gray"
+        id="closeTradingTime"
+      />
+      <ngx-material-timepicker #pickerClose></ngx-material-timepicker>
+    </div>
+  </div>
+</div>

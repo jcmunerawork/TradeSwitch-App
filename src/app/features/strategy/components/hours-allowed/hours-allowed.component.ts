@@ -1,0 +1,135 @@
+import { Component, OnInit } from '@angular/core';
+import { Store } from '@ngrx/store';
+import { SettingsService } from '../../service/strategy.service';
+import {
+  hoursAllowed,
+  selectMaxDailyTrades,
+} from '../../store/strategy.selectors';
+import {
+  hoursAllowedConfig,
+  MaxDailyTradesConfig,
+  RuleType,
+} from '../../models/strategy.model';
+import {
+  setHoursAllowedConfig,
+  setMaxDailyTradesConfig,
+} from '../../store/strategy.actions';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { NgxMaterialTimepickerModule } from 'ngx-material-timepicker';
+import * as moment from 'moment-timezone';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+
+@Component({
+  selector: 'app-hours-allowed',
+  templateUrl: './hours-allowed.component.html',
+  styleUrls: ['./hours-allowed.component.scss'],
+  imports: [CommonModule, FormsModule, NgxMaterialTimepickerModule],
+  standalone: true,
+})
+export class HoursAllowedComponent implements OnInit {
+  config: hoursAllowedConfig = {
+    isActive: false,
+    tradingOpenTime: '09:30',
+    tradingCloseTime: '17:00',
+    timezone: 'Zulu',
+    type: RuleType.TRADING_HOURS,
+  };
+
+  timezones = Array.from(
+    new Map(
+      moment.tz.names().map((tz) => {
+        const offset = moment.tz(tz).utcOffset();
+        const offsetSign = offset >= 0 ? '+' : '-';
+        const absOffset = Math.abs(offset);
+        const hours = Math.floor(absOffset / 60);
+        const mins = absOffset % 60;
+
+        const formattedOffset = `(GMT${offsetSign}${hours
+          .toString()
+          .padStart(2, '0')}:${mins.toString().padStart(2, '0')})`;
+
+        const abbreviation = moment.tz(tz).zoneAbbr();
+        const key = `${abbreviation} ${formattedOffset}`;
+
+        return [key, { value: tz, label: key, offsetMinutes: offset }] as [
+          string,
+          { value: string; label: string; offsetMinutes: number }
+        ];
+      })
+    ).values()
+  )
+    .sort((a, b) => a.offsetMinutes - b.offsetMinutes)
+    .map(({ value, label }) => ({ value, label }));
+
+  constructor(private store: Store, private settingsService: SettingsService) {}
+
+  ngOnInit(): void {
+    this.listenRuleConfiguration();
+  }
+
+  onToggleActive(event: Event) {
+    const newConfig = {
+      ...this.config,
+      isActive: (event.target as HTMLInputElement).checked,
+    };
+    this.updateConfig(newConfig);
+  }
+  onTimezoneChange(newTz: string) {
+    const newConfig = { ...this.config, timezone: newTz };
+    this.updateConfig(newConfig);
+  }
+
+  onTimeChange(field: 'tradingOpenTime' | 'tradingCloseTime', value: string) {
+    const tempConfig = { ...this.config, [field]: value };
+    const openMinutes = this.toMinutes(tempConfig.tradingOpenTime);
+    const closeMinutes = this.toMinutes(tempConfig.tradingCloseTime);
+    if (openMinutes >= closeMinutes) {
+      alert('Opening time must be earlier than closing time.');
+      return;
+    }
+    if (closeMinutes - openMinutes < 30) {
+      alert(
+        'There must be at least a 30-minute difference between opening and closing times.'
+      );
+      return;
+    }
+    this.updateConfig(tempConfig);
+  }
+
+  listenRuleConfiguration() {
+    this.store
+      .select(hoursAllowed)
+      .pipe()
+      .subscribe((config) => {
+        this.config = { ...config };
+      });
+  }
+
+  private updateConfig(config: hoursAllowedConfig) {
+    this.store.dispatch(setHoursAllowedConfig({ config }));
+  }
+
+  private toMinutes(time: string): number {
+    const is12hFormat =
+      time.toUpperCase().includes('AM') || time.toUpperCase().includes('PM');
+
+    let hours: number;
+    let minutes: number;
+
+    if (is12hFormat) {
+      const [timePart, period] = time.split(' ');
+      [hours, minutes] = timePart.split(':').map(Number);
+      if (period.toUpperCase() === 'PM' && hours !== 12) {
+        hours += 12;
+      }
+      if (period.toUpperCase() === 'AM' && hours === 12) {
+        hours = 0;
+      }
+    } else {
+      [hours, minutes] = time.split(':').map(Number);
+    }
+
+    return hours * 60 + minutes;
+  }
+}

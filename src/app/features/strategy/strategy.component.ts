@@ -3,6 +3,7 @@ import { MaxDailyTradesComponent } from './components/max-daily-trades/max-daily
 import { RiskRewardComponent } from './components/risk-reward/risk-reward.component';
 import { RiskPerTradeComponent } from './components/risk-per-trade/risk-per-trade.component';
 import { DaysAllowedComponent } from './components/days-allowed/days-allowed.component';
+import { HoursAllowedComponent } from './components/hours-allowed/hours-allowed.component';
 
 @Component({
   selector: 'app-strategy',
@@ -11,6 +12,7 @@ import { DaysAllowedComponent } from './components/days-allowed/days-allowed.com
     RiskRewardComponent,
     RiskPerTradeComponent,
     DaysAllowedComponent,
+    HoursAllowedComponent,
   ],
   templateUrl: './strategy.component.html',
   styleUrl: './strategy.component.scss',

@@ -13,12 +13,14 @@ import {
 import { provideStore } from '@ngrx/store';
 import { appReducers } from './store/app.reducer';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
+import { provideAnimations } from '@angular/platform-browser/animations';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
+    provideAnimations(),
     provideClientHydration(withEventReplay()),
     provideStore(appReducers),
     provideStoreDevtools({

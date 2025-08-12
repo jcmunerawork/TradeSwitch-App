@@ -3,7 +3,7 @@
     <label class="custom-checkbox m-6">
       <input
         type="checkbox"
-        id="toggle-max-daily-trades"
+        id="toggle-days-allowed"
         [checked]="config.isActive"
         (change)="onToggleActive($event)"
       />
@@ -11,7 +11,7 @@
     </label>
 
     <label
-      for="toggle-max-daily-trades"
+      for="toggle-days-allowed"
       [ngClass]="{ deactivated: !config.isActive }"
       >Only allow trades on</label
     >

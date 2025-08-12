@@ -39,8 +39,16 @@ export interface RiskPerTradeConfig {
   maxRiskPercentage: number;
   type: RuleType;
 }
+export interface hoursAllowedConfig {
+  isActive: boolean;
+  tradingOpenTime: string;
+  tradingCloseTime: string;
+  timezone: string;
+  type: RuleType;
+}
 
 export interface StrategyState {
+  hoursAllowed: hoursAllowedConfig;
   riskReward: RiskRewardConfig;
   maxDailyTrades: MaxDailyTradesConfig;
   riskPerTrade: RiskPerTradeConfig;
