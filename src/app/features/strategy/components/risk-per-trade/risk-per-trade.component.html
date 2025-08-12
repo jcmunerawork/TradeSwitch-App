@@ -25,7 +25,7 @@
       id="risk-percentage-input"
       [value]="config.maxRiskPercentage"
       [disabled]="!config.isActive"
-      (change)="onChangeValue($event, true)"
+      (change)="onChangeValue($event)"
       class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
     />
     <input
@@ -34,7 +34,7 @@
       id="risk-price-input"
       [value]="config.maxRiskPerTrade"
       [disabled]="!config.isActive"
-      (change)="onChangeValue($event, false)"
+      (change)="onChangeValue($event)"
       class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
     />
     <div

@@ -74,7 +74,7 @@ export class RiskPerTradeComponent implements OnInit {
     this.updateConfig(newConfig);
   }
 
-  onChangeValue(event: Event, isFirst: boolean) {
+  onChangeValue(event: Event) {
     const numValue = Number((event.target as HTMLInputElement).value);
     const moneyRisk = ((numValue / 100) * 200) / 0.02;
 

@@ -27,3 +27,8 @@ export const hoursAllowed = createSelector(
   selectStrategy,
   (state) => state.hoursAllowed
 );
+
+export const assetsAllowed = createSelector(
+  selectStrategy,
+  (state) => state.assetsAllowed
+);

@@ -17,6 +17,16 @@ export enum Days {
   SUNDAY = 'Sunday',
 }
 
+export const availableSymbols = [
+  'XMRUSD',
+  'BTCUSD',
+  'ETHEUR',
+  'XLMUSD',
+  'ZECUSD',
+  'BTCEUR',
+  'ADAUSD',
+];
+
 export interface MaxDailyTradesConfig {
   isActive: boolean;
   type: RuleType;
@@ -39,7 +49,7 @@ export interface RiskPerTradeConfig {
   maxRiskPercentage: number;
   type: RuleType;
 }
-export interface hoursAllowedConfig {
+export interface HoursAllowedConfig {
   isActive: boolean;
   tradingOpenTime: string;
   tradingCloseTime: string;
@@ -47,8 +57,15 @@ export interface hoursAllowedConfig {
   type: RuleType;
 }
 
+export interface AssetsAllowedConfig {
+  isActive: boolean;
+  assetsAllowed: string[];
+  type: RuleType;
+}
+
 export interface StrategyState {
-  hoursAllowed: hoursAllowedConfig;
+  assetsAllowed: AssetsAllowedConfig;
+  hoursAllowed: HoursAllowedConfig;
   riskReward: RiskRewardConfig;
   maxDailyTrades: MaxDailyTradesConfig;
   riskPerTrade: RiskPerTradeConfig;

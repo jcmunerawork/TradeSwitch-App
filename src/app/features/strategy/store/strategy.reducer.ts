@@ -1,5 +1,6 @@
 import { createReducer, on } from '@ngrx/store';
 import {
+  setAssetsAllowedConfig,
   setDaysAllowedConfig,
   setHoursAllowedConfig,
   setMaxDailyTradesConfig,
@@ -35,7 +36,12 @@ export const initialStrategyState: StrategyState = {
     tradingOpenTime: '09:30',
     tradingCloseTime: '17:00',
     timezone: 'Zulu',
+    type: RuleType.TRADING_HOURS,
+  },
+  assetsAllowed: {
+    isActive: false,
     type: RuleType.ASSETS_ALLOWED,
+    assetsAllowed: ['XMRUSD', 'BTCUSD'],
   },
 };
 
@@ -60,5 +66,9 @@ export const strategyReducer = createReducer(
   on(setHoursAllowedConfig, (state, { config }) => ({
     ...state,
     hoursAllowed: config,
+  })),
+  on(setAssetsAllowedConfig, (state, { config }) => ({
+    ...state,
+    assetsAllowed: config,
   }))
 );

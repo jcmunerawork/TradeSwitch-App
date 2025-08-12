@@ -6,7 +6,7 @@ import {
   selectMaxDailyTrades,
 } from '../../store/strategy.selectors';
 import {
-  hoursAllowedConfig,
+  HoursAllowedConfig,
   MaxDailyTradesConfig,
   RuleType,
 } from '../../models/strategy.model';
@@ -28,7 +28,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
   standalone: true,
 })
 export class HoursAllowedComponent implements OnInit {
-  config: hoursAllowedConfig = {
+  config: HoursAllowedConfig = {
     isActive: false,
     tradingOpenTime: '09:30',
     tradingCloseTime: '17:00',
@@ -106,7 +106,7 @@ export class HoursAllowedComponent implements OnInit {
       });
   }
 
-  private updateConfig(config: hoursAllowedConfig) {
+  private updateConfig(config: HoursAllowedConfig) {
     this.store.dispatch(setHoursAllowedConfig({ config }));
   }
 
