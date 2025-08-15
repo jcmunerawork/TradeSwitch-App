@@ -1,0 +1,55 @@
+<div class="birthday-input-container">
+  <label class="input-label" *ngIf="label">{{ label }}</label>
+  <div class="date-inputs-wrapper">
+    <div class="date-select-container">
+      <select
+        [(ngModel)]="dateValue.month"
+        (change)="onDateChange()"
+        (blur)="onBlur()"
+        [disabled]="disabled"
+        [required]="required"
+        class="date-select"
+      >
+        <option value="" disabled selected>Month</option>
+        <option *ngFor="let month of months" [value]="month.value">
+          {{ month.label }}
+        </option>
+      </select>
+      <span class="select-arrow">▼</span>
+    </div>
+
+    <div class="date-select-container">
+      <select
+        [(ngModel)]="dateValue.day"
+        (change)="onDateChange()"
+        (blur)="onBlur()"
+        [disabled]="disabled"
+        [required]="required"
+        class="date-select"
+      >
+        <option value="" disabled selected>Day</option>
+        <option *ngFor="let day of days" [value]="day">
+          {{ day }}
+        </option>
+      </select>
+      <span class="select-arrow">▼</span>
+    </div>
+
+    <div class="date-select-container">
+      <select
+        [(ngModel)]="dateValue.year"
+        (change)="onDateChange()"
+        (blur)="onBlur()"
+        [disabled]="disabled"
+        [required]="required"
+        class="date-select"
+      >
+        <option value="" disabled selected>Year</option>
+        <option *ngFor="let year of years" [value]="year">
+          {{ year }}
+        </option>
+      </select>
+      <span class="select-arrow">▼</span>
+    </div>
+  </div>
+</div>

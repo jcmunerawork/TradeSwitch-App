@@ -1,0 +1,73 @@
+<div class="signup-container">
+  <div class="signup-header">
+    <h1 class="signup-title">Create account</h1>
+    <p class="signup-subtitle">Because trading with rules starts right here</p>
+    <div class="progress-container">
+      <div class="progress-bar">
+      <div class="progress-fill"></div>
+    </div>
+    <div class="progress-bar">
+      
+    </div>
+    </div>
+  </div>
+
+  <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="signup-form">
+    <div class="form-group">
+      <label class="input-label">First name</label>
+      <input
+        type="text"
+        placeholder="Your first name here"
+        formControlName="firstName"
+        class="form-input"
+        required
+      />
+    </div>
+
+    <div class="form-group">
+      <label class="input-label">Last name</label>
+      <input
+        type="text"
+        placeholder="Your last name here"
+        formControlName="lastName"
+        class="form-input"
+        required
+      />
+    </div>
+
+   
+
+    <div>
+      <app-phone-input/>
+    </div>
+
+    
+      <app-birthday-input/>
+    
+
+   
+
+    <button type="submit" class="submit-button" [disabled]="signupForm.invalid">
+      Continue
+    </button>
+
+    <div class="signup-methods-separator" >
+      <span class="separator-line"></span>
+      Or sign up with
+      <span class="separator-line"></span>
+    </div>
+
+    <div class="social-buttons-container">
+      <button class="social-button" type="button" (click)="signInWithGoogle()">
+        <img src="../../../../assets/google-logo.svg" alt="Google logo" class="social-icon">
+        Google
+      </button>
+      <button class="social-button" type="button" (click)="signInWithApple()">
+        <img src="../../../../assets/apple-logo.svg" alt="Apple logo" class="social-icon">
+        Apple
+      </button>
+    </div>
+
+   <p class="login-text"> Already have an account? <a href="#">Log in</a></p>
+  </form>
+</div>

@@ -19,4 +19,9 @@ export const routes: Routes = [
         (m) => m.ReportFormComponent
       ),
   },
+  {
+    path: 'signup',
+    loadComponent: () =>
+      import('./features/auth/signup/signup').then((m) => m.SignupComponent),
+  }
 ];
