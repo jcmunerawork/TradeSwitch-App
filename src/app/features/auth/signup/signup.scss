@@ -1,10 +1,14 @@
+*{
+  gap: 10px;
+}
+
 .signup-container {
   max-width: 480px;
   margin: 0 auto;
   padding: 40px 20px;
-  background: #0a0a0a;
   min-height: 100vh;
   display: flex;
+  gap: 5px;
   flex-direction: column;
   justify-content: center;
 }

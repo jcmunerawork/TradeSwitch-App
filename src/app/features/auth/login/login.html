@@ -1,0 +1,47 @@
+<div class="login-container">
+    <h1 class="login-title">Welcome back</h1>
+    <p class="login-subtitle">Log in to your account</p>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+        <app-text-input label="Email adress" placeholder="Enter your email" type="email" [required]="true"
+            formControlName="email"></app-text-input>
+
+        <app-text-input label="Email adress" placeholder="Enter your email" type="email" [required]="true"
+            formControlName="email"></app-text-input>
+
+
+        <div class="login-options">
+            <label class="remember-me">
+                <input type="checkbox" formControlName="rememberMe" class="remember-me-checkbox" />
+                <div>Remember me</div>
+            </label>
+            <a class="forgot-password" href="#">Forgot Your Password?</a>
+        </div>
+
+        <button type="submit" class="login-button" [disabled]="loginForm.invalid">
+            Log In
+        </button>
+
+        <div class="login-methods-separator">
+            <span class="separator-line"></span>
+            Or login with
+            <span class="separator-line"></span>
+        </div>
+
+        <div class="social-buttons-container">
+            <button class="social-button" type="button" (click)="signInWithGoogle()">
+                <img src="../../../../assets/google-logo.svg" alt="Google logo" class="social-icon">
+                Google
+            </button>
+            <button class="social-button" type="button" (click)="signInWithApple()">
+                <img src="../../../../assets/apple-logo.svg" alt="Apple logo" class="social-icon">
+                Apple
+            </button>
+        </div>
+
+        <div class="signup-link">
+
+            <div>Don’t have an account?</div> <a routerLink="/signup">Sign Up</a>
+        </div>
+    </form>
+</div>
