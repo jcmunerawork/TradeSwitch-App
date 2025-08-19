@@ -48,15 +48,12 @@
         display: flex;
         align-items: center;
         padding: 0.7rem 1rem;
-        border-radius: 0.6rem;
+        width: 100%;
         transition: background 0.2s;
-        &.active,
-        .icon {
-          margin-right: 0.8rem;
+        &:hover {
+          background: #283046;
+          color: #5087e4;
         }
-      }
-      &:hover {
-        background: #283046;
       }
     }
   }
@@ -94,4 +91,75 @@
       color: #e4515b;
     }
   }
+}
+
+.sidebar {
+  width: 230px;
+  background: #191d23;
+  color: #fff;
+  height: 100vh;
+  font-family: "Inter", Arial, sans-serif;
+}
+
+.sidebar-dashboard {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.7rem 2rem 1rem 2rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #5087e4;
+}
+
+.icon-home {
+  font-size: 1.35rem;
+  color: #5087e4;
+  margin-right: 3px;
+}
+
+.sidebar-title {
+  flex: 1 1 auto;
+  color: #5087e4;
+}
+
+.icon-arrow {
+  margin-left: auto;
+  font-size: 1.2rem;
+  color: #5087e4;
+}
+
+.menu {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 1rem 0;
+}
+
+.menu li {
+  width: 100%;
+}
+
+.menu-link {
+  display: flex;
+  align-items: center;
+  color: #fff;
+  text-decoration: none;
+  font-size: 1.08rem;
+  font-weight: 500;
+  padding: 1rem 2rem;
+  transition: background 0.18s, color 0.18s;
+  gap: 14px;
+}
+
+.menu-link .icon-reports,
+.menu-link .icon-strategy {
+  font-size: 1.2rem;
+  color: #5087e4;
+  margin-right: 8px;
+}
+
+.active,
+.routerLinkActive {
+  background: #24304e;
+  color: #5087e4;
+  border-left: 3px solid #5087e4;
 }

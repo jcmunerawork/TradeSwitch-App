@@ -8,4 +8,10 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   styleUrl: './sidebar.component.scss',
   standalone: true,
 })
-export class Sidebar {}
+export class Sidebar {
+  isDashboardOpen = true;
+
+  toggleDashboard() {
+    this.isDashboardOpen = !this.isDashboardOpen;
+  }
+}
