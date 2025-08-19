@@ -1,0 +1,33 @@
+<div class="pnl-graph-container p-24 d-flex flex-col items-start">
+  <div class="ml-10 d-flex justify-between items-center up-title">
+    <div class="color-background">
+      <p class="regularText">Total Profit</p>
+      <p class="secondTitle my-26">${{ getTotalProfit }}</p>
+    </div>
+    <select
+      id="range-year-select"
+      class="mr-24 py-6 px-8 color-secondary-300 regularText"
+      [ngModel]="year"
+      (ngModelChange)="onYearSelected($event)"
+    >
+      @for (range of dateRanges; track $index) {
+      <option [value]="range.value">
+        {{ range.label }}
+      </option>
+      }
+    </select>
+  </div>
+  <apx-chart
+    [series]="chartOptions.series"
+    [chart]="chartOptions.chart"
+    [xaxis]="chartOptions.xaxis"
+    [yaxis]="chartOptions.yaxis"
+    [stroke]="chartOptions.stroke"
+    [fill]="chartOptions.fill"
+    [grid]="chartOptions.grid"
+    [dataLabels]="chartOptions.dataLabels"
+    [tooltip]="chartOptions.tooltip"
+    style="width: 100%"
+  ></apx-chart>
+  <p class="smallText color-text-gray"></p>
+</div>

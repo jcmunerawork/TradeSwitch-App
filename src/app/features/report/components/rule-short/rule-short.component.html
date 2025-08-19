@@ -1,0 +1,20 @@
+<div class="config-row d-flex flex-col py-12 justify-between regularText">
+  <div class="d-flex items-center">
+    <label class="custom-checkbox m-6">
+      <input
+        type="checkbox"
+        id="toggle-days-allowed"
+        [checked]="isActive"
+        disabled="true"
+      />
+      <span class="checkmark"></span>
+    </label>
+
+    <label
+      for="toggle-days-allowed"
+      [ngClass]="{ deactivated: !isActive }"
+      class="color-background"
+      >{{ title }}</label
+    >
+  </div>
+</div>

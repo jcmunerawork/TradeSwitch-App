@@ -1,0 +1,10 @@
+.kpi-card {
+  border-radius: 0.5rem;
+  border: 0.5px solid #4a4a4a;
+  background: radial-gradient(
+    ellipse 36% 42% at top center,
+    rgba(188, 254, 99, 0.16) 0%,
+    rgba(188, 254, 99, 0.01) 100%
+  );
+  gap: 1rem;
+}

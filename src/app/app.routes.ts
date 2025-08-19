@@ -4,7 +4,7 @@ export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'strategy',
+    redirectTo: 'report',
   },
   {
     path: 'strategy',
@@ -13,10 +13,10 @@ export const routes: Routes = [
   },
 
   {
-    path: 'add-account',
+    path: 'report',
     loadComponent: () =>
-      import('./features/reportForm/report-form.component').then(
-        (m) => m.ReportFormComponent
+      import('./features/report/report.component').then(
+        (m) => m.ReportComponent
       ),
   },
   {

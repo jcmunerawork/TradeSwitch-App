@@ -3,24 +3,34 @@
   <div class="logo mb-44">
     <img src="assets/logo.png" alt="" />
   </div>
-  <ul class="menu">
-    <li class="px-16 py-10">
+  <div class="sidebar-dashboard" (click)="toggleDashboard()">
+    <span class="icon-home"></span>
+    <span class="sidebar-title">Dashboard</span>
+    <span class="icon-chevron" [class.open]="isDashboardOpen"></span>
+  </div>
+  <ul class="menu" [class.open]="isDashboardOpen">
+    <li class="px-16 py-10 menu-link">
+      <a routerLink="/report" routerLinkActive="active">
+        <span class="icon-report color-secondary-500 mr-10"></span> My Reports
+      </a>
+    </li>
+    <li class="px-16 py-10 menu-link">
       <a routerLink="/strategy" routerLinkActive="active">
         <span class="icon-strategy color-secondary-500 mr-10"></span>My Strategy
       </a>
     </li>
-    <li>
+    <!-- <li>
       <a routerLink="/add-account" routerLinkActive="active">
         <span class="icon-strategy color-secondary-500 mr-10"></span>Add Trade
         Account test
       </a>
-    </li>
+    </li> -->
   </ul>
 
   <div class="bottom py-10">
     <div class="user mb-10">
-      <span class="avatar">JJ</span>
-      <span>Jacob Jones</span>
+      <span class="avatar">TU</span>
+      <span>Test User</span>
     </div>
     <a class="settings color-background" routerLink="/settings">
       <span class="icon-config color-secondary-500 mr-10"></span>Account

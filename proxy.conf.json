@@ -1,0 +1,8 @@
+{
+  "/backend-api/*": {
+    "target": "https://demo.tradelocker.com",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  }
+}
