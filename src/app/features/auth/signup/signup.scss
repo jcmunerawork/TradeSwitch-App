@@ -3,12 +3,13 @@
 }
 
 .signup-container {
+  overflow: hidden;
   max-width: 480px;
   margin: 0 auto;
   padding: 40px 20px;
   min-height: 100vh;
   display: flex;
-  gap: 5px;
+  gap: 1px;
   flex-direction: column;
   justify-content: center;
 }
@@ -21,7 +22,10 @@
 .signup-title {
   color: var(--White, #EAF2F8);
   text-align: center;
+  font-family: "SF Pro Display";
+  font-size: 46px;
   font-feature-settings: 'liga' off, 'clig' off;
+  
 
   line-height: 22.264px;
   /* 61.844% */
@@ -36,7 +40,7 @@
   font-style: normal;
   font-weight: 400;
   line-height: 14px;
-  margin: 0 0 24px 0;
+  margin: 10px 0 24px 0;
 }
 
 .progress-bar {
@@ -84,9 +88,9 @@
   margin: 0;
 }
 
-.form-input {
+/*.form-input {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+
   border-radius: 8px;
   color: white;
   font-family: "SF Pro Display";
@@ -110,7 +114,7 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
-}
+} */
 
 .submit-button {
   border-radius: 6px;
@@ -212,3 +216,4 @@
     }
   }
 }
+
