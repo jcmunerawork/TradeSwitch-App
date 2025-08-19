@@ -9,6 +9,7 @@ $bg-black: #151516;
 $insight-white: #eaf2f8;
 $light-gray: #8e8e93;
 $gray: #848a92;
+$textGray: #767676;
 $active-gray: #b3b3b3;
 
 // Primary Palette (Lime Spark)
@@ -65,6 +66,7 @@ $colors: (
   "active-gray": $active-gray,
   "bg-black": $bg-black,
   "light-gray": $light-gray,
+  "text-gray": $textGray,
 );
 
 // Function to get color by name

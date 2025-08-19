@@ -1,0 +1,28 @@
+<div class="d-flex stats-card-container mb-24">
+  <app-stat-card
+    class="stat-card"
+    title="Net P&L"
+    [value]="stats?.netPnl ? stats?.netPnl : 0"
+  ></app-stat-card>
+  <app-stat-card
+    class="stat-card"
+    title="Trade win %"
+    [value]="`${stats?.tradeWinPercent}%`"
+  ></app-stat-card>
+  <app-stat-card
+    class="stat-card"
+    title="Profit Factor"
+    [value]="stats?.profitFactor"
+  ></app-stat-card>
+  <app-stat-card
+    class="stat-card"
+    title="Avg. win/loss trades"
+    [value]="stats?.avgWinLossTrades"
+  ></app-stat-card>
+  <app-stat-card
+    class="stat-card"
+    title="Total trades"
+    [value]="stats?.totalTrades"
+  ></app-stat-card>
+</div>
+<app-PnL-Graph [values]="accountHistory"></app-PnL-Graph>

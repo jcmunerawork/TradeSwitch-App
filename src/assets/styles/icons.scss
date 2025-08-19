@@ -47,3 +47,13 @@
 .icon-expand:before {
   content: "\e906";
 }
+
+.icon-status-arrow:before {
+  content: "\e907";
+}
+
+.icon-status-arrow-up:before {
+  content: "\e907";
+  display: inline-block;
+  transform: scaleX(-1) scaleY(-1);
+}

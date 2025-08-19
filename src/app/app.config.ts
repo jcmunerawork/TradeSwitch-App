@@ -15,6 +15,7 @@ import { appReducers } from './store/app.reducer';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient, withFetch } from '@angular/common/http';
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -29,5 +30,6 @@ export const appConfig: ApplicationConfig = {
       maxAge: 25,
       logOnly: false,
     }),
+    provideCharts(withDefaultRegisterables()),
   ],
 };
