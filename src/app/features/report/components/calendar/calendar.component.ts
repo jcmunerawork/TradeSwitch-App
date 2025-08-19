@@ -50,7 +50,6 @@ export class calendarComponent {
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
       const trades = tradesByDay[key] || [];
       const pnlTotal = trades.reduce((acc, t) => acc + (t.pnl ?? 0), 0);
-      console.log(pnlTotal);
 
       const wins = trades.filter((t) => (t.pnl ?? 0) > 0).length;
       const tradesCount = trades.length;

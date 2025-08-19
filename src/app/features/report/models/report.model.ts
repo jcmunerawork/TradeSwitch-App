@@ -1,3 +1,5 @@
+import { RuleType } from '../../strategy/models/strategy.model';
+
 export interface historyTrade {
   id: string;
   userId: string;
@@ -29,6 +31,12 @@ export interface StatConfig {
   profitFactor: number;
   avgWinLossTrades: number;
   totalTrades: number;
+}
+
+export interface displayConfigData {
+  title: string;
+  type: RuleType;
+  isActive: boolean;
 }
 
 export interface CalendarDay {

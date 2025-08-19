@@ -17,7 +17,11 @@ import {
 import { selectGroupedTrades, selectReport } from './store/report.selectors';
 import { map } from 'rxjs';
 import { ReportService } from './service/report.service';
-import { GroupedTrade, StatConfig } from './models/report.model';
+import {
+  displayConfigData,
+  GroupedTrade,
+  StatConfig,
+} from './models/report.model';
 import {
   calculateAvgWinLossTrades,
   calculateNetPnl,
@@ -28,6 +32,13 @@ import {
 import { statCardComponent } from './components/statCard/stat_card.component';
 import { PnlGraphComponent } from './components/pnlGraph/pnlGraph.component';
 import { calendarComponent } from './components/calendar/calendar.component';
+import { LoadingPopupComponent } from '../../shared/pop-ups/loading-pop-up/loading-popup.component';
+import { SettingsService } from '../strategy/service/strategy.service';
+import { resetConfig } from '../strategy/store/strategy.actions';
+import { RuleType, StrategyState } from '../strategy/models/strategy.model';
+import { RuleShortComponent } from './components/rule-short/rule-short.component';
+import moment from 'moment-timezone';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 
 @Component({
   selector: 'app-report',
@@ -41,6 +52,9 @@ import { calendarComponent } from './components/calendar/calendar.component';
     statCardComponent,
     PnlGraphComponent,
     calendarComponent,
+    LoadingPopupComponent,
+    RuleShortComponent,
+    RouterLink,
   ],
 })
 export class ReportComponent implements OnInit {
@@ -50,11 +64,14 @@ export class ReportComponent implements OnInit {
   errorMessage: string | null = null;
   stats?: StatConfig;
   userKey!: string;
+  config!: displayConfigData[];
+  loading = false;
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: any,
     private store: Store,
-    private reportService: ReportService
+    private reportService: ReportService,
+    private strategySvc: SettingsService
   ) {}
 
   ngAfterViewInit() {
@@ -72,8 +89,31 @@ export class ReportComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.loading = true;
     this.fetchUserKey();
     this.listenGroupedTrades();
+    this.fetchUserRules();
+  }
+
+  fetchUserRules() {
+    this.strategySvc
+      .getStrategyConfig()
+      .then((docSnap) => {
+        if (docSnap && docSnap['exists']()) {
+          const data = docSnap['data']() as StrategyState;
+          this.store.dispatch(resetConfig({ config: data }));
+          console.log(data);
+
+          this.config = this.prepareConfigDisplayData(data);
+        } else {
+          console.warn('No config');
+        }
+      })
+      .catch((err) => {
+        this.loading = false;
+
+        console.error('Error to get the config', err);
+      });
   }
 
   listenGroupedTrades() {
@@ -100,7 +140,6 @@ export class ReportComponent implements OnInit {
       .getUserKey('crisdamencast@gmail.com', 'FP`{Nlq_T9', 'HEROFX')
       .subscribe({
         next: (key: string) => {
-          console.log('reload');
           this.userKey = key;
           this.fetchHistoryData(key, '1234211');
 
@@ -115,9 +154,11 @@ export class ReportComponent implements OnInit {
     this.reportService.getHistoryData(accountId, key).subscribe({
       next: (groupedTrades: GroupedTrade[]) => {
         this.store.dispatch(setGroupedTrades({ groupedTrades }));
+        this.loading = false;
       },
       error: (err) => {
         this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
+        this.loading = false;
       },
     });
   }
@@ -131,9 +172,63 @@ export class ReportComponent implements OnInit {
     store.dispatch(setTotalTrades({ totalTrades: this.stats.totalTrades }));
   }
 
-  prepareChartData(monthlyPnL: { [month: string]: number }) {
-    const labels = Object.keys(monthlyPnL).sort(); // eg: ['2025-01', ..., '2025-12']
-    const data = labels.map((month) => monthlyPnL[month]);
-    return { labels, data };
+  prepareConfigDisplayData(strategyState: StrategyState) {
+    return this.transformStrategyStateToDisplayData(strategyState);
+  }
+
+  transformStrategyStateToDisplayData(
+    strategyState: StrategyState
+  ): displayConfigData[] {
+    console.log(strategyState);
+
+    const newConfig: displayConfigData[] = [];
+
+    Object.entries(strategyState).forEach(([key, value]) => {
+      if (value.type) {
+        let title = '';
+
+        if (value.type === RuleType.MAX_DAILY_TRADES) {
+          title = 'Max Daily Trades';
+        } else if (value.type === RuleType.RISK_REWARD_RATIO) {
+          title = `${value.riskRewardRatio} Risk Reward`;
+        } else if (value.type === RuleType.MAX_RISK_PER_TRADE) {
+          title = `Limit my Risk per Trade: $${value.maxRiskPerTrade}`;
+        } else if (value.type === RuleType.DAYS_ALLOWED) {
+          const abbreviationsMap: { [key: string]: string } = {
+            Monday: 'Mon',
+            Tuesday: 'Tues',
+            Wednesday: 'Wed',
+            Thursday: 'Thurs',
+            Friday: 'Fri',
+            Saturday: 'Sat',
+            Sunday: 'Sun',
+          };
+
+          const formattedText = value.tradingDays
+            .map((day: string) => abbreviationsMap[day] ?? day)
+            .join(', ');
+
+          title = `Only allow trades on: ${formattedText}.`;
+        } else if (value.type === RuleType.ASSETS_ALLOWED) {
+          const formattedText = value.assetsAllowed.join(', ');
+          title = `Only allow trades on the following assets: ${formattedText}`;
+        } else if (value.type === RuleType.TRADING_HOURS) {
+          const abbreviation = moment.tz(value.timezone).zoneAbbr();
+          title = `Only allow trades between: ${value.tradingOpenTime} - ${value.tradingCloseTime} ${abbreviation}`;
+        }
+
+        newConfig.push({
+          title,
+          type: value.type,
+          isActive: value.isActive,
+        });
+      }
+    });
+
+    return newConfig.sort((a, b) => {
+      if (a.isActive && !b.isActive) return -1;
+      if (!a.isActive && b.isActive) return 1;
+      return 0;
+    });
   }
 }

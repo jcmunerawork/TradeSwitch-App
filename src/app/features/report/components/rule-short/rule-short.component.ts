@@ -2,15 +2,15 @@ import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 
 @Component({
-  selector: 'app-stat-card',
-  templateUrl: './stat_card.component.html',
-  styleUrls: ['./stat_card.component.scss'],
+  selector: 'app-rule-short',
+  templateUrl: './rule-short.component.html',
+  styleUrls: ['./rule-short.component.scss'],
   standalone: true,
   imports: [CommonModule],
 })
-export class statCardComponent {
+export class RuleShortComponent {
   @Input() title!: string;
-  @Input() value?: string | number;
+  @Input() isActive?: any;
 
   constructor() {}
 }

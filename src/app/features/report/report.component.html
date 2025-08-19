@@ -27,6 +27,24 @@
 </div>
 <div class="middle-container d-flex mb-24">
   <app-PnL-Graph [values]="accountHistory"></app-PnL-Graph>
-  <div></div>
+  <div class="my-rules d-flex flex-col p-30">
+    <div class="mb-20 d-flex justify-between items-center">
+      <h2 class="subtitle color-background">My Rules</h2>
+      <a
+        routerLink="/strategy"
+        class="strategy-btn p-10 bg-primary-400 color-bg-black inputText"
+      >
+        Save Strategy
+      </a>
+    </div>
+    @for (item of config; track $index) {
+    <app-rule-short
+      [title]="item.title"
+      [isActive]="item.isActive"
+    ></app-rule-short>
+    }
+  </div>
 </div>
 <app-calendar [groupedTrades]="accountHistory"></app-calendar>
+
+<app-loading-popup [visible]="loading"></app-loading-popup>
