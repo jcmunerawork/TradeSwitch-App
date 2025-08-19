@@ -31,6 +31,15 @@ export interface StatConfig {
   totalTrades: number;
 }
 
+export interface CalendarDay {
+  date: Date;
+  trades: GroupedTrade[];
+  pnlTotal: number;
+  tradesCount: number;
+  followedStrategy: boolean;
+  tradeWinPercent: number;
+}
+
 export interface ReportState {
   groupedTrades: GroupedTrade[];
   netPnL: number;

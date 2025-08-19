@@ -154,7 +154,7 @@ export class PnlGraphComponent {
                   direction === 'up'
                     ? 'icon-status-arrow-up'
                     : 'icon-status-arrow'
-                }"></span></span>`
+                } ml-3"></span></span>`
               : ''
           }
           </div>

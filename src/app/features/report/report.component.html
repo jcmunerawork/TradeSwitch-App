@@ -25,4 +25,8 @@
     [value]="stats?.totalTrades"
   ></app-stat-card>
 </div>
-<app-PnL-Graph [values]="accountHistory"></app-PnL-Graph>
+<div class="middle-container d-flex mb-24">
+  <app-PnL-Graph [values]="accountHistory"></app-PnL-Graph>
+  <div></div>
+</div>
+<app-calendar [groupedTrades]="accountHistory"></app-calendar>

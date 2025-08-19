@@ -21,3 +21,10 @@
 .stats-card-container::-webkit-scrollbar {
   display: none;
 }
+
+.middle-container {
+  width: 100%;
+  app-PnL-Graph {
+    width: 60%;
+  }
+}

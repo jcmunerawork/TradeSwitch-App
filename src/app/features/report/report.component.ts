@@ -27,6 +27,7 @@ import {
 } from './utils/normalization-utils';
 import { statCardComponent } from './components/statCard/stat_card.component';
 import { PnlGraphComponent } from './components/pnlGraph/pnlGraph.component';
+import { calendarComponent } from './components/calendar/calendar.component';
 
 @Component({
   selector: 'app-report',
@@ -39,6 +40,7 @@ import { PnlGraphComponent } from './components/pnlGraph/pnlGraph.component';
     ReactiveFormsModule,
     statCardComponent,
     PnlGraphComponent,
+    calendarComponent,
   ],
 })
 export class ReportComponent implements OnInit {

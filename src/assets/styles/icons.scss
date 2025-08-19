@@ -57,3 +57,11 @@
   display: inline-block;
   transform: scaleX(-1) scaleY(-1);
 }
+
+.icon-check-box:before {
+  content: "\e908";
+}
+
+.icon-uncheck-box:before {
+  content: "\e909";
+}
