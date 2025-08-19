@@ -66,6 +66,8 @@ export class ReportComponent implements OnInit {
   userKey!: string;
   config!: displayConfigData[];
   loading = false;
+  fromDate = '';
+  toDate = '';
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: any,
@@ -102,7 +104,6 @@ export class ReportComponent implements OnInit {
         if (docSnap && docSnap['exists']()) {
           const data = docSnap['data']() as StrategyState;
           this.store.dispatch(resetConfig({ config: data }));
-          console.log(data);
 
           this.config = this.prepareConfigDisplayData(data);
         } else {
@@ -141,7 +142,20 @@ export class ReportComponent implements OnInit {
       .subscribe({
         next: (key: string) => {
           this.userKey = key;
-          this.fetchHistoryData(key, '1234211');
+          const now = new Date();
+          const currentYear = now.getUTCFullYear();
+          this.fromDate = Date.UTC(currentYear, 0, 1, 0, 0, 0, 0).toString();
+          this.toDate = Date.UTC(
+            currentYear,
+            11,
+            31,
+            23,
+            59,
+            59,
+            999
+          ).toString();
+
+          this.fetchHistoryData(key, '1234211', this.fromDate, this.toDate);
 
           this.store.dispatch(setUserKey({ userKey: key }));
         },
@@ -150,8 +164,8 @@ export class ReportComponent implements OnInit {
         },
       });
   }
-  fetchHistoryData(key: string, accountId: string) {
-    this.reportService.getHistoryData(accountId, key).subscribe({
+  fetchHistoryData(key: string, accountId: string, from: string, to: string) {
+    this.reportService.getHistoryData(accountId, key, from, to).subscribe({
       next: (groupedTrades: GroupedTrade[]) => {
         this.store.dispatch(setGroupedTrades({ groupedTrades }));
         this.loading = false;
@@ -230,5 +244,12 @@ export class ReportComponent implements OnInit {
       if (!a.isActive && b.isActive) return 1;
       return 0;
     });
+  }
+  onYearChange($event: string) {
+    this.loading = true;
+    this.fromDate = Date.UTC(Number($event), 0, 1, 0, 0, 0, 0).toString();
+    this.toDate = Date.UTC(Number($event), 11, 31, 23, 59, 59, 999).toString();
+
+    this.fetchHistoryData(this.userKey, '1234211', this.fromDate, this.toDate);
   }
 }

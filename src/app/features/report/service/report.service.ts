@@ -31,15 +31,14 @@ export class ReportService {
 
   getHistoryData(
     accountId: string,
-    accessToken: string
+    accessToken: string,
+    from: string,
+    to: string
   ): Observable<GroupedTrade[]> {
     const headers = new HttpHeaders({
       Authorization: `Bearer ${accessToken}`,
       accNum: 1,
     });
-
-    const from = Date.UTC(2025, 0, 1, 0, 0, 0);
-    const to = Date.UTC(2025, 7, 31, 23, 59, 59);
 
     const params = new HttpParams()
       .set('from', from.toString())

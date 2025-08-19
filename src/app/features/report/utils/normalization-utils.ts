@@ -78,7 +78,7 @@ export function calculateNetPnl(trades: { pnl?: number }[]): number {
 
 export function calculateTradeWinPercent(trades: { pnl?: number }[]): number {
   const wins = trades.filter((t) => t.pnl !== undefined && t.pnl > 0).length;
-  return trades.length > 0 ? (wins / trades.length) * 100 : 0;
+  return trades.length > 0 ? Math.round((wins / trades.length) * 100) : 0;
 }
 
 export function calculateProfitFactor(trades: { pnl?: number }[]): number {

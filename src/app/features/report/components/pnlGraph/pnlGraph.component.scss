@@ -7,6 +7,28 @@
     rgba(81, 134, 228, 0.01) 100%
   );
 }
+
+.up-title {
+  width: 100%;
+}
+
+select {
+  border-radius: 4px;
+  background: rgba(158, 196, 242, 0.1);
+}
+
+option {
+  background-color: #23293b;
+  color: #b6c7de;
+  font-size: 1rem;
+  padding: 14px 0;
+}
+
+option:checked {
+  background-color: #363d4f;
+  color: #f4faff;
+}
+
 ::ng-deep apx-chart {
   .apexcharts-tooltip {
     display: flex;

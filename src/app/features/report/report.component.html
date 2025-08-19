@@ -1,3 +1,10 @@
+<div class="main-titles color-background d-flex flex-col mb-50">
+  <h1 class="titleText mb-32">My Reports</h1>
+  <h3 class="regularText">
+    Visualize your consistency while growing with TradeSwitch.
+  </h3>
+</div>
+
 <div class="d-flex stats-card-container mb-24">
   <app-stat-card
     class="stat-card"
@@ -26,7 +33,10 @@
   ></app-stat-card>
 </div>
 <div class="middle-container d-flex mb-24">
-  <app-PnL-Graph [values]="accountHistory"></app-PnL-Graph>
+  <app-PnL-Graph
+    [values]="accountHistory"
+    (onYearChange)="onYearChange($event)"
+  ></app-PnL-Graph>
   <div class="my-rules d-flex flex-col p-30">
     <div class="mb-20 d-flex justify-between items-center">
       <h2 class="subtitle color-background">My Rules</h2>
@@ -34,7 +44,7 @@
         routerLink="/strategy"
         class="strategy-btn p-10 bg-primary-400 color-bg-black inputText"
       >
-        Save Strategy
+        Edit Strategy
       </a>
     </div>
     @for (item of config; track $index) {

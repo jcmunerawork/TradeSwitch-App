@@ -1,32 +1,58 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { Component, Inject, Input, OnInit, PLATFORM_ID } from '@angular/core';
+import {
+  Component,
+  Inject,
+  Input,
+  OnInit,
+  Output,
+  PLATFORM_ID,
+  EventEmitter,
+} from '@angular/core';
 import { GroupedTrade } from '../../models/report.model';
 import { ChartType } from 'chart.js';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { getMonthlyPnL } from '../../utils/normalization-utils';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-PnL-Graph',
   templateUrl: './pnlGraph.component.html',
   styleUrls: ['./pnlGraph.component.scss'],
   standalone: true,
-  imports: [CommonModule, NgApexchartsModule],
+  imports: [CommonModule, NgApexchartsModule, FormsModule],
 })
 export class PnlGraphComponent {
   @Input() values!: GroupedTrade[];
+  @Output() onYearChange = new EventEmitter<string>();
 
   public chartOptions: any;
 
-  public lineChartLabels: string[] = [];
-  public lineChartData: number[] = [];
-  public lineChartType: ChartType = 'line';
   year!: string;
+  dateRanges: { label: string; value: string }[] = [];
 
   constructor(@Inject(PLATFORM_ID) private platformId: any) {}
 
+  ngOnInit() {
+    this.year = new Date().getFullYear().toString();
+  }
+
   ngOnChanges() {
-    this.year = '2025';
+    this.generateYearRangesPast(3);
     this.chartOptions = this.getChartOptions(this.values);
+  }
+
+  generateYearRangesPast(yearsBack: number) {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    this.dateRanges = [];
+
+    for (let i = 0; i <= yearsBack; i++) {
+      const year = currentYear - i;
+      this.dateRanges.push({
+        label: `Jan ${year} - Dec ${year}`,
+        value: `${year}`,
+      });
+    }
   }
 
   getChartOptions(trades: GroupedTrade[]): any {
@@ -175,6 +201,11 @@ export class PnlGraphComponent {
   capitalizeFirstLetter(str: string): string {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  onYearSelected(year: string) {
+    this.year = year;
+    this.onYearChange.emit(year);
   }
 
   get getTotalProfit(): number {
