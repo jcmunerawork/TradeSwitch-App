@@ -1,4 +1,5 @@
-import { Component, Inject } from '@angular/core';
+import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { PhoneInputComponent } from "../../../shared/components/phone-input/phone-input.component";
@@ -16,8 +17,9 @@ import { PasswordInputComponent } from "../../../shared/components/password-inpu
     PhoneInputComponent,
     BirthdayInputComponent,
     TextInputComponent,
-    PasswordInputComponent
-  ],
+    PasswordInputComponent,
+    RouterLink
+],
   templateUrl: './signup.html',
   styleUrl: './signup.scss'
 })

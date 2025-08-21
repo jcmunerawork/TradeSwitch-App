@@ -1,8 +1,8 @@
 import { isPlatformBrowser } from "@angular/common";
 import { Inject, Injectable, PLATFORM_ID } from "@angular/core";
 import { createUserWithEmailAndPassword, getAuth, GoogleAuthProvider, OAuthProvider, signInWithEmailAndPassword, signInWithPopup, UserCredential } from "firebase/auth";
-import { getFirestore, Firestore, setDoc, doc } from "firebase/firestore";
-import { first } from "rxjs";
+import { getFirestore, Firestore, setDoc, doc, getDoc } from "firebase/firestore";
+import { first, Observable } from "rxjs";
 
 
 
@@ -13,8 +13,15 @@ export class AuthService {
 
   private isBrowser: boolean;
   private db: ReturnType<typeof getFirestore> | null = null;
+  authStateChanged: Observable<boolean> | null = null;
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+    this.authStateChanged = new Observable<boolean>((observer) => {
+      const unsubscribe = getAuth().onAuthStateChanged((user) => {
+        observer.next(user !== null);
+      });
+      return () => unsubscribe();
+    });
     this.isBrowser = isPlatformBrowser(this.platformId);
     if (this.isBrowser) {
       const { firebaseApp } = require('../../../firebase/firebase.init.ts');
@@ -42,6 +49,22 @@ export class AuthService {
     return createUserWithEmailAndPassword(getAuth(), user.email, user.password);
   }
 
+  getUserData(uid : String): Promise<User> {
+    if (this.db) {
+      const userDoc = doc(this.db, 'users', uid as string);
+      return getDoc(userDoc).then((doc) => {
+        if (doc.exists()) {
+          return doc.data() as User;
+        } else {
+          throw new Error('User not found');
+        }
+      });
+    } else {
+      console.warn('Firestore not available in SSR');
+      return Promise.resolve({} as User);
+    }
+  }
+  
   async createLinkToken(token: LinkToken) {
 
     if (this.db) {
