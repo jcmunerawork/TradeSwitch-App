@@ -104,7 +104,8 @@ export class AuthService {
     return getAuth().signOut();
   }
 
-  isAuthenticated(): boolean {
-    return getAuth().currentUser !== null;
+  isAuthenticated() {
+    const user = getAuth().currentUser;
+    return user !== null;
   }
 }

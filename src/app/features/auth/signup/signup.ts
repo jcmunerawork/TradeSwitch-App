@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { PhoneInputComponent } from "../../../shared/components/phone-input/phone-input.component";
@@ -26,7 +26,7 @@ import { PasswordInputComponent } from "../../../shared/components/password-inpu
 export class SignupComponent {
   signupForm: FormGroup;
 
-  constructor(private fb: FormBuilder, private authService: AuthService) {
+  constructor(private fb: FormBuilder, private authService: AuthService, private router: Router) {
     this.signupForm = this.fb.group({
       firstName: ['', [Validators.required, Validators.minLength(2)]],
       lastName: ['', [Validators.required, Validators.minLength(2)]],
@@ -35,10 +35,7 @@ export class SignupComponent {
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]]
     });
-    this.signupForm.valueChanges.subscribe(value => {
-      console.log('Form values changed:', value);
-      console.log('Form status changed:', this.signupForm.status);
-    });
+    
   }
 
 
@@ -49,7 +46,6 @@ export class SignupComponent {
 
     if (this.signupForm.valid) {
       this.authService.register(this.createUserCredentialsObject()).then((response: any) => {
-        console.log('Registration successful:', response);
         // Assuming you want to use the refresh token as the tokenId
         const userId = response.user.uid;
 
@@ -59,6 +55,9 @@ export class SignupComponent {
 
         this.authService.createUser(user);
         this.authService.createLinkToken(token);
+        alert('Registration successful!');
+        this.router.navigate(['/login']);
+        
       }).catch((error: any) => {
         console.error('Registration failed:', error);
         alert('Registration failed. Please try again.');

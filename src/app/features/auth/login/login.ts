@@ -3,7 +3,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { PasswordInputComponent } from "../../../shared/components/password-input/password-input.component";
 import { TextInputComponent  } from '../../../shared/components';
 import { AuthService } from '../service/authService';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { setUserData } from '../store/user.actions';
 
@@ -19,16 +19,11 @@ export class Login {
   loginForm: FormGroup;
   showPassword = false;
 
-  constructor(private fb: FormBuilder, private authService: AuthService,private store: Store ) {
+  constructor(private fb: FormBuilder, private authService: AuthService,private store: Store, private router: Router) {
     this.loginForm = this.fb.group({
       loginEmail: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required]],
       rememberMe: [false]
-    });
-
-    this.loginForm.valueChanges.subscribe(value => {
-      console.log('Form values changed:', value);
-      console.log('Form status changed:', this.loginForm.status);
     });
   }
 
@@ -39,15 +34,15 @@ export class Login {
 
       const userCredentials = this.createUserCredentialsObject();
       this.authService.login(userCredentials).then((response: any) => {
-        console.log('Login successful:', response);
 
         this.authService.getUserData(response.user.uid).then((userData: User) => {
           console.log('User data:', userData);
           this.store.dispatch(setUserData({ user: userData }));
+          this.router.navigate(['/report']);
+
         });
 
       }).catch((error: any) => {
-        console.error('Login failed:', error);
         alert('Login failed. Please try again.');
       });
     }

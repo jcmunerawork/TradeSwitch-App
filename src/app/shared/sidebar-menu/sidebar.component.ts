@@ -1,6 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../features/auth/service/authService';
+import { Store } from '@ngrx/store';
+import { selectUser } from '../../features/auth/store/user.selectios';
+import { setUserData } from '../../features/auth/store/user.actions';
 
 @Component({
   selector: 'app-sidebar',
@@ -11,11 +14,15 @@ import { AuthService } from '../../features/auth/service/authService';
 })
 export class Sidebar {
   isDashboardOpen = true;
-userName: string = 'Test User';
+  userName: string = 'Test User';
 
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService, private router: Router, private store: Store) {
 
-  
+    this.store.select(selectUser).subscribe(user => {
+      this.userName = user?.user?.firstName || 'Test User';
+    });
+  }
+
 
 
 
@@ -25,10 +32,12 @@ userName: string = 'Test User';
 
 
   logout() {
+
     this.authService.logout().then(() => {
-      console.log('Logout successful');
+      this.store.dispatch(setUserData({ user: null }));
+      this.router.navigate(['/login']);
     }).catch((error) => {
-      console.error('Logout failed:', error);
+
       alert('Logout failed. Please try again.');
     });
   }
