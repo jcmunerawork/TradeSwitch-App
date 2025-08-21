@@ -1,0 +1,13 @@
+<div class="text-input-container">
+  <label class="input-label" *ngIf="label">{{ label }}</label>
+  <input
+    [type]="type"
+    [placeholder]="placeholder"
+    [value]="value"
+    [disabled]="disabled"
+    [required]="required"
+    (input)="onInput($event)"
+    (blur)="onBlur()"
+    class="text-input"
+  />
+</div>

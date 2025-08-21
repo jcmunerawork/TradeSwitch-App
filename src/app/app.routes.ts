@@ -19,4 +19,14 @@ export const routes: Routes = [
         (m) => m.ReportComponent
       ),
   },
+  {
+    path: 'signup',
+    loadComponent: () =>
+      import('./features/auth/signup/signup').then((m) => m.SignupComponent),
+  },
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./features/auth/login/login').then((m) => m.Login),
+  }
 ];
