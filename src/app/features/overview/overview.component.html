@@ -22,7 +22,21 @@
     [value]="subscriptionsData?.revenue"
   ></app-stat-card>
 </div>
-<div class="middle-container d-flex mb-24">
+<div class="middle-container justify-between d-flex mb-24">
   <app-trade-switch-table [users]="usersData"></app-trade-switch-table>
+  <div class="top-10 d-flex flex-col p-30">
+    <div class="mb-20 d-flex justify-between items-center">
+      <h2 class="subtitle color-background">Top 10 performing users</h2>
+      <a
+        routerLink="/strategy"
+        class="view-users-btn p-10 bg-primary-400 color-bg-black inputText"
+      >
+        View all users
+      </a>
+    </div>
+    @for (user of topUsers; track $index) {
+    <app-top-list [user]="user"></app-top-list>
+    }
+  </div>
 </div>
 <app-loading-popup [visible]="loading"></app-loading-popup>

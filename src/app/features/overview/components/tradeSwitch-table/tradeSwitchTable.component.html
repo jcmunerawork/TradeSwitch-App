@@ -88,8 +88,13 @@
         <tbody>
           @for (user of paginatedUsers; track $index) {
           <tr>
-            <td>
-              <span class="avatar">{{ onlyNameInitials(user) }}</span>
+            <td class="smallText d-flex items-center">
+              <span class="avatar smallText"
+                >{{ onlyNameInitials(user) }}
+              </span>
+              <p style="width: 100%">
+                {{ `${user.firstName.split(" ")[0]} ${user.lastName.split(" ")[0]}` }}
+              </p>
             </td>
             <td>
               <span

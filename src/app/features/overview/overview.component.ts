@@ -7,6 +7,7 @@ import { overviewSubscriptionData, User } from './models/overview';
 import { LoadingPopupComponent } from '../../shared/pop-ups/loading-pop-up/loading-popup.component';
 import { FormsModule } from '@angular/forms';
 import { TradeSwitchTableComponent } from './components/tradeSwitch-table/tradeSwitchTable.component';
+import { TopListComponent } from './components/top-list/top-list.component';
 
 @Component({
   selector: 'app-overview',
@@ -16,12 +17,14 @@ import { TradeSwitchTableComponent } from './components/tradeSwitch-table/tradeS
     LoadingPopupComponent,
     FormsModule,
     TradeSwitchTableComponent,
+    TopListComponent,
   ],
   templateUrl: './overview.component.html',
   styleUrl: './overview.component.scss',
   standalone: true,
 })
 export class Overview {
+  topUsers: User[] = [];
   constructor(private store: Store, private overviewSvc: OverviewService) {}
 
   loading = false;
@@ -46,7 +49,13 @@ export class Overview {
         if (docSnap && !docSnap.empty && docSnap.docs.length > 0) {
           this.usersData = docSnap.docs.map((doc) => doc.data() as User);
           for (let index = 0; index < 100; index++) {
-            this.usersData.push(this.usersData[0]);
+            const randomUser: User = {
+              ...this.usersData[1],
+              profit: Math.floor(Math.random() * 1000),
+              number_trades: Math.floor(Math.random() * 100),
+            };
+            this.usersData.push(randomUser);
+            this.filterTop10Users();
           }
           this.loading = false;
         } else {
@@ -83,5 +92,11 @@ export class Overview {
 
         console.error('Error to get the config', err);
       });
+  }
+
+  filterTop10Users() {
+    this.topUsers = this.usersData
+      .sort((a, b) => b.profit - a.profit)
+      .slice(0, 10);
   }
 }
