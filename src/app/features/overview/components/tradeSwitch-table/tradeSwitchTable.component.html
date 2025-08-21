@@ -1,0 +1,207 @@
+<div
+  class="table-container color-background d-flex flex-col justify-between p-24"
+>
+  <div class="d-flex flex-col">
+    <div class="d-flex justify-between items-center mb-24">
+      <div class="table-titles">
+        <h1 class="subtitle mb-6">All users</h1>
+        <p class="regularText">Monitor user stats, reviews, etc.</p>
+      </div>
+      <div class="table-actions-container smallText d-flex items-center">
+        <div class="search-user-container d-flex items-center p-10 mr-10">
+          <label for="search-user" class="mr-10"
+            ><span class="icon-search color-background smallText"></span
+          ></label>
+          <input
+            id="search-user"
+            type="text"
+            placeholder="Search user"
+            [(ngModel)]="searchTerm"
+            class="search-box color-background smallText"
+          />
+        </div>
+
+        <div class="filter-container">
+          <button
+            class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
+            (click)="openFilter()"
+          >
+            <span class="icon-filter color-secondary-300"></span> Filter
+          </button>
+          @if (showFilter) {
+          <div class="filter-modal py-20 px-24 d-flex flex-col">
+            <label>Status:</label>
+            <select class="color-background" [(ngModel)]="initialStatus">
+              <option value="">All</option>
+              <option value="purchased">Purchased</option>
+              <option value="pending">Pending</option>
+              <option value="unverified">Unverified</option>
+            </select>
+            <label class="mt-10">% Strat. Followed:</label>
+            <div
+              class="percentage-input d-flex items-center justify-between p-10"
+            >
+              <input
+                id="min-strat"
+                type="number"
+                [(ngModel)]="initialMinStrat"
+                placeholder="Min %"
+                class="search-box color-background smallText"
+              />
+              <label for="min-strat">min %</label>
+            </div>
+
+            <div
+              class="percentage-input d-flex items-center justify-between p-10"
+            >
+              <input
+                id="max-strat"
+                type="number"
+                [(ngModel)]="initialMaxStrat"
+                placeholder="Max %"
+                class="search-box color-background smallText"
+              />
+              <label for="max-strat">max %</label>
+            </div>
+            <button
+              class="filter-btn p-10 bg-primary-400 color-bg-black inputText"
+              (click)="apply()"
+            >
+              Apply
+            </button>
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+    <div class="table-scroll-container">
+      <table class="regularText">
+        <thead>
+          <tr>
+            <th class="regularText py-18">User</th>
+            <th class="regularText py-18">Status</th>
+            <th class="regularText py-18">% Strat. Followed</th>
+            <th class="regularText py-18">Net P&L</th>
+            <th class="regularText py-18">Best Trade</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (user of paginatedUsers; track $index) {
+          <tr>
+            <td>
+              <span class="avatar">{{ onlyNameInitials(user) }}</span>
+            </td>
+            <td>
+              <span
+                class="status py-8 px-4 smallText d-flex items-center justify-center"
+                [ngClass]="statusClass(user.status)"
+              >
+                {{
+                  user.status
+                    ? user.status.charAt(0).toUpperCase() + user.status.slice(1)
+                    : ""
+                }}
+              </span>
+            </td>
+            <td>
+              @if (user.strategy_followed !== undefined) {
+              {{ user.strategy_followed }}%
+              <!-- <span [ngClass]="returnClass(user.strategy_followed)">
+            {{ user.strategy_followed }}%
+          </span> -->
+              <div class="progress-container mt-6">
+                <div class="progress-bar-bg">
+                  <div
+                    class="progress-bar-fill"
+                    [style.width.%]="user.strategy_followed"
+                  ></div>
+                </div>
+              </div>
+              } @if (user.strategy_followed === undefined) {
+              <span>No stats available</span>
+              }
+            </td>
+            <td>
+              <span class="d-flex items-center justify-center">{{
+                user.netPnl
+              }}</span>
+            </td>
+            <td>
+              <span class="d-flex items-center justify-center"
+                >${{ user.best_trade | number : "1.0-0" }}</span
+              >
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div
+    class="pagination-controls d-flex justify-between items-center mt-10 regularText"
+  >
+    <div class="page-controls d-flex justify-between items-center">
+      <div class="side-controls d-flex items-center">
+        <button
+          class="regularText"
+          (click)="prevPage()"
+          [disabled]="currentPage === 1"
+        >
+          &lt;
+        </button>
+        <button
+          class="regularText"
+          (click)="goToPage(1)"
+          [disabled]="currentPage === 1"
+        >
+          &lt;&lt;
+        </button>
+      </div>
+
+      <span>Page {{ currentPage }} of {{ totalPages }}</span>
+      <div class="side-controls d-flex items-center">
+        <button
+          class="regularText"
+          (click)="goToPage(totalPages)"
+          [disabled]="currentPage === totalPages"
+        >
+          &gt;&gt;
+        </button>
+        <button
+          class="regularText"
+          (click)="nextPage()"
+          [disabled]="currentPage === totalPages"
+        >
+          &gt;
+        </button>
+      </div>
+    </div>
+    <div class="d-flex items-center">
+      <div class="d-flex justify-between items-center mt-10">
+        <label for="page-input" class="regularText mr-10 pb-2"
+          >Go to page</label
+        >
+        <input
+          id="page-input"
+          class="page-input p-8 smallText color-background"
+          type="number"
+          [min]="1"
+          [max]="totalPages"
+          [(ngModel)]="currentPage"
+          (change)="goToPage(currentPage)"
+          style="width: 4rem"
+        />
+      </div>
+
+      <select
+        class="color-secondary-300 smallText mt-10 ml-20"
+        [(ngModel)]="itemsPerPage"
+        (change)="goToPage(1)"
+      >
+        <option [value]="5">5 items</option>
+        <option [value]="10">10 items</option>
+        <option [value]="25">25 items</option>
+      </select>
+    </div>
+  </div>
+</div>

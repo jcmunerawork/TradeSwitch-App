@@ -52,6 +52,18 @@
   content: "\e907";
 }
 
+.icon-status-arrow-left:before {
+  content: "\e907";
+  display: inline-block;
+  transform: rotate(90deg);
+}
+
+.icon-status-arrow-right:before {
+  content: "\e907";
+  display: inline-block;
+  transform: rotate(-90deg);
+}
+
 .icon-status-arrow-up:before {
   content: "\e907";
   display: inline-block;
@@ -64,4 +76,22 @@
 
 .icon-uncheck-box:before {
   content: "\e909";
+}
+
+.icon-double-chevron:before {
+  content: "\e90a";
+}
+
+.icon-double-chevron-left:before {
+  content: "\e90a";
+  display: inline-block;
+  transform: scaleX(-1);
+}
+
+.icon-filter:before {
+  content: "\e90b";
+}
+
+.icon-search:before {
+  content: "\e90c";
 }
