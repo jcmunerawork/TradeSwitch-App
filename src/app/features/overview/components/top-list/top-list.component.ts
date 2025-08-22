@@ -24,6 +24,8 @@ export class TopListComponent {
     strategy_followed: 0,
     subscription_date: '',
     tokenId: '',
+    email: '',
+    total_spend: 0,
   };
 
   constructor() {}

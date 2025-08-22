@@ -4,8 +4,8 @@
   <div class="d-flex flex-col">
     <div class="d-flex justify-between items-center mb-24">
       <div class="table-titles">
-        <h1 class="subtitle mb-6">All users</h1>
-        <p class="regularText">Monitor user stats, reviews, etc.</p>
+        <h1 class="subtitle mb-6">Users information</h1>
+        <p class="regularText">Monitor user info, contact, etc.</p>
       </div>
       <div class="table-actions-container smallText d-flex items-center">
         <div class="search-user-container d-flex items-center p-10 mr-10">
@@ -21,6 +21,14 @@
           />
         </div>
 
+        <button
+          class="sort-Btn regularText color-secondary-300 p-10 mr-10"
+          (click)="toggleSort()"
+        >
+          <span>{{ sortAsc ? "↑" : "↓" }}</span>
+          Sort by: A - Z
+        </button>
+
         <div class="filter-container">
           <button
             class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
@@ -30,13 +38,6 @@
           </button>
           @if (showFilter) {
           <div class="filter-modal py-20 px-24 d-flex flex-col">
-            <label>Status:</label>
-            <select class="color-background" [(ngModel)]="initialStatus">
-              <option value="">All</option>
-              <option value="purchased">Purchased</option>
-              <option value="pending">Pending</option>
-              <option value="unverified">Unverified</option>
-            </select>
             <label class="mt-10">% Strat. Followed:</label>
             <div
               class="percentage-input d-flex items-center justify-between p-10"
@@ -78,35 +79,43 @@
       <table class="regularText">
         <thead>
           <tr>
-            <th class="regularText py-18">User</th>
-            <th class="regularText py-18">Status</th>
+            <th class="regularText py-18">First Name</th>
+            <th class="regularText py-18">Last Name</th>
+            <th class="regularText py-18">Email</th>
+            <th class="regularText py-18">Phone Number</th>
+            <th class="regularText py-18">Sus. From</th>
             <th class="regularText py-18">% Strat. Followed</th>
-            <th class="regularText py-18">Net P&L</th>
-            <th class="regularText py-18">Best Trade</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           @for (user of paginatedUsers; track $index) {
           <tr>
-            <td class="smallText d-flex items-center">
-              <span class="avatar smallText"
-                >{{ onlyNameInitials(user) }}
-              </span>
-              <p style="width: 100%">
-                {{ `${user.firstName.split(" ")[0]} ${user.lastName.split(" ")[0]}` }}
+            <td class="smallText" style="width: 10.5rem">
+              <p>
+                {{ user.firstName }}
               </p>
             </td>
-            <td>
-              <span
-                class="status py-8 px-4 smallText d-flex items-center justify-center"
-                [ngClass]="statusClass(user.status)"
-              >
-                {{
-                  user.status
-                    ? user.status.charAt(0).toUpperCase() + user.status.slice(1)
-                    : ""
-                }}
-              </span>
+            <td class="smallText" style="width: 12.5rem">
+              <p>
+                {{ user.lastName }}
+              </p>
+            </td>
+
+            <td class="smallText">
+              <p>
+                {{ user.email }}
+              </p>
+            </td>
+            <td class="smallText">
+              <p>
+                {{ user.phoneNumber }}
+              </p>
+            </td>
+            <td class="smallText">
+              <p>
+                {{ user.subscription_date | date : "dd/MM/yyyy" }}
+              </p>
             </td>
             <td>
               @if (user.strategy_followed !== undefined) {
@@ -126,17 +135,14 @@
               <span>No stats available</span>
               }
             </td>
-            <td>
-              <span class="d-flex items-center justify-center">{{
-                user.netPnl ? user.netPnl : "-"
-              }}</span>
-            </td>
-            <td>
-              <span class="d-flex items-center justify-center">{{
-                  user.best_trade ? `$${user.best_trade | number : "1.0-0"}` : "-"
-              }}</span>
+            <td class="smallText">
+              <span
+                (click)="emitUser(user)"
+                class="icon-info color-secondary-500 regularText"
+              ></span>
             </td>
           </tr>
+
           }
         </tbody>
       </table>

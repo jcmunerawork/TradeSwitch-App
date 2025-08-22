@@ -193,8 +193,6 @@ export class ReportComponent implements OnInit {
   transformStrategyStateToDisplayData(
     strategyState: StrategyState
   ): displayConfigData[] {
-    console.log(strategyState);
-
     const newConfig: displayConfigData[] = [];
 
     Object.entries(strategyState).forEach(([key, value]) => {

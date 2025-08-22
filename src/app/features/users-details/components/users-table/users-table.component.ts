@@ -1,23 +1,28 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { User, UserStatus } from '../../models/overview';
+
 import { FormsModule } from '@angular/forms';
+import { User } from '../../../overview/models/overview';
+import { EventEmitter } from '@angular/core';
 
 @Component({
-  selector: 'app-trade-switch-table',
+  selector: 'app-users-table',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './tradeSwitchTable.component.html',
-  styleUrls: ['./tradeSwitchTable.component.scss'],
+  templateUrl: './users-table.component.html',
+  styleUrls: ['./users-table.component.scss'],
 })
-export class TradeSwitchTableComponent {
+export class UsersTableComponent {
   @Input() users: User[] = [];
-  initialStatus: UserStatus = undefined as unknown as UserStatus;
+  @Output() userSelected = new EventEmitter<User>();
+
   initialMinStrat = 0;
   initialMaxStrat = 100;
   showFilter = false;
   currentPage: number = 1;
   itemsPerPage: number = 10;
+  sortField: 'firstName' | 'lastName' = 'firstName';
+  sortAsc: boolean = true;
 
   private _searchTerm = '';
   get searchTerm(): string {
@@ -31,12 +36,10 @@ export class TradeSwitchTableComponent {
   get filteredUsers(): User[] {
     const lower = this._searchTerm.trim().toLowerCase();
 
-    return this.users.filter((user) => {
+    let result = this.users.filter((user) => {
       const matchesSearch = `${user.firstName} ${user.lastName}`
         .toLowerCase()
         .includes(lower);
-      const matchesStatus =
-        !this.initialStatus || user.status === this.initialStatus;
 
       let matchesMinStrat = user.strategy_followed >= this.initialMinStrat;
       let matchesMaxStrat = user.strategy_followed <= this.initialMaxStrat;
@@ -50,10 +53,18 @@ export class TradeSwitchTableComponent {
         return matchesSearch;
       }
 
-      return (
-        matchesSearch && matchesStatus && matchesMinStrat && matchesMaxStrat
-      );
+      return matchesSearch && matchesMinStrat && matchesMaxStrat;
     });
+
+    result = result.sort((a, b) => {
+      const fieldA = a[this.sortField].toLowerCase();
+      const fieldB = b[this.sortField].toLowerCase();
+      if (fieldA < fieldB) return this.sortAsc ? -1 : 1;
+      if (fieldA > fieldB) return this.sortAsc ? 1 : -1;
+      return 0;
+    });
+
+    return result;
   }
 
   get paginatedUsers(): User[] {
@@ -92,10 +103,6 @@ export class TradeSwitchTableComponent {
     this.goToPage(1);
   }
 
-  onlyNameInitials(user: User) {
-    return user.firstName.charAt(0) + user.lastName.charAt(0);
-  }
-
   goToPage(page: number) {
     if (page < 1) page = 1;
     if (page > this.totalPages) page = this.totalPages;
@@ -108,5 +115,13 @@ export class TradeSwitchTableComponent {
 
   nextPage() {
     this.goToPage(this.currentPage + 1);
+  }
+
+  toggleSort() {
+    this.sortAsc = !this.sortAsc;
+  }
+
+  emitUser(user: User) {
+    this.userSelected.emit(user);
   }
 }

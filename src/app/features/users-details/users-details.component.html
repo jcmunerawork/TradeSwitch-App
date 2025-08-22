@@ -1,0 +1,25 @@
+<div class="main-titles color-background d-flex flex-col mb-50">
+  <h1 class="titleText mb-32">Users</h1>
+  <h3 class="regularText">
+    View and manage user accounts with full visibility and control.
+  </h3>
+</div>
+<div class="middle-container justify-between d-flex mb-24">
+  <app-users-table
+    [users]="usersData"
+    (userSelected)="selectedUser = $event"
+  ></app-users-table>
+</div>
+<app-loading-popup [visible]="loading"></app-loading-popup>
+@if(selectedUser){
+<app-user-modal
+  [user]="selectedUser"
+  (close)="selectedUser = null"
+  (ban)="onBan($event)"
+  (unban)="onUnban($event)"
+  (setPassword)="onSetPassword($event)"
+  (sendResetLink)="onSendResetLink($event)"
+  (logoutEverywhere)="onLogoutEverywhere($event)"
+>
+</app-user-modal>
+}

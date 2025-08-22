@@ -1,0 +1,173 @@
+<div class="modal-backdrop" (click)="close.emit()"></div>
+<div
+  class="modal-content regularText color-background p-24 d-inline-flex flex-col items-start"
+>
+  <div class="title">
+    <h2 class="subtitle">Information details</h2>
+    <button class="close-btn color-secondary-500" (click)="close.emit()">
+      ×
+    </button>
+  </div>
+  <div class="user-details-header d-flex items-center">
+    <span class="avatar smallText">{{ onlyNameInitials(user) }} </span>
+    <h2 class="regularText">{{ user.firstName }} {{ user.lastName }}</h2>
+  </div>
+  <div class="section d-flex flex-col items-start">
+    <h3 class="mb-16">About User</h3>
+    <div class="user-info d-flex flex-col items-start">
+      <div class="user-item">
+        <p class="user-item-label">Email</p>
+        <p>{{ user.email }}</p>
+      </div>
+      <div class="user-item">
+        <p class="user-item-label">Phone number</p>
+        <p>{{ user.phoneNumber }}</p>
+      </div>
+      <div class="user-item">
+        <p class="user-item-label">Country</p>
+        <p>United States</p>
+      </div>
+      <div class="user-item">
+        <p class="user-item-label">City</p>
+        <p>Omaha</p>
+      </div>
+      <div class="user-item">
+        <p class="user-item-label">Region</p>
+        <p>NE</p>
+      </div>
+      <div class="user-item">
+        <p class="user-item-label">Postal code</p>
+        <p>68102</p>
+      </div>
+    </div>
+  </div>
+  <div class="section d-flex flex-col items-start">
+    <h3 class="mb-16">About Activity</h3>
+    <div class="user-info d-flex flex-col items-start">
+      <div class="user-item">
+        <p class="user-item-label">% Strat. Followed</p>
+        <div class="strategy-progress">
+          @if (user.strategy_followed !== undefined) {
+          {{ user.strategy_followed }}%
+          <!-- <span [ngClass]="returnClass(user.strategy_followed)">
+            {{ user.strategy_followed }}%
+          </span> -->
+          <div class="progress-container mt-6">
+            <div class="progress-bar-bg">
+              <div
+                class="progress-bar-fill"
+                [style.width.%]="user.strategy_followed"
+              ></div>
+            </div>
+          </div>
+          } @if (user.strategy_followed === undefined) {
+          <span>No stats available</span>
+          }
+        </div>
+      </div>
+      <div class="user-item">
+        <p class="user-item-label">Orders</p>
+        <p>{{ user.number_trades }}</p>
+      </div>
+      <div class="user-item">
+        <p class="user-item-label">Total spend</p>
+        <p>${{ user.total_spend.toFixed(2) }}</p>
+      </div>
+      <div class="user-item">
+        <p class="user-item-label">AOV</p>
+        <p>${{ aov }}</p>
+      </div>
+      <div class="user-item">
+        <p class="user-item-label">Last active</p>
+        <p>{{ today | date : "MMMM d, yyyy" }}</p>
+      </div>
+      <div class="user-item">
+        <p class="user-item-label">Sus. From</p>
+        <p>{{ user.subscription_date | date : "M/d/yy" }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="section d-flex flex-col items-start">
+    <h3 class="mb-16">Account Management</h3>
+    <div class="user-info d-flex flex-col items-start">
+      <div class="user-item">
+        <p class="user-item-label">ban</p>
+        <div>
+          <input [(ngModel)]="usernameToBan" placeholder="Username" />
+          <input [(ngModel)]="banReason" placeholder="Reason" />
+          <div class="ban-btns d-flex items-center justify-between">
+            <button
+              class="ban-btn"
+              (click)="ban.emit({ username: usernameToBan, reason: banReason })"
+            >
+              Ban
+            </button>
+            <button
+              class="btn color-background"
+              (click)="unban.emit(usernameToBan)"
+            >
+              Unban
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="section d-flex flex-col items-start">
+    <div class="user-info d-flex flex-col items-start">
+      <div class="user-item">
+        <p class="user-item-label">New password</p>
+        <div>
+          <input #passwordInput type="password" placeholder="New password" />
+          <button
+            class="password-btn btn color-background"
+            (click)="setPassword.emit(passwordInput.value)"
+          >
+            Set New Password
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section d-flex flex-col items-start">
+    <div class="user-info d-flex flex-col items-start">
+      <div class="user-item">
+        <p class="user-item-label">Password reset</p>
+        <div class="d-flex flex-col" style="width: 60%; gap: 10px">
+          <button
+            class="btn custom-btn color-background"
+            (click)="sendResetLink.emit(user.email)"
+          >
+            Send Reset Link
+          </button>
+
+          <small class="color-text-gray"
+            >Send {{ user.firstName }} a link to reset their password. This will
+            not change their password, nor will it force a change.</small
+          >
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section d-flex flex-col items-start">
+    <div class="user-info d-flex flex-col items-start">
+      <div class="user-item">
+        <p class="user-item-label">Session</p>
+        <div class="d-flex flex-col" style="width: 48%; gap: 10px">
+          <button
+            class="btn custom-btn color-background"
+            (click)="logoutEverywhere.emit(user.id)"
+          >
+            Log Out Everywhere
+          </button>
+
+          <small class="color-text-gray"
+            >Log {{ user.firstName }} out of all locations.</small
+          >
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

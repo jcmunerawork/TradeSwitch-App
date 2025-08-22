@@ -16,12 +16,14 @@ export interface User {
   firstName: string;
   id: string;
   lastName: string;
+  email: string;
   netPnl: number;
   number_trades: number;
   phoneNumber: string;
   profit: number;
   status: UserStatus;
   strategy_followed: number;
-  subscription_date: string;
+  subscription_date: any;
+  total_spend: number;
   tokenId: string;
 }
