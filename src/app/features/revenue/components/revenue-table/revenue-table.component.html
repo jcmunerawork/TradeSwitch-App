@@ -1,0 +1,256 @@
+<div
+  class="table-container color-background d-flex flex-col justify-between p-24 mb-24"
+>
+  <div class="d-flex flex-col">
+    <div class="d-flex justify-between items-center mb-24">
+      <div class="table-titles">
+        <h1 class="subtitle mb-6">Revenue</h1>
+      </div>
+      <div class="table-actions-container smallText d-flex items-center">
+        <div class="search-user-container d-flex items-center p-10 mr-10">
+          <label for="search-user" class="mr-10"
+            ><span class="icon-search color-background"></span
+          ></label>
+          <input
+            id="search-user"
+            type="text"
+            placeholder="Search date"
+            [(ngModel)]="searchTerm"
+            class="search-box color-background smallText"
+          />
+        </div>
+
+        <button
+          class="sort-Btn regularText color-secondary-300 p-10 mr-10"
+          (click)="toggleSort()"
+        >
+          <span>{{ sortAsc ? "↑" : "↓" }}</span>
+          {{ sortAsc ? "Sort by: First date" : "Sort by: Last date" }}
+        </button>
+
+        <div class="filter-container">
+          <button
+            class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
+            (click)="openFilter()"
+          >
+            <span class="icon-filter color-secondary-300"></span> Filter
+          </button>
+          @if (showFilter) {
+          <div class="filter-modal py-20 px-24 d-flex flex-col">
+            <label class="mt-10">Orders:</label>
+            <div
+              class="percentage-input d-flex items-center justify-between p-10"
+            >
+              <input
+                id="min-orders"
+                type="number"
+                [(ngModel)]="filter.minOrders"
+                placeholder="Min"
+                class="search-box color-background smallText"
+              />
+              <label for="min-orders">min</label>
+            </div>
+
+            <div
+              class="percentage-input d-flex items-center justify-between p-10"
+            >
+              <input
+                id="max-orders"
+                type="number"
+                [(ngModel)]="filter.maxOrders"
+                placeholder="Max"
+                class="search-box color-background smallText"
+              />
+              <label for="max-orders">max</label>
+            </div>
+
+            <label class="mt-10">Gross Revenue:</label>
+            <div
+              class="percentage-input d-flex items-center justify-between p-10"
+            >
+              <input
+                id="min-gross-revenue"
+                type="number"
+                [(ngModel)]="filter.minGrossRevenue"
+                placeholder="Min $"
+                class="search-box color-background smallText"
+              />
+              <label for="min-gross-revenue">min $</label>
+            </div>
+
+            <div
+              class="percentage-input d-flex items-center justify-between p-10"
+            >
+              <input
+                id="max-gross-revenue"
+                type="number"
+                [(ngModel)]="filter.maxGrossRevenue"
+                placeholder="Max $"
+                class="search-box color-background smallText"
+              />
+              <label for="max-gross-revenue">max $</label>
+            </div>
+
+            <label class="mt-10">Total sales:</label>
+            <div
+              class="percentage-input d-flex items-center justify-between p-10"
+            >
+              <input
+                id="min-total-sales"
+                type="number"
+                [(ngModel)]="filter.minTotalSales"
+                placeholder="Min $"
+                class="search-box color-background smallText"
+              />
+              <label for="min-total-sales">min $</label>
+            </div>
+
+            <div
+              class="percentage-input d-flex items-center justify-between p-10"
+            >
+              <input
+                id="max-total-sales"
+                type="number"
+                [(ngModel)]="filter.maxTotalSales"
+                placeholder="Max $"
+                class="search-box color-background smallText"
+              />
+              <label for="max-total-sales">max $</label>
+            </div>
+            <button
+              class="filter-btn p-10 bg-primary-400 color-bg-black inputText"
+              (click)="apply()"
+            >
+              Apply
+            </button>
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+    <div class="table-scroll-container">
+      <table class="regularText">
+        <thead>
+          <tr>
+            <th class="regularText py-18">Date</th>
+            <th class="regularText py-18">Orders</th>
+            <th class="regularText py-18">Gross Revenue</th>
+            <th class="regularText py-18">Returns</th>
+            <th class="regularText py-18">Coupons</th>
+            <th class="regularText py-18">Net sales</th>
+            <th class="regularText py-18">Taxes</th>
+            <th class="regularText py-18">Shipping</th>
+            <th class="regularText py-18">Total sales</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of paginatedRows; track $index) {
+          <tr>
+            <td class="smallText" style="width: 10.5rem">
+              <p>
+                {{ row.date }}
+              </p>
+            </td>
+            <td class="smallText" style="width: 12.5rem">
+              <p>
+                {{ row.orders }}
+              </p>
+            </td>
+
+            <td class="smallText">
+              <p>${{ row.grossRevenue }}</p>
+            </td>
+            <td class="smallText">
+              <p>${{ row.returns }}</p>
+            </td>
+            <td class="smallText">
+              <p>${{ row.coupons }}</p>
+            </td>
+            <td class="smallText">
+              <p>${{ row.netSales }}</p>
+            </td>
+            <td class="smallText">
+              <p>${{ row.taxes }}</p>
+            </td>
+            <td class="smallText">
+              <p>${{ row.shipping }}</p>
+            </td>
+            <td class="smallText">
+              <p>${{ row.totalSales }}</p>
+            </td>
+          </tr>
+
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div
+    class="pagination-controls d-flex justify-between items-center mt-10 regularText"
+  >
+    <div class="page-controls d-flex justify-between items-center">
+      <div class="side-controls d-flex items-center">
+        <button
+          class="regularText"
+          (click)="prevPage()"
+          [disabled]="currentPage === 1"
+        >
+          &lt;
+        </button>
+        <button
+          class="regularText"
+          (click)="goToPage(1)"
+          [disabled]="currentPage === 1"
+        >
+          &lt;&lt;
+        </button>
+      </div>
+
+      <span>Page {{ currentPage }} of {{ totalPages }}</span>
+      <div class="side-controls d-flex items-center">
+        <button
+          class="regularText"
+          (click)="goToPage(totalPages)"
+          [disabled]="currentPage === totalPages"
+        >
+          &gt;&gt;
+        </button>
+        <button
+          class="regularText"
+          (click)="nextPage()"
+          [disabled]="currentPage === totalPages"
+        >
+          &gt;
+        </button>
+      </div>
+    </div>
+    <div class="d-flex items-center">
+      <div class="d-flex justify-between items-center mt-10">
+        <label for="page-input" class="regularText mr-10 pb-2"
+          >Go to page</label
+        >
+        <input
+          id="page-input"
+          class="page-input p-8 smallText color-background"
+          type="number"
+          [min]="1"
+          [max]="totalPages"
+          [(ngModel)]="currentPage"
+          (change)="goToPage(currentPage)"
+          style="width: 4rem"
+        />
+      </div>
+
+      <select
+        class="color-secondary-300 smallText mt-10 ml-20"
+        [(ngModel)]="itemsPerPage"
+        (change)="goToPage(1)"
+      >
+        <option [value]="5">5 items</option>
+        <option [value]="10">10 items</option>
+        <option [value]="25">25 items</option>
+      </select>
+    </div>
+  </div>
+</div>

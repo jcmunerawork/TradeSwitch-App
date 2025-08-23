@@ -40,4 +40,17 @@
   ></app-revenue-graph>
 </div>
 
+<app-revenue-table
+  class="mb-24"
+  [revenueRows]="revenueTableData ? revenueTableData : []"
+></app-revenue-table>
+
+<app-orders-table
+  class="mb-24"
+  [orderRows]="orderTableData ? orderTableData : []"
+></app-orders-table>
+
+<app-subscriptions-table
+  [subscriptionRows]="subscriptionsTableData ? subscriptionsTableData : []"
+></app-subscriptions-table>
 <app-loading-popup [visible]="loading"></app-loading-popup>
