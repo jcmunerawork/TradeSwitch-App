@@ -1,0 +1,43 @@
+<div class="main-titles color-background d-flex flex-col mb-50">
+  <h1 class="titleText mb-32">Revenue</h1>
+  <h3 class="regularText">
+    Track your growth with clear insights into platform performance and product
+    metrics.
+  </h3>
+</div>
+
+<div class="d-flex stats-card-container mb-24">
+  <app-stat-card
+    class="stat-card"
+    title="Gross Revenue"
+    [value]="`$${revenueSummary?.grossRevenue ? revenueSummary?.grossRevenue : 0}`"
+  ></app-stat-card>
+  <app-stat-card
+    class="stat-card"
+    title="Returns"
+    [value]="`$${revenueSummary?.returns ? revenueSummary?.returns : 0}`"
+  ></app-stat-card>
+  <app-stat-card
+    class="stat-card"
+    title="Coupons"
+    [value]="`$${revenueSummary?.coupons ? revenueSummary?.coupons : 0}`"
+  ></app-stat-card>
+  <app-stat-card
+    class="stat-card"
+    title="Net Revenue"
+    [value]="`$${revenueSummary?.netRevenue ? revenueSummary?.netRevenue : 0}`"
+  ></app-stat-card>
+  <app-stat-card
+    class="stat-card"
+    title="Total Revenue"
+    [value]="`$${revenueSummary?.totalRevenue ? revenueSummary?.totalRevenue : 0}`"
+  ></app-stat-card>
+</div>
+<div class="middle-container d-flex mb-24">
+  <app-revenue-graph
+    [dailyData]="revenueDailyData ? revenueDailyData : []"
+    [monthlyData]="revenueMonthlyData ? revenueMonthlyData : []"
+  ></app-revenue-graph>
+</div>
+
+<app-loading-popup [visible]="loading"></app-loading-popup>

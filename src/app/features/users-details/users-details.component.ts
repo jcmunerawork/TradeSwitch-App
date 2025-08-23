@@ -52,8 +52,6 @@ export class UsersDetails {
             };
           });
 
-          this.selectedUser = { ...this.usersData[1] };
-
           for (let index = 0; index < 100; index++) {
             const randomUser: User = {
               ...this.usersData[1],

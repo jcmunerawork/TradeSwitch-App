@@ -41,4 +41,11 @@ export const routes: Routes = [
         (m) => m.UsersDetails
       ),
   },
+  {
+    path: 'revenue',
+    loadComponent: () =>
+      import('./features/revenue/revenue.component').then(
+        (m) => m.RevenueComponent
+      ),
+  },
 ];

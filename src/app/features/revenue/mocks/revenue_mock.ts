@@ -1,0 +1,63 @@
+import {
+  DailyRevenueData,
+  MonthlyRevenueData,
+  RevenueSummary,
+  YearlyRevenueData,
+} from '../models/revenue';
+
+export const mockRevenueSummary: RevenueSummary = {
+  grossRevenue: 45750,
+  returns: 56,
+  coupons: 1870,
+  netRevenue: 24780,
+  totalRevenue: 24780,
+};
+
+export const dailyRevenueMock: DailyRevenueData[] = [
+  { date: '2025-08-01', grossRevenue: 400 },
+  { date: '2025-08-02', grossRevenue: 700 },
+  { date: '2025-08-03', grossRevenue: 1100 },
+  { date: '2025-08-04', grossRevenue: 1700 },
+  { date: '2025-08-05', grossRevenue: 3000 },
+  { date: '2025-08-06', grossRevenue: 2350 },
+  { date: '2025-08-07', grossRevenue: 900 },
+  { date: '2025-08-08', grossRevenue: 1200 },
+  { date: '2025-08-09', grossRevenue: 1500 },
+  { date: '2025-08-10', grossRevenue: 1800 },
+  { date: '2025-08-11', grossRevenue: 400 },
+  { date: '2025-08-12', grossRevenue: 700 },
+  { date: '2025-08-13', grossRevenue: 1100 },
+  { date: '2025-08-14', grossRevenue: 1700 },
+  { date: '2025-08-15', grossRevenue: 3000 },
+  { date: '2025-08-16', grossRevenue: 2350 },
+  { date: '2025-08-17', grossRevenue: 900 },
+  { date: '2025-08-18', grossRevenue: 1200 },
+  { date: '2025-08-19', grossRevenue: 1500 },
+  { date: '2025-08-20', grossRevenue: 1800 },
+  { date: '2025-08-21', grossRevenue: 400 },
+  { date: '2025-08-22', grossRevenue: 700 },
+  { date: '2025-08-23', grossRevenue: 1100 },
+  { date: '2025-08-24', grossRevenue: 1700 },
+  { date: '2025-08-25', grossRevenue: 3000 },
+  { date: '2025-08-26', grossRevenue: 2350 },
+  { date: '2025-08-27', grossRevenue: 900 },
+  { date: '2025-08-28', grossRevenue: 1200 },
+  { date: '2025-08-29', grossRevenue: 1500 },
+  { date: '2025-08-30', grossRevenue: 1800 },
+  { date: '2025-08-31', grossRevenue: 1800 },
+];
+
+export const monthlyRevenueMock: MonthlyRevenueData[] = [
+  { year: 2025, month: 1, grossRevenue: 21000 },
+  { year: 2025, month: 2, grossRevenue: 19800 },
+  { year: 2025, month: 3, grossRevenue: 23050 },
+  { year: 2025, month: 4, grossRevenue: 25500 },
+  { year: 2025, month: 5, grossRevenue: 24800 },
+  { year: 2025, month: 6, grossRevenue: 26706.52 },
+  { year: 2025, month: 7, grossRevenue: 28000 },
+  { year: 2025, month: 8, grossRevenue: 29000 },
+  { year: 2025, month: 9, grossRevenue: 30000 },
+  { year: 2025, month: 10, grossRevenue: 31000 },
+  { year: 2025, month: 11, grossRevenue: 32000 },
+  { year: 2025, month: 12, grossRevenue: 33000 },
+];

@@ -1,0 +1,24 @@
+.stats-card-container {
+  min-width: 71.3125rem;
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: flex-start;
+  box-sizing: border-box;
+  scrollbar-width: none;
+
+  -ms-overflow-style: none;
+  .stat-card {
+    min-width: 16.5625rem;
+    flex: 0 0 auto;
+  }
+}
+
+.stats-card-container::-webkit-scrollbar {
+  display: none;
+}
+
+app-revenue-graph {
+  width: 100%;
+}
