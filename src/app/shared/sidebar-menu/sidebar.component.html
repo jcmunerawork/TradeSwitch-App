@@ -48,13 +48,13 @@
   <div class="bottom py-10">
     <div class="user mb-10">
       <span class="avatar">TU</span>
-      <span>Test User</span>
+      <span>{{ userName }}</span>
     </div>
     <a class="settings color-background" routerLink="/settings">
       <span class="icon-config color-secondary-500 mr-10"></span>Account
       Settings</a
     >
-    <a class="logout" routerLink="/logout"
+    <a class="logout" (click)="logout()">
       ><span class="icon-logout mr-10"></span> Log out</a
     >
   </div>

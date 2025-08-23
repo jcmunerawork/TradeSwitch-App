@@ -1,11 +1,17 @@
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { TextInputComponent, PhoneInputComponent, BirthdayInputComponent } from '../../../shared/components';
+import { PasswordInputComponent } from "../../../shared/components/password-input/password-input.component";
+import { TextInputComponent  } from '../../../shared/components';
+import { AuthService } from '../service/authService';
+import { Router, RouterLink } from '@angular/router';
+import { Store } from '@ngrx/store';
+import { setUserData } from '../store/user.actions';
+
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, TextInputComponent],
+  imports: [ReactiveFormsModule, PasswordInputComponent, TextInputComponent, RouterLink],
   templateUrl: './login.html',
   styleUrl: './login.scss'
 })
@@ -13,9 +19,9 @@ export class Login {
   loginForm: FormGroup;
   showPassword = false;
 
-  constructor(private fb: FormBuilder) {
+  constructor(private fb: FormBuilder, private authService: AuthService,private store: Store, private router: Router) {
     this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
+      loginEmail: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required]],
       rememberMe: [false]
     });
@@ -25,7 +31,28 @@ export class Login {
     if (this.loginForm.valid) {
       // TODO: Implement login logic
       console.log('Login:', this.loginForm.value);
+
+      const userCredentials = this.createUserCredentialsObject();
+      this.authService.login(userCredentials).then((response: any) => {
+
+        this.authService.getUserData(response.user.uid).then((userData: User) => {
+          console.log('User data:', userData);
+          this.store.dispatch(setUserData({ user: userData }));
+          this.router.navigate(['/report']);
+
+        });
+
+      }).catch((error: any) => {
+        alert('Login failed. Please try again.');
+      });
     }
+  }
+
+  private createUserCredentialsObject():  UserCredentials {
+    return {
+      email: this.loginForm.value.loginEmail,
+      password: this.loginForm.value.password,
+    };
   }
 
   togglePasswordVisibility(): void {
