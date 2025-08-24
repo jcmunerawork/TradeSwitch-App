@@ -15,11 +15,12 @@ import {
   setUserKey,
 } from './store/report.actions';
 import { selectGroupedTrades, selectReport } from './store/report.selectors';
-import { map } from 'rxjs';
+import { interval, last, map, Subscription } from 'rxjs';
 import { ReportService } from './service/report.service';
 import {
   displayConfigData,
   GroupedTrade,
+  MonthlyReport,
   StatConfig,
 } from './models/report.model';
 import {
@@ -38,7 +39,13 @@ import { resetConfig } from '../strategy/store/strategy.actions';
 import { RuleType, StrategyState } from '../strategy/models/strategy.model';
 import { RuleShortComponent } from './components/rule-short/rule-short.component';
 import moment from 'moment-timezone';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { User } from '../overview/models/overview';
+import { selectUser } from '../auth/store/user.selectios';
+import { AuthService } from '../auth/service/authService';
+import { getBestTrade, getTotalSpend } from './utils/firebase-data-utils';
+import { Timestamp } from 'firebase/firestore';
+import { setUserData } from '../auth/store/user.actions';
 
 @Component({
   selector: 'app-report',
@@ -68,12 +75,17 @@ export class ReportComponent implements OnInit {
   loading = false;
   fromDate = '';
   toDate = '';
+  user: User | null = null;
+  requestYear: number = 0;
+  private updateSubscription?: Subscription;
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: any,
     private store: Store,
     private reportService: ReportService,
-    private strategySvc: SettingsService
+    private userService: AuthService,
+    private strategySvc: SettingsService,
+    private router: Router
   ) {}
 
   ngAfterViewInit() {
@@ -92,9 +104,47 @@ export class ReportComponent implements OnInit {
 
   ngOnInit() {
     this.loading = true;
+    this.getUserData();
     this.fetchUserKey();
     this.listenGroupedTrades();
     this.fetchUserRules();
+
+    // this.userService
+    //   .logout()
+    //   .then(() => {
+    //     this.store.dispatch(setUserData({ user: null }));
+    //     this.router.navigate(['/login']);
+    //   })
+    //   .catch((error) => {
+    //     alert('Logout failed. Please try again.');
+    //   });
+
+    this.updateSubscription = interval(120000).subscribe(() => {
+      if (this.userKey) {
+        this.loading = true;
+        this.fetchHistoryData(
+          this.userKey,
+          '1234211',
+          this.fromDate,
+          this.toDate
+        );
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    this.updateSubscription?.unsubscribe();
+  }
+
+  getUserData() {
+    this.store.select(selectUser).subscribe({
+      next: (user) => {
+        this.user = user.user;
+      },
+      error: (err) => {
+        console.error('Error fetching user data', err);
+      },
+    });
   }
 
   fetchUserRules() {
@@ -117,11 +167,50 @@ export class ReportComponent implements OnInit {
       });
   }
 
+  updateFirebaseUserData() {
+    if (this.user) {
+      const updatedUser = {
+        ...this.user,
+        best_trade: getBestTrade(this.accountHistory),
+        netPnl: this.stats?.netPnl ?? 0,
+        lastUpdated: new Date().getTime() as unknown as Timestamp,
+        number_trades: this.stats?.totalTrades ?? 0,
+        profit: this.stats?.netPnl ?? 0,
+        strategy_followed: 60,
+        total_spend: getTotalSpend(this.accountHistory),
+      };
+
+      const actualYear = new Date().getFullYear();
+
+      const requestYear = this.requestYear;
+      if (actualYear === requestYear) {
+        this.userService.createUser(updatedUser as unknown as User);
+      }
+
+      const monthlyReport = {
+        id: this.user?.id,
+        best_trade: getBestTrade(this.accountHistory),
+        netPnl: this.stats?.netPnl ?? 0,
+        number_trades: this.stats?.totalTrades ?? 0,
+        profit: this.stats?.netPnl ?? 0,
+        strategy_followed: 60,
+        total_spend: getTotalSpend(this.accountHistory),
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+      };
+
+      this.reportService.updateMonthlyReport(
+        monthlyReport as unknown as MonthlyReport
+      );
+    }
+  }
+
   listenGroupedTrades() {
     this.store.select(selectGroupedTrades).subscribe({
       next: (groupedTrades) => {
         this.accountHistory = groupedTrades;
         this.updateReportStats(this.store, groupedTrades);
+        this.updateFirebaseUserData();
       },
     });
   }
@@ -154,6 +243,7 @@ export class ReportComponent implements OnInit {
             59,
             999
           ).toString();
+          this.requestYear = currentYear;
 
           this.fetchHistoryData(key, '1234211', this.fromDate, this.toDate);
 
@@ -247,6 +337,7 @@ export class ReportComponent implements OnInit {
     this.loading = true;
     this.fromDate = Date.UTC(Number($event), 0, 1, 0, 0, 0, 0).toString();
     this.toDate = Date.UTC(Number($event), 11, 31, 23, 59, 59, 999).toString();
+    this.requestYear = Number($event);
 
     this.fetchHistoryData(this.userKey, '1234211', this.fromDate, this.toDate);
   }

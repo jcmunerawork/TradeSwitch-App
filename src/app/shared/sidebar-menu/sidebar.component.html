@@ -4,6 +4,11 @@
   <div class="logo mb-44">
     <img src="assets/logo.png" alt="" />
   </div>
+  @if (userToken) {
+  <p class="token-id p-20 regularText">
+    your plugin token is <b>{{ userToken }}</b>
+  </p>
+  }
   <div class="sidebar-dashboard" (click)="toggleDashboard()">
     <span class="icon-home"></span>
     <span class="sidebar-title">Dashboard</span>

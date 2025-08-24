@@ -39,6 +39,9 @@ export function groupOrdersByPosition(orders: historyTrade[]): GroupedTrade[] {
       grouped[posId].buy_price =
         order.price.sell_price || order.execution_price;
     }
+
+    grouped[posId].totalSpend =
+      Number(grouped[posId].buy_price ?? 0) * (grouped[posId].quantity ?? 0);
   });
 
   Object.values(grouped).forEach((trade) => {

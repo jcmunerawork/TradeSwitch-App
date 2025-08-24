@@ -17,7 +17,7 @@ import {
   doc,
   getDoc,
 } from 'firebase/firestore';
-import { first, Observable } from 'rxjs';
+import { BehaviorSubject, filter, first, Observable } from 'rxjs';
 import { User } from '../../overview/models/overview';
 import { auth } from '../../../firebase/firebase.init';
 
@@ -27,24 +27,21 @@ import { auth } from '../../../firebase/firebase.init';
 export class AuthService {
   private isBrowser: boolean;
   private db: ReturnType<typeof getFirestore> | null = null;
-  authStateChanged: Observable<boolean>;
+  private authStateSubject = new BehaviorSubject<boolean | null>(null);
+  authStateChanged = this.authStateSubject.asObservable();
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {
-    this.authStateChanged = new Observable<boolean>((observer) => {
-      if (this.isBrowser) {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-          observer.next(user !== null);
-        });
-        return () => unsubscribe();
-      } else {
-        observer.next(false);
-        return () => {};
-      }
-    });
     this.isBrowser = isPlatformBrowser(this.platformId);
+
     if (this.isBrowser) {
       const { firebaseApp } = require('../../../firebase/firebase.init.ts');
       this.db = getFirestore(firebaseApp);
+
+      onAuthStateChanged(getAuth(), (user) => {
+        this.authStateSubject.next(user !== null);
+      });
+    } else {
+      this.authStateSubject.next(false);
     }
   }
 
@@ -107,8 +104,9 @@ export class AuthService {
     return getAuth().signOut();
   }
 
-  isAuthenticated() {
-    const user = getAuth().currentUser;
-    return user !== null;
+  isAuthenticated(): Observable<boolean> {
+    return this.authStateSubject
+      .asObservable()
+      .pipe(filter((state): state is boolean => state !== null));
   }
 }

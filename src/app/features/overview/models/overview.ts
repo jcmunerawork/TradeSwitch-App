@@ -26,7 +26,8 @@ export interface User {
   status: UserStatus;
   strategy_followed: number;
   subscription_date: Timestamp;
-  tokenId: String;
+  lastUpdated: Timestamp;
+  tokenId: string;
   total_spend: number;
   isAdmin: boolean;
 }

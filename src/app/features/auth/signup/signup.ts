@@ -98,7 +98,7 @@ export class SignupComponent {
     };
   }
 
-  private createUserObject(id: String, tokenId: String): User {
+  private createUserObject(id: string, tokenId: string): User {
     return {
       id: id,
       email: this.signupForm.value.email,
@@ -114,6 +114,7 @@ export class SignupComponent {
       status: UserStatus.PURCHASED,
       strategy_followed: 0,
       subscription_date: new Date().getTime() as unknown as Timestamp,
+      lastUpdated: new Date().getTime() as unknown as Timestamp,
       total_spend: 0,
       isAdmin: false,
     };

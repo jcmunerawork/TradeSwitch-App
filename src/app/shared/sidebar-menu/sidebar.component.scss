@@ -7,6 +7,12 @@
   justify-content: space-between;
   align-items: center;
   padding: 2rem 1rem 4rem 1rem;
+
+  .token-id {
+    line-height: normal;
+    text-align: center;
+  }
+
   .icon-expand {
     width: 100%;
     font-size: 2rem;

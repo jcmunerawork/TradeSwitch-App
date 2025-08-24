@@ -28,6 +28,7 @@ export class TopListComponent {
     email: '',
     total_spend: 0,
     isAdmin: false,
+    lastUpdated: {} as Timestamp,
   };
 
   constructor() {}

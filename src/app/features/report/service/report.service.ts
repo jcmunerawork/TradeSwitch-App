@@ -2,18 +2,50 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { map, Observable } from 'rxjs';
-import { GroupedTrade, historyTrade } from '../models/report.model';
+import {
+  GroupedTrade,
+  historyTrade,
+  MonthlyReport,
+} from '../models/report.model';
 import {
   arrayToHistoryTrade,
   groupOrdersByPosition,
 } from '../utils/normalization-utils';
+import { doc, getFirestore, setDoc } from 'firebase/firestore';
+import { User } from '../../overview/models/overview';
+import { randomUUID } from 'crypto';
+import { newDataId } from '../utils/firebase-data-utils';
 
 @Injectable({ providedIn: 'root' })
 export class ReportService {
+  private isBrowser: boolean;
+  private db: ReturnType<typeof getFirestore> | null = null;
+
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     private http: HttpClient
-  ) {}
+  ) {
+    this.isBrowser = isPlatformBrowser(this.platformId);
+    if (this.isBrowser) {
+      const { firebaseApp } = require('../../../firebase/firebase.init.ts');
+      this.db = getFirestore(firebaseApp);
+    }
+  }
+
+  async updateMonthlyReport(monthlyReport: MonthlyReport) {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return;
+    }
+
+    const id = newDataId(
+      monthlyReport.id,
+      monthlyReport.month,
+      monthlyReport.year
+    );
+
+    await setDoc(doc(this.db, 'monthly_reports', id), monthlyReport);
+  }
 
   getUserKey(
     email: string,
@@ -52,7 +84,7 @@ export class ReportService {
       .pipe(
         map((details) => {
           const historyTrades: historyTrade[] =
-            details.d.ordersHistory.map(arrayToHistoryTrade); // ajusta según tu estructura
+            details.d.ordersHistory.map(arrayToHistoryTrade);
           const groupedTrades = groupOrdersByPosition(historyTrades);
           return groupedTrades;
         })

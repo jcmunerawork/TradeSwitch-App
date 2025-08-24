@@ -22,6 +22,7 @@ export interface GroupedTrade {
   pnl?: number;
   buy_price?: string;
   sell_price?: string;
+  totalSpend?: number;
   updatedAt: string;
 }
 
@@ -56,4 +57,16 @@ export interface ReportState {
   AvgWnL: number;
   totalTrades: number;
   userKey: string;
+}
+
+export interface MonthlyReport {
+  best_trade: string;
+  netPnl: number;
+  number_trades: number;
+  profit: number;
+  strategy_followed: number;
+  total_spend: number;
+  month: number;
+  year: number;
+  id: string;
 }

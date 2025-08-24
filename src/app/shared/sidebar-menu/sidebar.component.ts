@@ -18,7 +18,7 @@ export class Sidebar {
   userName: string = '';
   lastName: string = '';
   isAdmin: boolean = false;
-  user: User | null = null;
+  userToken: string = '';
 
   constructor(
     private authService: AuthService,
@@ -29,6 +29,7 @@ export class Sidebar {
       this.userName = user?.user?.firstName || '';
       this.lastName = user?.user?.lastName || '';
       this.isAdmin = user?.user?.isAdmin || false;
+      this.userToken = user?.user?.tokenId || '';
     });
   }
 
