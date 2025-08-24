@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { User } from '../../../overview/models/overview';
 import { EventEmitter } from '@angular/core';
+import { Timestamp } from 'firebase/firestore';
 
 @Component({
   selector: 'app-users-table',
@@ -119,6 +120,10 @@ export class UsersTableComponent {
 
   toggleSort() {
     this.sortAsc = !this.sortAsc;
+  }
+
+  getUserDate(date: Timestamp): Date {
+    return date.toDate();
   }
 
   emitUser(user: User) {

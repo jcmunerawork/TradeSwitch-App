@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { User } from '../../../overview/models/overview';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { Timestamp } from 'firebase/firestore';
 
 @Component({
   selector: 'app-user-modal',
@@ -32,5 +33,8 @@ export class UserModalComponent {
 
   onlyNameInitials(user: User) {
     return user.firstName.charAt(0) + user.lastName.charAt(0);
+  }
+  getUserDate(date: Timestamp): Date {
+    return date.toDate();
   }
 }

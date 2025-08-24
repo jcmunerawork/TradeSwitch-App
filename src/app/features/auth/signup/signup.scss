@@ -1,4 +1,4 @@
-*{
+* {
   gap: 10px;
 }
 
@@ -20,12 +20,11 @@
 }
 
 .signup-title {
-  color: var(--White, #EAF2F8);
+  color: var(--White, #eaf2f8);
   text-align: center;
   font-family: "SF Pro Display";
   font-size: 46px;
-  font-feature-settings: 'liga' off, 'clig' off;
-  
+  font-feature-settings: "liga" off, "clig" off;
 
   line-height: 22.264px;
   /* 61.844% */
@@ -118,8 +117,7 @@
 
 .submit-button {
   border-radius: 6px;
-  opacity: 0.3;
-  background: var(--Primary-400, #9BF526);
+  background: var(--Primary-400, #9bf526);
 
   color: #0a0a0a;
   border: none;
@@ -157,17 +155,17 @@
   font-family: "SF Pro Display";
   margin-top: 24px;
   gap: 8px;
-  color: #EAF2F8;
+  color: #eaf2f8;
   font-size: 16px;
 }
 
 .separator-line {
   flex: 1;
   height: 1px;
-  background: #8E8E93
+  background: #8e8e93;
 }
 
-.social-button{
+.social-button {
   flex: 1;
   display: flex;
   align-items: center;
@@ -198,7 +196,7 @@
   margin-top: 16px;
 }
 
-.login-text{
+.login-text {
   color: rgba(255, 255, 255, 0.7);
   font-family: "SF Pro Display";
   font-size: 14px;
@@ -208,7 +206,7 @@
   margin-top: 16px;
 
   a {
-    color: var(--Primary-400, #9BF526);
+    color: var(--Primary-400, #9bf526);
     text-decoration: none;
 
     &:hover {
@@ -216,4 +214,3 @@
     }
   }
 }
-

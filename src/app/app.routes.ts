@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth-guard-guard';
 
-
 export const routes: Routes = [
   {
     path: '',
@@ -35,11 +34,13 @@ export const routes: Routes = [
   },
   {
     path: 'overview',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/overview/overview.component').then((m) => m.Overview),
   },
   {
     path: 'users',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/users-details/users-details.component').then(
         (m) => m.UsersDetails
@@ -47,6 +48,7 @@ export const routes: Routes = [
   },
   {
     path: 'revenue',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/revenue/revenue.component').then(
         (m) => m.RevenueComponent

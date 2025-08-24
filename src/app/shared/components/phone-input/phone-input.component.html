@@ -4,38 +4,37 @@
     <div class="country-selector" (click)="toggleCountryDropdown()">
       <!--<span class="country-flag">{{ selectedCountry.flag }}</span>-->
       <img
-          [src]="
-            'https://cdn.jsdelivr.net/npm/country-flag-icons@1.5.6/flags/3x2/' +
-            selectCountry +
-            '.svg'
-          "
-          [alt]="selectCountry + ' Flag'"
-          class="currency-flag"
-        />
+        [src]="
+          'https://cdn.jsdelivr.net/npm/country-flag-icons@1.5.6/flags/3x2/' +
+          selectedCountry.code +
+          '.svg'
+        "
+        [alt]="selectedCountry.code + ' Flag'"
+        class="currency-flag"
+      />
       <span class="country-code">{{ selectedCountry.dialCode }}</span>
       <span class="dropdown-arrow">▼</span>
-      
+
       <div class="country-dropdown" *ngIf="showCountryDropdown">
-        <div 
-          class="country-option" 
+        <div
+          class="country-option"
           *ngFor="let country of countries"
           (click)="selectCountry(country)"
         >
-         
           <img
-          [src]="
-            'https://cdn.jsdelivr.net/npm/country-flag-icons@1.5.6/flags/3x2/' +
-            country.code +
-            '.svg'
-          "
-          [alt]="country.code + ' Flag'"
-          class="currency-flag"
-        />
+            [src]="
+              'https://cdn.jsdelivr.net/npm/country-flag-icons@1.5.6/flags/3x2/' +
+              country.code +
+              '.svg'
+            "
+            [alt]="country.code + ' Flag'"
+            class="currency-flag"
+          />
           <span class="country-code">{{ country.dialCode }}</span>
         </div>
       </div>
     </div>
-    
+
     <input
       type="tel"
       [placeholder]="placeholder"

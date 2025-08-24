@@ -4,6 +4,7 @@ import { AuthService } from '../../features/auth/service/authService';
 import { Store } from '@ngrx/store';
 import { selectUser } from '../../features/auth/store/user.selectios';
 import { setUserData } from '../../features/auth/store/user.actions';
+import { User } from '../../features/overview/models/overview';
 
 @Component({
   selector: 'app-sidebar',
@@ -14,32 +15,40 @@ import { setUserData } from '../../features/auth/store/user.actions';
 })
 export class Sidebar {
   isDashboardOpen = true;
-  userName: string = 'Test User';
+  userName: string = '';
+  lastName: string = '';
+  isAdmin: boolean = false;
+  user: User | null = null;
 
-  constructor(private authService: AuthService, private router: Router, private store: Store) {
-
-    this.store.select(selectUser).subscribe(user => {
-      this.userName = user?.user?.firstName || 'Test User';
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private store: Store
+  ) {
+    this.store.select(selectUser).subscribe((user) => {
+      this.userName = user?.user?.firstName || '';
+      this.lastName = user?.user?.lastName || '';
+      this.isAdmin = user?.user?.isAdmin || false;
     });
   }
 
-
-
+  onlyNameInitials() {
+    return this.userName.charAt(0) + this.lastName.charAt(1);
+  }
 
   toggleDashboard() {
     this.isDashboardOpen = !this.isDashboardOpen;
   }
 
-
   logout() {
-
-    this.authService.logout().then(() => {
-      this.store.dispatch(setUserData({ user: null }));
-      this.router.navigate(['/login']);
-    }).catch((error) => {
-
-      alert('Logout failed. Please try again.');
-    });
+    this.authService
+      .logout()
+      .then(() => {
+        this.store.dispatch(setUserData({ user: null }));
+        this.router.navigate(['/login']);
+      })
+      .catch((error) => {
+        alert('Logout failed. Please try again.');
+      });
   }
-
 }

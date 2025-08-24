@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnInit } from '@angular/core';
 import { User, UserStatus } from '../../models/overview';
+import { Timestamp } from 'firebase/firestore';
 
 @Component({
   selector: 'app-top-list',
@@ -12,7 +13,7 @@ import { User, UserStatus } from '../../models/overview';
 export class TopListComponent {
   @Input() user: User = {
     best_trade: 0,
-    birthday: '',
+    birthday: new Date(),
     firstName: '',
     id: '',
     lastName: '',
@@ -22,10 +23,11 @@ export class TopListComponent {
     profit: 0,
     status: UserStatus.PURCHASED,
     strategy_followed: 0,
-    subscription_date: '',
+    subscription_date: {} as Timestamp,
     tokenId: '',
     email: '',
     total_spend: 0,
+    isAdmin: false,
   };
 
   constructor() {}

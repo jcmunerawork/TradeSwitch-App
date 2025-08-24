@@ -1,15 +1,16 @@
 import { createReducer, on } from '@ngrx/store';
 import { setUserData } from './user.actions';
+import { User } from '../../overview/models/overview';
 
 export interface UserState {
-    user: User | null;  // Replace 'any' with your actual user type
+  user: User | null;
 }
 
 export const initialState: UserState = {
-    user: null  // Initialize user as null or an empty object
+  user: null,
 };
 
 export const userReducer = createReducer(
-    initialState,
-    on(setUserData, (state, { user }) => ({ ...state, user }))
-);  
+  initialState,
+  on(setUserData, (state, { user }) => ({ ...state, user }))
+);

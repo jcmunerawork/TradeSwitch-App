@@ -1,17 +1,14 @@
 * {
-    display: flex;
-    width: 406px;
-    flex-direction: column;
-    align-items: center;
-    gap: 29px;
-    color: #EAF2F8;
-    margin: auto;
-    font-family: "SF Pro Display";
-    gap: 20px;
-    
+  display: flex;
+  width: 406px;
+  flex-direction: column;
+  align-items: center;
+  gap: 29px;
+  color: #eaf2f8;
+  margin: auto;
+  font-family: "SF Pro Display";
+  gap: 20px;
 }
-
-
 
 .progress-bar {
   width: 50%;
@@ -38,69 +35,65 @@
 }
 
 .login-options {
-    width: 100%;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    margin: auto;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin: auto;
 }
 
-.signup-link{
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-    font-size: 14px;
-    gap: 0px;
-    justify-content: space-around;
-    align-items: start;
-
+.signup-link {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  font-size: 14px;
+  gap: 0px;
+  justify-content: space-around;
+  align-items: start;
 }
 
 .signup-link a {
-    color: #9BF526;
-    text-decoration: none;
+  color: #9bf526;
+  text-decoration: none;
 }
 
-.remember-me{
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    width: 30%;
-    font-size: 14px;
+.remember-me {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 30%;
+  font-size: 14px;
 }
-
 
 .remember-me-checkbox {
-    margin-right: 0px;
-    background-color: transparent;
-    color: transparent;
+  margin-right: 0px;
+  background-color: transparent;
+  color: transparent;
 }
 
+.login-title {
+  align-self: stretch;
+  color: var(--White, #eaf2f8);
+  text-align: center;
 
-.login-title{
-    align-self: stretch;
-    color: var(--White, #EAF2F8);
-text-align: center;
+  /* Title 2 */
 
-
-/* Title 2 */
-
-font-size: 36px;
-font-style: normal;
-font-weight: 700;
-line-height: 22.264px; /* 61.844% */
-letter-spacing: -0.435px;
-margin-bottom: 5px;
+  font-size: 36px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 22.264px; /* 61.844% */
+  letter-spacing: -0.435px;
+  margin-bottom: 5px;
 }
 
-.social-icon{
-    width: 16px;
-    height: 16px;
-    margin-right: 8px;
-    margin-left: 0px;
+.social-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  margin-left: 0px;
 }
 
-.social-button{
+.social-button {
   flex: 1;
   flex-direction: row;
   display: flex;
@@ -133,14 +126,14 @@ margin-bottom: 5px;
   font-family: "SF Pro Display";
   margin-top: 24px;
   gap: 8px;
-  color: #EAF2F8;
+  color: #eaf2f8;
   font-size: 16px;
 }
 
 .separator-line {
   flex: 1;
   height: 1px;
-  background: #8E8E93
+  background: #8e8e93;
 }
 
 .social-buttons-container {
@@ -151,16 +144,20 @@ margin-bottom: 5px;
   margin-top: 16px;
 }
 
-.login-button{
-    display: flex;
-padding: 10px;
-justify-content: center;
-align-items: center;
-gap: 10px;
-align-self: stretch;
-color: var(--Black, #222325);
+.login-button {
+  display: flex;
+  padding: 10px;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  align-self: stretch;
+  color: var(--Black, #222325);
 
-border-radius: 6px;
-opacity: 0.3;
-background: var(--Primary-400, #9BF526);
+  border-radius: 6px;
+  background: var(--Primary-400, #9bf526);
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
 }

@@ -1,3 +1,5 @@
+import { Timestamp } from 'firebase/firestore';
+
 export enum UserStatus {
   PURCHASED = 'purchased',
   PENDING = 'pending',
@@ -11,19 +13,20 @@ export interface overviewSubscriptionData {
 }
 
 export interface User {
+  id: any;
   best_trade: number;
-  birthday: string;
-  firstName: string;
-  id: string;
-  lastName: string;
+  birthday: Date;
   email: string;
+  firstName: string;
+  lastName: string;
   netPnl: number;
   number_trades: number;
   phoneNumber: string;
   profit: number;
   status: UserStatus;
   strategy_followed: number;
-  subscription_date: any;
+  subscription_date: Timestamp;
+  tokenId: String;
   total_spend: number;
-  tokenId: string;
+  isAdmin: boolean;
 }

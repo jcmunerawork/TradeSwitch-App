@@ -2,14 +2,11 @@ import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../features/auth/service/authService';
 import { inject } from '@angular/core';
 
-
-
 export const authGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
 
-
   const authService = inject(AuthService);
-  
+
   const isAuthenticated = authService.isAuthenticated();
 
   if (isAuthenticated) {
@@ -20,4 +17,3 @@ export const authGuard: CanActivateFn = (route, state) => {
     return false;
   }
 };
-
