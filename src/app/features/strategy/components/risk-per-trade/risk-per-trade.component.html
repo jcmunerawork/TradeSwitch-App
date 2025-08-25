@@ -15,8 +15,12 @@
       [ngClass]="{ deactivated: !config.isActive }"
     >
       Limit my Risk per Trade:
-      <span class="ml-2">${{ initialRiskTrade }}</span>
+      <span class="ml-2 mr-26">${{ initialRiskTrade }}</span>
     </label>
+    <p>
+      {{ "(" }}Actual Balance: <em>{{ config.balance | currency }}</em
+      >{{ ")" }}
+    </p>
   </div>
   <div class="risk-per-trade-container flex-row d-flex items-center inputText">
     <input
@@ -25,7 +29,7 @@
       id="risk-percentage-input"
       [value]="config.maxRiskPercentage"
       [disabled]="!config.isActive"
-      (change)="onChangeValue($event)"
+      (change)="onChangePercentage($event)"
       class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
     />
     <input
@@ -34,7 +38,7 @@
       id="risk-price-input"
       [value]="config.maxRiskPerTrade"
       [disabled]="!config.isActive"
-      (change)="onChangeValue($event)"
+      (change)="onChangeAmount($event)"
       class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
     />
     <div

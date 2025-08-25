@@ -14,6 +14,13 @@ import { ConfirmPopupComponent } from '../../shared/pop-ups/confirm-pop-up/confi
 import { SettingsService } from './service/strategy.service';
 import { LoadingPopupComponent } from '../../shared/pop-ups/loading-pop-up/loading-popup.component';
 import { Component, OnInit } from '@angular/core';
+import { User } from '../overview/models/overview';
+import { selectUser } from '../auth/store/user.selectios';
+import { initialStrategyState } from './store/strategy.reducer';
+import { OverviewService } from '../overview/services/overview.service';
+import { ReportService } from '../report/service/report.service';
+import { selectUserKey } from '../report/store/report.selectors';
+import { setUserKey } from '../report/store/report.actions';
 
 @Component({
   selector: 'app-strategy',
@@ -41,29 +48,96 @@ export class Strategy implements OnInit {
   confirmPopupVisible = false;
   loading = false;
 
-  constructor(private store: Store, private strategySvc: SettingsService) {}
+  user: User | null = null;
+
+  constructor(
+    private store: Store,
+    private strategySvc: SettingsService,
+    private reportSvc: ReportService
+  ) {}
 
   ngOnInit(): void {
-    this.loadConfig();
+    this.getUserData();
+    this.getActualBalance();
     this.listenConfigurations();
   }
 
-  loadConfig() {
+  fetchUserKey() {
+    this.reportSvc
+      .getUserKey('crisdamencast@gmail.com', 'FP`{Nlq_T9', 'HEROFX')
+      .subscribe({
+        next: (key: string) => {
+          this.store.dispatch(setUserKey({ userKey: key }));
+        },
+        error: (err) => {
+          this.store.dispatch(setUserKey({ userKey: '' }));
+        },
+      });
+  }
+
+  getActualBalance() {
+    this.store
+      .select(selectUserKey)
+      .pipe()
+      .subscribe({
+        next: (userKey) => {
+          if (userKey === '') {
+            this.fetchUserKey();
+          } else {
+            this.reportSvc.getBalanceData('1234211', userKey).subscribe({
+              next: (balance) => {
+                this.loadConfig(balance);
+              },
+              error: (err) => {
+                console.error('Error fetching balance data', err);
+              },
+            });
+          }
+        },
+      });
+  }
+
+  getUserData() {
+    this.store.select(selectUser).subscribe({
+      next: (user) => {
+        this.user = user.user;
+      },
+      error: (err) => {
+        console.error('Error fetching user data', err);
+      },
+    });
+  }
+
+  loadConfig(balance: number) {
+    console.log(balance);
+
     this.loading = true;
     this.strategySvc
-      .getStrategyConfig()
+      .getStrategyConfig(this.user?.id)
       .then((docSnap) => {
         if (docSnap && docSnap['exists']()) {
           const data = docSnap['data']() as StrategyState;
-          this.store.dispatch(resetConfig({ config: data }));
+          const riskPerTradeBalance = {
+            ...data.riskPerTrade,
+            balance: balance,
+          };
+
+          this.store.dispatch(
+            resetConfig({
+              config: { ...data, riskPerTrade: riskPerTradeBalance },
+            })
+          );
           this.loading = false;
         } else {
+          this.store.dispatch(resetConfig({ config: initialStrategyState }));
+
           this.loading = false;
 
           console.warn('No config');
         }
       })
       .catch((err) => {
+        this.store.dispatch(resetConfig({ config: initialStrategyState }));
         this.loading = false;
 
         console.error('Error to get the config', err);
@@ -77,7 +151,9 @@ export class Strategy implements OnInit {
       .subscribe((config) => {
         this.config = { ...config };
         if (!this.previousConfig) {
-          this.previousConfig = { ...config };
+          this.previousConfig = {
+            ...config,
+          };
         }
       });
   }
@@ -85,7 +161,7 @@ export class Strategy implements OnInit {
   save = () => {
     this.loading = true;
     this.strategySvc
-      .saveStrategyConfig(this.config)
+      .saveStrategyConfig(this.user?.id, this.config)
       .then(() => {
         alert('Strategy Saved');
       })

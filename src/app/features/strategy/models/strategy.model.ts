@@ -47,6 +47,7 @@ export interface RiskPerTradeConfig {
   isActive: boolean;
   maxRiskPerTrade: number;
   maxRiskPercentage: number;
+  balance: number;
   type: RuleType;
 }
 export interface HoursAllowedConfig {

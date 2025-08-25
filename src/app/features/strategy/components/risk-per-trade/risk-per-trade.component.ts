@@ -28,6 +28,7 @@ export class RiskPerTradeComponent implements OnInit {
     maxRiskPercentage: 2,
     maxRiskPerTrade: 200,
     type: RuleType.RISK_REWARD_RATIO,
+    balance: 0,
   };
 
   inputFirstRatioValue: number = 0;
@@ -73,13 +74,29 @@ export class RiskPerTradeComponent implements OnInit {
     this.updateConfig(newConfig);
   }
 
-  onChangeValue(event: Event) {
-    const numValue = Number((event.target as HTMLInputElement).value);
-    const moneyRisk = ((numValue / 100) * 200) / 0.02;
+  onChangePercentage(event: Event) {
+    const percentage = Number((event.target as HTMLInputElement).value);
+    const moneyRisk = Number(
+      ((percentage / 100) * this.config.balance).toFixed(2)
+    );
 
     const newConfig: RiskPerTradeConfig = {
       ...this.config,
-      maxRiskPercentage: numValue,
+      maxRiskPercentage: percentage,
+      maxRiskPerTrade: moneyRisk,
+    };
+    this.updateConfig(newConfig);
+  }
+
+  onChangeAmount(event: Event) {
+    const moneyRisk = Number((event.target as HTMLInputElement).value);
+    const percentage = Number(
+      ((moneyRisk / this.config.balance) * 100).toFixed(2)
+    );
+
+    const newConfig: RiskPerTradeConfig = {
+      ...this.config,
+      maxRiskPercentage: percentage,
       maxRiskPerTrade: moneyRisk,
     };
     this.updateConfig(newConfig);

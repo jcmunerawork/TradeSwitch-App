@@ -46,6 +46,7 @@ import { AuthService } from '../auth/service/authService';
 import { getBestTrade, getTotalSpend } from './utils/firebase-data-utils';
 import { Timestamp } from 'firebase/firestore';
 import { setUserData } from '../auth/store/user.actions';
+import { initialStrategyState } from '../strategy/store/strategy.reducer';
 
 @Component({
   selector: 'app-report',
@@ -109,16 +110,6 @@ export class ReportComponent implements OnInit {
     this.listenGroupedTrades();
     this.fetchUserRules();
 
-    // this.userService
-    //   .logout()
-    //   .then(() => {
-    //     this.store.dispatch(setUserData({ user: null }));
-    //     this.router.navigate(['/login']);
-    //   })
-    //   .catch((error) => {
-    //     alert('Logout failed. Please try again.');
-    //   });
-
     this.updateSubscription = interval(120000).subscribe(() => {
       if (this.userKey) {
         this.loading = true;
@@ -149,7 +140,7 @@ export class ReportComponent implements OnInit {
 
   fetchUserRules() {
     this.strategySvc
-      .getStrategyConfig()
+      .getStrategyConfig(this.user?.id)
       .then((docSnap) => {
         if (docSnap && docSnap['exists']()) {
           const data = docSnap['data']() as StrategyState;
@@ -157,10 +148,16 @@ export class ReportComponent implements OnInit {
 
           this.config = this.prepareConfigDisplayData(data);
         } else {
+          this.store.dispatch(resetConfig({ config: initialStrategyState }));
+          this.config = this.prepareConfigDisplayData(initialStrategyState);
+
           console.warn('No config');
         }
       })
       .catch((err) => {
+        this.store.dispatch(resetConfig({ config: initialStrategyState }));
+        this.config = this.prepareConfigDisplayData(initialStrategyState);
+
         this.loading = false;
 
         console.error('Error to get the config', err);

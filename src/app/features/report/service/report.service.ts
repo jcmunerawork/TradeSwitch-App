@@ -90,4 +90,22 @@ export class ReportService {
         })
       );
   }
+
+  getBalanceData(accountId: string, accessToken: string): Observable<any> {
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${accessToken}`,
+      accNum: 1,
+    });
+
+    return this.http
+      .get<any>(
+        `https://demo.tradelocker.com/backend-api/trade/accounts/${accountId}/state`,
+        { headers }
+      )
+      .pipe(
+        map((details) => {
+          return details.d.accountDetailsData[0] as unknown as number;
+        })
+      );
+  }
 }

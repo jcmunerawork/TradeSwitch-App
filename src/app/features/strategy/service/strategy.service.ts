@@ -17,20 +17,20 @@ export class SettingsService {
     }
   }
 
-  async saveStrategyConfig(config: any) {
+  async saveStrategyConfig(userId: string, config: any) {
     if (!this.db) {
       console.warn('Firestore not available in SSR');
       return;
     }
-    await setDoc(doc(this.db, 'configurations', 'test-user'), config);
+    await setDoc(doc(this.db, 'configurations', userId), config);
   }
 
-  async getStrategyConfig() {
+  async getStrategyConfig(userId: string) {
     if (!this.db) {
       console.warn('Firestore not available in SSR');
       return null;
     }
-    const snapshot = await getDoc(doc(this.db, 'configurations', 'test-user'));
+    const snapshot = await getDoc(doc(this.db, 'configurations', userId));
     return snapshot;
   }
 }

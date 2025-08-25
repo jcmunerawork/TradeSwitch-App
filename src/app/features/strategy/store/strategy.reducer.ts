@@ -26,6 +26,7 @@ export const initialStrategyState: StrategyState = {
     maxRiskPerTrade: 300,
     maxRiskPercentage: 3,
     type: RuleType.MAX_RISK_PER_TRADE,
+    balance: 0,
   },
   daysAllowed: {
     isActive: false,
