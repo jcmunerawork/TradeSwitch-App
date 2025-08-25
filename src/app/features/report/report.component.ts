@@ -21,6 +21,7 @@ import {
   displayConfigData,
   GroupedTrade,
   MonthlyReport,
+  PluginHistoryRecord,
   StatConfig,
 } from './models/report.model';
 import {
@@ -32,7 +33,7 @@ import {
 } from './utils/normalization-utils';
 import { statCardComponent } from './components/statCard/stat_card.component';
 import { PnlGraphComponent } from './components/pnlGraph/pnlGraph.component';
-import { calendarComponent } from './components/calendar/calendar.component';
+import { CalendarComponent } from './components/calendar/calendar.component';
 import { LoadingPopupComponent } from '../../shared/pop-ups/loading-pop-up/loading-popup.component';
 import { SettingsService } from '../strategy/service/strategy.service';
 import { resetConfig } from '../strategy/store/strategy.actions';
@@ -45,7 +46,6 @@ import { selectUser } from '../auth/store/user.selectios';
 import { AuthService } from '../auth/service/authService';
 import { getBestTrade, getTotalSpend } from './utils/firebase-data-utils';
 import { Timestamp } from 'firebase/firestore';
-import { setUserData } from '../auth/store/user.actions';
 import { initialStrategyState } from '../strategy/store/strategy.reducer';
 
 @Component({
@@ -59,7 +59,7 @@ import { initialStrategyState } from '../strategy/store/strategy.reducer';
     ReactiveFormsModule,
     statCardComponent,
     PnlGraphComponent,
-    calendarComponent,
+    CalendarComponent,
     LoadingPopupComponent,
     RuleShortComponent,
     RouterLink,
@@ -79,6 +79,7 @@ export class ReportComponent implements OnInit {
   user: User | null = null;
   requestYear: number = 0;
   private updateSubscription?: Subscription;
+  pluginHistory: PluginHistoryRecord[] = [];
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: any,
@@ -107,6 +108,7 @@ export class ReportComponent implements OnInit {
     this.loading = true;
     this.getUserData();
     this.fetchUserKey();
+    this.getHistoryPluginUsage();
     this.listenGroupedTrades();
     this.fetchUserRules();
 
@@ -125,6 +127,12 @@ export class ReportComponent implements OnInit {
 
   ngOnDestroy() {
     this.updateSubscription?.unsubscribe();
+  }
+
+  getHistoryPluginUsage() {
+    this.reportService.getPluginUsageHistory(this.user?.id).then((history) => {
+      this.pluginHistory = [...history];
+    });
   }
 
   getUserData() {
@@ -164,7 +172,13 @@ export class ReportComponent implements OnInit {
       });
   }
 
-  updateFirebaseUserData() {
+  onStrategyPercentageChange(percentage: number) {
+    if (this.user) {
+      this.updateFirebaseUserData(percentage);
+    }
+  }
+
+  updateFirebaseUserData(percentage: number) {
     if (this.user) {
       const updatedUser = {
         ...this.user,
@@ -172,8 +186,8 @@ export class ReportComponent implements OnInit {
         netPnl: this.stats?.netPnl ?? 0,
         lastUpdated: new Date().getTime() as unknown as Timestamp,
         number_trades: this.stats?.totalTrades ?? 0,
+        strategy_followed: percentage,
         profit: this.stats?.netPnl ?? 0,
-        strategy_followed: 60,
         total_spend: getTotalSpend(this.accountHistory),
       };
 
@@ -190,7 +204,7 @@ export class ReportComponent implements OnInit {
         netPnl: this.stats?.netPnl ?? 0,
         number_trades: this.stats?.totalTrades ?? 0,
         profit: this.stats?.netPnl ?? 0,
-        strategy_followed: 60,
+        strategy_followed: percentage,
         total_spend: getTotalSpend(this.accountHistory),
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear(),
@@ -207,7 +221,6 @@ export class ReportComponent implements OnInit {
       next: (groupedTrades) => {
         this.accountHistory = groupedTrades;
         this.updateReportStats(this.store, groupedTrades);
-        this.updateFirebaseUserData();
       },
     });
   }
@@ -255,6 +268,7 @@ export class ReportComponent implements OnInit {
     this.reportService.getHistoryData(accountId, key, from, to).subscribe({
       next: (groupedTrades: GroupedTrade[]) => {
         this.store.dispatch(setGroupedTrades({ groupedTrades }));
+
         this.loading = false;
       },
       error: (err) => {

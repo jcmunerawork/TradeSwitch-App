@@ -19,7 +19,14 @@
   @for (week of calendar; track $index) {
   <div class="calendar-week d-flex smallText color-background">
     @for (cell of week; track $index) {
-    <div class="calendar-cell" [ngClass]="{ active: cell.tradesCount > 0 }">
+    <div
+      class="calendar-cell"
+      [ngClass]="{
+        active: cell.tradesCount > 0,
+        'positive-cell': cell.tradesCount > 0 && cell.followedStrategy,
+        'negative-cell': cell.tradesCount > 0 && !cell.followedStrategy
+      }"
+    >
       <div
         [ngClass]="
           cell.pnlTotal >= 0 ? 'positive-container' : 'negative-container'

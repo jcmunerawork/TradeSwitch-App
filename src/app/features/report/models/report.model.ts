@@ -70,3 +70,10 @@ export interface MonthlyReport {
   year: number;
   id: string;
 }
+
+export interface PluginHistoryRecord {
+  isActive: boolean;
+  updatedOn: string;
+  id: string;
+  tokenNeeded?: boolean;
+}

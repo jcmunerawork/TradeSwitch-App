@@ -25,7 +25,14 @@ export const authGuard: CanActivateFn = (route, state) => {
       }
 
       return from(authService.getUserData(user.uid)).pipe(
-        tap((userData) => store.dispatch(setUserData({ user: userData }))),
+        tap((userData) => {
+          if (userData.status === 'banned') {
+            alert('You are banned, call support');
+            router.navigate(['/login']);
+            throw new Error('User banned');
+          }
+          store.dispatch(setUserData({ user: userData }));
+        }),
         map(() => true),
         catchError(() => {
           router.navigate(['/login']);

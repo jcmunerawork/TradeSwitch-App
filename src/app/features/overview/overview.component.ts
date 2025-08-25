@@ -47,16 +47,11 @@ export class Overview {
       .getUsersData()
       .then((docSnap) => {
         if (docSnap && !docSnap.empty && docSnap.docs.length > 0) {
-          this.usersData = docSnap.docs.map((doc) => doc.data() as User);
-          for (let index = 0; index < 100; index++) {
-            const randomUser: User = {
-              ...this.usersData[1],
-              profit: Math.floor(Math.random() * 1000),
-              number_trades: Math.floor(Math.random() * 100),
-            };
-            this.usersData.push(randomUser);
-            this.filterTop10Users();
-          }
+          this.usersData = docSnap.docs
+            .map((doc) => doc.data() as User)
+            .filter((user) => !user.isAdmin);
+
+          this.filterTop10Users();
           this.loading = false;
         } else {
           this.loading = false;

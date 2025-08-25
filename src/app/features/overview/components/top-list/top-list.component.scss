@@ -7,6 +7,17 @@
     );
 }
 
+.top-container {
+  flex: auto;
+}
+
+.user-info {
+  flex: 1;
+}
+p {
+  flex: 1;
+}
+
 .deactivated {
   color: #b3b3b3 !important;
 }

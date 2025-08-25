@@ -4,6 +4,7 @@ export enum UserStatus {
   PURCHASED = 'purchased',
   PENDING = 'pending',
   UNVERIFIED = 'unverified',
+  BANNED = 'banned',
 }
 
 export interface overviewSubscriptionData {
@@ -25,8 +26,8 @@ export interface User {
   profit: number;
   status: UserStatus;
   strategy_followed: number;
-  subscription_date: Timestamp;
-  lastUpdated: Timestamp;
+  subscription_date: number;
+  lastUpdated: number;
   tokenId: string;
   total_spend: number;
   isAdmin: boolean;

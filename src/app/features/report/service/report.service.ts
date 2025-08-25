@@ -11,7 +11,15 @@ import {
   arrayToHistoryTrade,
   groupOrdersByPosition,
 } from '../utils/normalization-utils';
-import { doc, getFirestore, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDocs,
+  getFirestore,
+  query,
+  setDoc,
+  where,
+} from 'firebase/firestore';
 import { User } from '../../overview/models/overview';
 import { randomUUID } from 'crypto';
 import { newDataId } from '../utils/firebase-data-utils';
@@ -45,6 +53,24 @@ export class ReportService {
     );
 
     await setDoc(doc(this.db, 'monthly_reports', id), monthlyReport);
+  }
+
+  async getPluginUsageHistory(idToSearch: string): Promise<any[]> {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return [];
+    }
+
+    const ref = collection(this.db, 'plugin_history');
+    const q = query(ref, where('id', '==', idToSearch));
+
+    const matchingDocs: any[] | PromiseLike<any[]> = [];
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((doc) => {
+      matchingDocs.push(doc.data());
+    });
+
+    return matchingDocs;
   }
 
   getUserKey(

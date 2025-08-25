@@ -113,8 +113,8 @@ export class SignupComponent {
       profit: 0,
       status: UserStatus.PURCHASED,
       strategy_followed: 0,
-      subscription_date: new Date().getTime() as unknown as Timestamp,
-      lastUpdated: new Date().getTime() as unknown as Timestamp,
+      subscription_date: new Date().getTime(),
+      lastUpdated: new Date().getTime(),
       total_spend: 0,
       isAdmin: false,
     };

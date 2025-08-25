@@ -4,7 +4,7 @@ import { AuthService } from '../../features/auth/service/authService';
 import { Store } from '@ngrx/store';
 import { selectUser } from '../../features/auth/store/user.selectios';
 import { setUserData } from '../../features/auth/store/user.actions';
-import { User } from '../../features/overview/models/overview';
+import { User, UserStatus } from '../../features/overview/models/overview';
 
 @Component({
   selector: 'app-sidebar',
@@ -19,6 +19,7 @@ export class Sidebar {
   lastName: string = '';
   isAdmin: boolean = false;
   userToken: string = '';
+  isBanned: boolean = false;
 
   constructor(
     private authService: AuthService,
@@ -30,6 +31,7 @@ export class Sidebar {
       this.lastName = user?.user?.lastName || '';
       this.isAdmin = user?.user?.isAdmin || false;
       this.userToken = user?.user?.tokenId || '';
+      this.isBanned = user?.user?.status === UserStatus.BANNED;
     });
   }
 

@@ -23,17 +23,20 @@ export class TopListComponent {
     profit: 0,
     status: UserStatus.PURCHASED,
     strategy_followed: 0,
-    subscription_date: {} as Timestamp,
+    subscription_date: 0,
     tokenId: '',
     email: '',
     total_spend: 0,
     isAdmin: false,
-    lastUpdated: {} as Timestamp,
+    lastUpdated: 0,
   };
 
   constructor() {}
 
   onlyNameInitials(user: User) {
-    return user.firstName.charAt(0) + user.lastName.charAt(0);
+    return (
+      user.firstName.charAt(0).toUpperCase() +
+      user.lastName.charAt(0).toUpperCase()
+    );
   }
 }

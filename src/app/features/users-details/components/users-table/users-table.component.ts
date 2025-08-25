@@ -122,8 +122,8 @@ export class UsersTableComponent {
     this.sortAsc = !this.sortAsc;
   }
 
-  getUserDate(date: Timestamp): Date {
-    return date.toDate();
+  getUserDate(date: number): Date {
+    return new Date(date);
   }
 
   emitUser(user: User) {

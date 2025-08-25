@@ -5,9 +5,10 @@ import { LoadingPopupComponent } from '../../shared/pop-ups/loading-pop-up/loadi
 import { FormsModule } from '@angular/forms';
 import { OverviewService } from '../overview/services/overview.service';
 import { UsersTableComponent } from './components/users-table/users-table.component';
-import { User } from '../overview/models/overview';
+import { User, UserStatus } from '../overview/models/overview';
 import { Timestamp } from 'firebase/firestore';
 import { UserModalComponent } from './components/user-modal/user-modal.component';
+import { AuthService } from '../auth/service/authService';
 
 @Component({
   selector: 'app-users-details',
@@ -25,7 +26,11 @@ import { UserModalComponent } from './components/user-modal/user-modal.component
 export class UsersDetails {
   topUsers: User[] = [];
   selectedUser: User | null = null;
-  constructor(private store: Store, private overviewSvc: OverviewService) {}
+  constructor(
+    private store: Store,
+    private overviewSvc: OverviewService,
+    private userSvc: AuthService
+  ) {}
 
   loading = false;
   usersData: User[] = [];
@@ -43,24 +48,13 @@ export class UsersDetails {
       .getUsersData()
       .then((docSnap) => {
         if (docSnap && !docSnap.empty && docSnap.docs.length > 0) {
-          this.usersData = docSnap.docs.map((doc) => {
-            const subscription_date = doc.data()['subscription_date'];
-
-            return {
-              ...(doc.data() as User),
-              subscription_date: subscription_date.toDate(),
-            };
-          });
-
-          for (let index = 0; index < 100; index++) {
-            const randomUser: User = {
-              ...this.usersData[1],
-              profit: Math.floor(Math.random() * 1000),
-              number_trades: Math.floor(Math.random() * 100),
-            };
-            this.usersData.push(randomUser);
-            this.filterTop10Users();
-          }
+          this.usersData = docSnap.docs
+            .map((doc) => {
+              return {
+                ...(doc.data() as User),
+              };
+            })
+            .filter((user) => !user.isAdmin);
           this.loading = false;
         } else {
           this.loading = false;
@@ -74,18 +68,26 @@ export class UsersDetails {
       });
   }
 
-  filterTop10Users() {
-    this.topUsers = this.usersData
-      .sort((a, b) => b.profit - a.profit)
-      .slice(0, 10);
-  }
-
   onBan(event: { username: string; reason: string }) {
-    // Handle ban logic here
+    if (event.username === this.selectedUser?.firstName) {
+      this.userSvc.createUser({
+        ...this.selectedUser,
+        status: UserStatus.BANNED,
+      });
+    } else {
+      alert('Use the firstName as Username to ban the user');
+    }
   }
 
   onUnban(username: string) {
-    // Handle unban logic here
+    if (username === this.selectedUser?.firstName) {
+      this.userSvc.createUser({
+        ...this.selectedUser,
+        status: UserStatus.PURCHASED,
+      });
+    } else {
+      alert('Use the firstName as Username to unban the user');
+    }
   }
 
   onSetPassword(newPassword: string) {
