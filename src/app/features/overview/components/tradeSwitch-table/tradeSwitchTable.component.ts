@@ -32,7 +32,9 @@ export class TradeSwitchTableComponent {
     const lower = this._searchTerm.trim().toLowerCase();
 
     return this.users.filter((user) => {
-      const matchesSearch = `${user.firstName} ${user.lastName}`
+      const matchesSearch = `${user.firstName.split(' ')[0]} ${
+        user.lastName.split(' ')[0]
+      }`
         .toLowerCase()
         .includes(lower);
       const matchesStatus =

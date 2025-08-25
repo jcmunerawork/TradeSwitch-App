@@ -8,6 +8,7 @@ import { LoadingPopupComponent } from '../../shared/pop-ups/loading-pop-up/loadi
 import { FormsModule } from '@angular/forms';
 import { TradeSwitchTableComponent } from './components/tradeSwitch-table/tradeSwitchTable.component';
 import { TopListComponent } from './components/top-list/top-list.component';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-overview',
@@ -18,6 +19,7 @@ import { TopListComponent } from './components/top-list/top-list.component';
     FormsModule,
     TradeSwitchTableComponent,
     TopListComponent,
+    RouterLink,
   ],
   templateUrl: './overview.component.html',
   styleUrl: './overview.component.scss',

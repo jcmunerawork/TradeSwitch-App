@@ -4,7 +4,7 @@
   <div class="logo mb-44">
     <img src="assets/logo.png" alt="" />
   </div>
-  @if (userToken) {
+  @if (userToken && !isAdmin) {
   <p class="token-id p-20 regularText">
     your plugin token is <b>{{ userToken }}</b>
   </p>

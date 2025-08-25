@@ -10,7 +10,7 @@
       <div class="table-actions-container smallText d-flex items-center">
         <div class="search-user-container d-flex items-center p-10 mr-10">
           <label for="search-user" class="mr-10"
-            ><span class="icon-search color-background smallText"></span
+            ><span class="icon-search color-background"></span
           ></label>
           <input
             id="search-user"
@@ -120,9 +120,6 @@
             <td>
               @if (user.strategy_followed !== undefined) {
               {{ user.strategy_followed }}%
-              <!-- <span [ngClass]="returnClass(user.strategy_followed)">
-            {{ user.strategy_followed }}%
-          </span> -->
               <div class="progress-container mt-6">
                 <div class="progress-bar-bg">
                   <div
@@ -138,7 +135,8 @@
             <td class="smallText">
               <span
                 (click)="emitUser(user)"
-                class="icon-info color-secondary-500 regularText"
+                class="icon-info color-secondary-500"
+                style="font-size: 1rem"
               ></span>
             </td>
           </tr>
