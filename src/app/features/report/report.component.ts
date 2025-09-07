@@ -47,6 +47,7 @@ import { AuthService } from '../auth/service/authService';
 import { getBestTrade, getTotalSpend } from './utils/firebase-data-utils';
 import { Timestamp } from 'firebase/firestore';
 import { initialStrategyState } from '../strategy/store/strategy.reducer';
+import { AccountData } from '../auth/models/userModel';
 
 @Component({
   selector: 'app-report',
@@ -68,6 +69,7 @@ import { initialStrategyState } from '../strategy/store/strategy.reducer';
 export class ReportComponent implements OnInit {
   accessToken: string | null = null;
   accountDetails: any = null;
+  accountsData: AccountData[] = [];
   accountHistory: GroupedTrade[] = [];
   errorMessage: string | null = null;
   stats?: StatConfig;
@@ -107,7 +109,6 @@ export class ReportComponent implements OnInit {
   ngOnInit() {
     this.loading = true;
     this.getUserData();
-    this.fetchUserKey();
     this.getHistoryPluginUsage();
     this.listenGroupedTrades();
     this.fetchUserRules();
@@ -115,12 +116,9 @@ export class ReportComponent implements OnInit {
     this.updateSubscription = interval(120000).subscribe(() => {
       if (this.userKey) {
         this.loading = true;
-        this.fetchHistoryData(
-          this.userKey,
-          '1234211',
-          this.fromDate,
-          this.toDate
-        );
+        if (this.user) {
+          this.fetchUserAccounts();
+        }
       }
     });
   }
@@ -139,10 +137,26 @@ export class ReportComponent implements OnInit {
     this.store.select(selectUser).subscribe({
       next: (user) => {
         this.user = user.user;
+        if (this.user) {
+          this.fetchUserAccounts();
+        }
       },
       error: (err) => {
         console.error('Error fetching user data', err);
       },
+    });
+  }
+
+  fetchUserAccounts() {
+    this.userService.getUserAccounts(this.user?.id).then((accounts) => {
+      if (!accounts || accounts.length === 0) {
+        this.accountsData = [];
+      } else {
+        this.accountsData = accounts;
+        this.accountsData.forEach((account) => {
+          this.fetchUserKey(account);
+        });
+      }
     });
   }
 
@@ -235,9 +249,13 @@ export class ReportComponent implements OnInit {
     };
   }
 
-  fetchUserKey() {
+  fetchUserKey(account: AccountData) {
     this.reportService
-      .getUserKey('crisdamencast@gmail.com', 'FP`{Nlq_T9', 'HEROFX')
+      .getUserKey(
+        account.emailTradingAccount,
+        account.brokerPassword,
+        account.server
+      )
       .subscribe({
         next: (key: string) => {
           this.userKey = key;
@@ -255,7 +273,13 @@ export class ReportComponent implements OnInit {
           ).toString();
           this.requestYear = currentYear;
 
-          this.fetchHistoryData(key, '1234211', this.fromDate, this.toDate);
+          this.fetchHistoryData(
+            key,
+            account.accountID,
+            account.accountNumber,
+            this.fromDate,
+            this.toDate
+          );
 
           this.store.dispatch(setUserKey({ userKey: key }));
         },
@@ -264,18 +288,32 @@ export class ReportComponent implements OnInit {
         },
       });
   }
-  fetchHistoryData(key: string, accountId: string, from: string, to: string) {
-    this.reportService.getHistoryData(accountId, key, from, to).subscribe({
-      next: (groupedTrades: GroupedTrade[]) => {
-        this.store.dispatch(setGroupedTrades({ groupedTrades }));
+  fetchHistoryData(
+    key: string,
+    accountId: string,
+    accNum: number,
+    from: string,
+    to: string
+  ) {
+    this.reportService
+      .getHistoryData(accountId, key, accNum, from, to)
+      .subscribe({
+        next: (groupedTrades: GroupedTrade[]) => {
+          const actualGroupedTrades = this.accountHistory;
 
-        this.loading = false;
-      },
-      error: (err) => {
-        this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
-        this.loading = false;
-      },
-    });
+          this.store.dispatch(
+            setGroupedTrades({
+              groupedTrades: [...actualGroupedTrades, ...groupedTrades],
+            })
+          );
+
+          this.loading = false;
+        },
+        error: (err) => {
+          this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
+          this.loading = false;
+        },
+      });
   }
 
   updateReportStats(store: Store, groupedTrades: GroupedTrade[]) {
@@ -350,6 +388,8 @@ export class ReportComponent implements OnInit {
     this.toDate = Date.UTC(Number($event), 11, 31, 23, 59, 59, 999).toString();
     this.requestYear = Number($event);
 
-    this.fetchHistoryData(this.userKey, '1234211', this.fromDate, this.toDate);
+    if (this.user) {
+      this.fetchUserAccounts();
+    }
   }
 }

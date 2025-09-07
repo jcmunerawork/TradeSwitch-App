@@ -90,12 +90,13 @@ export class ReportService {
   getHistoryData(
     accountId: string,
     accessToken: string,
+    accNum: number,
     from: string,
     to: string
   ): Observable<GroupedTrade[]> {
     const headers = new HttpHeaders({
       Authorization: `Bearer ${accessToken}`,
-      accNum: 1,
+      accNum: accNum,
     });
 
     const params = new HttpParams()

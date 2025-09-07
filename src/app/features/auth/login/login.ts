@@ -12,6 +12,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { setUserData } from '../store/user.actions';
 import { User } from '../../overview/models/overview';
+import { UserCredentials } from '../models/userModel';
 
 @Component({
   selector: 'app-login',

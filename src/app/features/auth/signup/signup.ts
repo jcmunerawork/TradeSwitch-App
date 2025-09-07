@@ -14,6 +14,7 @@ import { AuthService } from '../service/authService';
 import { PasswordInputComponent } from '../../../shared/components/password-input/password-input.component';
 import { User, UserStatus } from '../../overview/models/overview';
 import { Timestamp } from 'firebase/firestore';
+import { AccountData, UserCredentials } from '../models/userModel';
 
 @Component({
   selector: 'app-signup',
@@ -32,7 +33,8 @@ import { Timestamp } from 'firebase/firestore';
 })
 export class SignupComponent {
   signupForm: FormGroup;
-
+  accountForm: FormGroup;
+  currentStep = 1;
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
@@ -46,6 +48,18 @@ export class SignupComponent {
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
     });
+
+    this.accountForm = this.fb.group({
+      emailTradingAccount: ['', [Validators.required, Validators.email]],
+      brokerPassword: ['', [Validators.required, Validators.minLength(6)]],
+      server: ['', [Validators.required]],
+      accountName: ['', [Validators.required]],
+      accountID: ['', [Validators.required]],
+      accountNumber: [
+        '',
+        [Validators.required, Validators.pattern('^[0-9]*$')],
+      ],
+    });
   }
 
   onChange(): void {
@@ -53,27 +67,35 @@ export class SignupComponent {
   }
   onSubmit(): void {
     if (this.signupForm.valid) {
-      this.authService
-        .register(this.createUserCredentialsObject())
-        .then((response: any) => {
-          const userId = response.user.uid;
-          console.log(userId);
-
-          const token = this.createTokenObject(userId);
-          const user = this.createUserObject(userId, token.id);
-
-          this.authService.createUser(user);
-          this.authService.createLinkToken(token);
-          alert('Registration successful!');
-          this.router.navigate(['/login']);
-        })
-        .catch((error: any) => {
-          console.error('Registration failed:', error);
-          alert('Registration failed. Please try again.');
-        });
+      if (this.currentStep === 1) {
+        this.currentStep = 2;
+      } else if (this.currentStep === 2) {
+        this.processRegistration();
+      }
     } else {
       this.markFormGroupTouched();
     }
+  }
+
+  private processRegistration(): void {
+    this.authService
+      .register(this.createUserCredentialsObject())
+      .then((response: any) => {
+        const userId = response.user.uid;
+
+        const token = this.createTokenObject(userId);
+        const user = this.createUserObject(userId, token.id);
+
+        this.authService.createUser(user);
+        this.authService.createLinkToken(token);
+        this.authService.createAccount(this.createAccountObject(userId));
+        alert('Registration successful!');
+        this.router.navigate(['/login']);
+      })
+      .catch((error: any) => {
+        console.error('Registration failed:', error);
+        alert('Registration failed. Please try again.');
+      });
   }
 
   private markFormGroupTouched(): void {
@@ -117,6 +139,23 @@ export class SignupComponent {
       lastUpdated: new Date().getTime(),
       total_spend: 0,
       isAdmin: false,
+    };
+  }
+
+  private createAccountObject(id: string): AccountData {
+    const timestamp = Date.now().toString(36);
+    const randomPart = Math.random().toString(36).substring(2, 8);
+    const uniqueId = `id_${timestamp}_${randomPart}`;
+    return {
+      id: uniqueId,
+      userId: id,
+      emailTradingAccount: this.accountForm.value.emailTradingAccount,
+      brokerPassword: this.accountForm.value.brokerPassword,
+      server: this.accountForm.value.server,
+      accountName: this.accountForm.value.accountName,
+      accountID: this.accountForm.value.accountID,
+      accountNumber: Number(this.accountForm.value.accountNumber),
+      createdAt: Timestamp.now(),
     };
   }
 

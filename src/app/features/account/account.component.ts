@@ -4,14 +4,13 @@ import { Store } from '@ngrx/store';
 import { SettingsService } from '../strategy/service/strategy.service';
 import { ReportService } from '../report/service/report.service';
 import { CommonModule } from '@angular/common';
-import { LoadingPopupComponent } from '../../shared/pop-ups/loading-pop-up/loading-popup.component';
 import { PlanSettingsComponent } from './components/plan-management/plan-settings.component';
 import { PlanDetails } from './models/account-settings';
 import { MOCK_PLAN_DETAILS } from './mocks/account-mocks';
 
 @Component({
   selector: 'app-account',
-  imports: [CommonModule, PlanSettingsComponent, LoadingPopupComponent],
+  imports: [CommonModule, PlanSettingsComponent],
   templateUrl: './account.component.html',
   styleUrl: './account.component.scss',
   standalone: true,

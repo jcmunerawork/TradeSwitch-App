@@ -16,10 +16,15 @@ import {
   setDoc,
   doc,
   getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
 } from 'firebase/firestore';
 import { BehaviorSubject, filter, first, Observable } from 'rxjs';
 import { User } from '../../overview/models/overview';
 import { auth } from '../../../firebase/firebase.init';
+import { AccountData, UserCredentials } from '../models/userModel';
 
 @Injectable({
   providedIn: 'root',
@@ -84,6 +89,29 @@ export class AuthService {
       return;
     }
     await setDoc(doc(this.db, 'users', user.id), user);
+  }
+
+  async createAccount(account: AccountData) {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return;
+    }
+    await setDoc(doc(this.db, 'accounts', account.userId), account);
+  }
+
+  async getUserAccounts(userId: string): Promise<AccountData[] | null> {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return null;
+    }
+    const accountsCollection = collection(this.db, 'accounts');
+    const q = query(accountsCollection, where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    const accounts: AccountData[] = [];
+    querySnapshot.forEach((doc) => {
+      accounts.push(doc.data() as AccountData);
+    });
+    return accounts.length > 0 ? accounts : null;
   }
 
   login(user: UserCredentials) {
