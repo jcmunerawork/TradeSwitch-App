@@ -1,0 +1,22 @@
+<div class="main-titles color-background d-flex flex-col mb-48">
+  <h1 class="titleText mb-32">My Account</h1>
+  <h3 class="regularText">
+    Review your plan, billing cycle, and update your subscription preferences.
+  </h3>
+</div>
+
+<div class="btn-group d-flex p-10 align-center mb-48">
+  @for (item of tabs; track $index) {
+  <button
+    [class.active]="selectedIndex === $index"
+    class="p-10 regularText"
+    (click)="selectTypeData($index)"
+  >
+    {{ item.label }}
+  </button>
+  }
+</div>
+
+@if (selectedIndex === 1) {
+<app-plan-settings [planDetails]="selectedPlanDetails"></app-plan-settings>
+}

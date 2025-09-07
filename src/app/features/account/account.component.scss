@@ -1,0 +1,22 @@
+.btn-group {
+  gap: 8px;
+  margin: 0 auto;
+  width: fit-content;
+  button {
+    background: transparent;
+    color: #dfdfdf;
+    border: 1px solid #eaf2f8;
+    border-radius: 1.5rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    &:hover {
+      background: #d5ff91;
+      color: #111;
+    }
+    &.active {
+      background-color: #d5ff91;
+      color: #111;
+      border: none;
+    }
+  }
+}

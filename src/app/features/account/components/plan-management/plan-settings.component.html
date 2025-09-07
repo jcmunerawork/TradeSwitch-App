@@ -1,0 +1,153 @@
+<div class="main-titles color-background d-flex flex-col mb-30">
+  <h1 class="subtitle mb-8">Membership details</h1>
+  <h3 class="regularText">
+    Here you can view the details of your current membership.
+  </h3>
+</div>
+
+<div class="plan-info color-background mb-64">
+  <div class="column">
+    <div>
+      <strong class="boldRegularText">Current Plan</strong>
+      <div class="regularText color-text-gray mt-6">
+        {{ planDetails?.currentPlan }}
+      </div>
+    </div>
+    <div>
+      <strong class="boldRegularText">Renewal date</strong>
+      <div class="regularText color-text-gray mt-6">
+        {{ planDetails?.renewalDate }}
+      </div>
+    </div>
+    <div>
+      <strong class="boldRegularText">Remaining until renewal</strong>
+      <div class="regularText color-text-gray mt-6">
+        {{ planDetails?.remainingUntilRenewal }}
+      </div>
+    </div>
+  </div>
+  <div class="column">
+    <div>
+      <strong class="boldRegularText">Price</strong>
+      <div class="regularText color-text-gray mt-6">
+        ${{ planDetails?.price }}
+      </div>
+    </div>
+    <div>
+      <strong class="boldRegularText">Activation Fee</strong>
+      <div class="regularText color-text-gray mt-6">
+        {{ planDetails?.activationFee }}
+      </div>
+    </div>
+    <div>
+      <strong class="boldRegularText">Billing cycle</strong>
+      <div class="regularText color-text-gray mt-6">
+        {{ planDetails?.billingCycle }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="main-titles color-background d-flex flex-col mb-30">
+  <h1 class="subtitle mb-8">Plan benefits</h1>
+  <h3 class="regularText">
+    Here's a quick look at what's included in your current plan.
+  </h3>
+</div>
+
+<div class="plan-info color-background mb-64">
+  <div class="column">
+    <div class="fake-checkbox-row">
+      <div class="fake-checkbox checked"></div>
+      <span class="regularText">Profit target: $6,000</span>
+    </div>
+    <div class="fake-checkbox-row">
+      <div class="fake-checkbox checked"></div>
+      <span class="regularText">Trailing Max Drawndown: $3,500</span>
+    </div>
+    <div class="fake-checkbox-row">
+      <div class="fake-checkbox checked"></div>
+      <span class="regularText">Activation Fee: $3,500</span>
+    </div>
+  </div>
+  <div class="column">
+    <div class="fake-checkbox-row">
+      <div class="fake-checkbox checked"></div>
+      <span class="regularText">Max contracts: 6</span>
+    </div>
+    <div class="fake-checkbox-row">
+      <div class="fake-checkbox checked"></div>
+      <span class="regularText">Daily Loss Limit: $3,500</span>
+    </div>
+    <div class="fake-checkbox-row">
+      <div class="fake-checkbox checked"></div>
+      <span class="regularText">Trailing Max Drawndown: $3,500</span>
+    </div>
+  </div>
+</div>
+
+<div class="main-titles color-background d-flex flex-col mb-30">
+  <h1 class="subtitle mb-8">Compare plans</h1>
+  <h3 class="regularText">Choose a membership that's right for you</h3>
+</div>
+
+<section
+  class="plans-list d-flex items-center justify-center items-center mb-64"
+>
+  @for (item of plansData; track $index) {
+  <div
+    class="plan-card d-flex p-24 flex-col items-start color-background regularText"
+    [class.isMostPopular]="item.mostPopular"
+  >
+    <div class="plan-card-header d-flex items-start justify-start">
+      <div
+        class="card-icon d-flex items-center justify-center p-10"
+        [class.isSquare]="item.icon === 'square'"
+        [class.isCircle]="item.icon === 'circle'"
+      >
+        @if (item.icon === 'square') {
+        <div class="square-icon"></div>
+        } @if (item.icon === 'circle') {
+        <div class="circle-icon"></div>
+        }
+      </div>
+      <div class="plan-card-titles d-flex flex-col items-start">
+        <h2 class="planName subtitle">{{ item.name }}</h2>
+        <h2 class="subtitle mt-12">
+          <span class="titleText">${{ item.price }}</span> /month
+        </h2>
+      </div>
+      @if(item.mostPopular) {
+      <div class="popular py-4 px-6">
+        <span class="mostPopular p-10 regularSemiText">Most Popular</span>
+      </div>
+      }
+    </div>
+    <div class="plan-features">
+      <ul class="d-flex flex-col items-start">
+        @for (feature of item.features; track $index) {
+        <li class="feature-item d-flex justify-between regularText">
+          <p>{{ feature.label }}</p>
+          <p>{{ feature.value }}</p>
+        </li>
+        }
+      </ul>
+    </div>
+    <div class="plan-card-footer d-flex items-center justify-center">
+      <button class="btn-primary regularSemiText">{{ item.cta }}</button>
+    </div>
+  </div>
+  }
+</section>
+
+<div class="main-titles color-background d-flex flex-col mb-30">
+  <h1 class="subtitle mb-8">Cancel Plan</h1>
+  <h3 class="regularText">
+    You can cancel your current plan at any time from here.
+  </h3>
+</div>
+
+<div class="access-buttons d-flex items-center">
+  <button class="access-btn regularText login">Change my Plan</button>
+  <button class="access-btn regularText signUp">Cancel my Membership</button>
+</div>

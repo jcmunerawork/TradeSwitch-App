@@ -54,4 +54,12 @@ export const routes: Routes = [
         (m) => m.RevenueComponent
       ),
   },
+  {
+    path: 'account',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/account/account.component').then(
+        (m) => m.AccountComponent
+      ),
+  },
 ];
