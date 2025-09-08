@@ -20,6 +20,7 @@ import {
   query,
   where,
   getDocs,
+  deleteDoc,
 } from 'firebase/firestore';
 import { BehaviorSubject, filter, first, Observable } from 'rxjs';
 import { User } from '../../overview/models/overview';
@@ -96,7 +97,7 @@ export class AuthService {
       console.warn('Firestore not available in SSR');
       return;
     }
-    await setDoc(doc(this.db, 'accounts', account.userId), account);
+    await setDoc(doc(this.db, 'accounts', account.id), account);
   }
 
   async getUserAccounts(userId: string): Promise<AccountData[] | null> {
@@ -112,6 +113,15 @@ export class AuthService {
       accounts.push(doc.data() as AccountData);
     });
     return accounts.length > 0 ? accounts : null;
+  }
+
+  async deleteAccount(accountId: string): Promise<void> {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return;
+    }
+    const accountDoc = doc(this.db, 'accounts', accountId);
+    await deleteDoc(accountDoc);
   }
 
   login(user: UserCredentials) {

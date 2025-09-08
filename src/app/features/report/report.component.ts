@@ -151,11 +151,18 @@ export class ReportComponent implements OnInit {
     this.userService.getUserAccounts(this.user?.id).then((accounts) => {
       if (!accounts || accounts.length === 0) {
         this.accountsData = [];
+        this.loading = false;
       } else {
         this.accountsData = accounts;
-        this.accountsData.forEach((account) => {
-          this.fetchUserKey(account);
-        });
+        if (this.accountsData.length === 0) {
+          this.loading = false;
+        } else {
+          this.accountsData.forEach((account) => {
+            setTimeout(() => {
+              this.fetchUserKey(account);
+            }, 1000);
+          });
+        }
       }
     });
   }

@@ -1,0 +1,216 @@
+* {
+  gap: 10px;
+}
+
+.signup-container {
+  overflow: hidden;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  min-height: 100vh;
+  display: flex;
+  gap: 1px;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.signup-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.signup-title {
+  color: var(--White, #eaf2f8);
+  text-align: center;
+  font-family: "SF Pro Display";
+  font-size: 46px;
+  font-feature-settings: "liga" off, "clig" off;
+
+  line-height: 22.264px;
+  /* 61.844% */
+  letter-spacing: -0.435px;
+  margin: 0 0 8px 0;
+}
+
+.signup-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+  font-family: "SF Pro Display";
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 14px;
+  margin: 10px 0 24px 0;
+}
+
+.progress-bar {
+  width: 50%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  width: 100%;
+  height: 100%;
+  background: white;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progress-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-label {
+  color: white;
+  font-family: "SF Pro Display";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 14px;
+  margin: 0;
+}
+
+/*.form-input {
+  background: transparent;
+
+  border-radius: 8px;
+  color: white;
+  font-family: "SF Pro Display";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 14px;
+  padding: 12px 16px;
+  outline: none;
+  transition: border-color 0.2s ease;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  &:focus {
+    border-color: rgba(255, 255, 255, 0.8);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+} */
+
+.submit-button {
+  border-radius: 6px;
+  background: var(--Primary-400, #9bf526);
+
+  color: #0a0a0a;
+  border: none;
+  border-radius: 8px;
+  padding: 16px 24px;
+  font-family: "SF Pro Display";
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 16px;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.9);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+.signup-methods-separator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: "SF Pro Display";
+  margin-top: 24px;
+  gap: 8px;
+  color: #eaf2f8;
+  font-size: 16px;
+}
+
+.separator-line {
+  flex: 1;
+  height: 1px;
+  background: #8e8e93;
+}
+
+.social-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: white;
+  font-family: "SF Pro Display";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.social-buttons-container {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.login-text {
+  color: rgba(255, 255, 255, 0.7);
+  font-family: "SF Pro Display";
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 14px;
+  margin-top: 16px;
+
+  a {
+    color: var(--Primary-400, #9bf526);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

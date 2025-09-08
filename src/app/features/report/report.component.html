@@ -4,6 +4,27 @@
     Visualize your consistency while growing with TradeSwitch.
   </h3>
 </div>
+@if(accountsData.length === 0 && !loading) {
+<div
+  class="no-accounts d-flex flex-col items-center justify-center px-50 pb-50"
+>
+  <span
+    class="icon-info color-secondary-300 mb-20"
+    style="font-size: 48px"
+  ></span>
+  <h2 class="subtitle mb-10 color-background">No accounts connected</h2>
+  <p class="smallText color-secondary-300 mb-20">
+    Connect a trading account to start tracking your performance and strategy
+    adherence.
+  </p>
+  <a
+    routerLink="/add-account"
+    class="add-account-btn p-10 bg-primary-400 color-bg-black inputText"
+  >
+    Connect Account
+  </a>
+</div>
+}
 
 <div class="d-flex stats-card-container mb-24">
   <app-stat-card

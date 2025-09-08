@@ -1,6 +1,15 @@
 .report-container {
   position: relative;
 }
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.add-account-btn {
+  border-radius: 6px;
+}
 .stats-card-container {
   min-width: 71.3125rem;
   display: flex;

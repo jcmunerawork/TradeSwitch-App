@@ -1,0 +1,27 @@
+<div class="modal-backdrop">
+  <div class="modal-content p-32 d-flex flex-col">
+    <h2 class="subtitle mb-24">Delete this trading account?</h2>
+    <p class="regularText mb-24">
+      This action will permanently remove the selected trading account. To
+      confirm, please type the account name below. Once deleted, this action
+      cannot be undone.
+    </p>
+    <input
+      type="text"
+      placeholder="Account Name"
+      [(ngModel)]="accountNameInput"
+      [autofocus]="true"
+      class="input regularSemiText mb-24"
+    />
+    <div class="buttons d-flex justify-between">
+      <button (click)="onCancel()" class="secondary p-10">Cancel</button>
+      <button
+        (click)="onConfirm()"
+        class="primary p-10"
+        [disabled]="accountNameInput.trim() !== accountName"
+      >
+        Delete account
+      </button>
+    </div>
+  </div>
+</div>

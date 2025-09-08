@@ -62,4 +62,20 @@ export const routes: Routes = [
         (m) => m.AccountComponent
       ),
   },
+  {
+    path: 'trading-accounts',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/trading-accounts/trading-accounts.component').then(
+        (m) => m.TradingAccountsComponent
+      ),
+  },
+  {
+    path: 'add-account',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/add-account/add-account.component').then(
+        (m) => m.AddAccountComponent
+      ),
+  },
 ];

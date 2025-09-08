@@ -84,7 +84,7 @@ export class Strategy implements OnInit {
           if (userKey === '') {
             this.fetchUserKey();
           } else {
-            this.reportSvc.getBalanceData('1234211', userKey).subscribe({
+            this.reportSvc.getBalanceData('1234211', userKey, 1).subscribe({
               next: (balance) => {
                 this.loadConfig(balance);
               },
@@ -109,8 +109,6 @@ export class Strategy implements OnInit {
   }
 
   loadConfig(balance: number) {
-    console.log(balance);
-
     this.loading = true;
     this.strategySvc
       .getStrategyConfig(this.user?.id)

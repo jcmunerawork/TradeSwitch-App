@@ -118,10 +118,14 @@ export class ReportService {
       );
   }
 
-  getBalanceData(accountId: string, accessToken: string): Observable<any> {
+  getBalanceData(
+    accountId: string,
+    accessToken: string,
+    accNum: number
+  ): Observable<any> {
     const headers = new HttpHeaders({
       Authorization: `Bearer ${accessToken}`,
-      accNum: 1,
+      accNum: accNum.toString(),
     });
 
     return this.http

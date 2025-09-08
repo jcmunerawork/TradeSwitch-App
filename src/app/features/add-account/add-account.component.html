@@ -1,0 +1,77 @@
+<div class="signup-container">
+  <div class="signup-header">
+    <h1 class="signup-title mb-15">Create Account</h1>
+    <p class="signup-subtitle">Because trading with rules starts right here</p>
+    <div class="progress-container">
+      <div class="progress-bar">
+        <div class="progress-fill"></div>
+      </div>
+      <div class="progress-bar"></div>
+    </div>
+  </div>
+
+  <form [formGroup]="accountForm" (ngSubmit)="onSubmit()" class="signup-form">
+    <ng-container>
+      <app-text-input
+        name="emailTradingAccount"
+        label="Email trading account*"
+        placeholder="Your email trading account here"
+        formControlName="emailTradingAccount"
+        class="form-input"
+      ></app-text-input>
+
+      <app-password-input
+        label="Password*"
+        placeholder="Your password here"
+        formControlName="brokerPassword"
+        class="form-input"
+      ></app-password-input>
+
+      <app-text-input
+        name="server"
+        label="Server*"
+        placeholder="Your account server here"
+        formControlName="server"
+        class="form-input"
+      ></app-text-input>
+
+      <app-text-input
+        name="accountName"
+        label="Account Name*"
+        placeholder="Your account name here"
+        formControlName="accountName"
+        class="form-input"
+      ></app-text-input>
+
+      <app-text-input
+        name="accountID"
+        label="Account ID*"
+        placeholder="Your account ID here"
+        formControlName="accountID"
+        class="form-input"
+        type="number"
+      ></app-text-input>
+
+      <app-text-input
+        name="accountNumber"
+        label="Account Number*"
+        placeholder="Your account number here"
+        formControlName="accountNumber"
+        class="form-input"
+        type="number"
+      ></app-text-input>
+
+      <button
+        type="submit"
+        class="submit-button"
+        [disabled]="accountForm.invalid"
+      >
+        Submit
+      </button>
+
+      <p class="login-text">
+        Already have an account? <a routerLink="/login">Log in</a>
+      </p>
+    </ng-container>
+  </form>
+</div>

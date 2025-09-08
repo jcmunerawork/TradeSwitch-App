@@ -1,0 +1,16 @@
+<div class="main-titles color-background d-flex flex-col mb-50">
+  <h1 class="titleText mb-32">My Trading Accounts</h1>
+  <h3 class="regularText">
+    View and manage all your connected trading accounts in one place.
+  </h3>
+</div>
+<div class="middle-container justify-between d-flex mb-24">
+  @if(usersData) {
+
+  <app-accounts-table
+    [accounts]="usersData"
+    (delete)="deleteAccount($event)"
+  ></app-accounts-table>
+  }
+</div>
+<app-loading-popup [visible]="loading"></app-loading-popup>

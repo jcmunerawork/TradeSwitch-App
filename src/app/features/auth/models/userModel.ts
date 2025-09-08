@@ -14,5 +14,6 @@ export interface AccountData {
   accountName: string;
   accountID: string;
   accountNumber: number;
+  balance?: number;
   createdAt: Timestamp;
 }
