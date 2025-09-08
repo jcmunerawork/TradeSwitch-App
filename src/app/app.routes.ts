@@ -28,6 +28,11 @@ export const routes: Routes = [
       import('./features/auth/signup/signup').then((m) => m.SignupComponent),
   },
   {
+    path: 'admin-signup',
+    loadComponent: () =>
+      import('./features/auth/signup/signup').then((m) => m.SignupComponent),
+  },
+  {
     path: 'login',
     loadComponent: () =>
       import('./features/auth/login/login').then((m) => m.Login),

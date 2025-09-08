@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import {
@@ -31,10 +31,11 @@ import { AccountData, UserCredentials } from '../models/userModel';
   templateUrl: './signup.html',
   styleUrl: './signup.scss',
 })
-export class SignupComponent {
+export class SignupComponent implements OnInit {
   signupForm: FormGroup;
   accountForm: FormGroup;
   currentStep = 1;
+  isAdminSignup: boolean = false;
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
@@ -62,14 +63,25 @@ export class SignupComponent {
     });
   }
 
+  ngOnInit(): void {
+    const currentUrl = this.router.url;
+    if (currentUrl === '/admin-signup') {
+      this.isAdminSignup = true;
+    }
+  }
+
   onChange(): void {
     console.log('Form changed:', this.signupForm.value);
   }
   onSubmit(): void {
     if (this.signupForm.valid) {
-      if (this.currentStep === 1) {
-        this.currentStep = 2;
-      } else if (this.currentStep === 2) {
+      if (!this.isAdminSignup) {
+        if (this.currentStep === 1) {
+          this.currentStep = 2;
+        } else if (this.currentStep === 2) {
+          this.processRegistration();
+        }
+      } else {
         this.processRegistration();
       }
     } else {
@@ -86,9 +98,15 @@ export class SignupComponent {
         const token = this.createTokenObject(userId);
         const user = this.createUserObject(userId, token.id);
 
+        if (this.isAdminSignup) {
+          user.isAdmin = true;
+        }
+
         this.authService.createUser(user);
         this.authService.createLinkToken(token);
-        this.authService.createAccount(this.createAccountObject(userId));
+        if (!this.isAdminSignup) {
+          this.authService.createAccount(this.createAccountObject(userId));
+        }
         alert('Registration successful!');
         this.router.navigate(['/login']);
       })

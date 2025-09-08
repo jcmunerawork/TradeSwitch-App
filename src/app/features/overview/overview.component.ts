@@ -93,6 +93,7 @@ export class Overview {
 
   filterTop10Users() {
     this.topUsers = this.usersData
+      .filter((user) => user.profit > 0)
       .sort((a, b) => b.profit - a.profit)
       .slice(0, 10);
   }
