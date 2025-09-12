@@ -128,7 +128,9 @@
         @for (feature of item.features; track $index) {
         <li class="feature-item d-flex justify-between regularText">
           <p>{{ feature.label }}</p>
-          <p>{{ feature.value }}</p>
+          <p [ngClass]="{ 'color-primary-500': feature.value === 'YES' }">
+            {{ feature.value }}
+          </p>
         </li>
         }
       </ul>
