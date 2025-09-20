@@ -17,6 +17,7 @@
 .signup-header {
   text-align: center;
   margin-bottom: 40px;
+  margin-top: -40px;
 }
 
 .signup-title {
@@ -25,11 +26,7 @@
   font-family: "SF Pro Display";
   font-size: 46px;
   font-feature-settings: "liga" off, "clig" off;
-
-  line-height: 22.264px;
-  /* 61.844% */
   letter-spacing: -0.435px;
-  margin: 0 0 8px 0;
 }
 
 .signup-subtitle {
@@ -62,7 +59,6 @@
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 20px;
 }
 
 .signup-form {

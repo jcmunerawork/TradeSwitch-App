@@ -12,13 +12,14 @@ import {
   PluginHistoryRecord,
 } from '../../models/report.model';
 import { ReportService } from '../../service/report.service';
+import { TradesPopupComponent } from '../trades-popup/trades-popup.component';
 
 @Component({
   selector: 'app-calendar',
   templateUrl: './calendar.component.html',
   styleUrls: ['./calendar.component.scss'],
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TradesPopupComponent],
 })
 export class CalendarComponent {
   @Input() groupedTrades!: GroupedTrade[];
@@ -27,6 +28,10 @@ export class CalendarComponent {
 
   calendar: CalendarDay[][] = [];
   currentDate!: Date;
+  
+  // Popup properties
+  showTradesPopup = false;
+  selectedDay: CalendarDay | null = null;
 
   constructor(private reportSvc: ReportService) {}
 
@@ -166,5 +171,65 @@ export class CalendarComponent {
     const month = this.currentDate.toLocaleString('en-US', options);
     const year = this.currentDate.getFullYear();
     return `${month}, ${year}`;
+  }
+
+  // Export functionality
+  exportData() {
+    const csvData = this.generateCSVData();
+    this.downloadCSV(csvData, `trading-data-${this.currentMonthYear.replace(', ', '-').toLowerCase()}.csv`);
+  }
+
+  generateCSVData(): string {
+    const headers = ['Date', 'PnL Total', 'Trades Count', 'Win Percentage', 'Strategy Followed'];
+    const rows = [headers.join(',')];
+
+    this.calendar.flat().forEach(day => {
+      const date = day.date.toISOString().split('T')[0];
+      const pnlTotal = day.pnlTotal.toFixed(2);
+      const tradesCount = day.tradesCount;
+      const winPercentage = day.tradeWinPercent;
+      const strategyFollowed = day.followedStrategy ? 'Yes' : 'No';
+
+      rows.push([date, pnlTotal, tradesCount, winPercentage, strategyFollowed].join(','));
+    });
+
+    return rows.join('\n');
+  }
+
+  downloadCSV(csvData: string, filename: string) {
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }
+
+  // Weekly summary methods
+  getWeekTotal(week: CalendarDay[]): number {
+    return week.reduce((total, day) => total + day.pnlTotal, 0);
+  }
+
+  getWeekActiveDays(week: CalendarDay[]): number {
+    return week.filter(day => day.tradesCount > 0).length;
+  }
+
+  // Popup methods
+  onDayClick(day: CalendarDay) {
+    if (day.tradesCount > 0) {
+      this.selectedDay = day;
+      this.showTradesPopup = true;
+    }
+  }
+
+  onClosePopup() {
+    this.showTradesPopup = false;
+    this.selectedDay = null;
   }
 }

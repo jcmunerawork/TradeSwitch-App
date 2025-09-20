@@ -1,0 +1,62 @@
+<div class="strategy-card">
+  <!-- Header -->
+  <div class="card-header">
+    <div class="strategy-info">
+      <div class="strategy-icon">
+        <span class="icon-strategy"></span>
+      </div>
+      <div class="strategy-details">
+        <h3 class="strategy-name">{{ strategy.name }}</h3>
+        <div class="strategy-status">
+          <span class="status-dot" [class]="getStatusClass()"></span>
+          <span class="status-text">{{ strategy.status }}</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card-actions">
+      <button class="action-btn edit-btn" (click)="onEdit()" title="Edit strategy">
+        <span class="icon-edit"></span>
+      </button>
+      <button class="action-btn favorite-btn" (click)="onFavorite()" [class.active]="strategy.isFavorite" title="Add to favorites">
+        <span class="icon-like"></span>
+      </button>
+      <button class="action-btn more-btn" (click)="onMoreOptions()" title="More options">
+        <span class="icon-more"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Last Modified -->
+  <div class="last-modified">
+    Last modified: {{ strategy.lastModified }}
+  </div>
+
+  <!-- Metrics -->
+  <div class="metrics">
+    <div class="metric-row">
+      <span class="metric-label">Rules</span>
+      <span class="metric-value">{{ strategy.rules }}</span>
+    </div>
+    
+    <div class="metric-row">
+      <span class="metric-label">Times Applied</span>
+      <span class="metric-value">{{ strategy.timesApplied }}</span>
+    </div>
+    
+    <div class="metric-row">
+      <span class="metric-label">Win Rate</span>
+      <div class="win-rate-container">
+        <span class="metric-value">{{ strategy.winRate }}%</span>
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width]="getWinRateWidth()"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Customize Button -->
+  <button class="customize-btn" (click)="onCustomize()" *ngIf="showCustomizeButton">
+    {{ customizeButtonText }}
+  </button>
+</div>

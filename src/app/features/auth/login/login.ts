@@ -59,7 +59,7 @@ export class Login {
               if (userData.isAdmin) {
                 this.router.navigate(['/overview']);
               } else {
-                this.router.navigate(['/report']);
+                this.router.navigate(['/strategy']);
               }
             });
         })

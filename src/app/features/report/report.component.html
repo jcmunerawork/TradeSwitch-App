@@ -4,6 +4,48 @@
     Visualize your consistency while growing with TradeSwitch.
   </h3>
 </div>
+
+<!-- Account Info and Actions Header -->
+@if(accountsData.length > 0 && !loading) {
+<div class="account-header d-flex justify-between align-items-center mb-32">
+  <div class="account-info d-flex flex-col">
+    <h2 class="account-name color-background">{{ getCurrentAccountName() }}</h2>
+    <div class="account-details d-flex align-items-center gap-8">
+      <span class="account-server color-secondary-300">{{ getCurrentAccountServer() }}</span>
+    </div>
+  </div>
+  
+  <div class="action-buttons d-flex gap-12">
+    <button class="export-btn d-flex align-items-center gap-8" (click)="exportAllData()">
+      <span class="icon-refresh"></span>
+      <span>Export Data</span>
+    </button>
+    
+    <button class="edit-strategy-btn d-flex align-items-center gap-8" (click)="goToEditStrategy()">
+      <span class="icon-edit"></span>
+      <span>Edit Strategy</span>
+    </button>
+    
+    <div class="change-account-dropdown">
+      <button class="change-account-btn d-flex align-items-center gap-8" (click)="toggleAccountDropdown()">
+        <span>Change account</span>
+        <span class="icon-chevron"></span>
+      </button>
+      
+      @if(showAccountDropdown) {
+      <div class="account-dropdown">
+        @for(account of accountsData; track account.id) {
+        <div class="account-option" (click)="selectAccount(account)">
+          <div class="account-option-name">{{ account.accountName }}</div>
+          <div class="account-option-server">{{ account.server }}</div>
+        </div>
+        }
+      </div>
+      }
+    </div>
+  </div>
+</div>
+}
 @if(accountsData.length === 0 && !loading) {
 <div
   class="no-accounts d-flex flex-col items-center justify-center px-50 pb-50"
@@ -58,23 +100,7 @@
     [values]="accountHistory"
     (onYearChange)="onYearChange($event)"
   ></app-PnL-Graph>
-  <div class="my-rules d-flex flex-col p-30">
-    <div class="mb-20 d-flex justify-between items-center">
-      <h2 class="subtitle color-background">My Rules</h2>
-      <a
-        routerLink="/strategy"
-        class="strategy-btn p-10 bg-primary-400 color-bg-black inputText"
-      >
-        Edit Strategy
-      </a>
-    </div>
-    @for (item of config; track $index) {
-    <app-rule-short
-      [title]="item.title"
-      [isActive]="item.isActive"
-    ></app-rule-short>
-    }
-  </div>
+  <app-win-loss-chart [values]="accountHistory"></app-win-loss-chart>
 </div>
 <app-calendar
   [groupedTrades]="accountHistory"

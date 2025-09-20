@@ -1,0 +1,85 @@
+.rules {
+  gap: 60px;
+  width: 100%;
+  
+  .rules-container {
+    flex: 1;
+    width: 100%;
+    border-radius: 8px;
+    border: 0.5px solid #2f2f2f;
+    background: linear-gradient(
+          to bottom right,
+          rgba(57, 103, 215, 0.1) 0%,
+          rgba(57, 103, 215, 0.01) 50%
+        )
+        bottom right / 50% 50% no-repeat,
+      linear-gradient(
+          to bottom left,
+          rgba(57, 103, 215, 0.1) 0%,
+          rgba(57, 103, 215, 0.01) 50%
+        )
+        bottom left / 50% 50% no-repeat,
+      linear-gradient(
+          to top left,
+          rgba(57, 103, 215, 0.1) 0%,
+          rgba(57, 103, 215, 0.01) 50%
+        )
+        top left / 50% 50% no-repeat,
+      linear-gradient(
+          to top right,
+          rgba(57, 103, 215, 0.1) 0%,
+          rgba(57, 103, 215, 0.01) 50%
+        )
+        top right / 50% 50% no-repeat;
+
+    padding: 1.875rem;
+
+    &.my_choices {
+      border-color: #5087e4;
+      background: linear-gradient(
+            to bottom right,
+            rgba(80, 135, 228, 0.2) 0%,
+            rgba(80, 135, 228, 0.05) 50%
+          )
+          bottom right / 50% 50% no-repeat,
+        linear-gradient(
+            to bottom left,
+            rgba(80, 135, 228, 0.2) 0%,
+            rgba(80, 135, 228, 0.05) 50%
+          )
+          bottom left / 50% 50% no-repeat,
+        linear-gradient(
+            to top left,
+            rgba(80, 135, 228, 0.2) 0%,
+            rgba(80, 135, 228, 0.05) 50%
+          )
+          top left / 50% 50% no-repeat,
+        linear-gradient(
+            to top right,
+            rgba(80, 135, 228, 0.2) 0%,
+            rgba(80, 135, 228, 0.05) 50%
+          )
+          top right / 50% 50% no-repeat;
+    }
+  }
+}
+
+.action-buttons {
+  gap: 1rem;
+  width: min-content;
+
+  .discard-btn {
+    height: fit-content;
+    width: min-content;
+    background: rgba(188, 254, 99, 0.1);
+    border: 1px solid #9bf526;
+    border-radius: 6px;
+  }
+
+  .save-btn {
+    height: fit-content;
+    width: min-content;
+    border-radius: 6px;
+    border: none;
+  }
+}

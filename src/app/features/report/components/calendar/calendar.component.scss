@@ -14,12 +14,10 @@
 }
 
 .actual-month {
-  flex: 1;
   text-align: left;
 }
 
 .calendar-title {
-  flex: 1;
   text-align: center;
 }
 
@@ -30,8 +28,7 @@
 .calendar-day-header,
 .calendar-cell {
   flex: 1 1 0px;
-  min-width: 110px;
-
+  min-width: 70px;
   border-radius: 8px;
   margin: 1px;
   box-sizing: border-box;
@@ -45,9 +42,23 @@
 }
 
 .calendar-cell {
-  min-height: 110px;
+  min-height: 80px;
   padding: 8px;
   background: #1f1f20;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  
+  &.clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: #2a2a2a;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+  }
 }
 
 .positive-cell {
@@ -86,11 +97,180 @@
   color: #ec221f;
 }
 
-.calendar-content {
-  width: 70%;
-  gap: 8px;
+// New cell design styles
+.cell-header {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.strategy-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  &.positive-icon {
+    background: rgba(20, 174, 92, 0.15);
+    color: #14ae5c;
+  }
+  
+  &.negative-icon {
+    background: rgba(236, 34, 31, 0.15);
+    color: #ec221f;
+  }
+  
+  &.empty {
+    background: transparent;
+  }
+}
+
+.day-number {
+  font-weight: 700;
+  font-size: 14px;
+  color: #e3e3e3;
+}
+
+.cell-content {
+  width: 100%;
+  min-height: 60px;
+  gap: 2px;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.pnl-amount {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e3e3e3;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.trades-info {
+  font-size: 12px;
+  color: #8e8e93;
+  line-height: 1.2;
+}
+
+.win-percentage {
+  font-size: 10px;
+  color: #8e8e93;
+  line-height: 1.2;
 }
 
 .calendar-week {
+  gap: 6px;
+  align-items: stretch;
+  
+  .calendar-cell:last-of-type {
+    margin-right: 12px;
+    margin-bottom: 12px;
+  }
+}
+
+.week-header-title {
+  flex: 0 0 120px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: transparent;
+  border-radius: 8px;
+  margin: 1px;
+  box-sizing: border-box;
+  font-weight: 600;
+}
+
+// Export button styles
+.export-btn {
+  background: rgba(81, 134, 228, 0.1);
+  border: 1px solid rgba(81, 134, 228, 0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #b6c7de;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(81, 134, 228, 0.2);
+    border-color: rgba(81, 134, 228, 0.5);
+  }
+}
+
+.icon-export {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+// Calendar content wrapper
+.calendar-content-wrapper {
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.calendar-main {
+  flex: 1;
+  width: 100%;
+}
+
+// Weekly summary styles
+.weekly-summary {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  min-width: 200px;
+}
+
+.week-summary-card {
+  background: #1f1f20;
+  border: 1px solid #424242;
+  border-radius: 8px;
+  padding: 8px;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 0 0 120px;
+  margin: 1px;
+  box-sizing: border-box;
+}
+
+.week-header {
+  margin-bottom: 4px;
+}
+
+.week-title {
+  color: #e3e3e3;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.week-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.week-total {
+  font-size: 14px;
+  font-weight: 700;
+  
+  &.positive {
+    color: #14ae5c;
+  }
+  
+  &.negative {
+    color: #ec221f;
+  }
+}
+
+.week-days {
+  color: #8e8e93;
+  font-size: 10px;
+  font-weight: 500;
 }

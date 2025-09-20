@@ -38,7 +38,7 @@ import { LoadingPopupComponent } from '../../shared/pop-ups/loading-pop-up/loadi
 import { SettingsService } from '../strategy/service/strategy.service';
 import { resetConfig } from '../strategy/store/strategy.actions';
 import { RuleType, StrategyState } from '../strategy/models/strategy.model';
-import { RuleShortComponent } from './components/rule-short/rule-short.component';
+import { WinLossChartComponent } from './components/winLossChart/win-loss-chart.component';
 import moment from 'moment-timezone';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { User } from '../overview/models/overview';
@@ -62,7 +62,7 @@ import { AccountData } from '../auth/models/userModel';
     PnlGraphComponent,
     CalendarComponent,
     LoadingPopupComponent,
-    RuleShortComponent,
+    WinLossChartComponent,
     RouterLink,
   ],
 })
@@ -82,6 +82,10 @@ export class ReportComponent implements OnInit {
   requestYear: number = 0;
   private updateSubscription?: Subscription;
   pluginHistory: PluginHistoryRecord[] = [];
+  
+  // Account management
+  currentAccount: AccountData | null = null;
+  showAccountDropdown = false;
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: any,
@@ -154,6 +158,10 @@ export class ReportComponent implements OnInit {
         this.loading = false;
       } else {
         this.accountsData = accounts;
+        // Set first account as current by default
+        if (this.accountsData.length > 0 && !this.currentAccount) {
+          this.currentAccount = this.accountsData[0];
+        }
         if (this.accountsData.length === 0) {
           this.loading = false;
         } else {
@@ -397,6 +405,159 @@ export class ReportComponent implements OnInit {
 
     if (this.user) {
       this.fetchUserAccounts();
+    }
+  }
+
+  // Account management methods
+  getCurrentAccountName(): string {
+    return this.currentAccount?.accountName || 'No Account Selected';
+  }
+
+  getCurrentAccountServer(): string {
+    return this.currentAccount?.server || 'No Server';
+  }
+
+  getCurrentAccountPlan(): string {
+    return this.getAccountPlan(this.currentAccount);
+  }
+
+  getPlanInfo(planName: string): { name: string; price: string; accounts: number; strategies: number } {
+    const plans = {
+      'Free': { name: 'Free', price: '$0/month', accounts: 1, strategies: 1 },
+      'Starter': { name: 'Starter', price: '$35/month', accounts: 2, strategies: 3 },
+      'Pro': { name: 'Pro', price: '$99/month', accounts: 6, strategies: 8 }
+    };
+    
+    return plans[planName as keyof typeof plans] || plans['Free'];
+  }
+
+  getAccountPlan(account: AccountData | null): string {
+    if (!account) return 'Free';
+    
+    // Determine plan based on user data and account information
+    return this.determineUserPlan(account);
+  }
+
+  private determineUserPlan(account: AccountData): string {
+    // Check if user has subscription_date (indicates paid plan)
+    if (this.user?.subscription_date && this.user.subscription_date > 0) {
+      // Check subscription status
+      if (this.user.status === 'purchased') {
+        // Determine plan based on number of accounts and other factors
+        const accountCount = this.accountsData.length;
+        const hasMultipleStrategies = this.config && this.config.length > 1;
+        
+        // Pro Plan: 6 accounts, 8 strategies, or high usage indicators
+        if (accountCount >= 6 || (accountCount >= 2 && this.user.number_trades > 100)) {
+          return 'Pro';
+        }
+        // Starter Plan: 2 accounts, 3 strategies, or moderate usage
+        else if (accountCount >= 2 || (accountCount >= 1 && this.user.number_trades > 20)) {
+          return 'Starter';
+        }
+        // Free Plan: 1 account, 1 strategy
+        else {
+          return 'Free';
+        }
+      }
+    }
+    
+    // Check if user has any trading activity (might indicate a trial or free tier)
+    if (this.user?.number_trades && this.user.number_trades > 0) {
+      const accountCount = this.accountsData.length;
+      
+      // If user has multiple accounts but no subscription, they might be on trial
+      if (accountCount >= 2) {
+        return 'Starter';
+      }
+    }
+    
+    // Default to Free plan if no subscription and no activity
+    return 'Free';
+  }
+
+  toggleAccountDropdown() {
+    this.showAccountDropdown = !this.showAccountDropdown;
+  }
+
+  selectAccount(account: AccountData) {
+    this.currentAccount = account;
+    this.showAccountDropdown = false;
+    this.loading = true;
+    
+    // Fetch data for the selected account
+    this.fetchUserKey(account);
+  }
+
+  goToEditStrategy() {
+    this.router.navigate(['/edit-strategy']);
+  }
+
+  exportAllData() {
+    const csvData = this.generateAllReportsCSV();
+    this.downloadCSV(csvData, `my-reports-${new Date().toISOString().split('T')[0]}.csv`);
+  }
+
+  generateAllReportsCSV(): string {
+    const headers = [
+      'Date', 
+      'Account Name', 
+      'Plan', 
+      'Net P&L', 
+      'Trades Count', 
+      'Win Percentage', 
+      'Strategy Followed',
+      'Profit Factor',
+      'Avg Win/Loss Trades'
+    ];
+    const rows = [headers.join(',')];
+
+    // Add summary data
+    const summaryRow = [
+      new Date().toISOString().split('T')[0],
+      this.getCurrentAccountName(),
+      this.getCurrentAccountPlan(),
+      this.stats?.netPnl?.toFixed(2) || '0',
+      this.stats?.totalTrades?.toString() || '0',
+      `${this.stats?.tradeWinPercent?.toFixed(1) || '0'}%`,
+      'Yes',
+      this.stats?.profitFactor?.toFixed(2) || '0',
+      this.stats?.avgWinLossTrades?.toFixed(2) || '0'
+    ];
+    rows.push(summaryRow.join(','));
+
+    // Add detailed trade data
+    this.accountHistory.forEach(trade => {
+      const tradeDate = new Date(Number(trade.updatedAt)).toISOString().split('T')[0];
+      const tradeRow = [
+        tradeDate,
+        this.getCurrentAccountName(),
+        this.getCurrentAccountPlan(),
+        (trade.pnl || 0).toFixed(2),
+        '1',
+        trade.pnl && trade.pnl > 0 ? '100' : '0',
+        'Yes',
+        '1.00',
+        (trade.pnl || 0).toFixed(2)
+      ];
+      rows.push(tradeRow.join(','));
+    });
+
+    return rows.join('\n');
+  }
+
+  downloadCSV(csvData: string, filename: string) {
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   }
 }

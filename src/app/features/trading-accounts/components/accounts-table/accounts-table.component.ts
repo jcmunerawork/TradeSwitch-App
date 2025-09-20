@@ -155,7 +155,4 @@ export class AccountsTableComponent {
     this.accountToDelete = {} as AccountData;
   }
 
-  navigateToAddAccount() {
-    this.router.navigate(['/add-account']);
-  }
 }

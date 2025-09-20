@@ -256,3 +256,157 @@ tbody tr {
   background: rgba(158, 196, 242, 0.1);
   border: none;
 }
+
+// New styles for updated table
+.account-checkbox {
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+  accent-color: #9BF526;
+}
+
+.broker-icon {
+  width: 24px;
+  height: 24px;
+  background: #1a1a1a;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+
+  .broker-letter {
+    color: #e3e3e3;
+    font-size: 12px;
+    font-weight: bold;
+  }
+}
+
+.upload-icon,
+.clear-icon {
+  cursor: pointer;
+  font-size: 16px;
+  transition: opacity 0.2s ease;
+  display: inline-block;
+
+  &:hover {
+    opacity: 0.7;
+  }
+}
+
+// Ensure all icons are visible
+[class^="icon-"],
+[class*=" icon-"] {
+  display: inline-block;
+  font-family: "icomoon" !important;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Custom icon styles to match the design
+.upload-icon {
+  &::before {
+    content: "↗";
+    font-family: Arial, sans-serif !important;
+    font-weight: bold;
+  }
+}
+
+.clear-icon {
+  &::before {
+    content: "✕";
+    font-family: Arial, sans-serif !important;
+    font-weight: bold;
+  }
+}
+
+// More options icon (three dots)
+.icon-double-chevron {
+  &::before {
+    content: "⋯";
+    font-family: Arial, sans-serif !important;
+    font-weight: bold;
+    font-size: 1.2em;
+  }
+}
+
+// Delete icon (trash can)
+.delete-icon {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  display: inline-block;
+  
+  &::before {
+    content: "✕";
+    font-family: Arial, sans-serif !important;
+    font-size: 1rem;
+    font-weight: bold;
+  }
+  
+  &:hover {
+    opacity: 0.7;
+  }
+}
+
+// Add Account Button
+.add-account-btn {
+  background: #9BF526;
+  color: #2C2C2C;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(155, 245, 38, 0.3);
+  
+  &:hover {
+    background: #8AE01A;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(155, 245, 38, 0.4);
+  }
+  
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(155, 245, 38, 0.3);
+  }
+  
+  .icon-add-account {
+    font-size: 16px;
+    font-weight: bold;
+  }
+}
+
+// Ensure header text stays on one line
+thead th {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Table responsive adjustments
+table {
+  min-width: 1000px; // Ensure minimum width for all columns
+}
+
+.table-scroll-container {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 500px;
+}
+
+// Column widths for better layout
+th:nth-child(1), td:nth-child(1) { width: 200px; } // Account Name
+th:nth-child(2), td:nth-child(2) { width: 150px; } // Broker
+th:nth-child(3), td:nth-child(3) { width: 100px; } // Balance
+th:nth-child(4), td:nth-child(4) { width: 120px; } // Profit calculation
+th:nth-child(5), td:nth-child(5) { width: 150px; } // Last update
+th:nth-child(6), td:nth-child(6) { width: 100px; } // File upload
+th:nth-child(7), td:nth-child(7) { width: 100px; } // Clear trades
+th:nth-child(8), td:nth-child(8) { width: 100px; } // Delete account
+th:nth-child(9), td:nth-child(9) { width: 80px; }  // Actions

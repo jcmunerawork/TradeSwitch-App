@@ -1,0 +1,37 @@
+<div class="win-loss-chart-container p-30">
+  <div class="chart-header d-flex justify-between items-center mb-20">
+    <h2 class="subtitle color-background">Average win/loss trades</h2>
+    <button class="more-options-btn">
+      <span class="icon-more-options">⋯</span>
+    </button>
+  </div>
+  
+  <div class="chart-content d-flex justify-center items-center">
+    <div class="chart-wrapper">
+      <apx-chart
+        [series]="chartOptions.series"
+        [chart]="chartOptions.chart"
+        [labels]="chartOptions.labels"
+        [colors]="chartOptions.colors"
+        [dataLabels]="chartOptions.dataLabels"
+        [plotOptions]="chartOptions.plotOptions"
+        [legend]="chartOptions.legend"
+        [tooltip]="chartOptions.tooltip"
+        [stroke]="chartOptions.stroke"
+        style="width: 100%"
+      ></apx-chart>
+      
+      <!-- Labels internos siempre visibles -->
+      <div class="chart-labels-overlay">
+        <div class="loss-segment">
+          <div class="segment-value">{{ winLossData.lossValue }}</div>
+          <div class="segment-percentage loss-color">{{ winLossData.lossPercentage }}%</div>
+        </div>
+        <div class="win-segment">
+          <div class="segment-value">{{ winLossData.winValue }}</div>
+          <div class="segment-percentage win-color">{{ winLossData.winPercentage }}%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

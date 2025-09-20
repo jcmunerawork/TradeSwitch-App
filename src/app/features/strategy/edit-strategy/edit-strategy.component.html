@@ -1,0 +1,74 @@
+<div class="regularText color-background">
+  <div class="d-flex justify-between mb-40">
+    <div>
+      <h1 class="titleText mb-30">Edit Strategy</h1>
+      <p>Design a strategy that supports your consistency with TradeSwitch.</p>
+    </div>
+    <div class="action-buttons d-flex gap-16">
+      <button 
+        class="discard-btn p-10 color-primary-400 inputText"
+        (click)="discardChanges()"
+      >
+        Discard
+      </button>
+      <button 
+        class="save-btn p-10 bg-primary-400 color-bg-black inputText"
+        (click)="saveStrategy()"
+        [disabled]="loading"
+      >
+        {{ loading ? 'Saving...' : 'Save Strategy' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Panel de reglas disponibles -->
+  <div class="rules d-flex flex-row">
+    <div class="rules-container available_rules d-flex flex-col justify-start">
+      <h2 class="subtitle mb-20">Available Rules</h2>
+      @if (config && !config.maxDailyTrades.isActive) {
+      <app-edit-max-daily-trades></app-edit-max-daily-trades>
+      } @if (config && !config.riskReward.isActive) {
+      <app-edit-risk-reward-ratio></app-edit-risk-reward-ratio>
+      } @if (config && !config.riskPerTrade.isActive) {
+      <app-edit-risk-per-trade></app-edit-risk-per-trade>
+      } @if (config && !config.daysAllowed.isActive) {
+      <app-edit-days-allowed></app-edit-days-allowed>
+      } @if (config && !config.assetsAllowed.isActive) {
+      <app-edit-assets-allowed></app-edit-assets-allowed>
+      } @if (config && !config.hoursAllowed.isActive) {
+      <app-edit-hours-allowed></app-edit-hours-allowed>
+      }
+    </div>
+    
+    <!-- Panel de My Choices -->
+    <div class="rules-container my_choices d-flex flex-col justify-start">
+      <h2 class="subtitle mb-20">My Choices</h2>
+      @if (myChoices && myChoices.maxDailyTrades.isActive) {
+      <app-edit-max-daily-trades></app-edit-max-daily-trades>
+      } @if (myChoices && myChoices.riskReward.isActive) {
+      <app-edit-risk-reward-ratio></app-edit-risk-reward-ratio>
+      } @if (myChoices && myChoices.riskPerTrade.isActive) {
+      <app-edit-risk-per-trade></app-edit-risk-per-trade>
+      } @if (myChoices && myChoices.daysAllowed.isActive) {
+      <app-edit-days-allowed></app-edit-days-allowed>
+      } @if (myChoices && myChoices.assetsAllowed.isActive) {
+      <app-edit-assets-allowed></app-edit-assets-allowed>
+      } @if (myChoices && myChoices.hoursAllowed.isActive) {
+      <app-edit-hours-allowed></app-edit-hours-allowed>
+      }
+    </div>
+  </div>
+
+  <app-edit-popup
+    [visible]="editPopupVisible"
+    [close]="closePopup"
+  ></app-edit-popup>
+
+  <app-confirm-popup
+    [visible]="confirmPopupVisible"
+    [cancel]="closeConfirmModal"
+    [close]="save"
+  ></app-confirm-popup>
+
+  <app-loading-popup [visible]="loading"></app-loading-popup>
+</div>

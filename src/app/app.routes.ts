@@ -1,17 +1,25 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth-guard-guard';
+import { redirectGuard } from './guards/redirect-guard.guard';
 
 export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'report',
+    canActivate: [redirectGuard],
+    loadComponent: () => import('./features/strategy/strategy.component').then((m) => m.Strategy),
   },
   {
     path: 'strategy',
     canActivate: [authGuard],
     loadComponent: () =>
       import('./features/strategy/strategy.component').then((m) => m.Strategy),
+  },
+  {
+    path: 'edit-strategy',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/strategy/edit-strategy/edit-strategy.component').then((m) => m.EditStrategyComponent),
   },
 
   {

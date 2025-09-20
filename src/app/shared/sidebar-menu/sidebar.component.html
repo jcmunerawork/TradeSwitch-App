@@ -4,11 +4,6 @@
   <div class="logo mb-44">
     <img src="assets/logo.png" alt="" />
   </div>
-  @if (userToken && !isAdmin) {
-  <p class="token-id p-20 regularText">
-    your plugin token is <b>{{ userToken }}</b>
-  </p>
-  }
   <div class="sidebar-dashboard" (click)="toggleDashboard()">
     <span class="icon-home"></span>
     <span class="sidebar-title">Dashboard</span>
@@ -16,14 +11,14 @@
   </div>
   <ul class="menu" [class.open]="isDashboardOpen">
     @if(!isAdmin) {
+      <li class="px-16 py-10 menu-link">
+        <a routerLink="/strategy" routerLinkActive="active">
+          <span class="icon-strategy color-secondary-500 mr-10"></span>My Strategy
+        </a>
+      </li>
     <li class="px-16 py-10 menu-link">
       <a routerLink="/report" routerLinkActive="active">
         <span class="icon-report color-secondary-500 mr-10"></span> My Reports
-      </a>
-    </li>
-    <li class="px-16 py-10 menu-link">
-      <a routerLink="/strategy" routerLinkActive="active">
-        <span class="icon-strategy color-secondary-500 mr-10"></span>My Strategy
       </a>
     </li>
     <li class="px-16 py-10 menu-link">

@@ -10,6 +10,7 @@
 
 .up-title {
   width: 100%;
+  position: relative;
 }
 
 select {
@@ -80,5 +81,263 @@ option:checked {
     border-radius: var(--Corner-Extra-small, 4px);
     background: rgba(236, 34, 31, 0.15);
     color: #ec221f;
+  }
+}
+
+// Filter Styles
+.filter-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.active-filters-container {
+  margin-bottom: 4px;
+}
+
+.active-filters-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 300px;
+  padding: 4px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #4a4a4a transparent;
+  
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #4a4a4a;
+    border-radius: 2px;
+  }
+}
+
+.filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(81, 134, 228, 0.1);
+  border: 1px solid rgba(81, 134, 228, 0.3);
+  border-radius: 16px;
+  padding: 6px 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
+.filter-label {
+  color: #b6c7de;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.remove-filter-btn {
+  background: none;
+  border: none;
+  color: #8e8e93;
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e3e3e3;
+  }
+}
+
+.icon-close {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.year-select {
+  border-radius: 4px;
+  background: rgba(158, 196, 242, 0.1);
+  border: 1px solid #4a4a4a;
+  color: #b6c7de;
+  font-size: 14px;
+  padding: 6px 8px;
+  cursor: pointer;
+  
+  &:focus {
+    outline: none;
+    border-color: #9bf526;
+  }
+  
+  option {
+    background: #1a1a1a;
+    color: #e3e3e3;
+  }
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(158, 196, 242, 0.1);
+  border: 1px solid rgba(158, 196, 242, 0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #b6c7de;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(158, 196, 242, 0.2);
+    border-color: rgba(158, 196, 242, 0.5);
+  }
+}
+
+.filter-icon {
+  font-size: 12px;
+  transition: transform 0.2s ease;
+}
+
+.filter-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: #1a1a1a;
+  border: 1px solid #2f2f2f;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+  min-width: 200px;
+}
+
+.filter-dropdown-content {
+  padding: 16px;
+}
+
+.filter-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  position: relative;
+  
+  input[type="checkbox"] {
+    display: none;
+  }
+  
+  .checkmark {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #4a4a4a;
+    border-radius: 3px;
+    background: transparent;
+    position: relative;
+    transition: all 0.2s ease;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 4px;
+      height: 8px;
+      border: solid #9bf526;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+  }
+  
+  input[type="checkbox"]:checked + .checkmark {
+    background: #9bf526;
+    border-color: #9bf526;
+    
+    &::after {
+      opacity: 1;
+    }
+  }
+  
+  .option-label {
+    color: #e3e3e3;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  
+  &:hover .checkmark {
+    border-color: #6a6a6a;
+  }
+}
+
+.compare-years {
+  border-top: 1px solid #2f2f2f;
+  padding-top: 16px;
+}
+
+.compare-title {
+  color: #e3e3e3;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+}
+
+.year-selectors {
+  display: flex;
+  gap: 12px;
+}
+
+.year-selector {
+  flex: 1;
+  
+  label {
+    display: block;
+    color: #8e8e93;
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+  
+  select {
+    width: 100%;
+    background: rgba(158, 196, 242, 0.1);
+    border: 1px solid #4a4a4a;
+    border-radius: 4px;
+    color: #b6c7de;
+    padding: 6px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    
+    &:focus {
+      outline: none;
+      border-color: #9bf526;
+    }
+    
+    option {
+      background: #1a1a1a;
+      color: #e3e3e3;
+    }
   }
 }

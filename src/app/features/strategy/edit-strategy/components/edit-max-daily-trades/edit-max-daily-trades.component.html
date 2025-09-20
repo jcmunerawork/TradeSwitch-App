@@ -1,0 +1,28 @@
+<div class="config-row d-flex py-12 justify-between">
+  <div class="d-flex items-center">
+    <label class="custom-checkbox m-6">
+      <input
+        type="checkbox"
+        id="toggle-max-daily-trades"
+        [checked]="config.isActive"
+        (change)="onToggleActive($event)"
+      />
+      <span class="checkmark"></span>
+    </label>
+
+    <label
+      for="toggle-max-daily-trades"
+      [ngClass]="{ deactivated: !config.isActive }"
+      >Max Daily Trades</label
+    >
+  </div>
+  <input
+    type="number"
+    id="daily-trade-input"
+    min="1"
+    [value]="config.maxDailyTrades"
+    [disabled]="!config.isActive"
+    (change)="onChangeValue($event)"
+    class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
+  />
+</div>

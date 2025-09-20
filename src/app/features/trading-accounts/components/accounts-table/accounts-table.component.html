@@ -72,20 +72,27 @@
           </div>
           }
         </div>
+
       </div>
     </div>
     <div class="table-scroll-container">
       <table class="regularText">
         <thead>
           <tr>
-            <th class="regularText py-18">Account Name</th>
+            <th class="regularText py-18">
+              <div class="d-flex items-center gap-8">
+                <span class="icon-check-box"></span>
+                <span>Account Name</span>
+              </div>
+            </th>
             <th class="regularText py-18">Broker</th>
             <th class="regularText py-18">Balance</th>
             <th class="regularText py-18">Profit calculation</th>
             <th class="regularText py-18">Last update</th>
+            <th class="regularText py-18">File upload</th>
+            <th class="regularText py-18">Clear trades</th>
             <th class="regularText py-18">Delete account</th>
             <th class="regularText py-18">Actions</th>
-            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -93,18 +100,22 @@
           <tr>
             <td class="smallText">
               <div class="d-flex items-center">
-                <span class="icon-edit color-secondary-500 mr-12"></span>
+                <input type="checkbox" class="account-checkbox" />
+                <span class="icon-edit color-secondary-500 mr-12" style="font-size: 1rem" title="Edit account name"></span>
                 <p>
                   {{ account.accountName }}
                 </p>
               </div>
             </td>
-            <td class="smallText" style="width: 12.5rem">
-              <p>
-                {{ account.server }}
-              </p>
+            <td class="smallText">
+              <div class="d-flex items-center gap-8">
+                <div class="broker-icon">
+                  <span class="broker-letter">T</span>
+                </div>
+                <p>{{ account.server }}</p>
+                <span class="icon-chevron color-secondary-500" style="font-size: 0.8rem" title="Broker options"></span>
+              </div>
             </td>
-
             <td class="smallText">
               <p>
                 {{ account.balance | currency : "USD" : "symbol" }}
@@ -115,23 +126,27 @@
             </td>
             <td class="smallText">
               <p>
-                {{ account.createdAt.toDate() | date : "medium" }}
+                {{ account.createdAt.toDate() | date : "MM/dd/yyyy h:mm a" }}
               </p>
             </td>
-            <td>
+            <td class="smallText">
+              <span class="icon-refresh color-secondary-500 upload-icon" title="Upload"></span>
+            </td>
+            <td class="smallText">
+              <span class="icon-uncheck-box color-red clear-icon" title="Clear trades"></span>
+            </td>
+            <td class="smallText">
               <span
                 (click)="deleteAccount(account)"
-                class="icon-trash color-red"
+                class="delete-icon color-red"
                 style="font-size: 1rem"
+                title="Delete account"
               ></span>
             </td>
             <td class="smallText">
-              <span class="color-secondary-500" style="font-size: 1rem"
-                >...</span
-              >
+              <span class="icon-double-chevron color-secondary-500" style="font-size: 1rem" title="More options"></span>
             </td>
           </tr>
-
           }
         </tbody>
       </table>
@@ -149,12 +164,6 @@
           Start by adding your first trading account to begin managing your
           strategy.
         </p>
-        <button
-          class="primary-btn color-neutral bg-primary-400 p-10 regularSemiText"
-          (click)="navigateToAddAccount()"
-        >
-          Create Account
-        </button>
       </div>
       }
     </div>

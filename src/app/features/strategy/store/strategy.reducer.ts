@@ -37,7 +37,7 @@ export const initialStrategyState: StrategyState = {
     isActive: false,
     tradingOpenTime: '09:30',
     tradingCloseTime: '17:00',
-    timezone: 'Zulu',
+    timezone: 'UTC',
     type: RuleType.TRADING_HOURS,
   },
   assetsAllowed: {

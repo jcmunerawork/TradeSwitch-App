@@ -4,7 +4,9 @@
   >
     <p class="actual-month">{{ currentMonthYear }}</p>
     <p class="calendar-title">My Strategy</p>
-    <span class="calendar-gap"></span>
+    <button class="export-btn d-flex align-items-center gap-8" (click)="exportData()">
+      <span>Export Data</span>
+    </button>
   </div>
   <div
     class="calendar-header mb-14 d-flex flex-center items-center justify-between"
@@ -15,55 +17,86 @@
       {{ day | slice : 0 : 3 }}
     </div>
     }
+    <div class="week-header-title smallText color-background">
+      Week
+    </div>
   </div>
-  @for (week of calendar; track $index) {
-  <div class="calendar-week d-flex smallText color-background">
-    @for (cell of week; track $index) {
-    <div
-      class="calendar-cell"
-      [ngClass]="{
-        active: cell.tradesCount > 0,
-        'positive-cell': cell.tradesCount > 0 && cell.followedStrategy,
-        'negative-cell': cell.tradesCount > 0 && !cell.followedStrategy
-      }"
-    >
-      <div
-        [ngClass]="
-          cell.pnlTotal >= 0 ? 'positive-container' : 'negative-container'
-        "
-        class="d-flex justify-between px-8 py-8"
-      >
-        <div class="calendar-content d-flex flex-col">
-          @if (cell.tradesCount > 0) {
-          <div
-            class="d-flex py-4 px-6 items-center"
-            [ngClass]="
-              cell.followedStrategy ? 'positive-strategy' : 'negative-strategy'
-            "
-          >
-            <p>Strategy Followed:</p>
-            <span
+  <div class="calendar-content-wrapper d-flex">
+    <div class="calendar-main">
+      @for (week of calendar; track $index) {
+      <div class="calendar-week d-flex smallText color-background">
+        @for (cell of week; track $index) {
+        <div
+          class="calendar-cell"
+          [ngClass]="{
+            active: cell.tradesCount > 0,
+            'positive-cell': cell.tradesCount > 0 && cell.followedStrategy,
+            'negative-cell': cell.tradesCount > 0 && !cell.followedStrategy,
+            'clickable': cell.tradesCount > 0
+          }"
+          (click)="onDayClick(cell)"
+        >
+          <div class="cell-header d-flex justify-between align-items-start">
+            @if (cell.tradesCount > 0) {
+            <div
+              class="strategy-icon"
               [ngClass]="
-                cell.followedStrategy ? 'icon-check-box' : 'icon-uncheck-box'
+                cell.followedStrategy ? 'positive-icon' : 'negative-icon'
               "
-              class="ml-8"
-            ></span>
+            >
+              <span
+                [ngClass]="
+                  cell.followedStrategy ? 'icon-check-box' : 'icon-uncheck-box'
+                "
+              ></span>
+            </div>
+            } @else {
+            <div class="strategy-icon empty"></div>
+            }
+            <div class="day-number">
+              {{ cell.date.getDate() }}
+            </div>
           </div>
-          <p>
-            ${{ cell.pnlTotal < 0 ? cell.pnlTotal : cell.pnlTotal.toFixed(4) }}
-          </p>
-          <p>
-            {{ cell.tradesCount }} Trade{{ cell.tradesCount > 1 ? "s" : "" }}
-          </p>
-          <p>{{ cell.tradeWinPercent }}%</p>
+          
+          @if (cell.tradesCount > 0) {
+          <div class="cell-content d-flex flex-col">
+            <div class="pnl-amount">
+              ${{ cell.pnlTotal < 0 ? cell.pnlTotal : cell.pnlTotal.toFixed(4) }}
+            </div>
+            <div class="trades-info">
+              {{ cell.tradesCount }} Trade{{ cell.tradesCount > 1 ? "s" : "" }}
+            </div>
+            <div class="win-percentage">
+              {{ cell.tradeWinPercent }}%
+            </div>
+          </div>
           }
         </div>
-        <p>
-          <b>{{ cell.date.getDate() }}</b>
-        </p>
+        }
+        
+        <!-- Weekly Summary Card for this week -->
+        <div class="week-summary-card">
+          <div class="week-header">
+            <h4 class="week-title">Week {{ $index + 1 }}</h4>
+          </div>
+          <div class="week-content">
+            <div class="week-total" [ngClass]="getWeekTotal(week) >= 0 ? 'positive' : 'negative'">
+              ${{ getWeekTotal(week).toFixed(2) }}
+            </div>
+            <div class="week-days">
+              {{ getWeekActiveDays(week) }} days
+            </div>
+          </div>
+        </div>
       </div>
+      }
     </div>
-    }
   </div>
-  }
+
+  <!-- Trades Popup -->
+  <app-trades-popup
+    [visible]="showTradesPopup"
+    [selectedDay]="selectedDay"
+    (close)="onClosePopup()"
+  ></app-trades-popup>
 </div>

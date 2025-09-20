@@ -1,0 +1,10 @@
+@use "colors";
+
+.config-row {
+  width: 100%;
+  border-bottom: 0.5px solid
+    var(
+      --miscellaneous-alert-menu-action-sheet-separators,
+      rgba(128, 128, 128, 0.55)
+    );
+}

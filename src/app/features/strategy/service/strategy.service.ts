@@ -31,6 +31,7 @@ export class SettingsService {
       return null;
     }
     const snapshot = await getDoc(doc(this.db, 'configurations', userId));
+
     return snapshot;
   }
 }

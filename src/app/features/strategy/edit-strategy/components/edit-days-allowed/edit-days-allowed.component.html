@@ -1,0 +1,30 @@
+<div class="config-row d-flex flex-col py-12 justify-between">
+  <div class="d-flex items-center mb-12">
+    <label class="custom-checkbox m-6">
+      <input
+        type="checkbox"
+        id="toggle-days-allowed"
+        [checked]="config.isActive"
+        (change)="onToggleActive($event)"
+      />
+      <span class="checkmark"></span>
+    </label>
+
+    <label
+      for="toggle-days-allowed"
+      [ngClass]="{ deactivated: !config.isActive }"
+      >Only allow trades on</label
+    >
+  </div>
+  <div class="days-container d-flex items-start">
+    @for (dayOption of daysButtons; track $index) {
+    <button
+      class="inputText"
+      [ngClass]="{ btnActive: dayOption.isActive }"
+      (click)="onChangeValue(dayOption)"
+    >
+      {{ dayOption.day.substring(0, 3) }}
+    </button>
+    }
+  </div>
+</div>

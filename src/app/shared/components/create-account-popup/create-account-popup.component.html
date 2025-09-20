@@ -1,0 +1,132 @@
+<!-- Main Create Account Modal -->
+@if (visible) {
+<div class="modal-overlay" (click)="onClose()">
+  <div class="create-account-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">Create Trading Account</h2>
+      <button class="modal-close" (click)="onClose()">
+        <span class="icon-close">×</span>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Account ID*</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            [(ngModel)]="newAccount.accountID"
+            placeholder="Enter account ID"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Account Name*</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            [(ngModel)]="newAccount.accountName"
+            placeholder="Enter account name"
+          >
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Broker Password*</label>
+          <input 
+            type="password" 
+            class="form-input" 
+            [(ngModel)]="newAccount.brokerPassword"
+            placeholder="Enter broker password"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Server*</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            [(ngModel)]="newAccount.server"
+            placeholder="Enter server name"
+          >
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Email Trading Account*</label>
+          <input 
+            type="email" 
+            class="form-input" 
+            [(ngModel)]="newAccount.emailTradingAccount"
+            placeholder="Enter trading email"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Balance</label>
+          <input 
+            type="number" 
+            class="form-input" 
+            [(ngModel)]="newAccount.balance"
+            placeholder="Enter balance"
+            step="0.01"
+          >
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="cancel-btn" (click)="onCancel()">
+        Cancel
+      </button>
+      <button class="create-btn" (click)="onCreate()">
+        Create trading account
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Cancel Confirmation Modal -->
+@if (showCancelConfirm) {
+<div class="modal-overlay" (click)="onContinueEditing()">
+  <div class="confirm-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">Cancel trading account creation?</h2>
+    </div>
+    <div class="modal-body">
+      <p class="modal-message">If you leave now, the information you've entered will not be saved.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="continue-btn" (click)="onContinueEditing()">
+        Continue editing
+      </button>
+      <button class="confirm-cancel-btn" (click)="onConfirmCancel()">
+        Yes, cancel
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Success Modal -->
+@if (showSuccessModal) {
+<div class="modal-overlay" (click)="onGoToList()">
+  <div class="success-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">Trading account created successfully</h2>
+    </div>
+    <div class="modal-body">
+      <p class="modal-message">The new account has been added to your list and can now access it.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="success-btn" (click)="onGoToList()">
+        Go to trading account list
+      </button>
+    </div>
+  </div>
+</div>
+}
