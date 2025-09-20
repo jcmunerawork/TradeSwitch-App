@@ -1,37 +1,32 @@
-import { MaxDailyTradesComponent } from './components/max-daily-trades/max-daily-trades.component';
-import { RiskRewardComponent } from './components/risk-reward/risk-reward.component';
-import { RiskPerTradeComponent } from './components/risk-per-trade/risk-per-trade.component';
-import { DaysAllowedComponent } from './components/days-allowed/days-allowed.component';
-import { HoursAllowedComponent } from './components/hours-allowed/hours-allowed.component';
-import { AssetsAllowedComponent } from './components/assets-allowed/assets-allowed.component';
-import { Store } from '@ngrx/store';
-import { allRules } from './store/strategy.selectors';
-import { StrategyState } from './models/strategy.model';
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { User } from '../overview/models/overview';
 import { selectUser } from '../auth/store/user.selectios';
 import { SettingsService } from './service/strategy.service';
-import { ReportService } from '../report/service/report.service';
-import { selectUserKey, selectTradeWin, selectTotalTrades, selectNetPnL } from '../report/store/report.selectors';
-import { setUserKey } from '../report/store/report.actions';
-import { resetConfig } from './store/strategy.actions';
-import { initialStrategyState } from './store/strategy.reducer';
+import { ConfigurationOverview } from './models/strategy.model';
 import { TextInputComponent, StrategyCardComponent, StrategyCardData } from '../../shared/components';
-import { AccountData } from '../auth/models/userModel';
+import { Store } from '@ngrx/store';
+import { ReportService } from '../report/service/report.service';
 import { AuthService } from '../auth/service/authService';
+import { initialStrategyState } from '../strategy/store/strategy.reducer';
+import { selectTradeWin } from '../report/store/report.selectors';
+import { selectTotalTrades } from '../report/store/report.selectors';
+import { resetConfig } from '../strategy/store/strategy.actions';
+import { StrategyState } from '../strategy/models/strategy.model';
+import { AccountData } from '../auth/models/userModel';
+import { setUserKey } from '../report/store/report.actions';
+import { selectUserKey } from '../report/store/report.selectors';
+import { allRules } from '../strategy/store/strategy.selectors';
+import { selectNetPnL } from '../report/store/report.selectors';
+
 
 @Component({
   selector: 'app-strategy',
   imports: [
     CommonModule,
-    MaxDailyTradesComponent,
-    RiskRewardComponent,
-    RiskPerTradeComponent,
-    DaysAllowedComponent,
-    HoursAllowedComponent,
-    AssetsAllowedComponent,
+    FormsModule,
     TextInputComponent,
     StrategyCardComponent,
   ],
@@ -40,7 +35,7 @@ import { AuthService } from '../auth/service/authService';
   standalone: true,
 })
 export class Strategy implements OnInit {
-  config!: StrategyState;
+  config: any = {};
   user: User | null = null;
   loading = false;
   
@@ -58,6 +53,15 @@ export class Strategy implements OnInit {
   tradeWin: number = 0;
   totalTrades: number = 0;
   netPnL: number = 0;
+  
+  // Nuevas propiedades para múltiples estrategias
+  userStrategies: ConfigurationOverview[] = [];
+  activeStrategy: ConfigurationOverview | null = null;
+  filteredStrategies: ConfigurationOverview[] = [];
+  strategyCardsData: StrategyCardData[] = [];
+  showStrategySelector = false;
+  newStrategyName = '';
+  searchTerm = '';
   
   // Strategy Card Data - Dynamic
   strategyCard: StrategyCardData = {
@@ -85,6 +89,7 @@ export class Strategy implements OnInit {
     this.listenConfigurations();
     this.fetchUserAccounts();
     this.listenReportData();
+    this.loadUserStrategies();
   }
 
   fetchUserKey() {
@@ -120,7 +125,7 @@ export class Strategy implements OnInit {
             // Use the first account's data dynamically
             if (this.accountsData.length > 0) {
               const firstAccount = this.accountsData[0];
-              this.reportSvc.getBalanceData(firstAccount.accountID, userKey, firstAccount.accountNumber).subscribe({
+              this.reportSvc.getBalanceData(firstAccount.accountID as string, userKey, firstAccount.accountNumber as number).subscribe({
                 next: (balance) => {
                   this.loadConfig(balance);
                 },
@@ -150,29 +155,39 @@ export class Strategy implements OnInit {
 
   loadConfig(balance: number) {
     this.loading = true;
+    
+    // Primero intentar cargar la estrategia activa
+    if (this.activeStrategy) {
+      this.loadActiveStrategyConfig(balance);
+      return;
+    }
+
+    // Si no hay estrategia activa, cargar desde configurations (compatibilidad)
     this.strategySvc
-      .getStrategyConfig(this.user?.id)
-      .then((docSnap) => {
-        if (docSnap && docSnap['exists']()) {
-          const data = docSnap['data']() as StrategyState;
+      .getConfiguration(this.user?.id || '')
+      .then((configuration) => {
+        if (configuration) {
           const riskPerTradeBalance = {
-            ...data.riskPerTrade,
+            ...configuration.riskPerTrade,
             balance: balance,
+          };
+
+          // Crear configuración completa con los campos requeridos
+          const completeConfig: StrategyState = {
+            ...configuration,
+            riskPerTrade: riskPerTradeBalance
           };
 
           this.store.dispatch(
             resetConfig({
-              config: { ...data, riskPerTrade: riskPerTradeBalance },
+              config: completeConfig,
             })
           );
-          this.loading = false;
-          this.checkPlanLimitations();
         } else {
           this.store.dispatch(resetConfig({ config: initialStrategyState }));
-          this.loading = false;
-          console.warn('No config');
-          this.checkPlanLimitations();
         }
+        this.loading = false;
+        this.checkPlanLimitations();
       })
       .catch((err) => {
         this.store.dispatch(resetConfig({ config: initialStrategyState }));
@@ -180,6 +195,48 @@ export class Strategy implements OnInit {
         console.error('Error to get the config', err);
         this.checkPlanLimitations();
       });
+  }
+
+  // Cargar configuración de la estrategia activa
+  async loadActiveStrategyConfig(balance: number) {
+    if (!this.activeStrategy || !this.user?.id) {
+      this.store.dispatch(resetConfig({ config: initialStrategyState }));
+      this.loading = false;
+      this.checkPlanLimitations();
+      return;
+    }
+
+    try {
+      // Obtener la estrategia completa (configuration-overview + configurations)
+      const strategyData = await this.strategySvc.getStrategyView((this.activeStrategy as any).id);
+      
+      if (strategyData && strategyData.configuration) {
+        const riskPerTradeBalance = {
+          ...strategyData.configuration.riskPerTrade,
+          balance: balance,
+        };
+
+        // Crear configuración completa con los campos requeridos
+        const completeConfig: StrategyState = {
+          ...strategyData.configuration,
+          riskPerTrade: riskPerTradeBalance
+        };
+
+        this.store.dispatch(
+          resetConfig({
+            config: completeConfig,
+          })
+        );
+      } else {
+        this.store.dispatch(resetConfig({ config: initialStrategyState }));
+      }
+    } catch (error) {
+      console.error('Error loading active strategy config:', error);
+      this.store.dispatch(resetConfig({ config: initialStrategyState }));
+    }
+    
+    this.loading = false;
+    this.checkPlanLimitations();
   }
 
   listenConfigurations() {
@@ -198,8 +255,23 @@ export class Strategy implements OnInit {
 
   onSearchChange(event: Event) {
     const value = (event.target as HTMLInputElement).value;
-    console.log('Search term:', value);
-    // TODO: Implement search functionality
+    this.searchTerm = value;
+    this.filterStrategies();
+  }
+
+  filterStrategies() {
+    if (!this.searchTerm.trim()) {
+      this.filteredStrategies = [...this.userStrategies];
+    } else {
+      this.filteredStrategies = this.userStrategies.filter(strategy => 
+        strategy.name.toLowerCase().includes(this.searchTerm.toLowerCase())
+      );
+    }
+  }
+
+  // Obtener datos de card por ID de estrategia
+  getCardDataByStrategyId(strategyId: string): StrategyCardData | undefined {
+    return this.strategyCardsData.find(card => card.id === strategyId);
   }
 
   onNewStrategy() {
@@ -234,24 +306,38 @@ export class Strategy implements OnInit {
 
   // Strategy Card Event Handlers
   onStrategyEdit(strategyId: string) {
-    console.log('Edit strategy name:', strategyId);
-    // TODO: Implement edit strategy name functionality
-    // This should open a modal or inline edit for the strategy name
+    this.router.navigate(['/edit-strategy'], { queryParams: { strategyId: strategyId } });
   }
 
   onStrategyFavorite(strategyId: string) {
     console.log('Toggle favorite for strategy:', strategyId);
-    this.strategyCard.isFavorite = !this.strategyCard.isFavorite;
+    // TODO: Implementar funcionalidad de favoritos en la base de datos
+    // Por ahora solo actualizar el estado local
+    const strategy = this.userStrategies.find(s => (s as any).id === strategyId);
+    if (strategy) {
+      // Aquí se podría actualizar en la base de datos
+      console.log('Strategy favorited:', strategy.name);
+    }
   }
 
   onStrategyMoreOptions(strategyId: string) {
     console.log('More options for strategy:', strategyId);
-    // TODO: Implement more options menu
+    // TODO: Implementar menú de opciones (copiar, eliminar, etc.)
+    // Por ahora mostrar opciones básicas
+    const strategy = this.userStrategies.find(s => (s as any).id === strategyId);
+    if (strategy) {
+      const action = confirm(`Options for "${strategy.name}":\n\nOK - Copy strategy\nCancel - Delete strategy`);
+      if (action) {
+        this.copyStrategy(strategyId);
+      } else {
+        this.deleteStrategy(strategyId);
+      }
+    }
   }
 
   onStrategyCustomize(strategyId: string) {
     console.log('Customize strategy rules:', strategyId);
-    this.router.navigate(['/edit-strategy']);
+    this.router.navigate(['/edit-strategy'], { queryParams: { strategyId: strategyId } });
   }
 
   // Plan detection and banner methods
@@ -287,25 +373,10 @@ export class Strategy implements OnInit {
   }
 
   updateStrategyCard() {
-    // Calculate win rate
-    const winRate = this.totalTrades > 0 ? Math.round((this.tradeWin / this.totalTrades) * 100) : 0;
-    
-    // Count active rules
-    const activeRules = this.config ? this.countActiveRules(this.config) : 0;
-    
-    // Get last modified date
-    const lastModified = this.getLastModifiedDate();
-    
-    this.strategyCard = {
-      id: '1',
-      name: 'My Trading Strategy',
-      status: 'Active',
-      lastModified: lastModified,
-      rules: activeRules,
-      timesApplied: this.totalTrades,
-      winRate: winRate,
-      isFavorite: this.strategyCard.isFavorite
-    };
+    // Solo actualizar si hay una estrategia activa
+    if (this.activeStrategy) {
+      this.updateStrategyCardWithActiveStrategy();
+    }
   }
 
   countActiveRules(config: any): number {
@@ -369,7 +440,7 @@ export class Strategy implements OnInit {
     
     let count = 0;
     Object.values(this.config).forEach(rule => {
-      if (rule && rule.isActive) {
+      if (rule && typeof rule === 'object' && 'isActive' in rule && rule.isActive) {
         count++;
       }
     });
@@ -435,5 +506,368 @@ export class Strategy implements OnInit {
   onSeeUpgradeOptions() {
     this.showUpgradeModal = false;
     this.router.navigate(['/account']);
+  }
+
+  // ===== MÉTODOS PARA MÚLTIPLES ESTRATEGIAS =====
+
+  // Cargar todas las estrategias del usuario
+  async loadUserStrategies() {
+    if (!this.user?.id) {
+      return;
+    }
+
+    try {
+      // Una sola llamada para obtener todas las estrategias
+      const allStrategies = await this.strategySvc.getUserStrategyViews(this.user.id);
+      
+      // Separar estrategia activa de las inactivas
+      this.activeStrategy = allStrategies.find(strategy => strategy.status === true) || null;
+      this.userStrategies = allStrategies.filter(strategy => strategy.status !== true);
+      
+      // Inicializar filteredStrategies
+      this.filteredStrategies = [...this.userStrategies];
+      
+      // Cargar datos de las cards para las estrategias inactivas
+      await this.loadStrategyCardsData();
+      
+      if (this.activeStrategy) {
+        this.updateStrategyCardWithActiveStrategy();
+      }
+    } catch (error) {
+      console.error('❌ Error loading user strategies:', error);
+    }
+  }
+
+  // Cargar datos de las cards para todas las estrategias
+  async loadStrategyCardsData() {
+    this.strategyCardsData = [];
+    
+    for (const strategy of this.userStrategies) {
+      try {
+        const cardData = await this.getStrategyCardData(strategy);
+        this.strategyCardsData.push(cardData);
+      } catch (error) {
+        console.error('Error loading card data for strategy:', strategy.name, error);
+        // Agregar datos básicos en caso de error
+        this.strategyCardsData.push({
+          id: (strategy as any).id,
+          name: strategy.name,
+          status: strategy.status ? 'Active' : 'Inactive',
+          lastModified: this.formatDate(strategy.updated_at.toDate()),
+          rules: 0,
+          timesApplied: strategy.days_active || 0,
+          winRate: 0,
+          isFavorite: false
+        });
+      }
+    }
+  }
+
+  // Crear nueva estrategia
+  async onCreateNewStrategy() {
+    if (!this.newStrategyName.trim()) {
+      alert('Please enter a strategy name');
+      return;
+    }
+
+    if (!this.user?.id) return;
+
+    try {
+      // 1. Primero recargar las strategies para tener el estado actualizado
+      await this.loadUserStrategies();
+      
+      // 2. Verificar si ya hay una estrategia activa
+      const hasActiveStrategy = this.activeStrategy !== null;
+      
+      // 3. Crear configuración vacía con reglas por defecto (todas inactivas)
+      const emptyStrategyConfig: StrategyState = {
+        maxDailyTrades: {
+          isActive: false,
+          maxDailyTrades: 1,
+          type: 'MAX DAILY TRADES' as any,
+        },
+        riskReward: {
+          isActive: false,
+          riskRewardRatio: '1:2',
+          type: 'RISK REWARD RATIO' as any,
+        },
+        riskPerTrade: {
+          isActive: false,
+          maxRiskPerTrade: 300,
+          maxRiskPercentage: 3,
+          type: 'MAX RISK PER TRADE' as any,
+          balance: 0,
+        },
+        daysAllowed: {
+          isActive: false,
+          type: 'DAYS ALLOWED' as any,
+          tradingDays: ['Monday', 'Tuesday'],
+        },
+        hoursAllowed: {
+          isActive: false,
+          tradingOpenTime: '09:30',
+          tradingCloseTime: '17:00',
+          timezone: 'UTC',
+          type: 'TRADING HOURS' as any,
+        },
+        assetsAllowed: {
+          isActive: false,
+          type: 'ASSETS ALLOWED' as any,
+          assetsAllowed: ['XMRUSD', 'BTCUSD'],
+        },
+      };
+
+      // 4. Crear la nueva estrategia con el status correcto
+      const strategyId = await this.strategySvc.createStrategyView(
+        this.user.id,
+        this.newStrategyName.trim(),
+        emptyStrategyConfig,
+        !hasActiveStrategy // Activa solo si no hay otra activa
+      );
+
+      // 5. Cerrar el componente de crear strategy ANTES de recargar
+      this.newStrategyName = '';
+      this.showStrategySelector = false;
+
+      // 6. Recargar estrategias para mostrar la nueva
+      await this.loadUserStrategies();
+      
+      console.log('New strategy created:', strategyId);
+    } catch (error) {
+      console.error('Error creating strategy:', error);
+      alert('Error creating strategy. Please try again.');
+    }
+  }
+
+  // Activar una estrategia
+  async activateStrategy(strategyId: string) {
+    if (!this.user?.id) return;
+
+    try {
+      await this.strategySvc.activateStrategyView(this.user.id, strategyId);
+      
+      // Recargar estrategias (una sola llamada)
+      await this.loadUserStrategies();
+      
+      // Recargar configuración con la nueva estrategia activa
+      // Obtener balance desde la configuración actual
+      const currentConfig = this.config;
+      const balance = currentConfig?.riskPerTrade?.balance || 0;
+      this.loadConfig(balance);
+      
+      console.log('Strategy activated:', strategyId);
+    } catch (error) {
+      console.error('Error activating strategy:', error);
+      alert('Error activating strategy. Please try again.');
+    }
+  }
+
+  // Eliminar estrategia
+  async deleteStrategy(strategyId: string) {
+    if (!confirm('Are you sure you want to delete this strategy? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await this.strategySvc.deleteStrategyView(strategyId);
+      
+      // Recargar estrategias (una sola llamada)
+      await this.loadUserStrategies();
+      
+      // Si se eliminó la estrategia activa, cargar la primera disponible o estado inicial
+      if (!this.activeStrategy) {
+        if (this.userStrategies.length > 0) {
+          await this.activateStrategy((this.userStrategies[0] as any).id);
+        } else {
+          this.store.dispatch(resetConfig({ config: initialStrategyState }));
+        }
+      }
+      
+      console.log('Strategy deleted:', strategyId);
+    } catch (error) {
+      console.error('Error deleting strategy:', error);
+      alert('Error deleting strategy. Please try again.');
+    }
+  }
+
+  // Actualizar nombre de estrategia
+  async updateStrategyName(strategyId: string, newName: string) {
+    if (!newName.trim()) {
+      alert('Please enter a valid strategy name');
+      return;
+    }
+
+    try {
+      await this.strategySvc.updateStrategyView(strategyId, { name: newName.trim() });
+      
+      // Recargar estrategias (una sola llamada)
+      await this.loadUserStrategies();
+      
+      console.log('Strategy name updated:', strategyId);
+    } catch (error) {
+      console.error('Error updating strategy name:', error);
+      alert('Error updating strategy name. Please try again.');
+    }
+  }
+
+  // Actualizar strategy card con la estrategia activa
+  async updateStrategyCardWithActiveStrategy() {
+    if (!this.activeStrategy || !this.user?.id) return;
+
+    try {
+      // Obtener la estrategia completa (configurations + configuration-overview)
+      const strategyData = await this.strategySvc.getStrategyView((this.activeStrategy as any).id);
+      
+      if (!strategyData) {
+        console.error('No strategy data found for active strategy');
+        return;
+      }
+
+      // Calcular win rate (por ahora 0, necesitamos implementar la lógica)
+      const winRate = 0; // TODO: Implementar cálculo de win rate
+
+      // Contar reglas activas de la configuración
+      const activeRules = strategyData.configuration ? this.countActiveRules(strategyData.configuration) : 0;
+      
+      // Formatear fecha de actualización
+      const lastModified = this.formatDate(strategyData.overview.updated_at.toDate());
+
+      this.strategyCard = {
+        id: (this.activeStrategy as any).id,
+        name: strategyData.overview.name, // Nombre de la estrategia desde overview
+        status: strategyData.overview.status ? 'Active' : 'Inactive', // Estado desde overview
+        lastModified: lastModified, // updated_at formateado desde overview
+        rules: activeRules, // Reglas activas de configuration
+        timesApplied: strategyData.overview.days_active || 0, // days_active desde overview
+        winRate: winRate, // Win rate (por implementar)
+        isFavorite: this.strategyCard.isFavorite
+      } as StrategyCardData;
+    } catch (error) {
+      console.error('Error updating strategy card with active strategy:', error);
+    }
+  }
+
+  // Formatear fecha
+  formatDate(date: Date): string {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    return `${month} ${day}, ${year}`;
+  }
+
+  // Toggle selector de estrategias
+  toggleStrategySelector() {
+    this.showStrategySelector = !this.showStrategySelector;
+  }
+
+  // Cancelar creación de estrategia
+  onCancelNewStrategy() {
+    this.newStrategyName = '';
+    this.showStrategySelector = false;
+  }
+
+  // Obtener ID de la estrategia para el track
+  getStrategyId(strategy: ConfigurationOverview): string {
+    return (strategy as any).id;
+  }
+
+  // Convertir ConfigurationOverview a StrategyCardData
+  async getStrategyCardData(strategy: ConfigurationOverview): Promise<StrategyCardData> {
+    try {
+      // Obtener la estrategia completa (configurations + configuration-overview)
+      const strategyData = await this.strategySvc.getStrategyView((strategy as any).id);
+      
+      if (!strategyData) {
+        console.error('No strategy data found for strategy:', strategy.name);
+        // Retornar datos básicos en caso de error
+        return {
+          id: (strategy as any).id,
+          name: strategy.name,
+          status: strategy.status ? 'Active' : 'Inactive',
+          lastModified: this.formatDate(strategy.updated_at.toDate()),
+          rules: 0,
+          timesApplied: strategy.days_active || 0,
+          winRate: 0,
+          isFavorite: false
+        };
+      }
+
+      // Calcular win rate (por ahora 0, necesitamos implementar la lógica)
+      const winRate = 0; // TODO: Implementar cálculo de win rate
+
+      // Contar reglas activas de la configuración
+      const activeRules = strategyData.configuration ? this.countActiveRules(strategyData.configuration) : 0;
+      
+      // Formatear fecha de actualización
+      const lastModified = this.formatDate(strategyData.overview.updated_at.toDate());
+
+      const cardData: StrategyCardData = {
+        id: (strategy as any).id,
+        name: strategyData.overview.name, // Nombre desde overview
+        status: strategyData.overview.status ? 'Active' : 'Inactive', // Estado desde overview
+        lastModified: lastModified, // updated_at desde overview
+        rules: activeRules, // Reglas activas de configuration
+        timesApplied: strategyData.overview.days_active || 0, // days_active desde overview
+        winRate: winRate, // Win rate (por implementar)
+        isFavorite: false
+      };
+
+      return cardData;
+    } catch (error) {
+      console.error('Error getting strategy card data:', error);
+      // Retornar datos básicos en caso de error
+      return {
+        id: (strategy as any).id,
+        name: strategy.name,
+        status: strategy.status ? 'Active' : 'Inactive',
+        lastModified: this.formatDate(strategy.updated_at.toDate()),
+        rules: 0,
+        timesApplied: strategy.days_active || 0,
+        winRate: 0,
+        isFavorite: false
+      };
+    }
+  }
+
+  // Copiar estrategia
+  async copyStrategy(strategyId: string) {
+    if (!this.user?.id) return;
+
+    try {
+      const strategy = this.userStrategies.find(s => (s as any).id === strategyId);
+      if (!strategy) {
+        console.error('Strategy not found');
+        return;
+      }
+
+      const newName = `${strategy.name} (Copy)`;
+      
+      // Obtener la estrategia completa (configuration-overview + configurations)
+      const strategyData = await this.strategySvc.getStrategyView((strategy as any).id);
+      if (!strategyData || !strategyData.configuration) {
+        console.error('Strategy configuration not found');
+        return;
+      }
+      
+      // Crear configuración con los campos requeridos para la copia
+      const strategyConfig: StrategyState = {
+        ...strategyData.configuration
+      };
+
+      const newStrategyId = await this.strategySvc.createStrategyView(
+        this.user.id,
+        newName,
+        strategyConfig
+      );
+
+      // Recargar estrategias (una sola llamada)
+      await this.loadUserStrategies();
+      
+      console.log('Strategy copied:', newStrategyId);
+    } catch (error) {
+      console.error('Error copying strategy:', error);
+      alert('Error copying strategy. Please try again.');
+    }
   }
 }

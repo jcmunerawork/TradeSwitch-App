@@ -83,3 +83,105 @@
     border: none;
   }
 }
+
+// Mini Strategy Card Styles
+.mini-strategy-card {
+  
+  .strategy-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #3967d7;
+    background: transparent;
+    margin-right: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .strategy-details {
+    .strategy-name-container {
+      .strategy-name {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
+      }
+      
+      .edit-name-btn {
+        width: 24px;
+        height: 24px;
+        border: none;
+        background: transparent;
+        border-radius: 4px;
+        cursor: pointer;
+        opacity: 0.7;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+        &:hover {
+          opacity: 1;
+          background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .icon-edit {
+          width: 16px;
+          height: 16px;
+          background: #9ca3af;
+          mask: url("data:image/svg+xml;utf8,<svg fill='currentColor' viewBox='0 0 24 24'><path d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/></svg>") no-repeat center;
+          mask-size: contain;
+        }
+      }
+      
+      .strategy-name-input {
+        font-size: 18px;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 4px;
+        min-width: 200px;
+        
+        &:focus {
+          background: rgba(255, 255, 255, 0.1);
+        }
+      }
+    }
+    
+    .last-modified {
+      font-size: 14px;
+      margin: 0;
+    }
+  }
+  
+  .favorite-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    &:hover {
+      background: rgba(239, 68, 68, 0.1);
+    }
+    
+    &.favorited {
+      .icon-heart {
+        background-color: #ef4444;
+      }
+    }
+    
+    .icon-heart {
+      width: 18px;
+      height: 18px;
+      background: #9ca3af;
+      mask: url("data:image/svg+xml;utf8,<svg fill='currentColor' viewBox='0 0 24 24'><path d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/></svg>") no-repeat center;
+      mask-size: contain;
+      transition: background-color 0.2s ease;
+    }
+  }
+}

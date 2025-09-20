@@ -178,25 +178,20 @@ export class ReportComponent implements OnInit {
   fetchUserRules() {
     this.strategySvc
       .getStrategyConfig(this.user?.id)
-      .then((docSnap) => {
-        if (docSnap && docSnap['exists']()) {
-          const data = docSnap['data']() as StrategyState;
+      .then((data) => {
+        if (data) {
           this.store.dispatch(resetConfig({ config: data }));
-
           this.config = this.prepareConfigDisplayData(data);
         } else {
           this.store.dispatch(resetConfig({ config: initialStrategyState }));
           this.config = this.prepareConfigDisplayData(initialStrategyState);
-
           console.warn('No config');
         }
       })
       .catch((err) => {
         this.store.dispatch(resetConfig({ config: initialStrategyState }));
         this.config = this.prepareConfigDisplayData(initialStrategyState);
-
         this.loading = false;
-
         console.error('Error to get the config', err);
       });
   }

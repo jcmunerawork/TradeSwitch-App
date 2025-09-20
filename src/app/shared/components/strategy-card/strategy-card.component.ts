@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { StrategyCardData } from './strategy-card.interface';
 
@@ -28,6 +28,10 @@ export class StrategyCardComponent {
   @Output() favorite = new EventEmitter<string>();
   @Output() moreOptions = new EventEmitter<string>();
   @Output() customize = new EventEmitter<string>();
+  @Output() duplicate = new EventEmitter<string>();
+  @Output() delete = new EventEmitter<string>();
+
+  showOptionsMenu = false;
 
   onEdit() {
     this.edit.emit(this.strategy.id);
@@ -37,12 +41,40 @@ export class StrategyCardComponent {
     this.favorite.emit(this.strategy.id);
   }
 
-  onMoreOptions() {
+  onMoreOptions(event: Event) {
+    event.stopPropagation();
+    this.showOptionsMenu = !this.showOptionsMenu;
     this.moreOptions.emit(this.strategy.id);
   }
 
   onCustomize() {
     this.customize.emit(this.strategy.id);
+  }
+
+  onDuplicate() {
+    this.showOptionsMenu = false;
+    this.duplicate.emit(this.strategy.id);
+  }
+
+  onDelete() {
+    this.showOptionsMenu = false;
+    this.delete.emit(this.strategy.id);
+  }
+
+  onCloseOptionsMenu() {
+    this.showOptionsMenu = false;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event) {
+    // Solo cerrar si el click no es en el botón de more options o en el menú
+    const target = event.target as HTMLElement;
+    const moreBtn = target.closest('.more-btn');
+    const optionsMenu = target.closest('.options-menu');
+    
+    if (this.showOptionsMenu && !moreBtn && !optionsMenu) {
+      this.showOptionsMenu = false;
+    }
   }
 
   getStatusClass(): string {

@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
+import { FormsModule } from '@angular/forms';
 import { allRules } from '../store/strategy.selectors';
 import { StrategyState } from '../models/strategy.model';
 import { resetConfig } from '../store/strategy.actions';
@@ -27,6 +28,7 @@ import { EditHoursAllowedComponent } from './components/edit-hours-allowed/edit-
 @Component({
   selector: 'app-edit-strategy',
   imports: [
+    FormsModule,
     EditMaxDailyTradesComponent,
     EditRiskRewardComponent,
     EditRiskPerTradeComponent,
@@ -49,10 +51,19 @@ export class EditStrategyComponent implements OnInit {
   user: User | null = null;
   editPopupVisible = false;
   confirmPopupVisible = false;
+  strategyId: string | null = null;
+  
+  // Mini card properties
+  currentStrategyName: string = 'My Strategy';
+  lastModifiedText: string = 'Never modified';
+  isFavorited: boolean = false;
+  isEditingName: boolean = false;
+  editingStrategyName: string = '';
 
   constructor(
     private store: Store,
     private router: Router,
+    private route: ActivatedRoute,
     private strategySvc: SettingsService,
     private reportSvc: ReportService
   ) {
@@ -63,6 +74,35 @@ export class EditStrategyComponent implements OnInit {
     this.getUserData();
     this.getActualBalance();
     this.listenConfigurations();
+    this.getStrategyId();
+  }
+
+  getStrategyId() {
+    this.route.queryParams.subscribe(params => {
+      this.strategyId = params['strategyId'] || null;
+      if (this.strategyId) {
+        this.loadStrategyConfiguration();
+      }
+    });
+  }
+
+  async loadStrategyConfiguration() {
+    if (!this.strategyId) return;
+    
+    try {
+      const strategyData = await this.strategySvc.getStrategyView(this.strategyId);
+      if (strategyData) {
+        // Cargar la configuración de la estrategia específica
+        this.store.dispatch(resetConfig({ config: strategyData.configuration }));
+        
+        // Actualizar datos de la mini card desde configuration-overview
+        this.currentStrategyName = strategyData.overview.name;
+        this.lastModifiedText = this.formatDate(strategyData.overview.updated_at.toDate());
+        this.isFavorited = false; // TODO: Implementar favoritos en la base de datos
+      }
+    } catch (error) {
+      console.error('Error loading strategy configuration:', error);
+    }
   }
 
   fetchUserKey() {
@@ -114,10 +154,9 @@ export class EditStrategyComponent implements OnInit {
   loadConfig(balance: number) {
     this.loading = true;
     this.strategySvc
-      .getStrategyConfig(this.user?.id)
-      .then((docSnap) => {
-        if (docSnap && docSnap['exists']()) {
-          const data = docSnap['data']() as StrategyState;
+      .getConfiguration(this.user?.id || '')
+      .then((data) => {
+        if (data) {
           const riskPerTradeBalance = {
             ...data.riskPerTrade,
             balance: balance,
@@ -217,37 +256,59 @@ export class EditStrategyComponent implements OnInit {
   }
 
   save = () => {
-    if (this.config && this.myChoices) {
+    if (this.config && this.myChoices && this.user?.id) {
       this.loading = true;
       
       // Crear nueva configuración solo con las reglas de My Choices
-      const newConfig: StrategyState = {
-        maxDailyTrades: this.myChoices.maxDailyTrades,
-        riskReward: this.myChoices.riskReward,
-        riskPerTrade: this.myChoices.riskPerTrade,
-        daysAllowed: this.myChoices.daysAllowed,
-        assetsAllowed: this.myChoices.assetsAllowed,
-        hoursAllowed: this.myChoices.hoursAllowed
-      };
+            const newConfig: StrategyState = {
+              maxDailyTrades: this.myChoices.maxDailyTrades,
+              riskReward: this.myChoices.riskReward,
+              riskPerTrade: this.myChoices.riskPerTrade,
+              daysAllowed: this.myChoices.daysAllowed,
+              assetsAllowed: this.myChoices.assetsAllowed,
+              hoursAllowed: this.myChoices.hoursAllowed
+            };
 
       // Guardar en el store
       this.store.dispatch(resetConfig({ config: newConfig }));
 
-      // Guardar en Firebase
-      this.strategySvc
-        .saveStrategyConfig(this.user?.id, newConfig)
-        .then(() => {
-          alert('Strategy Saved');
-          this.router.navigate(['/strategy']);
-        })
-        .catch((err) => {
-          console.error('Save Error:', err);
-          alert('Error Saving');
-        })
-        .finally(() => {
-          this.loading = false;
-          this.closeConfirmModal();
-        });
+      // Si hay strategyId, actualizar la estrategia existente
+      if (this.strategyId) {
+            this.strategySvc
+              .updateStrategyView(this.strategyId, {
+                configuration: newConfig
+              })
+          .then(() => {
+            // Actualizar fecha de modificación en la mini card
+            this.lastModifiedText = this.formatDate(new Date());
+            alert('Strategy Updated');
+            this.router.navigate(['/strategy']);
+          })
+          .catch((err) => {
+            console.error('Update Error:', err);
+            alert('Error Updating Strategy');
+          })
+          .finally(() => {
+            this.loading = false;
+            this.closeConfirmModal();
+          });
+      } else {
+        // Si no hay strategyId, crear nueva estrategia
+        this.strategySvc
+          .createStrategyView(this.user.id, this.currentStrategyName, newConfig)
+          .then((strategyId) => {
+            alert('Strategy Created');
+            this.router.navigate(['/strategy']);
+          })
+          .catch((err) => {
+            console.error('Create Error:', err);
+            alert('Error Creating Strategy');
+          })
+          .finally(() => {
+            this.loading = false;
+            this.closeConfirmModal();
+          });
+      }
     }
   };
 
@@ -262,6 +323,74 @@ export class EditStrategyComponent implements OnInit {
   closeConfirmModal = () => {
     this.confirmPopupVisible = false;
   };
+
+  // Mini card methods
+  startEditName() {
+    this.isEditingName = true;
+    this.editingStrategyName = this.currentStrategyName;
+    // Focus on input after view update
+    setTimeout(() => {
+      const input = document.querySelector('.strategy-name-input') as HTMLInputElement;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 0);
+  }
+
+  async saveStrategyName() {
+    if (!this.editingStrategyName.trim()) {
+      this.cancelEditName();
+      return;
+    }
+
+    if (this.editingStrategyName.trim() === this.currentStrategyName) {
+      this.cancelEditName();
+      return;
+    }
+
+    try {
+      if (this.strategyId) {
+        // Actualizar nombre en configuration-overview
+        await this.strategySvc.updateConfigurationOverview(this.strategyId, { 
+          name: this.editingStrategyName.trim() 
+        });
+        
+        // Actualizar UI
+        this.currentStrategyName = this.editingStrategyName.trim();
+        this.lastModifiedText = this.formatDate(new Date());
+      } else {
+        // Si no hay strategyId, solo actualizar localmente
+        this.currentStrategyName = this.editingStrategyName.trim();
+        this.lastModifiedText = this.formatDate(new Date());
+      }
+      
+      this.isEditingName = false;
+    } catch (error) {
+      console.error('Error updating strategy name:', error);
+      alert('Error updating strategy name');
+      this.cancelEditName();
+    }
+  }
+
+  cancelEditName() {
+    this.isEditingName = false;
+    this.editingStrategyName = '';
+  }
+
+  toggleFavorite() {
+    this.isFavorited = !this.isFavorited;
+    // TODO: Implementar persistencia de favoritos en Firebase
+    console.log('Strategy favorited:', this.isFavorited);
+  }
+
+  formatDate(date: Date): string {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    return `Last modified: ${month} ${day}, ${year}`;
+  }
 
   discardChanges() {
     this.router.navigate(['/strategy']);

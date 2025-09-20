@@ -64,6 +64,7 @@ export interface AssetsAllowedConfig {
   type: RuleType;
 }
 
+// Configuración que va en la colección 'configurations' - Solo reglas
 export interface StrategyState {
   assetsAllowed: AssetsAllowedConfig;
   hoursAllowed: HoursAllowedConfig;
@@ -71,4 +72,15 @@ export interface StrategyState {
   maxDailyTrades: MaxDailyTradesConfig;
   riskPerTrade: RiskPerTradeConfig;
   daysAllowed: DaysAllowedConfig;
+}
+
+// Datos básicos que van en la colección 'configuration-overview' - Solo metadatos
+export interface ConfigurationOverview {
+  userId: string;
+  name: string;
+  status: boolean;
+  created_at: any; // Timestamp de Firebase
+  updated_at: any; // Timestamp de Firebase
+  days_active: number;
+  configurationId: string; // ID del documento en la colección 'configurations'
 }

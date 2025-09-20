@@ -21,9 +21,23 @@
       <button class="action-btn favorite-btn" (click)="onFavorite()" [class.active]="strategy.isFavorite" title="Add to favorites">
         <span class="icon-like"></span>
       </button>
-      <button class="action-btn more-btn" (click)="onMoreOptions()" title="More options">
-        <span class="icon-more"></span>
-      </button>
+      <div class="more-options-container">
+        <button class="action-btn more-btn" (click)="onMoreOptions($event)" title="More options">
+          <span class="icon-more"></span>
+        </button>
+        
+        <!-- Mini Options Menu -->
+        <div class="options-menu" *ngIf="showOptionsMenu" (click)="$event.stopPropagation()">
+          <button class="option-btn duplicate-btn" (click)="onDuplicate()">
+            <span class="icon-copy"></span>
+            <span>Duplicate</span>
+          </button>
+          <button class="option-btn delete-btn" (click)="onDelete()">
+            <span class="icon-trash"></span>
+            <span>Delete</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
