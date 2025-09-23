@@ -117,14 +117,15 @@ export class ReportComponent implements OnInit {
     this.listenGroupedTrades();
     this.fetchUserRules();
 
-    this.updateSubscription = interval(120000).subscribe(() => {
-      if (this.userKey) {
-        this.loading = true;
-        if (this.user) {
-          this.fetchUserAccounts();
-        }
-      }
-    });
+    // Deshabilitado temporalmente para evitar recargas automáticas que causan duplicación de datos
+    // this.updateSubscription = interval(120000).subscribe(() => {
+    //   if (this.userKey) {
+    //     this.loading = true;
+    //     if (this.user) {
+    //       this.fetchUserAccounts();
+    //     }
+    //   }
+    // });
   }
 
   ngOnDestroy() {
@@ -250,13 +251,23 @@ export class ReportComponent implements OnInit {
   }
 
   computeStats(trades: { pnl?: number }[]) {
-    return {
+    console.log('=== COMPUTE STATS DEBUG ===');
+    console.log('Total trades from API:', trades.length);
+    console.log('First 5 trades:', trades.slice(0, 5));
+    console.log('Last 5 trades:', trades.slice(-5));
+    
+    const stats = {
       netPnl: calculateNetPnl(trades),
       tradeWinPercent: calculateTradeWinPercent(trades),
       profitFactor: calculateProfitFactor(trades),
       avgWinLossTrades: calculateAvgWinLossTrades(trades),
       totalTrades: calculateTotalTrades(trades),
     };
+    
+    console.log('Calculated stats:', stats);
+    console.log('========================');
+    
+    return stats;
   }
 
   fetchUserKey(account: AccountData) {
@@ -286,9 +297,7 @@ export class ReportComponent implements OnInit {
           this.fetchHistoryData(
             key,
             account.accountID,
-            account.accountNumber,
-            this.fromDate,
-            this.toDate
+            account.accountNumber
           );
 
           this.store.dispatch(setUserKey({ userKey: key }));
@@ -298,22 +307,20 @@ export class ReportComponent implements OnInit {
         },
       });
   }
+
   fetchHistoryData(
     key: string,
     accountId: string,
-    accNum: number,
-    from: string,
-    to: string
+    accNum: number
   ) {
     this.reportService
-      .getHistoryData(accountId, key, accNum, from, to)
+      .getHistoryData(accountId, key, accNum)
       .subscribe({
         next: (groupedTrades: GroupedTrade[]) => {
-          const actualGroupedTrades = this.accountHistory;
-
+          // Reemplazar en lugar de acumular para evitar duplicados
           this.store.dispatch(
             setGroupedTrades({
-              groupedTrades: [...actualGroupedTrades, ...groupedTrades],
+              groupedTrades: groupedTrades,
             })
           );
 
@@ -392,6 +399,7 @@ export class ReportComponent implements OnInit {
       return 0;
     });
   }
+
   onYearChange($event: string) {
     this.loading = true;
     this.fromDate = Date.UTC(Number($event), 0, 1, 0, 0, 0, 0).toString();

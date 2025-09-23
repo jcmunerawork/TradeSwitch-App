@@ -84,32 +84,31 @@ export class ReportService {
         password,
         server,
       })
-      .pipe(map((auth) => auth.accessToken));
+      .pipe(
+        map((auth) => { 
+          return auth.accessToken;
+        })
+      );
   }
 
   getHistoryData(
     accountId: string,
     accessToken: string,
-    accNum: number,
-    from: string,
-    to: string
+    accNum: number
   ): Observable<GroupedTrade[]> {
     const headers = new HttpHeaders({
       Authorization: `Bearer ${accessToken}`,
       accNum: accNum,
     });
 
-    const params = new HttpParams()
-      .set('from', from.toString())
-      .set('to', to.toString());
-
     return this.http
       .get<any>(
         `https://demo.tradelocker.com/backend-api/trade/accounts/${accountId}/ordersHistory`,
-        { headers, params }
+        { headers }
       )
       .pipe(
         map((details) => {
+          console.log('getHistoryData response:', details);
           const historyTrades: historyTrade[] =
             details.d.ordersHistory.map(arrayToHistoryTrade);
           const groupedTrades = groupOrdersByPosition(historyTrades);
@@ -125,6 +124,7 @@ export class ReportService {
   ): Observable<any> {
     const headers = new HttpHeaders({
       Authorization: `Bearer ${accessToken}`,
+      accountId: accountId,
       accNum: accNum.toString(),
     });
 
@@ -135,6 +135,7 @@ export class ReportService {
       )
       .pipe(
         map((details) => {
+          console.log('getBalanceData response:', details);
           return details.d.accountDetailsData[0] as unknown as number;
         })
       );

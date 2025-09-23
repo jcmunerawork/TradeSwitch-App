@@ -2,7 +2,28 @@
   <div
     class="calendar-titles mb-14 d-flex items-center inputText color-background justify-between"
   >
-    <p class="actual-month">{{ currentMonthYear }}</p>
+    <div class="month-navigation d-flex align-items-center gap-12">
+      <button 
+        class="nav-arrow nav-arrow-left" 
+        [disabled]="!canNavigateLeft()"
+        (click)="navigateToPreviousMonth()"
+        [class.disabled]="!canNavigateLeft()"
+      >
+        <span class="icon-arrow-left">‹</span>
+      </button>
+      
+      <p class="actual-month">{{ currentMonthYear }}</p>
+      
+      <button 
+        class="nav-arrow nav-arrow-right" 
+        [disabled]="!canNavigateRight()"
+        (click)="navigateToNextMonth()"
+        [class.disabled]="!canNavigateRight()"
+      >
+        <span class="icon-arrow-right">›</span>
+      </button>
+    </div>
+    
     <p class="calendar-title">My Strategy</p>
     <button class="export-btn d-flex align-items-center gap-8" (click)="exportData()">
       <span>Export Data</span>

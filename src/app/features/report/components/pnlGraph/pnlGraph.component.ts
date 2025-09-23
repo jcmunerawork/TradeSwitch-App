@@ -30,42 +30,23 @@ export class PnlGraphComponent {
   year!: string;
   dateRanges: { label: string; value: string }[] = [];
 
-  // Filter properties
-  showFilterDropdown = false;
-  selectedFilters: string[] = [];
-  availableFilters = [
-    { id: 'by-day', label: 'By Day', active: false },
-    { id: 'by-week', label: 'By Week', active: false },
-    { id: 'by-month', label: 'By Month', active: false },
-    { id: 'compare-feature', label: 'Compare feature', active: false }
-  ];
-  compareYears = {
-    year1: '2023',
-    year2: '2024'
-  };
+  // Date filter properties
+  showDateFilter = false;
+  selectedDate: string = '';
+  filteredData: GroupedTrade[] = [];
+  originalData: GroupedTrade[] = [];
 
   constructor(@Inject(PLATFORM_ID) private platformId: any) {}
 
   ngOnInit() {
     this.year = new Date().getFullYear().toString();
-    this.initializeCompareYears();
-  }
-
-  initializeCompareYears() {
-    const availableYears = this.getAvailableYears();
-    if (availableYears.length >= 2) {
-      this.compareYears.year1 = availableYears[0];
-      this.compareYears.year2 = availableYears[1];
-    } else if (availableYears.length === 1) {
-      this.compareYears.year1 = availableYears[0];
-      this.compareYears.year2 = availableYears[0];
-    }
   }
 
   ngOnChanges() {
     this.generateYearRangesPast(3);
-    this.initializeCompareYears();
-    this.chartOptions = this.getChartOptions(this.values);
+    this.originalData = [...this.values];
+    this.filteredData = [...this.values];
+    this.chartOptions = this.getChartOptions(this.filteredData);
   }
 
   generateYearRangesPast(yearsBack: number) {
@@ -93,10 +74,10 @@ export class PnlGraphComponent {
 
   getChartOptions(trades: GroupedTrade[]): any {
     const yearValue = this.year;
-    const filteredTrades = this.applyFilters(trades);
+    const filteredTrades = this.applyYearFilter(trades);
     
-    // Determine chart type and data based on active filters
-    const chartConfig = this.getChartConfig(filteredTrades, yearValue);
+    // Use monthly chart by default
+    const chartConfig = this.getMonthlyChartConfig(filteredTrades, yearValue);
     
     return {
       chart: {
@@ -210,7 +191,7 @@ export class PnlGraphComponent {
     };
   }
 
-  applyFilters(trades: GroupedTrade[]): GroupedTrade[] {
+  applyYearFilter(trades: GroupedTrade[]): GroupedTrade[] {
     if (!trades || trades.length === 0) return [];
     
     let filteredTrades = [...trades];
@@ -222,103 +203,24 @@ export class PnlGraphComponent {
       return tradeDate.getFullYear() === yearValue;
     });
 
-    // Return filtered trades - the chart config will handle the grouping
     return filteredTrades;
   }
 
-  groupTradesByWeek(trades: GroupedTrade[]): GroupedTrade[] {
-    const weeklyMap = new Map<string, GroupedTrade>();
-    
-    trades.forEach(trade => {
-      const date = new Date(Number(trade.updatedAt));
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay()); // Start of week (Sunday)
-      
-      const weekKey = weekStart.toISOString().split('T')[0];
-      
-      if (weeklyMap.has(weekKey)) {
-        const existingTrade = weeklyMap.get(weekKey)!;
-        existingTrade.pnl = (existingTrade.pnl || 0) + (trade.pnl || 0);
-      } else {
-        weeklyMap.set(weekKey, {
-          ...trade,
-          updatedAt: weekStart.getTime().toString()
-        });
-      }
-    });
-    
-    return Array.from(weeklyMap.values());
-  }
-
-  getChartConfig(trades: GroupedTrade[], yearValue: string) {
-    const activeFilters = this.getActiveFilters();
-    const byDayFilter = activeFilters.find(f => f.id === 'by-day');
-    const byWeekFilter = activeFilters.find(f => f.id === 'by-week');
-    const byMonthFilter = activeFilters.find(f => f.id === 'by-month');
-
-    if (byDayFilter?.active) {
-      return this.getDailyChartConfig(trades, yearValue);
-    } else if (byWeekFilter?.active) {
-      return this.getWeeklyChartConfig(trades, yearValue);
-    } else {
-      // Default to monthly or if by-month is active
-      return this.getMonthlyChartConfig(trades, yearValue);
+  applyDateFilter(trades: GroupedTrade[], selectedDate: string): GroupedTrade[] {
+    if (!selectedDate || selectedDate === '') {
+      return trades;
     }
+
+    const filterDate = new Date(selectedDate);
+    const startOfDay = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate());
+    const endOfDay = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate() + 1);
+
+    return trades.filter(trade => {
+      const tradeDate = new Date(Number(trade.updatedAt));
+      return tradeDate >= startOfDay && tradeDate < endOfDay;
+    });
   }
 
-  getDailyChartConfig(trades: GroupedTrade[], yearValue: string) {
-    const dailyMap: { [label: string]: number } = {};
-    
-    trades.forEach(trade => {
-      const date = new Date(Number(trade.updatedAt));
-      const dayKey = date.toISOString().split('T')[0];
-      dailyMap[dayKey] = (dailyMap[dayKey] || 0) + (trade.pnl || 0);
-    });
-
-    const sortedDays = Object.keys(dailyMap).sort();
-    const data = sortedDays.map(day => dailyMap[day]);
-    const categories = sortedDays.map(day => {
-      const date = new Date(day);
-      return `${date.getMonth() + 1}/${date.getDate()}`;
-    });
-
-    return { data, categories };
-  }
-
-  getWeeklyChartConfig(trades: GroupedTrade[], yearValue: string) {
-    const weeklyMap: { [label: string]: number } = {};
-    
-    trades.forEach(trade => {
-      const date = new Date(Number(trade.updatedAt));
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay()); // Start of week (Sunday)
-      
-      // Create a more reliable week key
-      const year = weekStart.getFullYear();
-      const weekNumber = this.getWeekNumber(weekStart);
-      const weekKey = `Week ${weekNumber}`;
-      
-      weeklyMap[weekKey] = (weeklyMap[weekKey] || 0) + (trade.pnl || 0);
-    });
-
-    // Sort weeks by week number
-    const sortedWeeks = Object.keys(weeklyMap).sort((a, b) => {
-      const weekA = parseInt(a.replace('Week ', ''));
-      const weekB = parseInt(b.replace('Week ', ''));
-      return weekA - weekB;
-    });
-    
-    const data = sortedWeeks.map(week => weeklyMap[week]);
-    const categories = sortedWeeks;
-
-    return { data, categories };
-  }
-
-  getWeekNumber(date: Date): number {
-    const start = new Date(date.getFullYear(), 0, 1);
-    const days = Math.floor((date.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
-    return Math.ceil((days + start.getDay() + 1) / 7);
-  }
 
   getMonthlyChartConfig(trades: GroupedTrade[], yearValue: string) {
     const monthlyMap: { [label: string]: number } = {};
@@ -355,9 +257,9 @@ export class PnlGraphComponent {
   }
 
   get getTotalProfit(): number {
-    // Apply the same year filter as the chart
-    const filteredTrades = this.applyFilters(this.values);
-    const totalProfit = filteredTrades.reduce(
+    // Apply the same filters as the chart
+    const yearFiltered = this.applyYearFilter(this.filteredData);
+    const totalProfit = yearFiltered.reduce(
       (acc, trade) => acc + (trade.pnl ?? 0),
       0
     );
@@ -365,68 +267,33 @@ export class PnlGraphComponent {
     return result;
   }
 
-  // Filter methods
-  toggleFilterDropdown() {
-    this.showFilterDropdown = !this.showFilterDropdown;
+  // Date filter methods
+  toggleDateFilter() {
+    this.showDateFilter = !this.showDateFilter;
   }
 
-  onFilterChange(filterId: string) {
-    const filter = this.availableFilters.find(f => f.id === filterId);
-    if (filter) {
-      // If it's a time-based filter (not compare-feature)
-      if (filterId !== 'compare-feature') {
-        // Deactivate all other time-based filters
-        this.availableFilters.forEach(f => {
-          if (f.id !== 'compare-feature' && f.id !== filterId) {
-            f.active = false;
-          }
-        });
-      }
-      
-      filter.active = !filter.active;
-      
-      if (filter.active) {
-        if (!this.selectedFilters.includes(filterId)) {
-          this.selectedFilters.push(filterId);
-        }
-      } else {
-        this.selectedFilters = this.selectedFilters.filter(id => id !== filterId);
-      }
-      
-      // Update chart when filter changes
-      this.updateChart();
+  onDateSelected(date: string) {
+    this.selectedDate = date;
+    this.applyFilters();
+  }
+
+  clearDateFilter() {
+    this.selectedDate = '';
+    this.filteredData = [...this.originalData];
+    this.updateChart();
+  }
+
+  applyFilters() {
+    if (this.selectedDate) {
+      this.filteredData = this.applyDateFilter(this.originalData, this.selectedDate);
+    } else {
+      this.filteredData = [...this.originalData];
     }
-  }
-
-  removeFilter(filterId: string) {
-    const filter = this.availableFilters.find(f => f.id === filterId);
-    if (filter) {
-      filter.active = false;
-      this.selectedFilters = this.selectedFilters.filter(id => id !== filterId);
-      
-      // Update chart when filter is removed
-      this.updateChart();
-    }
-  }
-
-  onYearChange1(year: string) {
-    this.compareYears.year1 = year;
-  }
-
-  onYearChange2(year: string) {
-    this.compareYears.year2 = year;
-  }
-
-  getActiveFilters() {
-    return this.availableFilters.filter(f => f.active);
-  }
-
-  isCompareFeatureActive() {
-    return this.availableFilters.find(f => f.id === 'compare-feature')?.active || false;
+    this.updateChart();
   }
 
   updateChart() {
-    this.chartOptions = this.getChartOptions(this.values);
+    this.chartOptions = this.getChartOptions(this.filteredData);
   }
 
   getAvailableYears(): string[] {

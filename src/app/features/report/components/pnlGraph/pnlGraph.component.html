@@ -7,80 +7,42 @@
     
     <!-- Filter Section -->
     <div class="filter-section">
-      <!-- Active Filters (Horizontal Scroll) -->
-      <div class="active-filters-container" *ngIf="getActiveFilters().length > 0">
-        <div class="active-filters-scroll">
-          @for (filter of getActiveFilters(); track filter.id) {
-          <div class="filter-chip">
-            <span class="filter-label">{{ filter.label }}</span>
-            <button class="remove-filter-btn" (click)="removeFilter(filter.id)">
-              <span class="icon-close">×</span>
-            </button>
-          </div>
-          }
+      <!-- Active Date Filter -->
+      <div class="active-filters-container" *ngIf="selectedDate">
+        <div class="filter-chip">
+          <span class="filter-label">{{ selectedDate | date:'short' }}</span>
+          <button class="remove-filter-btn" (click)="clearDateFilter()">
+            <span class="icon-close">×</span>
+          </button>
         </div>
       </div>
       
       <!-- Controls Row -->
       <div class="controls-row d-flex align-items-center gap-12">
-        <select
-          id="range-year-select"
-          class="year-select py-6 px-8 color-secondary-300 regularText"
-          [ngModel]="year"
-          (ngModelChange)="onYearSelected($event)"
-        >
-          @for (range of dateRanges; track $index) {
-          <option [value]="range.value">
-            {{ range.label }}
-          </option>
-          }
-        </select>
         
-        <button class="filter-btn" (click)="toggleFilterDropdown()">
-          <span class="filter-icon">▼</span>
-          <span>Filter</span>
+        <button class="filter-btn mr-20" (click)="toggleDateFilter()">
+          <span class="filter-icon">📅</span>
+          <span>Date Filter</span>
         </button>
       </div>
       
-      <!-- Filter Dropdown -->
-      <div class="filter-dropdown" *ngIf="showFilterDropdown">
+      <!-- Date Filter Dropdown -->
+      <div class="filter-dropdown mr-20" *ngIf="showDateFilter">
         <div class="filter-dropdown-content">
-          <div class="filter-options">
-            @for (filter of availableFilters; track filter.id) {
-            <label class="filter-option">
-              <input 
-                type="checkbox" 
-                [checked]="filter.active"
-                (change)="onFilterChange(filter.id)"
-              >
-              <span class="checkmark"></span>
-              <span class="option-label">{{ filter.label }}</span>
-            </label>
-            }
+          <div class="date-filter-section">
+            <h4 class="filter-title">Filter by Date</h4>
+            <input 
+              type="date" 
+              class="date-input"
+              [value]="selectedDate"
+              (change)="onDateSelected($any($event.target).value)"
+            >
+            <div class="filter-actions">
+              <button class="clear-btn" (click)="clearDateFilter()">
+                Clear Filter
+              </button>
+            </div>
           </div>
-          
-              <!-- Compare Years Section -->
-              <div class="compare-years" *ngIf="isCompareFeatureActive() && getAvailableYears().length > 1">
-                <h4 class="compare-title">Compare Years</h4>
-                <div class="year-selectors">
-                  <div class="year-selector">
-                    <label>Year 1</label>
-                    <select (change)="onYearChange1($any($event.target).value)" [value]="compareYears.year1">
-                      @for (year of getAvailableYears(); track year) {
-                      <option [value]="year">{{ year }}</option>
-                      }
-                    </select>
-                  </div>
-                  <div class="year-selector">
-                    <label>Year 2</label>
-                    <select (change)="onYearChange2($any($event.target).value)" [value]="compareYears.year2">
-                      @for (year of getAvailableYears(); track year) {
-                      <option [value]="year">{{ year }}</option>
-                      }
-                    </select>
-                  </div>
-                </div>
-              </div>
         </div>
       </div>
     </div>

@@ -14,7 +14,9 @@
 }
 
 .actual-month {
-  text-align: left;
+  text-align: center;
+  margin: 0;
+  min-width: 120px;
 }
 
 .calendar-title {
@@ -273,4 +275,55 @@
   color: #8e8e93;
   font-size: 10px;
   font-weight: 500;
+}
+
+// Month Navigation Styles
+.month-navigation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(158, 196, 242, 0.1);
+  border: 1px solid rgba(158, 196, 242, 0.3);
+  border-radius: 6px;
+  color: #b6c7de;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover:not(.disabled) {
+    background: rgba(158, 196, 242, 0.2);
+    border-color: rgba(158, 196, 242, 0.5);
+    color: #e3e3e3;
+  }
+  
+  &:active:not(.disabled) {
+    transform: translateY(1px);
+  }
+  
+  &.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    background: rgba(158, 196, 242, 0.05);
+    border-color: rgba(158, 196, 242, 0.1);
+    color: #6a6a6a;
+  }
+}
+
+.icon-arrow-left,
+.icon-arrow-right {
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  height: max-content;
+  font-size: 18px;
+  margin-bottom: 8px;
 }
