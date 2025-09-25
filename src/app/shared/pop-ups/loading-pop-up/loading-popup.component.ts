@@ -9,7 +9,7 @@ import { CommonModule } from '@angular/common';
     <div class="loading-overlay" *ngIf="visible">
       <div class="loading-box">
         <div class="spinner"></div>
-        <p>Cargando configuración...</p>
+        <p>Loading data...</p>
       </div>
     </div>
   `,

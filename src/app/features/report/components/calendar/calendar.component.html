@@ -9,7 +9,7 @@
         (click)="navigateToPreviousMonth()"
         [class.disabled]="!canNavigateLeft()"
       >
-        <span class="icon-arrow-left">‹</span>
+        <span class="material-symbols-outlined" style="font-size: 20px;">chevron_left</span>
       </button>
       
       <p class="actual-month">{{ currentMonthYear }}</p>
@@ -20,13 +20,14 @@
         (click)="navigateToNextMonth()"
         [class.disabled]="!canNavigateRight()"
       >
-        <span class="icon-arrow-right">›</span>
+        <span class="material-symbols-outlined" style="font-size: 20px;">chevron_right</span>
       </button>
     </div>
     
     <p class="calendar-title">My Strategy</p>
     <button class="export-btn d-flex align-items-center gap-8" (click)="exportData()">
       <span>Export Data</span>
+      <span class="material-symbols-outlined" style="font-size: 18px">call_made</span>
     </button>
   </div>
   <div
@@ -65,11 +66,7 @@
                 cell.followedStrategy ? 'positive-icon' : 'negative-icon'
               "
             >
-              <span
-                [ngClass]="
-                  cell.followedStrategy ? 'icon-check-box' : 'icon-uncheck-box'
-                "
-              ></span>
+              <span class="material-symbols-outlined" style="font-size: 20px;">{{ cell.followedStrategy ? 'check_box' : 'indeterminate_check_box' }}</span>
             </div>
             } @else {
             <div class="strategy-icon empty"></div>

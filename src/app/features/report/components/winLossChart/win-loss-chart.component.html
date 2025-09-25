@@ -8,6 +8,14 @@
   
   <div class="chart-content d-flex justify-center items-center">
     <div class="chart-wrapper">
+      <!-- Texto y número por fuera cuando no hay datos -->
+      @if (!values || values.length === 0) {
+      <div class="no-data-overlay">
+        <div class="no-data-text">No Data</div>
+        <div class="no-data-value">0</div>
+      </div>
+      }
+      
       <apx-chart
         [series]="chartOptions.series"
         [chart]="chartOptions.chart"
@@ -21,7 +29,8 @@
         style="width: 100%"
       ></apx-chart>
       
-      <!-- Labels internos siempre visibles -->
+      <!-- Labels internos solo cuando hay datos -->
+      @if (values && values.length > 0) {
       <div class="chart-labels-overlay">
         <div class="loss-segment">
           <div class="segment-value">{{ winLossData.lossValue }}</div>
@@ -32,6 +41,7 @@
           <div class="segment-percentage win-color">{{ winLossData.winPercentage }}%</div>
         </div>
       </div>
+      }
     </div>
   </div>
 </div>

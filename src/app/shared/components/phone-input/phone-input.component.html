@@ -2,35 +2,45 @@
   <label class="input-label" *ngIf="label">{{ label }}</label>
   <div class="phone-input-wrapper">
     <div class="country-selector" (click)="toggleCountryDropdown()">
-      <!--<span class="country-flag">{{ selectedCountry.flag }}</span>-->
-      <img
-        [src]="
-          'https://cdn.jsdelivr.net/npm/country-flag-icons@1.5.6/flags/3x2/' +
-          selectedCountry.code +
-          '.svg'
-        "
-        [alt]="selectedCountry.code + ' Flag'"
-        class="currency-flag"
-      />
+      @if (loading) {
+        <div class="loading-spinner"></div>
+      } @else {
+        <img
+          [src]="selectedCountry.flag"
+          [alt]="selectedCountry.code + ' Flag'"
+          class="currency-flag"
+        />
+      }
       <span class="country-code">{{ selectedCountry.dialCode }}</span>
-      <span class="dropdown-arrow">▼</span>
+      <span class="material-symbols-outlined dropdown-arrow" style="font-size: 18px;">
+        {{ showCountryDropdown ? 'arrow_drop_up' : 'arrow_drop_down' }}
+      </span>
 
       <div class="country-dropdown" *ngIf="showCountryDropdown">
-        <div
-          class="country-option"
-          *ngFor="let country of countries"
-          (click)="selectCountry(country)"
-        >
-          <img
-            [src]="
-              'https://cdn.jsdelivr.net/npm/country-flag-icons@1.5.6/flags/3x2/' +
-              country.code +
-              '.svg'
-            "
-            [alt]="country.code + ' Flag'"
-            class="currency-flag"
+        <div class="search-container">
+          <input
+            type="text"
+            placeholder="Search countries..."
+            class="country-search"
+            [value]="searchTerm"
+            (input)="onSearchInput($event)"
+            (click)="$event.stopPropagation()"
           />
-          <span class="country-code">{{ country.dialCode }}</span>
+        </div>
+        <div class="countries-list">
+          <div
+            class="country-option"
+            *ngFor="let country of filteredCountries"
+            (click)="selectCountry(country)"
+          >
+            <img
+              [src]="country.flag"
+              [alt]="country.code + ' Flag'"
+              class="currency-flag"
+            />
+            <span class="country-code">{{ country.dialCode }}</span>
+            <span class="country-name">{{ country.code }}</span>
+          </div>
         </div>
       </div>
     </div>

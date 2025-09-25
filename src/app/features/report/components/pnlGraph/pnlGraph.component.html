@@ -12,7 +12,7 @@
         <div class="filter-chip">
           <span class="filter-label">{{ selectedDate | date:'short' }}</span>
           <button class="remove-filter-btn" (click)="clearDateFilter()">
-            <span class="icon-close">×</span>
+            <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
           </button>
         </div>
       </div>
@@ -21,8 +21,8 @@
       <div class="controls-row d-flex align-items-center gap-12">
         
         <button class="filter-btn mr-20" (click)="toggleDateFilter()">
-          <span class="filter-icon">📅</span>
           <span>Date Filter</span>
+          <span class="material-symbols-outlined filter-icon" style="font-size: 20px;">calendar_today</span>
         </button>
       </div>
       

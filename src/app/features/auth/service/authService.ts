@@ -115,6 +115,35 @@ export class AuthService {
     return accounts.length > 0 ? accounts : null;
   }
 
+  async getAllAccounts(): Promise<AccountData[] | null> {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return null;
+    }
+    const accountsCollection = collection(this.db, 'accounts');
+    const querySnapshot = await getDocs(accountsCollection);
+    const accounts: AccountData[] = [];
+    querySnapshot.forEach((doc) => {
+      accounts.push(doc.data() as AccountData);
+    });
+    return accounts.length > 0 ? accounts : null;
+  }
+
+  async checkEmailExists(emailTradingAccount: string, currentUserId: string): Promise<boolean> {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return false;
+    }
+    const accountsCollection = collection(this.db, 'accounts');
+    const q = query(
+      accountsCollection, 
+      where('emailTradingAccount', '==', emailTradingAccount),
+      where('userId', '!=', currentUserId) // Exclude current user's accounts
+    );
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty; // Returns true if email exists for another user
+  }
+
   async deleteAccount(accountId: string): Promise<void> {
     if (!this.db) {
       console.warn('Firestore not available in SSR');

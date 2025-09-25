@@ -80,7 +80,7 @@ export class Strategy implements OnInit {
     private router: Router,
     private strategySvc: SettingsService,
     private reportSvc: ReportService,
-    private authService: AuthService
+    private authService: AuthService,
   ) {}
 
   ngOnInit(): void {
@@ -869,5 +869,10 @@ export class Strategy implements OnInit {
       console.error('Error copying strategy:', error);
       alert('Error copying strategy. Please try again.');
     }
+  }
+
+  // Navegar a trading accounts
+  navigateToTradingAccounts() {
+    this.router.navigate(['/trading-accounts']);
   }
 }

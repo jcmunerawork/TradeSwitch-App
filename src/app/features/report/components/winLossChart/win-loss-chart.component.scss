@@ -15,6 +15,7 @@
   color: #e3e3e3;
   font-size: 18px;
   font-weight: 600;
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
   margin: 0;
 }
 
@@ -47,6 +48,35 @@
   position: relative;
   width: 200px;
   height: 200px;
+}
+
+// Overlay para estado sin datos
+.no-data-overlay {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.no-data-text {
+  color: #6B7280;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
+  margin-bottom: 4px;
+}
+
+.no-data-value {
+  color: #6B7280;
+  font-size: 24px;
+  font-weight: 700;
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 // Labels internos siempre visibles
@@ -88,12 +118,14 @@
   font-size: 16px;
   font-weight: 700;
   color: #e3e3e3;
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.2;
 }
 
 .segment-percentage {
   font-size: 12px;
   font-weight: 500;
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.2;
   
   &.loss-color {

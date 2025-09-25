@@ -52,100 +52,61 @@ export class CalendarComponent {
   }
 
   generateCalendar(targetMonth: Date) {
-    console.log('=== CALENDAR DEBUG ===');
-    console.log('Total groupedTrades received:', this.groupedTrades?.length || 0);
-    console.log('Target month:', targetMonth);
-    
     const tradesByDay: { [date: string]: GroupedTrade[] } = {};
 
-    // Agrupar TODOS los trades por día, no solo los del mes seleccionado
-    console.log('=== GROUPING TRADES BY DAY ===');
-    console.log('Total trades to group:', this.groupedTrades.length);
-    
+    // Agrupar trades por día usando la zona horaria del dispositivo
     this.groupedTrades.forEach((trade) => {
-      const d = new Date(Number(trade.updatedAt));
-      // ¡IMPORTANTE! Usar métodos UTC para evitar problemas de zona horaria
-      const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+      const tradeDate = new Date(Number(trade.updatedAt));
+      // Usar la zona horaria local del dispositivo
+      const key = `${tradeDate.getFullYear()}-${tradeDate.getMonth()}-${tradeDate.getDate()}`;
 
       if (!tradesByDay[key]) tradesByDay[key] = [];
       tradesByDay[key].push(trade);
     });
-    
-    console.log('Unique date keys after grouping:', Object.keys(tradesByDay).length);
-    console.log('Total trades after grouping:', Object.values(tradesByDay).flat().length);
-    
-    // Verificar si hay duplicación en el agrupamiento
-    const allGroupedTrades = Object.values(tradesByDay).flat();
-    console.log('Trades by day keys:', Object.keys(tradesByDay).length);
-    console.log('Sample trades by day:', Object.entries(tradesByDay).slice(0, 3));
-    
-    // Debug: Verificar si hay trades duplicados
-    const allTradesInCalendar = Object.values(tradesByDay).flat();
-    console.log('Total unique trades in calendar data:', allTradesInCalendar.length);
-    console.log('Original groupedTrades length:', this.groupedTrades.length);
-    
-    // Verificar si hay duplicados por position_Id
-    const positionIds = allTradesInCalendar.map(t => t.position_Id);
-    const uniquePositionIds = [...new Set(positionIds)];
-    console.log('Unique position IDs:', uniquePositionIds.length);
-    console.log('Total position IDs (including duplicates):', positionIds.length);
-    
-    // Verificar si hay duplicados por fecha
-    const tradeDates = allTradesInCalendar.map(t => new Date(Number(t.updatedAt)).toISOString().split('T')[0]);
-    const uniqueDates = [...new Set(tradeDates)];
-    console.log('Unique dates:', uniqueDates.length);
-    console.log('Total dates (including duplicates):', tradeDates.length);
-    
-    // Verificar si hay trades con la misma fecha y position_Id
-    const tradeKeys = allTradesInCalendar.map(t => `${t.position_Id}-${new Date(Number(t.updatedAt)).toISOString().split('T')[0]}`);
-    const uniqueTradeKeys = [...new Set(tradeKeys)];
-    console.log('Unique trade keys (positionId-date):', uniqueTradeKeys.length);
-    console.log('Total trade keys (including duplicates):', tradeKeys.length);
 
-    const year = targetMonth.getUTCFullYear();
-    const month = targetMonth.getUTCMonth();
-    const firstDay = new Date(Date.UTC(year, month, 1));
-    const lastDay = new Date(Date.UTC(year, month + 1, 0));
+    // Verificar duplicados de manera simple
+    const allTrades = Object.values(tradesByDay).flat();
+    const uniqueTrades = allTrades.filter((trade, index, self) => 
+      index === self.findIndex(t => t.position_Id === trade.position_Id)
+    );
 
+    // Generar calendario del mes objetivo
+    const year = targetMonth.getFullYear();
+    const month = targetMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    // Calcular inicio y fin de la semana
     let startDay = new Date(firstDay);
-    startDay.setUTCDate(firstDay.getUTCDate() - firstDay.getUTCDay());
+    startDay.setDate(firstDay.getDate() - firstDay.getDay());
     let endDay = new Date(lastDay);
-    endDay.setUTCDate(lastDay.getUTCDate() + (6 - lastDay.getUTCDay()));
+    endDay.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
 
     const days: CalendarDay[] = [];
-    let d = new Date(startDay);
-    while (d <= endDay) {
-      const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+    let currentDay = new Date(startDay);
+    
+    while (currentDay <= endDay) {
+      const key = `${currentDay.getFullYear()}-${currentDay.getMonth()}-${currentDay.getDate()}`;
       const trades = tradesByDay[key] || [];
       const pnlTotal = trades.reduce((acc, t) => acc + (t.pnl ?? 0), 0);
 
       const wins = trades.filter((t) => (t.pnl ?? 0) > 0).length;
       const tradesCount = trades.length;
-      const tradeWinPercent =
-        tradesCount > 0 ? Math.round((wins / tradesCount) * 1000) / 10 : 0;
+      const tradeWinPercent = tradesCount > 0 ? Math.round((wins / tradesCount) * 1000) / 10 : 0;
+      
       let usedPluginToday = false;
-
       if (this.pluginHistory && this.pluginHistory.length > 0) {
         const foundRecord = this.pluginHistory.find((record) => {
-          const dateToCompare = new Date(record.updatedOn);
-          const dateToCompareDay = dateToCompare.getDate();
-          const dateToCompareMonth = dateToCompare.getMonth();
-          const dateToCompareYear = dateToCompare.getFullYear();
-
-          if (
-            dateToCompareDay === d.getUTCDate() &&
-            dateToCompareMonth === d.getUTCMonth() &&
-            dateToCompareYear === d.getUTCFullYear()
-          ) {
-            return true;
-          }
-          return false;
+          const recordDate = new Date(record.updatedOn);
+          return recordDate.getFullYear() === currentDay.getFullYear() &&
+                 recordDate.getMonth() === currentDay.getMonth() &&
+                 recordDate.getDate() === currentDay.getDate();
         });
         usedPluginToday = foundRecord?.isActive ?? false;
       }
 
       days.push({
-        date: new Date(d),
+        date: new Date(currentDay),
         trades: trades,
         pnlTotal,
         tradesCount: trades.length,
@@ -153,61 +114,14 @@ export class CalendarComponent {
         tradeWinPercent: Math.round(tradeWinPercent),
       });
 
-      d.setUTCDate(d.getUTCDate() + 1);
+      currentDay.setDate(currentDay.getDate() + 1);
     }
+
+    // Organizar en semanas
     this.calendar = [];
     for (let i = 0; i < days.length; i += 7) {
       this.calendar.push(days.slice(i, i + 7));
     }
-    
-    // Debug: Contar total de trades en el calendario
-    const totalTradesInCalendar = days.reduce((sum, day) => sum + day.tradesCount, 0);
-    console.log('=== CALENDAR GENERATION DEBUG ===');
-    console.log('Total trades counted in calendar:', totalTradesInCalendar);
-    console.log('Total trades in ALL days (not just current month):', Object.values(tradesByDay).flat().length);
-    console.log('Days generated:', days.length);
-    console.log('Days with trades:', days.filter(day => day.tradesCount > 0).length);
-    
-    // Verificar si hay trades duplicados en el calendario generado
-    const allCalendarTrades = days.flatMap(day => day.trades);
-    const allCalendarPositionIds = allCalendarTrades.map(t => t.position_Id);
-    const uniqueCalendarPositionIds = [...new Set(allCalendarPositionIds)];
-    console.log('Unique position IDs in calendar:', uniqueCalendarPositionIds.length);
-    console.log('Total position IDs in calendar:', allCalendarPositionIds.length);
-    console.log('Calendar duplication check:', allCalendarPositionIds.length === uniqueCalendarPositionIds.length ? 'NO DUPLICATES' : 'DUPLICATES FOUND');
-    
-    // Debug: Verificar trades por día específico
-    console.log('=== TRADES BY DAY DEBUG ===');
-    console.log('Target month UTC:', targetMonth.getUTCMonth());
-    console.log('All date keys:', Object.keys(tradesByDay));
-    
-    let totalTradesInCurrentMonth = 0;
-    Object.entries(tradesByDay).forEach(([dateKey, trades]) => {
-      // Corregir el parseo de la fecha: dateKey es "YYYY-M-D" (UTC)
-      const [year, month, day] = dateKey.split('-').map(Number);
-      const date = new Date(Date.UTC(year, month, day)); // Usar Date.UTC para consistencia
-      const monthNum = date.getUTCMonth();
-      const targetMonthNum = targetMonth.getUTCMonth();
-      
-      console.log(`DateKey: ${dateKey}, Month: ${monthNum}, TargetMonth: ${targetMonthNum}, Trades: ${trades.length}`);
-      
-      if (monthNum === targetMonthNum) {
-        totalTradesInCurrentMonth += trades.length;
-        console.log(`✓ Day ${dateKey}: ${trades.length} trades`);
-        console.log('  Trades:', trades.map(t => `${t.position_Id}-${new Date(Number(t.updatedAt)).toISOString().split('T')[0]}`));
-      }
-    });
-    
-    console.log('Total trades in current month (manual count):', totalTradesInCurrentMonth);
-    
-    // Debug: Verificar si hay trades duplicados en el mes actual
-    const currentMonthTrades = days.filter(day => day.tradesCount > 0).flatMap(day => day.trades);
-    const currentMonthPositionIds = currentMonthTrades.map(t => t.position_Id);
-    const uniqueCurrentMonthPositionIds = [...new Set(currentMonthPositionIds)];
-    console.log('Current month trades count:', currentMonthTrades.length);
-    console.log('Current month unique position IDs:', uniqueCurrentMonthPositionIds.length);
-    console.log('Current month duplicate check:', currentMonthPositionIds.length === uniqueCurrentMonthPositionIds.length ? 'NO DUPLICATES' : 'DUPLICATES FOUND');
-    console.log('========================');
   }
 
   getDateNDaysAgo(daysAgo: number): Date {
@@ -257,7 +171,7 @@ export class CalendarComponent {
   get currentMonthYear(): string {
     const options: Intl.DateTimeFormatOptions = { month: 'short' };
     const month = this.selectedMonth.toLocaleString('en-US', options);
-    const year = this.selectedMonth.getUTCFullYear();
+    const year = this.selectedMonth.getFullYear();
     return `${month}, ${year}`;
   }
 
@@ -266,7 +180,7 @@ export class CalendarComponent {
     if (!this.groupedTrades || this.groupedTrades.length === 0) return false;
     
     const earliestTradeDate = this.getEarliestTradeDate();
-    const firstDayOfSelectedMonth = new Date(Date.UTC(this.selectedMonth.getUTCFullYear(), this.selectedMonth.getUTCMonth(), 1));
+    const firstDayOfSelectedMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth(), 1);
     
     return earliestTradeDate < firstDayOfSelectedMonth;
   }
@@ -275,7 +189,7 @@ export class CalendarComponent {
     if (!this.groupedTrades || this.groupedTrades.length === 0) return false;
     
     const latestTradeDate = this.getLatestTradeDate();
-    const lastDayOfSelectedMonth = new Date(Date.UTC(this.selectedMonth.getUTCFullYear(), this.selectedMonth.getUTCMonth() + 1, 0));
+    const lastDayOfSelectedMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() + 1, 0);
     
     return latestTradeDate > lastDayOfSelectedMonth;
   }
@@ -296,26 +210,20 @@ export class CalendarComponent {
 
   navigateToPreviousMonth(): void {
     if (this.canNavigateLeft()) {
-      console.log('=== NAVIGATING TO PREVIOUS MONTH ===');
-      console.log('Current month:', this.selectedMonth);
-      this.selectedMonth = new Date(Date.UTC(this.selectedMonth.getUTCFullYear(), this.selectedMonth.getUTCMonth() - 1));
-      console.log('New month:', this.selectedMonth);
+      this.selectedMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() - 1);
       this.generateCalendar(this.selectedMonth);
     }
   }
 
   navigateToNextMonth(): void {
     if (this.canNavigateRight()) {
-      console.log('=== NAVIGATING TO NEXT MONTH ===');
-      console.log('Current month:', this.selectedMonth);
-      this.selectedMonth = new Date(Date.UTC(this.selectedMonth.getUTCFullYear(), this.selectedMonth.getUTCMonth() + 1));
-      console.log('New month:', this.selectedMonth);
+      this.selectedMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() + 1);
       this.generateCalendar(this.selectedMonth);
     }
   }
 
   navigateToCurrentMonth(): void {
-    this.selectedMonth = new Date(Date.UTC(this.currentDate.getUTCFullYear(), this.currentDate.getUTCMonth()));
+    this.selectedMonth = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth());
     this.generateCalendar(this.selectedMonth);
   }
 

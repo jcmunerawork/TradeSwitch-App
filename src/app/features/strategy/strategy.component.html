@@ -10,7 +10,7 @@
     <!-- Search Input -->
     <div class="search-container">
       <div class="search-input-wrapper">
-        <span class="icon-search search-icon"></span>
+        <span class="material-symbols-outlined search-icon" style="font-size: 20px;">search</span>
         <app-text-input
           placeholder="Search by name"
           [label]="''"
@@ -28,7 +28,7 @@
     
     <!-- New Strategy Button -->
     <button class="add-strategy-btn d-flex align-items-center gap-8" (click)="toggleStrategySelector()">
-      <span class="icon-plus"></span>
+      <span class="material-symbols-outlined" style="font-size: 20px;">add</span>
       <span>Add Strategy</span>
     </button>
   </div>
@@ -52,20 +52,34 @@
   <div class="plan-banner" [class]="'plan-banner-' + planBannerType">
     <div class="banner-content">
       <div class="banner-icon">
-        <span class="icon-info"></span>
+        <span class="material-symbols-outlined" style="font-size: 20px;">info</span>
       </div>
       <div class="banner-message">
         <span>{{ planBannerMessage }}</span>
         <span class="upgrade-link" (click)="onUpgradePlan()">Upgrade anytime.</span>
       </div>
       <button class="banner-close" (click)="onCloseBanner()">
-        <span class="icon-close">×</span>
+        <span class="material-symbols-outlined" style="font-size: 20px;">close</span>
       </button>
     </div>
   </div>
   }
 
-  <!-- Active Strategy -->
+  <!-- Primera validación: ¿Existe alguna estrategia en general? -->
+  @if (userStrategies.length === 0 && !activeStrategy) {
+  <!-- No hay estrategias en absoluto -->
+  <div class="empty-strategies d-flex flex-col align-items-center">
+    <div class="empty-icon">
+      <span class="material-symbols-outlined" style="font-size: 28px;">content_paste_search</span>
+    </div>
+    <h3 class="empty-title">No strategies found</h3>
+    <p class="empty-description">Create your first strategy to start trading with TradeSwitch.</p>
+    <button class="create-first-btn" (click)="toggleStrategySelector()">
+      Create First Strategy
+    </button>
+  </div>
+  } @else {
+  <!-- Hay al menos una estrategia, mostrar la activa -->
   @if (activeStrategy) {
   <div class="active-strategy d-flex flex-col mb-20">
     <h3 class="section-title">Active Strategy</h3>
@@ -86,8 +100,9 @@
   </div>
   }
 
-  <!-- Other Strategies -->
+  <!-- Other Strategies Section -->
   @if (userStrategies.length > 0) {
+  <!-- Hay otras estrategias, mostrar las cards -->
   <div class="other-strategies d-flex flex-col">
     <h3 class="section-title">Other Strategies</h3>
     <p class="section-description">Manage your other strategy configurations.</p>
@@ -119,26 +134,49 @@
       }
     </div>
   </div>
-  } @else if (filteredStrategies.length === 0 && searchTerm) {
+  } @else if (activeStrategy && userStrategies.length === 0) {
+  <!-- Solo tiene la estrategia activa y puede añadir más -->
+  <div class="other-strategies d-flex flex-col">
+    <h3 class="section-title">Other Strategies</h3>
+    <p class="section-description">You can add more strategies to your plan.</p>
+    
+    <div class="empty-strategies d-flex flex-col align-items-center">
+      <div class="empty-icon">
+        <span class="material-symbols-outlined" style="font-size: 28px;">add_circle</span>
+      </div>
+      <h3 class="empty-title">Add more strategies</h3>
+      <p class="empty-description">Your plan allows you to create additional strategies.</p>
+      <button class="create-first-btn" (click)="toggleStrategySelector()">
+        Create Additional Strategy
+      </button>
+    </div>
+  </div>
+  }
+  }
+
+  <!-- Validaciones adicionales para casos especiales -->
+  @if (accountsData.length === 0 && userStrategies.length === 0 && !activeStrategy) {
   <div class="empty-strategies d-flex flex-col align-items-center">
     <div class="empty-icon">
-      <span class="icon-search"></span>
+      <span class="material-symbols-outlined" style="font-size: 28px;">group_add</span>
+    </div>
+    <h3 class="empty-title">No trading accounts found</h3>
+    <p class="empty-description">You need to add a trading account before creating strategies.</p>
+    <button class="create-first-btn" (click)="navigateToTradingAccounts()">
+      Add Trading Account
+    </button>
+  </div>
+  }
+
+  @if (filteredStrategies.length === 0 && searchTerm && userStrategies.length > 0) {
+  <div class="empty-strategies d-flex flex-col align-items-center">
+    <div class="empty-icon">
+      <span class="material-symbols-outlined" style="font-size: 28px;">search</span>
     </div>
     <h3 class="empty-title">No strategies found</h3>
     <p class="empty-description">No strategies match your search criteria.</p>
     <button class="create-first-btn" (click)="searchTerm = ''; filterStrategies()">
       Clear search
-    </button>
-  </div>
-  } @else if (userStrategies.length === 0) {
-  <div class="empty-strategies d-flex flex-col align-items-center">
-    <div class="empty-icon">
-      <span class="icon-strategy"></span>
-    </div>
-    <h3 class="empty-title">No other strategies yet</h3>
-    <p class="empty-description">Create your first other strategy to start trading with TradeSwitch.</p>
-    <button class="create-first-btn" (click)="toggleStrategySelector()">
-      Create First Other Strategy
     </button>
   </div>
   }
@@ -150,7 +188,7 @@
     <div class="modal-header">
       <h2 class="modal-title">Ready to expand your trading?</h2>
       <button class="modal-close" (click)="onCloseUpgradeModal()">
-        <span class="icon-close">×</span>
+        <span class="material-symbols-outlined" style="font-size: 20px;">close</span>
       </button>
     </div>
     <div class="modal-body">

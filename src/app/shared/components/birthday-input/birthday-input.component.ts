@@ -29,7 +29,10 @@ export class BirthdayInputComponent implements ControlValueAccessor {
 
   dateValue: DateValue = { month: '', day: '', year: '' };
   touched: boolean = false;
-
+  showMonthDropdown: boolean = false;
+  showDayDropdown: boolean = false;
+  showYearDropdown: boolean = false;
+ 
   months = [
     { value: '01', label: 'January' },
     { value: '02', label: 'February' },
@@ -107,5 +110,38 @@ export class BirthdayInputComponent implements ControlValueAccessor {
       this.touched = true;
       this.onTouched();
     }
+  }
+
+  onMonthFocus(): void {
+    this.showMonthDropdown = true;
+    this.showDayDropdown = false;
+    this.showYearDropdown = false;
+  }
+
+  onDayFocus(): void {
+    this.showMonthDropdown = false;
+    this.showDayDropdown = true;
+    this.showYearDropdown = false;
+  }
+
+  onYearFocus(): void {
+    this.showMonthDropdown = false;
+    this.showDayDropdown = false;
+    this.showYearDropdown = true;
+  }
+
+  onMonthBlur(): void {
+    this.showMonthDropdown = false;
+    this.onBlur();
+  }
+
+  onDayBlur(): void {
+    this.showDayDropdown = false;
+    this.onBlur();
+  }
+
+  onYearBlur(): void {
+    this.showYearDropdown = false;
+    this.onBlur();
   }
 }

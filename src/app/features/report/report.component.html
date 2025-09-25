@@ -1,3 +1,4 @@
+<!-- Contenido principal -->
 <div class="main-titles color-background d-flex flex-col mb-50">
   <h1 class="titleText mb-32">My Reports</h1>
   <h3 class="regularText">
@@ -6,7 +7,7 @@
 </div>
 
 <!-- Account Info and Actions Header -->
-@if(accountsData.length > 0 && !loading) {
+@if(accountsData.length > 0) {
 <div class="account-header d-flex justify-between align-items-center mb-32">
   <div class="account-info d-flex flex-col">
     <h2 class="account-name color-background">{{ getCurrentAccountName() }}</h2>
@@ -16,24 +17,32 @@
   </div>
   
   <div class="action-buttons d-flex gap-12">
+    @if (!loading) {
     <button class="export-btn d-flex align-items-center gap-8" (click)="exportAllData()">
-      <span class="icon-refresh"></span>
       <span>Export Data</span>
+      <span class="material-symbols-outlined" style="font-size: 18px">call_made</span>
     </button>
     
     <button class="edit-strategy-btn d-flex align-items-center gap-8" (click)="goToEditStrategy()">
-      <span class="icon-edit"></span>
       <span>Edit Strategy</span>
+      <span class="material-symbols-outlined" style="font-size: 18px">edit_square</span>
     </button>
+    }
     
     <div class="change-account-dropdown">
       <button class="change-account-btn d-flex align-items-center gap-8" (click)="toggleAccountDropdown()">
         <span>Change account</span>
-        <span class="icon-chevron"></span>
+        <span class="material-symbols-outlined" style="font-size: 18px">keyboard_arrow_down</span>
       </button>
       
       @if(showAccountDropdown) {
       <div class="account-dropdown">
+        <div class="account-dropdown-header d-flex justify-between align-items-center p-12">
+          <span class="smallText color-secondary-300">Select Account</span>
+          <button class="refresh-accounts-btn" (click)="refreshAccounts()" title="Refresh accounts">
+            <span class="material-symbols-outlined" style="font-size: 16px;">refresh</span>
+          </button>
+        </div>
         @for(account of accountsData; track account.id) {
         <div class="account-option" (click)="selectAccount(account)">
           <div class="account-option-name">{{ account.accountName }}</div>
@@ -46,28 +55,35 @@
   </div>
 </div>
 }
-@if(accountsData.length === 0 && !loading) {
-<div
-  class="no-accounts d-flex flex-col items-center justify-center px-50 pb-50"
->
-  <span
-    class="icon-info color-secondary-300 mb-20"
-    style="font-size: 48px"
-  ></span>
-  <h2 class="subtitle mb-10 color-background">No accounts connected</h2>
-  <p class="smallText color-secondary-300 mb-20">
-    Connect a trading account to start tracking your performance and strategy
-    adherence.
-  </p>
-  <a
-    routerLink="/add-account"
-    class="add-account-btn p-10 bg-primary-400 color-bg-black inputText"
-  >
-    Connect Account
-  </a>
-</div>
-}
 
+@if(accountsData.length === 0) {
+  <div class="empty-strategies d-flex flex-col align-items-center">
+    <div class="empty-icon">
+      <span class="material-symbols-outlined" style="font-size: 28px;">group_add</span>
+    </div>
+    <h3 class="empty-title">No trading accounts found</h3>
+    <p class="empty-description">You need to add a trading account before creating strategies.</p>
+    <button class="create-first-btn" (click)="navigateToTradingAccounts()">
+      Add Trading Account
+    </button>
+  </div>
+} @else if (loading) {
+  <!-- Loading state - solo muestra el dropdown de cambio de cuenta -->
+  <div class="loading-content d-flex flex-col align-items-center">
+    <div class="loading-spinner-container">
+      <div class="loading-spinner"></div>
+    </div>
+    <h3 class="loading-title">Loading your trading data...</h3>
+    <p class="loading-message">Please wait while we fetch your account information.</p>
+    
+    @if (showReloadButton) {
+    <button class="reload-btn" (click)="reloadData()">
+      <span class="material-symbols-outlined" style="font-size: 18px;">refresh</span>
+      Reload Data
+    </button>
+    }
+  </div>
+} @else {
 <div class="d-flex stats-card-container mb-24">
   <app-stat-card
     class="stat-card"
@@ -107,5 +123,4 @@
   [pluginHistory]="pluginHistory"
   (strategyFollowedPercentageChange)="onStrategyPercentageChange($event)"
 ></app-calendar>
-
-<app-loading-popup [visible]="loading"></app-loading-popup>
+}

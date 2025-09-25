@@ -1,6 +1,7 @@
-import { Component, Input, forwardRef } from '@angular/core';
+import { Component, Input, forwardRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, FormsModule, ReactiveFormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { CountryService, CountryOption } from '../../../services/countryService';
 
 interface CountryCode {
   code: string;
@@ -22,33 +23,69 @@ interface CountryCode {
     }
   ]
 })
-export class PhoneInputComponent implements ControlValueAccessor {
+export class PhoneInputComponent implements ControlValueAccessor, OnInit {
   @Input() label: string = 'Phone number';
   @Input() placeholder: string = '(000) 00-0000';
   @Input() required: boolean = false;
   @Input() disabled: boolean = false;
 
-  selectedCountry: CountryCode = { code: 'US', flag: '🇺🇸', dialCode: '+1' };
+  selectedCountry: CountryCode = { code: 'US', flag: 'https://flagcdn.com/us.svg', dialCode: '+1' };
   phoneNumber: string = '';
   showCountryDropdown: boolean = false;
   touched: boolean = false;
+  searchTerm: string = '';
+  filteredCountries: CountryCode[] = [];
+  countries: CountryCode[] = [];
+  loading: boolean = true;
 
-  countries: CountryCode[] = [
-    { code: 'US', flag: '🇺🇸', dialCode: '+1' },
-    { code: 'CA', flag: '🇨🇦', dialCode: '+1' },
-    { code: 'MX', flag: '🇲🇽', dialCode: '+52' },
-    { code: 'CO', flag: '🇨🇴', dialCode: '+57' },
-    { code: 'ES', flag: '🇪🇸', dialCode: '+34' },
-    { code: 'GB', flag: '🇬🇧', dialCode: '+44' },
-    { code: 'DE', flag: '🇩🇪', dialCode: '+49' },
-    { code: 'FR', flag: '🇫🇷', dialCode: '+33' }
-  ];
+  constructor(private countryService: CountryService) {}
+
+  ngOnInit(): void {
+    this.loadCountries();
+  }
+
+  private loadCountries(): void {
+    this.countryService.getCountries().subscribe({
+      next: (countries) => {
+        this.countries = countries;
+        this.filteredCountries = countries;
+        this.loading = false;
+        
+        // Buscar Colombia por defecto, si no existe usar US
+        const colombia = countries.find(c => c.code === 'CO');
+        if (colombia) {
+          this.selectedCountry = colombia;
+        }
+      },
+      error: (error) => {
+        console.error('Error loading countries:', error);
+        this.loading = false;
+        // Mantener el país por defecto en caso de error
+      }
+    });
+  }
 
   onChange = (value: string) => {};
   onTouched = () => {};
 
   writeValue(value: string): void {
-    this.phoneNumber = value;
+    if (value) {
+      // Si el valor ya incluye un código de país, extraer solo el número
+      const phoneMatch = value.match(/^(\+\d{1,4})\s(.+)$/);
+      if (phoneMatch) {
+        const [, dialCode, phoneNumber] = phoneMatch;
+        // Buscar el país correspondiente al código de marcación
+        const country = this.countries.find(c => c.dialCode === dialCode);
+        if (country) {
+          this.selectedCountry = country;
+        }
+        this.phoneNumber = phoneNumber;
+      } else {
+        this.phoneNumber = value;
+      }
+    } else {
+      this.phoneNumber = '';
+    }
   }
 
   registerOnChange(fn: any): void {
@@ -66,7 +103,12 @@ export class PhoneInputComponent implements ControlValueAccessor {
   onPhoneInput(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.phoneNumber = value;
-    this.onChange(`${this.selectedCountry.dialCode} ${value}`);
+    this.onChange(this.formatPhoneNumber(value));
+  }
+
+  private formatPhoneNumber(phoneNumber: string): string {
+    if (!phoneNumber) return '';
+    return `${this.selectedCountry.dialCode} ${phoneNumber}`;
   }
 
   onBlur(): void {
@@ -79,12 +121,34 @@ export class PhoneInputComponent implements ControlValueAccessor {
   selectCountry(country: CountryCode): void {
     this.selectedCountry = country;
     this.showCountryDropdown = false;
-    this.onChange(`${country.dialCode} ${this.phoneNumber}`);
+    this.onChange(this.formatPhoneNumber(this.phoneNumber));
   }
 
   toggleCountryDropdown(): void {
-    if (!this.disabled) {
+    if (!this.disabled && !this.loading) {
       this.showCountryDropdown = !this.showCountryDropdown;
+      if (this.showCountryDropdown) {
+        this.filteredCountries = this.countries;
+        this.searchTerm = '';
+      }
+    }
+  }
+
+  onSearchInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchTerm = value;
+    this.filterCountries();
+  }
+
+  private filterCountries(): void {
+    if (!this.searchTerm) {
+      this.filteredCountries = this.countries;
+    } else {
+      const searchLower = this.searchTerm.toLowerCase();
+      this.filteredCountries = this.countries.filter(country => 
+        country.code.toLowerCase().includes(searchLower) ||
+        country.dialCode.includes(searchLower)
+      );
     }
   }
 }

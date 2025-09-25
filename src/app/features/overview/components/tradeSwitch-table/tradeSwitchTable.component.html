@@ -10,8 +10,8 @@
       <div class="table-actions-container smallText d-flex items-center">
         <div class="search-user-container d-flex items-center p-10 mr-10">
           <label for="search-user" class="mr-10"
-            ><span class="icon-search color-background"></span
-          ></label>
+            ><span class="material-icons color-background" style="font-size: 20px;">search</span>
+          </label>
           <input
             id="search-user"
             type="text"
@@ -26,7 +26,7 @@
             class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
             (click)="openFilter()"
           >
-            <span class="icon-filter color-secondary-300"></span> Filter
+            <span class="material-icons color-secondary-300" style="font-size: 20px;">filter_list</span> Filter
           </button>
           @if (showFilter) {
           <div class="filter-modal py-20 px-24 d-flex flex-col">
@@ -152,14 +152,14 @@
           (click)="prevPage()"
           [disabled]="currentPage === 1"
         >
-          &lt;
+          <span class="material-icons" style="font-size: 18px;">chevron_left</span>
         </button>
         <button
           class="regularText"
           (click)="goToPage(1)"
           [disabled]="currentPage === 1"
         >
-          &lt;&lt;
+          <span class="material-icons" style="font-size: 18px;">first_page</span>
         </button>
       </div>
 
@@ -170,14 +170,14 @@
           (click)="goToPage(totalPages)"
           [disabled]="currentPage === totalPages"
         >
-          &gt;&gt;
+          <span class="material-icons" style="font-size: 18px;">last_page</span>
         </button>
         <button
           class="regularText"
           (click)="nextPage()"
           [disabled]="currentPage === totalPages"
         >
-          &gt;
+          <span class="material-icons" style="font-size: 18px;">chevron_right</span>
         </button>
       </div>
     </div>

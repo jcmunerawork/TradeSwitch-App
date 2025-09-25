@@ -196,16 +196,14 @@
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   
   &:hover {
     background: rgba(81, 134, 228, 0.2);
     border-color: rgba(81, 134, 228, 0.5);
   }
-}
-
-.icon-export {
-  font-size: 16px;
-  font-weight: bold;
 }
 
 // Calendar content wrapper
@@ -314,16 +312,4 @@
     border-color: rgba(158, 196, 242, 0.1);
     color: #6a6a6a;
   }
-}
-
-.icon-arrow-left,
-.icon-arrow-right {
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: max-content;
-  height: max-content;
-  font-size: 18px;
-  margin-bottom: 8px;
 }

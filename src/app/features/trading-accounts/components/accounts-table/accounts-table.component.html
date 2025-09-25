@@ -9,7 +9,7 @@
       <div class="table-actions-container smallText d-flex items-center">
         <div class="search-user-container d-flex items-center p-10 mr-10">
           <label for="search-user" class="mr-10"
-            ><span class="icon-search color-background"></span
+            ><span class="material-symbols-outlined color-background" style="font-size: 18px">search</span
           ></label>
           <input
             id="search-account"
@@ -24,7 +24,7 @@
           class="sort-Btn regularText color-secondary-300 p-10 mr-10"
           (click)="toggleSort()"
         >
-          <span>{{ sortAsc ? "↑" : "↓" }}</span>
+          <span class="material-symbols-outlined" style="font-size: 18px">swap_vert</span>
           Sort by: Last Update
         </button>
 
@@ -33,7 +33,7 @@
             class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
             (click)="openFilter()"
           >
-            <span class="icon-filter color-secondary-300"></span> Filter
+            <span class="material-symbols-outlined color-secondary-300" style="font-size: 18px">filter_alt</span> Filter
           </button>
           @if (showFilter) {
           <div class="filter-modal py-20 px-24 d-flex flex-col">
@@ -86,6 +86,7 @@
               </div>
             </th>
             <th class="regularText py-18">Broker</th>
+            <th class="regularText py-18">Server</th>
             <th class="regularText py-18">Balance</th>
             <th class="regularText py-18">Profit calculation</th>
             <th class="regularText py-18">Last update</th>
@@ -109,11 +110,17 @@
             </td>
             <td class="smallText">
               <div class="d-flex items-center gap-8">
+                <p>{{ account.broker }}</p>
+                <span class="material-symbols-outlined color-secondary-500" style="font-size: 24px" title="Broker options">keyboard_arrow_down</span>
+              </div>
+            </td>
+            <td class="smallText">
+              <div class="d-flex items-center gap-8">
                 <div class="broker-icon">
                   <span class="broker-letter">T</span>
                 </div>
                 <p>{{ account.server }}</p>
-                <span class="icon-chevron color-secondary-500" style="font-size: 0.8rem" title="Broker options"></span>
+                <span class="material-symbols-outlined color-secondary-500" style="font-size: 24px" title="Broker options">keyboard_arrow_down</span>
               </div>
             </td>
             <td class="smallText">
@@ -130,42 +137,26 @@
               </p>
             </td>
             <td class="smallText">
-              <span class="icon-refresh color-secondary-500 upload-icon" title="Upload"></span>
+              <span class="material-symbols-outlined color-secondary-500" title="Upload" style="font-size: 24px">upload</span>
             </td>
             <td class="smallText">
-              <span class="icon-uncheck-box color-red clear-icon" title="Clear trades"></span>
+              <span class="material-symbols-outlined color-red" title="Clear trades" style="font-size: 24px">cancel</span>
             </td>
             <td class="smallText">
               <span
                 (click)="deleteAccount(account)"
-                class="delete-icon color-red"
-                style="font-size: 1rem"
+                class="material-symbols-outlined color-red"
+                style="font-size: 24px"
                 title="Delete account"
-              ></span>
+              >delete</span>
             </td>
             <td class="smallText">
-              <span class="icon-double-chevron color-secondary-500" style="font-size: 1rem" title="More options"></span>
+              <span class="material-symbols-outlined color-secondary-500" style="font-size: 24px" title="More options">more_horiz</span>
             </td>
           </tr>
           }
         </tbody>
       </table>
-
-      @if (accounts.length === 0) {
-      <div
-        class="add-account-container d-flex flex-col items-center justify-center"
-      >
-        <span
-          class="icon-add-account color-primary-400"
-          style="font-size: 7rem"
-        ></span>
-        <h2 class="color-background secondTitle">No trading accounts yet</h2>
-        <p class="color-background regularText">
-          Start by adding your first trading account to begin managing your
-          strategy.
-        </p>
-      </div>
-      }
     </div>
   </div>
   <div

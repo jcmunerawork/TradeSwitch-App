@@ -75,15 +75,19 @@ export class SignupComponent implements OnInit {
   }
   onSubmit(): void {
     if (this.signupForm.valid) {
-      if (!this.isAdminSignup) {
-        if (this.currentStep === 1) {
-          this.currentStep = 2;
-        } else if (this.currentStep === 2) {
-          this.processRegistration();
-        }
-      } else {
-        this.processRegistration();
-      }
+      // Comentado temporalmente - el segundo paso se usará más adelante
+      // if (!this.isAdminSignup) {
+      //   if (this.currentStep === 1) {
+      //     this.currentStep = 2;
+      //   } else if (this.currentStep === 2) {
+      //     this.processRegistration();
+      //   }
+      // } else {
+      //   this.processRegistration();
+      // }
+      
+      // Por ahora, solo procesar el registro con los datos del primer formulario
+      this.processRegistration();
     } else {
       this.markFormGroupTouched();
     }
@@ -104,9 +108,12 @@ export class SignupComponent implements OnInit {
 
         this.authService.createUser(user);
         this.authService.createLinkToken(token);
-        if (!this.isAdminSignup) {
-          this.authService.createAccount(this.createAccountObject(userId));
-        }
+        
+        // Comentado temporalmente - la creación de cuenta de trading se usará más adelante
+        // if (!this.isAdminSignup) {
+        //   this.authService.createAccount(this.createAccountObject(userId));
+        // }
+        
         alert('Registration successful!');
         this.router.navigate(['/login']);
       })
@@ -151,29 +158,12 @@ export class SignupComponent implements OnInit {
       netPnl: 0,
       number_trades: 0,
       profit: 0,
-      status: UserStatus.PURCHASED,
+      status: UserStatus.CREATED,
       strategy_followed: 0,
       subscription_date: new Date().getTime(),
       lastUpdated: new Date().getTime(),
       total_spend: 0,
       isAdmin: false,
-    };
-  }
-
-  private createAccountObject(id: string): AccountData {
-    const timestamp = Date.now().toString(36);
-    const randomPart = Math.random().toString(36).substring(2, 8);
-    const uniqueId = `id_${timestamp}_${randomPart}`;
-    return {
-      id: uniqueId,
-      userId: id,
-      emailTradingAccount: this.accountForm.value.emailTradingAccount,
-      brokerPassword: this.accountForm.value.brokerPassword,
-      server: this.accountForm.value.server,
-      accountName: this.accountForm.value.accountName,
-      accountID: this.accountForm.value.accountID,
-      accountNumber: Number(this.accountForm.value.accountNumber),
-      createdAt: Timestamp.now(),
     };
   }
 

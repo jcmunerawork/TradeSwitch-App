@@ -1,53 +1,56 @@
 .sidebar {
-  width: 16rem;
+  width: 230px;
+  min-width: 230px;
+  max-width: 230px;
+  height: 100vh;
+  background: #191d23;
   color: #fff;
-  height: 100%;
+  font-family: "Inter", Arial, sans-serif;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  padding: 2rem 1rem 4rem 1rem;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  transition: width 0.3s ease;
 
-  .token-id {
-    line-height: normal;
-    text-align: center;
+  &.minimized {
+    width: 80px;
+    min-width: 80px;
+    max-width: 80px;
   }
 
-  .icon-expand {
+  .sidebar-toggle {
     width: 100%;
-    font-size: 2rem;
-  }
-
-  .icon-strategy {
-    font-size: 1.5rem;
-  }
-
-  .icon-logout {
-    font-size: 1.5rem;
-
-    color: #e4515b;
-  }
-
-  .icon-config {
-    font-size: 1.5rem;
+    padding: 1rem 1rem 0 1rem;
   }
 
   .logo {
     width: 60%;
+    margin: 0 auto 1.5rem auto;
     img {
       width: 100%;
       height: 100%;
     }
   }
 
+  .token-id {
+    line-height: normal;
+    text-align: center;
+    padding: 0 1rem;
+    margin-bottom: 1rem;
+  }
+
   .menu {
     list-style: none;
     margin: 0;
-    flex: 1 1 auto;
+    padding: 0;
+    flex: 1;
     width: 100%;
 
     li {
       width: 100%;
+      
       a {
         color: #fff;
         text-decoration: none;
@@ -57,6 +60,10 @@
         padding: 0.7rem 1rem;
         width: 100%;
         transition: background 0.2s;
+        font-size: 1.08rem;
+        font-weight: 500;
+        gap: 14px;
+        
         &:hover {
           background: #283046;
           color: #5087e4;
@@ -65,14 +72,68 @@
     }
   }
 
+  &.minimized {
+    .sidebar-toggle {
+      justify-content: center;
+      padding: 1rem 0.5rem 0 0.5rem;
+    }
+
+    .logo-minimized {
+      width: 80%;
+      margin: 0 auto 0.5rem auto;
+      img {
+        width: 100%;
+        height: 100%;
+      }
+    }
+    
+    .menu {
+      li {
+        a {
+          justify-content: center;
+          padding: 0.7rem 0.5rem;
+          
+          span:first-child {
+            margin-right: 0;
+          }
+        }
+      }
+    }
+    
+    .bottom {
+      padding: 1rem 0.5rem;
+      margin-top: auto;
+      
+      .user {
+        justify-content: center;
+        
+        .avatar {
+          margin-right: 0;
+        }
+      }
+      
+      .settings,
+      .logout {
+        justify-content: center;
+        padding: 0.1rem 0.4rem;
+        
+        span:first-child {
+          margin-right: 0;
+        }
+      }
+    }
+  }
+
   .bottom {
-    flex: 0 0 auto;
     width: 100%;
     border-top: 0.0625rem solid #454545;
+    padding: 1rem;
+    margin-top: auto;
 
     .user {
       display: flex;
       align-items: center;
+      margin-bottom: 1rem;
 
       .avatar {
         width: 2rem;
@@ -86,81 +147,33 @@
         font-weight: bold;
       }
     }
+    
     .settings,
     .logout {
       display: flex;
       align-items: center;
       margin-bottom: 10px;
-      color: #7fa72a;
       text-decoration: none;
+      font-size: 1rem;
+      font-weight: 500;
     }
+
+    .settings {
+      color: #9bf526;
+    }
+
+    .settings:hover {
+      color: #7fa72a;
+    }
+    
     .logout {
       color: #e4515b;
     }
+
+    .logout:hover {
+      color: #973f45
+    }
   }
-}
-
-.sidebar {
-  width: 230px;
-  background: #191d23;
-  color: #fff;
-  font-family: "Inter", Arial, sans-serif;
-}
-
-.sidebar-dashboard {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1.7rem 2rem 1rem 2rem;
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: #5087e4;
-}
-
-.icon-home {
-  font-size: 1.35rem;
-  color: #5087e4;
-  margin-right: 3px;
-}
-
-.sidebar-title {
-  flex: 1 1 auto;
-  color: #5087e4;
-}
-
-.icon-arrow {
-  margin-left: auto;
-  font-size: 1.2rem;
-  color: #5087e4;
-}
-
-.menu {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 1rem 0;
-}
-
-.menu li {
-  width: 100%;
-}
-
-.menu-link {
-  display: flex;
-  align-items: center;
-  color: #fff;
-  text-decoration: none;
-  font-size: 1.08rem;
-  font-weight: 500;
-  padding: 1rem 2rem;
-  transition: background 0.18s, color 0.18s;
-  gap: 14px;
-}
-
-.menu-link .icon-reports,
-.menu-link .icon-strategy {
-  font-size: 1.2rem;
-  color: #5087e4;
-  margin-right: 8px;
 }
 
 .active,

@@ -1,12 +1,6 @@
 <div class="login-container">
   <h1 class="login-title">Welcome back</h1>
   <p class="login-subtitle">Log in to your account</p>
-  <div class="progress-container">
-    <div class="progress-bar"></div>
-    <div class="progress-bar">
-      <div class="progress-fill"></div>
-    </div>
-  </div>
 
   <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
     <app-text-input

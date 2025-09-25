@@ -3,35 +3,11 @@
   width: 406px;
   flex-direction: column;
   align-items: center;
-  gap: 29px;
+  gap: 18px;
   color: #eaf2f8;
   margin: auto;
   font-family: "SF Pro Display";
   gap: 20px;
-}
-
-.progress-bar {
-  width: 50%;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  width: 100%;
-  height: 100%;
-  background: white;
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.progress-container {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 20px;
-  flex-direction: row;
 }
 
 .login-options {
@@ -83,7 +59,7 @@
   font-weight: 700;
   line-height: 22.264px; /* 61.844% */
   letter-spacing: -0.435px;
-  margin-bottom: 5px;
+  margin-bottom: 0px;
 }
 
 .social-icon {
@@ -124,8 +100,7 @@
   flex-direction: row;
   justify-content: space-between;
   font-family: "SF Pro Display";
-  margin-top: 24px;
-  gap: 8px;
+  gap: 4px;
   color: #eaf2f8;
   font-size: 16px;
 }
@@ -141,7 +116,6 @@
   display: flex;
   flex-direction: row;
   gap: 16px;
-  margin-top: 16px;
 }
 
 .login-button {

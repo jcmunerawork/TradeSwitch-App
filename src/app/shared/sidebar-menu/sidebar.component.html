@@ -1,72 +1,106 @@
 @if(userName && !isBanned) {
-<nav class="sidebar bg-neutral regularText">
-  <span class="icon-expand d-flex justify-end color-secondary-500 mb-12"></span>
-  <div class="logo mb-44">
-    <img src="assets/logo.png" alt="" />
+<nav class="sidebar bg-neutral regularText" [class.minimized]="isSidebarMinimized">
+  <div class="sidebar-toggle d-flex justify-end w-full" (click)="toggleSidebar()">
+    <span class="material-symbols-outlined d-flex color-secondary-500 mb-14" style="font-size: 24px;">
+      {{ isSidebarMinimized ? 'right_panel_open' : 'left_panel_open' }}
+    </span>
   </div>
-  @if (userToken && !isAdmin) {
-    <p class="token-id p-20 regularText">
-      your plugin token is <b>{{ userToken }}</b>
-    </p>
+  
+  @if (isSidebarMinimized) {
+    <div class="logo-minimized mb-16 mt-4">
+      <img src="assets/logo.png" alt="" />
+    </div>
+  }
+  @if (!isSidebarMinimized) {
+    <div class="logo mb-24">
+      <img src="assets/logo.png" alt="" />
+    </div>
+    @if (userToken && !isAdmin) {
+      <p class="token-id p-20 regularText">
+        your plugin token is <b>{{ userToken }}</b>
+      </p>
     }
-  <div class="sidebar-dashboard" (click)="toggleDashboard()">
-    <span class="icon-home"></span>
-    <span class="sidebar-title">Dashboard</span>
-    <span class="icon-chevron" [class.open]="isDashboardOpen"></span>
-  </div>
-  <ul class="menu" [class.open]="isDashboardOpen">
+  }
+
+  <!-- Menú de navegación - siempre visible pero con texto condicional -->
+  <ul class="menu">
     @if(!isAdmin) {
-      <li class="px-16 py-10 menu-link">
+      <li class="px-16 py-4 menu-link">
         <a routerLink="/strategy" routerLinkActive="active">
-          <span class="icon-strategy color-secondary-500 mr-10"></span>My Strategy
+          <span class="material-symbols-outlined color-secondary-500 mr-10" style="font-size: 24px;">content_paste_search</span>
+          @if (!isSidebarMinimized) {
+            <span>My Strategy</span>
+          }
         </a>
       </li>
-    <li class="px-16 py-10 menu-link">
+    <li class="px-16 py-4 menu-link">
       <a routerLink="/report" routerLinkActive="active">
-        <span class="icon-report color-secondary-500 mr-10"></span> My Reports
+        <span class="material-symbols-outlined color-secondary-500 mr-10" style="font-size: 24px;">bar_chart</span>
+        @if (!isSidebarMinimized) {
+          <span>My Reports</span>
+        }
       </a>
     </li>
-    <li class="px-16 py-10 menu-link">
+    <li class="px-16 py-4 menu-link">
       <a routerLink="/trading-accounts" routerLinkActive="active">
-        <span class="icon-trading-accounts color-secondary-500 mr-10"></span
-        >Trading Accounts
+        <span class="material-symbols-outlined color-secondary-500 mr-10" style="font-size: 24px;">group_add</span>
+        @if (!isSidebarMinimized) {
+          <span>Trading Accounts</span>
+        }
       </a>
     </li>
 
     } @if (isAdmin){
-    <li class="px-16 py-10 menu-link">
+    <li class="px-16 py-4 menu-link">
       <a routerLink="/overview" routerLinkActive="active">
-        <span class="icon-overview color-secondary-500 mr-10"></span>Overview
+        <span class="material-symbols-outlined color-secondary-500 mr-10" style="font-size: 24px;">monitoring</span>
+        @if (!isSidebarMinimized) {
+          <span>Overview</span>
+        }
       </a>
     </li>
 
-    <li class="px-16 py-10 menu-link">
+    <li class="px-16 py-4 menu-link">
       <a routerLink="/users" routerLinkActive="active">
-        <span class="icon-users color-secondary-500 mr-10"></span>Users
+        <span class="material-symbols-outlined color-secondary-500 mr-10" style="font-size: 24px;">group</span>
+        @if (!isSidebarMinimized) {
+          <span>Users</span>
+        }
       </a>
     </li>
 
-    <li class="px-16 py-10 menu-link">
+    <li class="px-16 py-4 menu-link">
       <a routerLink="/revenue" routerLinkActive="active">
-        <span class="icon-revenue color-secondary-500 mr-10"></span>Revenue
+        <span class="material-symbols-outlined color-secondary-500 mr-10" style="font-size: 24px;">attach_money</span>
+        @if (!isSidebarMinimized) {
+          <span>Revenue</span>
+        }
       </a>
     </li>
     }
   </ul>
 
+  <!-- Sección inferior - siempre visible pero con contenido condicional -->
   <div class="bottom py-10">
     <div class="user mb-10">
       <span class="avatar">{{ onlyNameInitials() }}</span>
-      <span>{{ userName }}</span>
+      @if (!isSidebarMinimized) {
+        <span>{{ userName }}</span>
+      }
     </div>
     @if (userName) {
-    <a class="settings color-background" routerLink="/account">
-      <span class="icon-config color-secondary-500 mr-10"></span>Account
-      Settings</a
-    >
+    <a class="settings" style="font-weight: 500;" routerLink="/account">
+      <span class="material-symbols-outlined mr-10" style="font-size: 24px;">settings</span>
+      @if (!isSidebarMinimized) {
+        <span>Account Settings</span>
+      }
+    </a>
     <a class="logout" (click)="logout()">
-      <span class="icon-logout mr-10"></span> Log out</a
-    >
+      <span class="material-symbols-outlined mr-10" style="font-size: 20px;">logout</span>
+      @if (!isSidebarMinimized) {
+        <span>Log out</span>
+      }
+    </a>
     }
   </div>
 </nav>

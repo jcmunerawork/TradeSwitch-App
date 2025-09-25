@@ -4,15 +4,6 @@ export function arrayToHistoryTrade(arr: any[]): historyTrade {
   const sell_price = arr[8];
   const buy_price = arr[8];
   
-  // Debug: Log para verificar el mapeo
-  console.log('=== ARRAY TO HISTORY TRADE DEBUG ===');
-  console.log('Array length:', arr.length);
-  console.log('Position ID (arr[16]):', arr[16]);
-  console.log('UpdatedAt (arr[14]):', arr[14]);
-  console.log('Side (arr[4]):', arr[4]);
-  console.log('Status (arr[6]):', arr[6]);
-  console.log('========================');
-  
   return {
     id: arr[0],
     userId: arr[1],
@@ -31,9 +22,6 @@ export function arrayToHistoryTrade(arr: any[]): historyTrade {
 }
 
 export function groupOrdersByPosition(orders: historyTrade[]): GroupedTrade[] {
-  console.log('=== GROUP ORDERS BY POSITION DEBUG ===');
-  console.log('Total orders received:', orders.length);
-  console.log('Sample order:', orders[0]);
   
   const grouped: { [positionId: string]: GroupedTrade } = {};
 
@@ -57,10 +45,6 @@ export function groupOrdersByPosition(orders: historyTrade[]): GroupedTrade[] {
     grouped[posId].totalSpend =
       Number(grouped[posId].buy_price ?? 0) * (grouped[posId].quantity ?? 0);
   });
-  
-  console.log('Total unique positions after grouping:', Object.keys(grouped).length);
-  console.log('Sample grouped trade:', Object.values(grouped)[0]);
-  console.log('========================');
 
   Object.values(grouped).forEach((trade) => {
     trade.pnl = calculatePnLByTrade(

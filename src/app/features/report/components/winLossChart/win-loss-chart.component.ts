@@ -39,6 +39,47 @@ export class WinLossChartComponent implements OnInit, OnChanges {
   }
 
   getChartOptions(): any {
+    // Si no hay datos, mostrar círculo gris sin texto interno
+    if (!this.values || this.values.length === 0) {
+      return {
+        chart: {
+          type: 'donut',
+          height: 200,
+          width: 200,
+          toolbar: { show: false },
+          foreColor: '#fff',
+          fontFamily: 'Inter, Arial, sans-serif',
+          background: 'transparent',
+        },
+        series: [1], // Un solo valor para crear el círculo
+        labels: ['No Data'],
+        colors: ['#6B7280'], // Color gris
+        dataLabels: {
+          enabled: false
+        },
+        plotOptions: {
+          pie: {
+            donut: {
+              size: '70%',
+              labels: {
+                show: false // No mostrar texto dentro del círculo
+              }
+            }
+          }
+        },
+        legend: {
+          show: false
+        },
+        tooltip: {
+          enabled: false
+        },
+        stroke: {
+          show: false
+        }
+      };
+    }
+
+    // Si hay datos, mostrar el gráfico normal
     return {
       chart: {
         type: 'donut',

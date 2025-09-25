@@ -10,8 +10,8 @@
       <div class="table-actions-container smallText d-flex items-center">
         <div class="search-user-container d-flex items-center p-10 mr-10">
           <label for="search-user" class="mr-10"
-            ><span class="icon-search color-background"></span
-          ></label>
+            ><span class="material-icons color-background" style="font-size: 20px;">search</span>
+          </label>
           <input
             id="search-user"
             type="text"
@@ -25,7 +25,7 @@
           class="sort-Btn regularText color-secondary-300 p-10 mr-10"
           (click)="toggleSort()"
         >
-          <span>{{ sortAsc ? "↑" : "↓" }}</span>
+          <span class="material-icons" style="font-size: 18px;">{{ sortAsc ? 'arrow_upward' : 'arrow_downward' }}</span>
           Sort by: A - Z
         </button>
 
@@ -34,7 +34,7 @@
             class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
             (click)="openFilter()"
           >
-            <span class="icon-filter color-secondary-300"></span> Filter
+            <span class="material-icons color-secondary-300" style="font-size: 20px;">filter_list</span> Filter
           </button>
           @if (showFilter) {
           <div class="filter-modal py-20 px-24 d-flex flex-col">
@@ -135,9 +135,9 @@
             <td class="smallText">
               <span
                 (click)="emitUser(user)"
-                class="icon-info color-secondary-500"
+                class="material-icons color-secondary-500"
                 style="font-size: 1rem"
-              ></span>
+              >info</span>
             </td>
           </tr>
 
@@ -156,14 +156,14 @@
           (click)="prevPage()"
           [disabled]="currentPage === 1"
         >
-          &lt;
+          <span class="material-icons" style="font-size: 18px;">chevron_left</span>
         </button>
         <button
           class="regularText"
           (click)="goToPage(1)"
           [disabled]="currentPage === 1"
         >
-          &lt;&lt;
+          <span class="material-icons" style="font-size: 18px;">first_page</span>
         </button>
       </div>
 
@@ -174,14 +174,14 @@
           (click)="goToPage(totalPages)"
           [disabled]="currentPage === totalPages"
         >
-          &gt;&gt;
+          <span class="material-icons" style="font-size: 18px;">last_page</span>
         </button>
         <button
           class="regularText"
           (click)="nextPage()"
           [disabled]="currentPage === totalPages"
         >
-          &gt;
+          <span class="material-icons" style="font-size: 18px;">chevron_right</span>
         </button>
       </div>
     </div>

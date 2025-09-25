@@ -43,6 +43,7 @@ export class AddAccountComponent {
     this.accountForm = this.fb.group({
       emailTradingAccount: ['', [Validators.required, Validators.email]],
       brokerPassword: ['', [Validators.required, Validators.minLength(6)]],
+      broker: ['', [Validators.required]],
       server: ['', [Validators.required]],
       accountName: ['', [Validators.required]],
       accountID: ['', [Validators.required]],
@@ -88,6 +89,7 @@ export class AddAccountComponent {
       userId: id,
       emailTradingAccount: this.accountForm.value.emailTradingAccount,
       brokerPassword: this.accountForm.value.brokerPassword,
+      broker: this.accountForm.value.broker,
       server: this.accountForm.value.server,
       accountName: this.accountForm.value.accountName,
       accountID: this.accountForm.value.accountID,

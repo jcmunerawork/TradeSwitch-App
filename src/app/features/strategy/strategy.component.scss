@@ -56,7 +56,8 @@
     font-size: 14px;
     cursor: pointer;
     transition: all 0.2s ease;
-    
+    width: fit-content;
+
     &:hover {
       border-color: #8e8e93;
       background: #3a3a3a;
@@ -69,6 +70,7 @@
     border: none;
     padding: 12px 20px;
     font-weight: 600;
+    width: fit-content;
     
     &:hover {
       background: #8ae51a;
@@ -244,6 +246,7 @@
 // Empty States
 .empty-strategies {
   text-align: center;
+  align-items: center;
   padding: 40px 20px;
   
   .empty-icon {
@@ -256,14 +259,15 @@
     justify-content: center;
     margin: 0 auto 16px;
     
-    .icon-strategy {
-      font-size: 24px;
-      color: #8e8e93;
+    .material-symbols-outlined {
+      font-size: 28px;
+      color: #ffffff;
     }
   }
   
   .empty-title {
     color: #e3e3e3;
+    font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 18px;
     font-weight: 600;
     margin: 0 0 8px 0;
@@ -271,7 +275,9 @@
   
   .empty-description {
     color: #8e8e93;
+    font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 14px;
+    font-weight: 400;
     margin: 0 0 20px 0;
     line-height: 1.5;
   }
@@ -282,6 +288,7 @@
     border: none;
     border-radius: 8px;
     padding: 12px 24px;
+    font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;

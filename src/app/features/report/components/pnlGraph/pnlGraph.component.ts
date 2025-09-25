@@ -4,9 +4,11 @@ import {
   Inject,
   Input,
   OnInit,
+  OnChanges,
   Output,
   PLATFORM_ID,
   EventEmitter,
+  SimpleChanges,
 } from '@angular/core';
 import { GroupedTrade } from '../../models/report.model';
 import { ChartType } from 'chart.js';
@@ -21,7 +23,7 @@ import { FormsModule } from '@angular/forms';
   standalone: true,
   imports: [CommonModule, NgApexchartsModule, FormsModule],
 })
-export class PnlGraphComponent {
+export class PnlGraphComponent implements OnInit, OnChanges {
   @Input() values!: GroupedTrade[];
   @Output() onYearChange = new EventEmitter<string>();
 
@@ -40,13 +42,27 @@ export class PnlGraphComponent {
 
   ngOnInit() {
     this.year = new Date().getFullYear().toString();
+    this.generateYearRangesPast(3);
+    this.initializeData();
   }
 
-  ngOnChanges() {
-    this.generateYearRangesPast(3);
-    this.originalData = [...this.values];
-    this.filteredData = [...this.values];
-    this.chartOptions = this.getChartOptions(this.filteredData);
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['values'] && this.values) {
+      this.initializeData();
+    }
+  }
+
+  private initializeData() {
+    if (this.values && this.values.length > 0) {
+      this.originalData = [...this.values];
+      this.filteredData = [...this.values];
+      this.chartOptions = this.getChartOptions(this.filteredData);
+    } else {
+      // Mostrar gráfica vacía cuando no hay datos
+      this.originalData = [];
+      this.filteredData = [];
+      this.chartOptions = this.getEmptyChartOptions();
+    }
   }
 
   generateYearRangesPast(yearsBack: number) {
@@ -227,11 +243,18 @@ export class PnlGraphComponent {
     
     trades.forEach(trade => {
       const date = new Date(Number(trade.updatedAt));
-      const label = this.capitalizeFirstLetter(
-        date.toLocaleString('en', { month: 'short' })
-      );
-      const sum = (monthlyMap[label] ?? 0) + (trade.pnl ?? 0);
-      monthlyMap[label] = sum < 1 ? Math.round(sum * 100) / 100 : Math.round(sum);
+      const tradeYear = date.getFullYear();
+      const yearValueNum = parseInt(yearValue);
+      
+      // Only process trades from the selected year
+      if (tradeYear === yearValueNum) {
+        const label = this.capitalizeFirstLetter(
+          date.toLocaleString('en', { month: 'short' })
+        );
+        const sum = (monthlyMap[label] ?? 0) + (trade.pnl ?? 0);
+        monthlyMap[label] = sum < 1 ? Math.round(sum * 100) / 100 : Math.round(sum);
+        
+      }
     });
 
     const monthOrder = [
@@ -241,7 +264,6 @@ export class PnlGraphComponent {
     
     const data = monthOrder.map(m => monthlyMap[m] ?? 0);
     const categories = monthOrder;
-
     return { data, categories };
   }
 
@@ -306,5 +328,88 @@ export class PnlGraphComponent {
     });
     
     return Array.from(years).sort((a, b) => b - a).map(year => year.toString());
+  }
+
+  getEmptyChartOptions(): any {
+    const currentYear = new Date().getFullYear();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    return {
+      chart: {
+        type: 'area',
+        height: 350,
+        toolbar: { show: false },
+        foreColor: '#fff',
+        fontFamily: 'Inter, Arial, sans-serif',
+        background: 'transparent',
+      },
+      series: [
+        {
+          name: 'PnL',
+          data: new Array(12).fill(0), // Array de 12 ceros para los 12 meses
+        },
+      ],
+      xaxis: {
+        categories: months,
+        labels: {
+          style: { colors: '#d8d8d8' },
+        },
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+      },
+      yaxis: {
+        labels: {
+          style: { colors: '#d8d8d8' },
+        },
+      },
+      grid: {
+        borderColor: '#333',
+        strokeDashArray: 4,
+        xaxis: {
+          lines: {
+            show: true,
+          },
+        },
+      },
+      dataLabels: { enabled: false },
+      stroke: {
+        curve: 'straight',
+        width: 1,
+        colors: ['#EAF2F8'],
+      },
+      fill: {
+        type: 'gradient',
+        gradient: {
+          shade: 'dark',
+          type: 'vertical',
+          gradientToColors: ['#3967D7'],
+          opacityFrom: 0.4,
+          opacityTo: 0,
+        },
+      },
+      tooltip: {
+        theme: 'dark',
+        x: { show: true },
+        custom: function ({ series, seriesIndex, dataPointIndex, w }: any) {
+          const month = months[dataPointIndex];
+          return `
+            <div style="padding: 8px 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px;">
+              <div style="color: #d8d8d8; font-size: 12px;">${month} ${currentYear}</div>
+              <div style="color: #fff; font-size: 14px; font-weight: 600;">PnL: $0.00</div>
+            </div>
+          `;
+        },
+      },
+      noData: {
+        text: 'No data available',
+        align: 'center',
+        verticalAlign: 'middle',
+        style: {
+          color: '#d8d8d8',
+          fontSize: '14px',
+          fontFamily: 'Inter, Arial, sans-serif'
+        }
+      }
+    };
   }
 }

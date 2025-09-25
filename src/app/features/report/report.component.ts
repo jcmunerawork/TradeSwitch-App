@@ -34,13 +34,12 @@ import {
 import { statCardComponent } from './components/statCard/stat_card.component';
 import { PnlGraphComponent } from './components/pnlGraph/pnlGraph.component';
 import { CalendarComponent } from './components/calendar/calendar.component';
-import { LoadingPopupComponent } from '../../shared/pop-ups/loading-pop-up/loading-popup.component';
 import { SettingsService } from '../strategy/service/strategy.service';
 import { resetConfig } from '../strategy/store/strategy.actions';
 import { RuleType, StrategyState } from '../strategy/models/strategy.model';
 import { WinLossChartComponent } from './components/winLossChart/win-loss-chart.component';
 import moment from 'moment-timezone';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { Router } from '@angular/router';
 import { User } from '../overview/models/overview';
 import { selectUser } from '../auth/store/user.selectios';
 import { AuthService } from '../auth/service/authService';
@@ -61,9 +60,7 @@ import { AccountData } from '../auth/models/userModel';
     statCardComponent,
     PnlGraphComponent,
     CalendarComponent,
-    LoadingPopupComponent,
     WinLossChartComponent,
-    RouterLink,
   ],
 })
 export class ReportComponent implements OnInit {
@@ -81,11 +78,21 @@ export class ReportComponent implements OnInit {
   user: User | null = null;
   requestYear: number = 0;
   private updateSubscription?: Subscription;
+  private loadingTimeout?: any;
   pluginHistory: PluginHistoryRecord[] = [];
   
   // Account management
   currentAccount: AccountData | null = null;
   showAccountDropdown = false;
+  showReloadButton = false;
+  
+  // Local storage keys
+  private readonly STORAGE_KEYS = {
+    REPORT_DATA: 'tradeSwitch_reportData',
+    ACCOUNTS_DATA: 'tradeSwitch_accountsData',
+    CURRENT_ACCOUNT: 'tradeSwitch_currentAccount',
+    USER_DATA: 'tradeSwitch_userData'
+  };
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: any,
@@ -111,7 +118,10 @@ export class ReportComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.loading = true;
+    // Cargar datos guardados primero para mostrar inmediatamente
+    this.loadSavedData();
+    
+    // Luego obtener datos frescos en background
     this.getUserData();
     this.getHistoryPluginUsage();
     this.listenGroupedTrades();
@@ -120,7 +130,7 @@ export class ReportComponent implements OnInit {
     // Deshabilitado temporalmente para evitar recargas automáticas que causan duplicación de datos
     // this.updateSubscription = interval(120000).subscribe(() => {
     //   if (this.userKey) {
-    //     this.loading = true;
+    //     this.startLoading();
     //     if (this.user) {
     //       this.fetchUserAccounts();
     //     }
@@ -128,8 +138,148 @@ export class ReportComponent implements OnInit {
     // });
   }
 
+  private startLoading() {
+    this.loading = true;
+    
+    // Timeout de seguridad más agresivo para evitar loading infinito
+    if (this.loadingTimeout) {
+      clearTimeout(this.loadingTimeout);
+    }
+    
+    this.loadingTimeout = setTimeout(() => {
+      console.warn('Loading timeout reached, forcing stop');
+      this.loading = false;
+      this.showReloadButton = true;
+    }, 10000); // 10 segundos máximo
+  }
+
+  private stopLoading() {
+    this.loading = false;
+    this.showReloadButton = false;
+    if (this.loadingTimeout) {
+      clearTimeout(this.loadingTimeout);
+      this.loadingTimeout = null;
+    }
+  }
+
+  // Métodos para persistencia local
+  private loadSavedData() {
+    if (!isPlatformBrowser(this.platformId)) return;
+    
+    try {
+      // Cargar datos de reporte
+      const savedReportData = localStorage.getItem(this.STORAGE_KEYS.REPORT_DATA);
+      if (savedReportData) {
+        const reportData = JSON.parse(savedReportData);
+        if (reportData.accountHistory && reportData.stats) {
+          this.accountHistory = reportData.accountHistory;
+          this.stats = reportData.stats;
+          this.store.dispatch(setGroupedTrades({ groupedTrades: this.accountHistory }));
+          console.log('Datos de reporte cargados desde localStorage:', this.accountHistory.length, 'trades');
+        }
+      }
+
+      // Cargar cuentas guardadas
+      const savedAccountsData = localStorage.getItem(this.STORAGE_KEYS.ACCOUNTS_DATA);
+      if (savedAccountsData) {
+        this.accountsData = JSON.parse(savedAccountsData);
+        console.log('Cuentas cargadas desde localStorage:', this.accountsData.length, 'cuentas');
+      }
+
+      // Cargar cuenta actual
+      const savedCurrentAccount = localStorage.getItem(this.STORAGE_KEYS.CURRENT_ACCOUNT);
+      if (savedCurrentAccount) {
+        this.currentAccount = JSON.parse(savedCurrentAccount);
+        console.log('Cuenta actual cargada desde localStorage:', this.currentAccount?.accountName);
+      }
+
+      // Cargar datos de usuario
+      const savedUserData = localStorage.getItem(this.STORAGE_KEYS.USER_DATA);
+      if (savedUserData) {
+        this.user = JSON.parse(savedUserData);
+        console.log('Datos de usuario cargados desde localStorage');
+      }
+
+    } catch (error) {
+      console.error('Error cargando datos guardados:', error);
+      this.clearSavedData();
+    }
+  }
+
+  private saveDataToStorage() {
+    if (!isPlatformBrowser(this.platformId)) return;
+    
+    try {
+      // Guardar datos de reporte
+      if (this.accountHistory.length > 0 && this.stats) {
+        const reportData = {
+          accountHistory: this.accountHistory,
+          stats: this.stats,
+          lastUpdated: Date.now()
+        };
+        localStorage.setItem(this.STORAGE_KEYS.REPORT_DATA, JSON.stringify(reportData));
+      }
+
+      // Guardar cuentas
+      if (this.accountsData.length > 0) {
+        localStorage.setItem(this.STORAGE_KEYS.ACCOUNTS_DATA, JSON.stringify(this.accountsData));
+      }
+
+      // Guardar cuenta actual
+      if (this.currentAccount) {
+        localStorage.setItem(this.STORAGE_KEYS.CURRENT_ACCOUNT, JSON.stringify(this.currentAccount));
+      }
+
+      // Guardar datos de usuario
+      if (this.user) {
+        localStorage.setItem(this.STORAGE_KEYS.USER_DATA, JSON.stringify(this.user));
+      }
+
+      console.log('Datos guardados en localStorage');
+    } catch (error) {
+      console.error('Error guardando datos:', error);
+    }
+  }
+
+  private clearSavedData() {
+    if (!isPlatformBrowser(this.platformId)) return;
+    
+    try {
+      localStorage.removeItem(this.STORAGE_KEYS.REPORT_DATA);
+      localStorage.removeItem(this.STORAGE_KEYS.ACCOUNTS_DATA);
+      localStorage.removeItem(this.STORAGE_KEYS.CURRENT_ACCOUNT);
+      localStorage.removeItem(this.STORAGE_KEYS.USER_DATA);
+      console.log('Datos guardados limpiados');
+    } catch (error) {
+      console.error('Error limpiando datos guardados:', error);
+    }
+  }
+
+  private isDataStale(): boolean {
+    if (!isPlatformBrowser(this.platformId)) return true;
+    
+    try {
+      const savedReportData = localStorage.getItem(this.STORAGE_KEYS.REPORT_DATA);
+      if (savedReportData) {
+        const reportData = JSON.parse(savedReportData);
+        const lastUpdated = reportData.lastUpdated || 0;
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000; // 5 minutos
+        
+        return (now - lastUpdated) > fiveMinutes;
+      }
+    } catch (error) {
+      console.error('Error verificando antigüedad de datos:', error);
+    }
+    
+    return true;
+  }
+
   ngOnDestroy() {
     this.updateSubscription?.unsubscribe();
+    if (this.loadingTimeout) {
+      clearTimeout(this.loadingTimeout);
+    }
   }
 
   getHistoryPluginUsage() {
@@ -143,6 +293,10 @@ export class ReportComponent implements OnInit {
       next: (user) => {
         this.user = user.user;
         if (this.user) {
+          // Guardar datos de usuario en localStorage
+          this.saveDataToStorage();
+          
+          // Siempre recargar cuentas para obtener las más recientes
           this.fetchUserAccounts();
         }
       },
@@ -156,23 +310,41 @@ export class ReportComponent implements OnInit {
     this.userService.getUserAccounts(this.user?.id).then((accounts) => {
       if (!accounts || accounts.length === 0) {
         this.accountsData = [];
-        this.loading = false;
+        this.currentAccount = null;
+        this.stopLoading();
       } else {
         this.accountsData = accounts;
-        // Set first account as current by default
-        if (this.accountsData.length > 0 && !this.currentAccount) {
+        
+        // Verificar si la cuenta actual sigue existiendo
+        if (this.currentAccount) {
+          const currentAccountExists = this.accountsData.find(acc => acc.id === this.currentAccount?.id);
+          if (!currentAccountExists) {
+            // Si la cuenta actual ya no existe, seleccionar la primera
+            this.currentAccount = this.accountsData[0];
+          }
+        } else {
+          // Si no hay cuenta actual, seleccionar la primera
           this.currentAccount = this.accountsData[0];
         }
+        
+        // Guardar cuentas en localStorage
+        this.saveDataToStorage();
+        
         if (this.accountsData.length === 0) {
-          this.loading = false;
+          this.stopLoading();
         } else {
-          this.accountsData.forEach((account) => {
-            setTimeout(() => {
-              this.fetchUserKey(account);
-            }, 1000);
-          });
+          // Procesar la cuenta actual
+          const accountToProcess = this.currentAccount || this.accountsData[0];
+          setTimeout(() => {
+            this.fetchUserKey(accountToProcess);
+          }, 1000);
         }
       }
+    }).catch((error) => {
+      console.error('Error fetching user accounts:', error);
+      this.accountsData = [];
+      this.currentAccount = null;
+      this.stopLoading();
     });
   }
 
@@ -192,7 +364,7 @@ export class ReportComponent implements OnInit {
       .catch((err) => {
         this.store.dispatch(resetConfig({ config: initialStrategyState }));
         this.config = this.prepareConfigDisplayData(initialStrategyState);
-        this.loading = false;
+        this.stopLoading();
         console.error('Error to get the config', err);
       });
   }
@@ -251,11 +423,6 @@ export class ReportComponent implements OnInit {
   }
 
   computeStats(trades: { pnl?: number }[]) {
-    console.log('=== COMPUTE STATS DEBUG ===');
-    console.log('Total trades from API:', trades.length);
-    console.log('First 5 trades:', trades.slice(0, 5));
-    console.log('Last 5 trades:', trades.slice(-5));
-    
     const stats = {
       netPnl: calculateNetPnl(trades),
       tradeWinPercent: calculateTradeWinPercent(trades),
@@ -264,13 +431,18 @@ export class ReportComponent implements OnInit {
       totalTrades: calculateTotalTrades(trades),
     };
     
-    console.log('Calculated stats:', stats);
-    console.log('========================');
-    
     return stats;
   }
 
   fetchUserKey(account: AccountData) {
+    console.log('Fetching user key for account:', account.accountName);
+    
+    // Timeout de seguridad para getUserKey
+    const userKeyTimeout = setTimeout(() => {
+      console.error('getUserKey timeout - forcing stop');
+      this.stopLoading();
+    }, 8000);
+
     this.reportService
       .getUserKey(
         account.emailTradingAccount,
@@ -279,6 +451,9 @@ export class ReportComponent implements OnInit {
       )
       .subscribe({
         next: (key: string) => {
+          clearTimeout(userKeyTimeout);
+          console.log('User key received:', key ? 'Success' : 'Empty');
+          
           this.userKey = key;
           const now = new Date();
           const currentYear = now.getUTCFullYear();
@@ -303,7 +478,10 @@ export class ReportComponent implements OnInit {
           this.store.dispatch(setUserKey({ userKey: key }));
         },
         error: (err) => {
+          clearTimeout(userKeyTimeout);
+          console.error('Error fetching user key:', err);
           this.store.dispatch(setUserKey({ userKey: '' }));
+          this.stopLoading();
         },
       });
   }
@@ -313,10 +491,21 @@ export class ReportComponent implements OnInit {
     accountId: string,
     accNum: number
   ) {
+    console.log('Fetching history data for account:', accountId);
+    
+    // Timeout de seguridad para getHistoryData
+    const historyTimeout = setTimeout(() => {
+      console.error('getHistoryData timeout - forcing stop');
+      this.stopLoading();
+    }, 8000);
+
     this.reportService
       .getHistoryData(accountId, key, accNum)
       .subscribe({
         next: (groupedTrades: GroupedTrade[]) => {
+          clearTimeout(historyTimeout);
+          console.log('History data received:', groupedTrades.length, 'trades');
+          
           // Reemplazar en lugar de acumular para evitar duplicados
           this.store.dispatch(
             setGroupedTrades({
@@ -324,11 +513,17 @@ export class ReportComponent implements OnInit {
             })
           );
 
-          this.loading = false;
+          // Guardar datos en localStorage después de recibir respuesta exitosa
+          this.saveDataToStorage();
+
+          // Siempre ocultar loading después de recibir respuesta
+          this.stopLoading();
         },
         error: (err) => {
+          clearTimeout(historyTimeout);
+          console.error('Error fetching history data:', err);
           this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
-          this.loading = false;
+          this.stopLoading();
         },
       });
   }
@@ -340,6 +535,9 @@ export class ReportComponent implements OnInit {
     store.dispatch(setProfitFactor({ profitFactor: this.stats.profitFactor }));
     store.dispatch(setAvgWnL({ avgWnL: this.stats.avgWinLossTrades }));
     store.dispatch(setTotalTrades({ totalTrades: this.stats.totalTrades }));
+    
+    // Guardar stats actualizados en localStorage
+    this.saveDataToStorage();
   }
 
   prepareConfigDisplayData(strategyState: StrategyState) {
@@ -401,7 +599,7 @@ export class ReportComponent implements OnInit {
   }
 
   onYearChange($event: string) {
-    this.loading = true;
+    this.startLoading();
     this.fromDate = Date.UTC(Number($event), 0, 1, 0, 0, 0, 0).toString();
     this.toDate = Date.UTC(Number($event), 11, 31, 23, 59, 59, 999).toString();
     this.requestYear = Number($event);
@@ -486,7 +684,14 @@ export class ReportComponent implements OnInit {
   selectAccount(account: AccountData) {
     this.currentAccount = account;
     this.showAccountDropdown = false;
-    this.loading = true;
+    
+    // Guardar cuenta seleccionada en localStorage
+    this.saveDataToStorage();
+    
+    this.startLoading();
+    
+    // Limpiar datos anteriores
+    this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
     
     // Fetch data for the selected account
     this.fetchUserKey(account);
@@ -561,6 +766,39 @@ export class ReportComponent implements OnInit {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+  }
+
+  // Navegar a trading accounts
+  navigateToTradingAccounts() {
+    this.router.navigate(['/trading-accounts']);
+  }
+
+  // Método para recargar datos manualmente
+  reloadData() {
+    console.log('Manual reload triggered');
+    this.showReloadButton = false;
+    this.startLoading();
+    
+    // Limpiar datos anteriores y localStorage
+    this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
+    this.accountHistory = [];
+    this.stats = undefined;
+    this.clearSavedData();
+    
+    // Reiniciar el proceso de carga
+    if (this.user) {
+      this.fetchUserAccounts();
+    } else {
+      this.getUserData();
+    }
+  }
+
+  // Método para forzar recarga de cuentas
+  refreshAccounts() {
+    console.log('Refreshing accounts...');
+    if (this.user) {
+      this.fetchUserAccounts();
     }
   }
 }

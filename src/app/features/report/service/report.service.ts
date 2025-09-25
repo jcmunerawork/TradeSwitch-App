@@ -85,7 +85,7 @@ export class ReportService {
         server,
       })
       .pipe(
-        map((auth) => { 
+        map((auth) => {
           return auth.accessToken;
         })
       );

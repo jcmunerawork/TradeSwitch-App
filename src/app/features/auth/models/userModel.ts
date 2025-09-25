@@ -10,6 +10,7 @@ export interface AccountData {
   userId: string;
   emailTradingAccount: string;
   brokerPassword: string;
+  broker: string;
   server: string;
   accountName: string;
   accountID: string;

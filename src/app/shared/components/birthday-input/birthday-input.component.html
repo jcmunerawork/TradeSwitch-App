@@ -5,7 +5,8 @@
       <select
         [(ngModel)]="dateValue.month"
         (change)="onDateChange()"
-        (blur)="onBlur()"
+        (focus)="onMonthFocus()"
+        (blur)="onMonthBlur()"
         [disabled]="disabled"
         [required]="required"
         class="date-select"
@@ -15,14 +16,17 @@
           {{ month.label }}
         </option>
       </select>
-      <span class="select-arrow">▼</span>
+      <span class="material-symbols-outlined select-arrow" style="font-size: 18px;">
+        {{ showMonthDropdown ? 'arrow_drop_up' : 'arrow_drop_down' }}
+      </span>
     </div>
 
     <div class="date-select-container">
       <select
         [(ngModel)]="dateValue.day"
         (change)="onDateChange()"
-        (blur)="onBlur()"
+        (focus)="onDayFocus()"
+        (blur)="onDayBlur()"
         [disabled]="disabled"
         [required]="required"
         class="date-select"
@@ -32,14 +36,17 @@
           {{ day }}
         </option>
       </select>
-      <span class="select-arrow">▼</span>
+      <span class="material-symbols-outlined select-arrow" style="font-size: 18px;">
+        {{ showDayDropdown ? 'arrow_drop_up' : 'arrow_drop_down' }}
+      </span>
     </div>
 
     <div class="date-select-container">
       <select
         [(ngModel)]="dateValue.year"
         (change)="onDateChange()"
-        (blur)="onBlur()"
+        (focus)="onYearFocus()"
+        (blur)="onYearBlur()"
         [disabled]="disabled"
         [required]="required"
         class="date-select"
@@ -49,7 +56,9 @@
           {{ year }}
         </option>
       </select>
-      <span class="select-arrow">▼</span>
+      <span class="material-symbols-outlined select-arrow" style="font-size: 18px;">
+        {{ showYearDropdown ? 'arrow_drop_up' : 'arrow_drop_down' }}
+      </span>
     </div>
   </div>
 </div>
