@@ -15,6 +15,9 @@
     class="stat-card"
     title="New users"
     [value]="`${newUsers}`"
+    [showPercentage]="true"
+    [percentage]="newUsersGrowthPercentage"
+    [isPositive]="newUsersGrowthPercentage > 0"
   ></app-stat-card>
   <app-stat-card
     class="stat-card"
@@ -24,8 +27,8 @@
 </div>
 <div class="middle-container justify-between d-flex mb-24">
   <app-trade-switch-table [users]="usersData"></app-trade-switch-table>
-  <div class="top-10 d-flex flex-col p-30">
-    <div class="mb-20 d-flex justify-between items-center">
+  <div class="top-10 d-flex flex-col px-20 py-30">
+    <div class="top-10-header d-flex justify-between items-center">
       <h2 class="subtitle color-background">Top 10 performing users</h2>
       <a
         routerLink="/users"

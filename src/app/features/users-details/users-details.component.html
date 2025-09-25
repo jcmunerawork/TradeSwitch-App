@@ -4,9 +4,90 @@
     View and manage user accounts with full visibility and control.
   </h3>
 </div>
+
+<!-- Users information section -->
+<div class="users-info-section mb-24">
+  <div class="users-info-header d-flex justify-between items-center mb-20">
+    <div class="users-info-title">
+      <h2 class="titleText color-background mb-8">Users information</h2>
+      <p class="regularText">Monitor user info, contact, etc.</p>
+    </div>
+    <div class="users-info-controls d-flex items-center gap-16">
+      <!-- Search bar -->
+      <div class="search-container">
+        <input 
+          type="text" 
+          class="search-input" 
+          placeholder="Search user"
+          [(ngModel)]="searchTerm"
+          (input)="onSearchChange()"
+        >
+        <span class="icon-search search-icon"></span>
+      </div>
+      
+      <!-- Sort button -->
+      <button 
+        class="control-btn sort-btn d-flex items-center gap-8"
+        (click)="toggleSort()"
+      >
+        <span>{{ sortAsc ? "↑" : "↓" }}</span>
+        <span>Sort by: A - Z</span>
+      </button>
+      
+      <!-- Filter button -->
+      <div class="filter-container">
+        <button 
+          class="control-btn filter-btn d-flex items-center gap-8"
+          (click)="openFilter()"
+        >
+          <span class="icon-filter"></span>
+          <span>Filter</span>
+        </button>
+        @if (showFilter) {
+        <div class="filter-modal py-20 px-24 d-flex flex-col">
+          <label class="mt-10 regularText">% Strat. Followed:</label>
+          <div class="percentage-input d-flex items-center justify-between">
+            <input
+              id="min-strat"
+              type="number"
+              [(ngModel)]="initialMinStrat"
+              placeholder="Min %"
+              class="custom-number-input color-background smallText"
+            />
+            <label for="min-strat">min %</label>
+          </div>
+
+          <div class="percentage-input d-flex items-center justify-between">
+            <input
+              id="max-strat"
+              type="number"
+              [(ngModel)]="initialMaxStrat"
+              placeholder="Max %"
+              class="custom-number-input color-background smallText"
+            />
+            <label for="max-strat">max %</label>
+          </div>
+          <button
+            class="filter-btn p-10 bg-primary-400 color-bg-black inputText"
+            (click)="apply()"
+          >
+            Apply
+          </button>
+        </div>
+        }
+      </div>
+      
+      <!-- Create user button -->
+      <button class="create-user-btn" (click)="openCreateUserModal()">
+        Create user
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="middle-container justify-between d-flex mb-24">
   <app-users-table
-    [users]="usersData"
+    [users]="filteredUsersData"
     (userSelected)="selectedUser = $event"
   ></app-users-table>
 </div>
@@ -22,4 +103,229 @@
   (logoutEverywhere)="onLogoutEverywhere($event)"
 >
 </app-user-modal>
+}
+
+<!-- Role Selection Modal -->
+@if(showRoleSelectionModal){
+<div class="modal-overlay" (click)="closeRoleSelectionModal()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title regularText">Select user role</h2>
+      <button class="close-btn" (click)="closeRoleSelectionModal()">×</button>
+    </div>
+    <div class="role-options">
+      <div class="role-option trader-option">
+        <h3 class="role-title regularText">Create Trader</h3>
+        <p class="role-description regularText">Standard user with access to trading tools, strategies, and dashboards</p>
+        <div class="role-select-btn-container">
+          <button class="role-select-btn primary" (click)="selectRole('user')">Select role</button>
+        </div>
+      </div>
+      <div class="role-option admin-option">
+        <h3 class="role-title regularText">Create Admin</h3>
+        <p class="role-description regularText">Full access to manage users, settings, and platform configurations</p>
+        <div class="role-select-btn-container">
+          <button class="role-select-btn secondary" (click)="selectRole('admin')">Select role</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Create User Modal -->
+@if(showCreateUserModal){
+<div class="modal-overlay" (click)="closeCreateUserModal()">
+  <div class="modal-container create-user-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title regularText">Create User</h2>
+      <button class="close-btn" (click)="closeCreateUserModal()">×</button>
+    </div>
+    
+    <form [formGroup]="createUserForm" (ngSubmit)="onCreateUserSubmit()" class="create-user-form">
+      <!-- Required Information -->
+      <div class="form-section">
+        <div class="form-group">
+          <label class="form-label regularText">First name*</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            formControlName="firstName"
+            placeholder="Enter first name"
+          >
+        </div>
+        <div class="form-group">
+          <label class="form-label regularText">Last name*</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            formControlName="lastName"
+            placeholder="Enter last name"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label regularText">Email*</label>
+          <input 
+            type="email" 
+            class="form-input" 
+            formControlName="email"
+            placeholder="Enter email address"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label regularText">Password*</label>
+          <div class="password-field-container">
+            <div class="password-input-container">
+              <input 
+                [type]="showPassword ? 'text' : 'password'" 
+                class="form-input" 
+                formControlName="password"
+                placeholder="Enter password"
+              >
+              <button type="button" class="password-toggle" (click)="togglePasswordVisibility()">
+                <span class="eye-icon">👁️</span>
+              </button>
+            </div>
+            
+            <!-- Password Strength Indicator -->
+            <div class="password-strength">
+              <div class="strength-indicator regularText" [class]="getPasswordStrengthClass()">
+                Password strength: {{ getPasswordStrength() }}
+              </div>
+              <div class="password-requirements">
+                <div class="requirement regularText" [class.valid]="!containsNameOrEmail()">
+                  ✓ Cannot contain the name or email address
+                </div>
+                <div class="requirement regularText" [class.valid]="hasMinLength()">
+                  ✓ At least 8 characters long
+                </div>
+                <div class="requirement regularText" [class.valid]="hasNumberOrSymbol()">
+                  ✓ At least 1 number or symbol
+                </div>
+                <div class="requirement regularText" [class.valid]="hasUppercase()">
+                  ✓ At least 1 uppercase letter
+                </div>
+                <div class="requirement regularText" [class.valid]="hasLowercase()">
+                  ✓ At least 1 lowercase letter
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Optional Information -->
+      <div class="form-section">
+        <h3 class="section-title regularText">Optional Information</h3>
+        
+        <div class="form-group">
+          <label class="form-label regularText">Phone number</label>
+          <input 
+            type="tel" 
+            class="form-input" 
+            formControlName="phoneNumber"
+            placeholder="Enter phone number"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label regularText">Country</label>
+          <select class="form-input" formControlName="country">
+            <option value="US">United States</option>
+            <option value="CA">Canada</option>
+            <option value="MX">Mexico</option>
+            <option value="GB">United Kingdom</option>
+            <option value="ES">Spain</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label regularText">Time zone</label>
+          <select class="form-input" formControlName="timezone">
+            <option value="GMT-5">GMT-5</option>
+            <option value="GMT-4">GMT-4</option>
+            <option value="GMT-3">GMT-3</option>
+            <option value="GMT+0">GMT+0</option>
+            <option value="GMT+1">GMT+1</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label regularText">Preferred language</label>
+          <select class="form-input" formControlName="language">
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label regularText">Notes</label>
+          <textarea 
+            class="form-textarea regularText" 
+            formControlName="notes"
+            placeholder="Internal comments"
+            rows="3"
+          ></textarea>
+        </div>
+      </div>
+      
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button type="button" class="cancel-btn" (click)="openCancelModal()">
+          Cancel
+        </button>
+        <button type="submit" class="create-btn" [disabled]="createUserForm.invalid || !isPasswordValid()">
+          Create user
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+}
+
+<!-- Cancel Confirmation Modal -->
+@if(showCancelModal){
+<div class="modal-overlay" (click)="closeCancelModal()">
+  <div class="modal-container cancel-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title regularText">{{ getCancelModalTitle() }}</h2>
+    </div>
+    <div class="modal-body">
+      <p class="modal-message regularText">If you leave now, the information you've entered will not be saved.</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="secondary-btn" (click)="closeCancelModal()">
+        Continue editing
+      </button>
+      <button type="button" class="primary-btn cancel-btn" (click)="confirmCancel()">
+        Yes, cancel
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Success Confirmation Modal -->
+@if(showSuccessModal){
+<div class="modal-overlay" (click)="closeSuccessModal()">
+  <div class="modal-container success-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title regularText">User created successfully</h2>
+    </div>
+    <div class="modal-body">
+      <p class="modal-message regularText">The new user has been added to your team and can now access their account.</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="secondary-btn" (click)="createAnotherUser()">
+        Create another user
+      </button>
+      <button type="button" class="primary-btn success-btn" (click)="goToUserList()">
+        Go to user list
+      </button>
+    </div>
+  </div>
+</div>
 }

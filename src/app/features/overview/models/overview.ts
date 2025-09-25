@@ -5,6 +5,7 @@ export enum UserStatus {
   PENDING = 'pending',
   UNVERIFIED = 'unverified',
   BANNED = 'banned',
+  CREATED = 'created',
 }
 
 export interface overviewSubscriptionData {

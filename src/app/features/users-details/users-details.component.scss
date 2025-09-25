@@ -1,3 +1,604 @@
 app-users-table {
   width: 100%;
 }
+
+// Users information section styles
+.users-info-section {
+  .users-info-header {
+    .users-info-title {
+      h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+      }
+      
+      p {
+        margin: 0;
+        color: #9CA3AF;
+        font-size: 14px;
+      }
+    }
+
+    .users-info-controls {
+      gap: 10px;
+
+      .search-container {
+        position: relative;
+        
+        .search-input {
+          padding: 10px 20px 10px 40px;
+          border: 1px solid #EAF2F8;
+          border-radius: 8px;
+          background: #151516;
+          color: #EAF2F8;
+          font-size: 14px;
+          width: 200px;
+          outline: none;
+          
+          &::placeholder {
+            color: #EAF2F8;
+          }
+        }
+        
+        .search-icon {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #9CA3AF;
+          font-size: 14px;
+        }
+      }
+
+      .filter-container {
+        position: relative;
+        
+        .filter-modal {
+          position: absolute;
+          top: 100%;
+          right: 0;
+          background: #1F2937;
+          border: 1px solid #4B5563;
+          border-radius: 8px;
+          min-width: 200px;
+          z-index: 1000;
+          margin-top: 8px;
+          
+          // Título del modal
+          > label:first-child {
+            color: #F9FAFB;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: block;
+          }
+          
+          .percentage-input {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            
+            input {
+              padding: 12px 12px;
+              border: 1px solid #4B5563;
+              border-radius: 4px;
+              background: #374151;
+              color: #F9FAFB;
+              flex: 1;
+              margin-right: 8px;
+              font-size: 14px;
+              
+              &::placeholder {
+                color: #9CA3AF;
+              }
+              
+              &:focus {
+                border-color: #67a4f7;
+                box-shadow: 0 0 0 2px rgba(103, 164, 247, 0.2);
+              }
+            }
+            
+            label {
+              margin: 0;
+              font-size: 12px;
+              color: #9CA3AF;
+              white-space: nowrap;
+            }
+          }
+          
+          .filter-btn {
+            background: #9BF526;
+            border: none;
+            border-radius: 4px;
+            color: #000000;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            
+            &:hover {
+              background: #6fb415;
+            }
+          }
+        }
+      }
+
+      .control-btn {
+        padding: 12px 20px;
+        background: #9EC4F21A;
+        gap: 6px;
+        border: none;
+        border-radius: 8px;
+        color: #9EC4F2;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        
+        &:hover {
+          background: rgb(52, 57, 65)1A;
+          color: #d3e4f8;
+        }
+        
+        &.sort-btn {
+          min-width: 120px;
+        }
+        
+        &.filter-btn {
+          min-width: 80px;
+        }
+      }
+
+      .create-user-btn {
+        padding: 12px 20px;
+        background: #9BF526;
+        border: none;
+        border-radius: 8px;
+        color: #000000;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        
+        &:hover {
+          background: #6fb415;
+        }
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .users-info-section {
+    .users-info-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+      
+      .users-info-controls {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 12px;
+        
+        .search-container .search-input {
+          width: 100%;
+          min-width: 200px;
+        }
+      }
+    }
+  }
+}
+
+// Modal styles
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+.modal-container {
+  background: #1F2937;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 2px solid #374151;
+  
+  &.create-user-modal {
+    max-width: 600px;
+    width: 95%;
+  }
+  
+  // Role selection modal should be smaller
+  &:not(.create-user-modal) {
+    max-width: 400px;
+    width: 85%;
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  
+  .modal-title {
+    color: #F9FAFB;
+    font-size: 24px;
+    font-weight: 400;
+    margin: 0;
+  }
+  
+  .close-btn {
+    background: none;
+    border: none;
+    color: #5186E4;
+    font-size: 32px;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    
+    &:hover {
+      color: #3f6499
+    }
+  }
+}
+
+// Role Selection Modal
+.role-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.role-option {
+  padding: 24px;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  background: #111827;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  
+  &:hover {
+    border-color: #4B5563;
+  }
+  
+  .role-title {
+    color: #F9FAFB;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+  }
+  
+  .role-description {
+    color: #9CA3AF;
+    font-size: 14px;
+    margin: 0 0 20px 0;
+    line-height: 1.5;
+    flex-grow: 1;
+  }
+ 
+  .role-select-btn-container {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+    margin-top: auto;
+  }
+
+  .role-select-btn {
+    width: auto;
+    min-width: 120px;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    
+    &.primary {
+      background: #9BF526;
+      color: #000000;
+      
+      &:hover {
+        background: #6fb415;
+      }
+    }
+    
+    &.secondary {
+      background: transparent;
+      border: 1px solid #4B5563;
+      color: #F9FAFB;
+      
+      &:hover {
+        background: #374151;
+        border-color: #6B7280;
+      }
+    }
+  }
+}
+
+// Create User Form
+.create-user-form {
+  .form-section {
+    margin-top: 12px;
+    margin-bottom: 32px;
+    
+    .section-title {
+      color: #F9FAFB;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0 0 20px 0;
+    }
+  }
+  
+  .form-group {
+    display: grid;
+    grid-template-columns: 0.8fr 1.5fr;
+    gap: 10px;
+    margin-bottom: 20px;
+    
+    .form-label {
+      display: block;
+      color: #F9FAFB;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: #1F2937;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      color: #F9FAFB;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.2s ease;
+      
+      &::placeholder {
+        color: #9CA3AF;
+      }
+      
+      &:focus {
+        border-color: #67a4f7;
+        box-shadow: 0 0 0 2px rgba(103, 164, 247, 0.2);
+      }
+      
+      &:invalid {
+        border-color: #EF4444;
+      }
+    }
+    
+    .form-textarea {
+      width: 100%;
+      padding: 12px 16px;
+      background: #1F2937;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      color: #F9FAFB;
+      font-size: 14px;
+      outline: none;
+      resize: vertical;
+      min-height: 80px;
+      
+      &::placeholder {
+        color: #9CA3AF;
+      }
+      
+      &:focus {
+        border-color: #67a4f7;
+        box-shadow: 0 0 0 2px rgba(103, 164, 247, 0.2);
+      }
+    }
+  }
+  
+  .password-field-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .password-input-container {
+    position: relative;
+    
+    .password-toggle {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #9CA3AF;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+      
+      &:hover {
+        color: #F9FAFB;
+      }
+    }
+  }
+  
+  .password-strength {
+    margin-top: 0;
+    
+    .strength-indicator {
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 12px;
+      
+      &.strength-weak {
+        color: #EF4444;
+      }
+      
+      &.strength-medium {
+        color: #F59E0B;
+      }
+      
+      &.strength-strong {
+        color: #10B981;
+      }
+    }
+    
+    .password-requirements {
+      .requirement {
+        font-size: 12px;
+        color: #EF4444;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        
+        &.valid {
+          color: #10B981;
+        }
+      }
+    }
+  }
+  
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    margin-top: 32px;
+    
+    .cancel-btn {
+      padding: 12px 24px;
+      background: #BCFE631A;
+      border: 1px solid #9BF526;
+      border-radius: 8px;
+      color: #9BF526;
+      font-weight: 400;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        border: 1px solid #6ca028;
+        color: #6ca028;
+      }
+    }
+    
+    .create-btn {
+      padding: 12px 24px;
+      background: #9BF526;
+      border: none;
+      border-radius: 8px;
+      color: #000000;
+      font-weight: 400;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover:not(:disabled) {
+        background: #6fb415;
+      }
+      
+      &:disabled {
+        background: #6B7280;
+        color: #9CA3AF;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+// Cancel and Success Modals
+.cancel-modal,
+.success-modal {
+  max-width: 400px;
+  width: 85%;
+  
+  .modal-header {
+    margin-bottom: 16px;
+    padding-bottom: 0;
+    
+    .modal-title {
+      font-size: 20px;
+      font-weight: 400;
+    }
+  }
+  
+  .modal-body {
+    margin-bottom: 24px;
+    
+    .modal-message {
+      color: #9CA3AF;
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 0;
+    }
+  }
+  
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    
+    .secondary-btn {
+      padding: 10px 20px;
+      background: transparent;
+      border: 1px solid #4B5563;
+      border-radius: 6px;
+      color: #F9FAFB;
+      font-weight: 400;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        background: #374151;
+        border-color: #6B7280;
+      }
+    }
+    
+    .primary-btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 400;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &.cancel-btn {
+        background: #EF4444;
+        color: #FFFFFF;
+        
+        &:hover {
+          background: #DC2626;
+        }
+      }
+      
+      &.success-btn {
+        background: #9BF526;
+        color: #000000;
+        
+        &:hover {
+          background: #6fb415;
+        }
+      }
+    }
+  }
+}

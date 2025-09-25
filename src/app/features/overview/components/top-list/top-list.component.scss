@@ -9,13 +9,28 @@
 
 .top-container {
   flex: auto;
+  gap: 12px;
 }
 
 .user-info {
   flex: 1;
+  gap: 0px;
+  min-width: 0;
 }
-p {
-  flex: 1;
+
+.user-info p {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-container > p {
+  flex: 0 0 auto;
+  margin: 0;
+  text-align: right;
+  min-width: 70px;
+  font-size: 12px;
 }
 
 .deactivated {

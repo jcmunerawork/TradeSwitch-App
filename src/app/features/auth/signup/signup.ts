@@ -151,7 +151,7 @@ export class SignupComponent implements OnInit {
       netPnl: 0,
       number_trades: 0,
       profit: 0,
-      status: UserStatus.PURCHASED,
+      status: UserStatus.CREATED,
       strategy_followed: 0,
       subscription_date: new Date().getTime(),
       lastUpdated: new Date().getTime(),

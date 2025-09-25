@@ -33,6 +33,7 @@ export class Overview {
   subscriptionsData: overviewSubscriptionData | null = null;
   usersData: User[] = [];
   newUsers = 0;
+  newUsersGrowthPercentage = 0;
 
   ngOnInit(): void {
     this.loadConfig();
@@ -53,6 +54,8 @@ export class Overview {
             .map((doc) => doc.data() as User)
             .filter((user) => !user.isAdmin);
 
+          // Calcular nuevos usuarios basándose en la fecha actual
+          this.calculateNewUsers();
           this.filterTop10Users();
           this.loading = false;
         } else {
@@ -73,12 +76,6 @@ export class Overview {
       .then((docSnap) => {
         if (docSnap && !docSnap.empty && docSnap.docs.length > 0) {
           const data = docSnap.docs[0].data() as overviewSubscriptionData;
-          if (docSnap.docs.length > 1) {
-            this.newUsers =
-              data.users -
-              ((docSnap.docs[1].data() as overviewSubscriptionData).users || 0);
-          }
-
           this.subscriptionsData = data;
         } else {
           console.warn('No config');
@@ -89,6 +86,41 @@ export class Overview {
 
         console.error('Error to get the config', err);
       });
+  }
+
+  calculateNewUsers() {
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    
+    // Convertir las fechas a timestamps para comparar con subscription_date
+    const startOfDayTimestamp = startOfDay.getTime();
+    const endOfDayTimestamp = endOfDay.getTime();
+    
+    // Filtrar usuarios que se registraron hoy
+    this.newUsers = this.usersData.filter(user => 
+      user.subscription_date >= startOfDayTimestamp && 
+      user.subscription_date < endOfDayTimestamp
+    ).length;
+    
+    // Calcular el porcentaje de crecimiento
+    this.calculateGrowthPercentage();
+  }
+
+  calculateGrowthPercentage() {
+    const totalUsers = this.usersData.length;
+    
+    if (totalUsers === 0) {
+      this.newUsersGrowthPercentage = 0;
+      return;
+    }
+    
+    // Calcular el porcentaje de nuevos usuarios respecto al total
+    // (nuevos usuarios / total usuarios) * 100
+    this.newUsersGrowthPercentage = (this.newUsers / totalUsers) * 100;
+    
+    // Redondear a 1 decimal
+    this.newUsersGrowthPercentage = Math.round(this.newUsersGrowthPercentage * 10) / 10;
   }
 
   filterTop10Users() {

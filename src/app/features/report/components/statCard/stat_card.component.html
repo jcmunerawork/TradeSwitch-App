@@ -2,5 +2,13 @@
   <p class="kpi-title regularText color-background">
     {{ title }} <span></span>
   </p>
-  <h2 class="kpi-value titleText color-background">{{ value }}</h2>
+  <div class="kpi-value-container d-flex items-center justify-between w-full">
+    <h2 class="kpi-value titleText color-background">{{ value }}</h2>
+    @if(showPercentage && percentage !== undefined) {
+    <div class="percentage-indicator" [class.positive]="isPositive" [class.negative]="!isPositive">
+      <span class="percentage-text">{{ percentage }}%</span>
+      <span class="percentage-arrow">{{ isPositive ? '↗' : '↘' }}</span>
+    </div>
+    }
+  </div>
 </div>

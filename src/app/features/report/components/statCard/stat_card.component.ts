@@ -11,6 +11,9 @@ import { Component, Input } from '@angular/core';
 export class statCardComponent {
   @Input() title!: string;
   @Input() value?: string | number;
+  @Input() showPercentage?: boolean = false;
+  @Input() percentage?: number;
+  @Input() isPositive?: boolean = true;
 
   constructor() {}
 }

@@ -8,3 +8,39 @@
   );
   gap: 1rem;
 }
+
+.kpi-value-container {
+  .kpi-value {
+    margin: 0;
+  }
+  
+  .percentage-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    
+    &.positive {
+      background: rgba(34, 197, 94, 0.2);
+      color: #22C55E;
+    }
+    
+    &.negative {
+      background: rgba(239, 68, 68, 0.2);
+      color: #EF4444;
+    }
+    
+    .percentage-text {
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .percentage-arrow {
+      font-size: 10px;
+      font-weight: bold;
+    }
+  }
+}

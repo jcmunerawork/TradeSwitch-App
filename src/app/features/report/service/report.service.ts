@@ -140,4 +140,32 @@ export class ReportService {
         })
       );
   }
+
+  // Método para obtener datos históricos del endpoint /history
+  getHistoricalData(
+    routeId: number,
+    from: number,
+    to: number,
+    resolution: string,
+    tradableInstrumentId: number,
+    accNum: number,
+    accessToken: string
+  ): Observable<any> {
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${accessToken}`,
+      accNum: accNum.toString(),
+    });
+
+    const params = new HttpParams()
+      .set('routeId', routeId.toString())
+      .set('from', from.toString())
+      .set('to', to.toString())
+      .set('resolution', resolution)
+      .set('tradableInstrumentId', tradableInstrumentId.toString());
+
+    return this.http.get<any>(
+      'https://demo.tradelocker.com/backend-api/trade/history',
+      { headers, params }
+    );
+  }
 }
