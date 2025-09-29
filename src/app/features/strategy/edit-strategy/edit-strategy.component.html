@@ -72,17 +72,17 @@
   <div class="rules d-flex flex-row">
     <div class="rules-container available_rules d-flex flex-col justify-start">
       <h2 class="subtitle mb-20">Available Rules</h2>
-      @if (config && !config.maxDailyTrades.isActive) {
+      @if (config && config.maxDailyTrades.isActive) {
       <app-edit-max-daily-trades></app-edit-max-daily-trades>
-      } @if (config && !config.riskReward.isActive) {
+      } @if (config && config.riskReward.isActive) {
       <app-edit-risk-reward-ratio></app-edit-risk-reward-ratio>
-      } @if (config && !config.riskPerTrade.isActive) {
+      } @if (config && config.riskPerTrade.isActive) {
       <app-edit-risk-per-trade></app-edit-risk-per-trade>
-      } @if (config && !config.daysAllowed.isActive) {
+      } @if (config && config.daysAllowed.isActive) {
       <app-edit-days-allowed></app-edit-days-allowed>
-      } @if (config && !config.assetsAllowed.isActive) {
+      } @if (config && config.assetsAllowed.isActive) {
       <app-edit-assets-allowed></app-edit-assets-allowed>
-      } @if (config && !config.hoursAllowed.isActive) {
+      } @if (config && config.hoursAllowed.isActive) {
       <app-edit-hours-allowed></app-edit-hours-allowed>
       }
     </div>

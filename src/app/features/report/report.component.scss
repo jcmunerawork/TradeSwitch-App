@@ -160,10 +160,6 @@ a {
   gap: 24px;
   display: flex;
   flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
 
   app-PnL-Graph {
     flex: 0 0 60%;

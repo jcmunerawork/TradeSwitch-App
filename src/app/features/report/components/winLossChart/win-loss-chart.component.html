@@ -33,12 +33,12 @@
       @if (values && values.length > 0) {
       <div class="chart-labels-overlay">
         <div class="loss-segment">
-          <div class="segment-value">{{ winLossData.lossValue }}</div>
-          <div class="segment-percentage loss-color">{{ winLossData.lossPercentage }}%</div>
+          <div class="segment-value">{{ formatCurrency(winLossData.lossValue) }}</div>
+          <div class="segment-percentage loss-color">{{ formatPercentage(winLossData.lossPercentage) }}</div>
         </div>
         <div class="win-segment">
-          <div class="segment-value">{{ winLossData.winValue }}</div>
-          <div class="segment-percentage win-color">{{ winLossData.winPercentage }}%</div>
+          <div class="segment-value">{{ formatCurrency(winLossData.winValue) }}</div>
+          <div class="segment-percentage win-color">{{ formatPercentage(winLossData.winPercentage) }}</div>
         </div>
       </div>
       }

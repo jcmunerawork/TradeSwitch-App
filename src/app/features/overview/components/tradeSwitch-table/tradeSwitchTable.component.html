@@ -128,12 +128,12 @@
             </td>
             <td>
               <span class="d-flex items-center justify-center">{{
-                user.netPnl ? user.netPnl : "-"
+                user.netPnl ? formatCurrency(user.netPnl) : "-"
               }}</span>
             </td>
             <td>
               <span class="d-flex items-center justify-center">{{
-                  user.best_trade ? `$${user.best_trade | number : "1.0-0"}` : "-"
+                  user.best_trade ? formatCurrency(user.best_trade) : "-"
               }}</span>
             </td>
           </tr>

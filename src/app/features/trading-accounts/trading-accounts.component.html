@@ -1,7 +1,12 @@
 <div class="main-titles color-background d-flex flex-col mb-32">
   <div class="d-flex justify-between align-items-center mb-12">
     <h1 class="titleText">My Trading Accounts</h1>
-    <button class="add-account-header-btn d-flex align-items-center gap-8" (click)="onAddAccount()">
+    <button 
+      class="add-account-header-btn d-flex align-items-center gap-8" 
+      [class.disabled]="isAddAccountDisabled"
+      [disabled]="isAddAccountDisabled"
+      (click)="isAddAccountDisabled ? null : onAddAccount()"
+    >
       <span class="material-symbols-outlined" style="font-size: 20px;">add</span>
       <span>Add Account</span>
     </button>
@@ -11,23 +16,22 @@
   </h3>
 </div>
 
-<!-- Plan Banner -->
-@if (showUpgradeModal) {
-  <div class="plan-banner plan-banner-warning">
-    <div class="banner-content">
-      <div class="banner-icon">
-        <span class="icon-info"></span>
-      </div>
-      <div class="banner-message">
-        <span>{{ upgradeModalMessage }}</span>
-        <span class="upgrade-link" (click)="onSeeUpgradeOptions()">Upgrade anytime.</span>
-      </div>
-      <button class="banner-close" (click)="onCloseUpgradeModal()">
-        <span class="icon-close">×</span>
-      </button>
+@if (showPlanBanner) {
+<div class="plan-banner" [class]="'plan-banner-' + planBannerType">
+  <div class="banner-content">
+    <div class="banner-icon">
+      <span class="material-symbols-outlined" style="font-size: 20px;">info</span>
     </div>
+    <div class="banner-message">
+      <span>{{ planBannerMessage }}</span>
+      <span class="upgrade-link" (click)="onUpgradePlan()">Upgrade anytime.</span>
+    </div>
+    <button class="banner-close" (click)="onCloseBanner()">
+      <span class="material-symbols-outlined" style="font-size: 20px;">close</span>
+    </button>
   </div>
-  }
+</div>
+}
 
 <!-- Content Area -->
 <div class="middle-container justify-between d-flex mb-24">
@@ -63,24 +67,8 @@
   (cancel)="onAccountCanceled()"
 ></app-create-account-popup>
 
-<!-- Upgrade Modal
-@if (showUpgradeModal) {
-  <div class="modal-overlay" (click)="onCloseUpgradeModal()">
-    <div class="upgrade-modal" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h2 class="modal-title">Ready to expand your trading?</h2>
-        <button class="modal-close" (click)="onCloseUpgradeModal()">
-          <span class="icon-close">×</span>
-        </button>
-      </div>
-      <div class="modal-body">
-        <p class="modal-message">{{ upgradeModalMessage }}</p>
-      </div>
-      <div class="modal-footer">
-        <button class="upgrade-btn" (click)="onSeeUpgradeOptions()">
-          See upgrade options
-        </button>
-      </div>
-    </div>
-  </div>
-}-->
+<!-- Plan Limitation Modal -->
+<app-plan-limitation-modal
+  [modalData]="planLimitationModal"
+  (closeModal)="onClosePlanLimitationModal()"
+></app-plan-limitation-modal>

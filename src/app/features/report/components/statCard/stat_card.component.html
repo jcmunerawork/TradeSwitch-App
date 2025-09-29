@@ -2,5 +2,5 @@
   <p class="kpi-title regularText color-background">
     {{ title }} <span></span>
   </p>
-  <h2 class="kpi-value titleText color-background">{{ value }}</h2>
+  <h2 class="kpi-value titleText" [ngClass]="getValueColorClass()">{{ getFormattedValue() }}</h2>
 </div>

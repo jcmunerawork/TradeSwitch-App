@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { User, UserStatus } from '../../models/overview';
-import { Timestamp } from 'firebase/firestore';
 
 @Component({
   selector: 'app-top-list',

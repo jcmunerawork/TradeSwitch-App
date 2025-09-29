@@ -1,0 +1,122 @@
+<div class="order-summary-container">
+  <!-- Header con botón X -->
+  <div class="header-section">
+    <button class="close-button" (click)="onContinue()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Título principal -->
+  <div class="main-titles color-background d-flex flex-col mb-48">
+    <h1 class="titleText mb-32">Order Summary</h1>
+    <h3 class="regularText">
+      {{ getContextTitle() }}
+    </h3>
+    
+    <!-- Progress indicator -->
+    <div class="progress-indicator">
+      @for (step of getProgressSteps(); track step.step) {
+      <div class="progress-step" [class]="step.status">
+        <div class="step-number">{{ step.step }}</div>
+        <div class="step-label">{{ step.label }}</div>
+      </div>
+      @if (!$last) {
+      <div class="progress-line" [class.completed]="step.status === 'completed'"></div>
+      }
+      }
+    </div>
+  </div>
+
+  <!-- Card de resumen -->
+  <div class="summary-card">
+    <!-- Order Summary Header -->
+    <div class="order-header">
+      <h2 class="order-title">Order summary</h2>
+      <div class="item-badge">1 item</div>
+    </div>
+
+    <!-- Plan Details -->
+    <div class="plan-details">
+      <div class="plan-info">
+        <h3 class="plan-name">{{ orderDetails.planName }} Plan</h3>
+        <div class="plan-features">
+          <div class="feature-item">
+            <span class="feature-label">Trading Accounts:</span>
+            <span class="feature-value">{{ orderDetails.features.tradingAccounts }}</span>
+          </div>
+          <div class="feature-item">
+            <span class="feature-label">Strategies:</span>
+            <span class="feature-value">{{ orderDetails.features.strategies }}</span>
+          </div>
+          <div class="feature-item">
+            <span class="feature-label">Consistency Rules:</span>
+            <span class="feature-value">{{ orderDetails.features.consistencyRules ? 'YES' : 'NO' }}</span>
+          </div>
+          <div class="feature-item">
+            <span class="feature-label">Trading Journal:</span>
+            <span class="feature-value">{{ orderDetails.features.tradingJournal ? 'YES' : 'NO' }}</span>
+          </div>
+          <div class="feature-item">
+            <span class="feature-label">Live Statistics:</span>
+            <span class="feature-value">{{ orderDetails.features.liveStatistics ? 'YES' : 'NO' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly Fee & Billing -->
+    <div class="billing-section">
+      <div class="billing-info">
+        <div class="monthly-fee">
+          <span class="fee-label">Monthly Fee:</span>
+          <span class="fee-amount">${{ orderDetails.price }}</span>
+        </div>
+        <div class="billing-cycle">
+          <span class="billing-label">Billing:</span>
+          <span class="billing-value">{{ orderDetails.billing }}</span>
+        </div>
+        <div class="cancel-info">
+          <span class="cancel-text">Cancel anytime</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cost Breakdown -->
+    <div class="cost-breakdown">
+      <div class="breakdown-item">
+        <span class="breakdown-label">Subtotal:</span>
+        <span class="breakdown-value">${{ orderDetails.price }}</span>
+      </div>
+      
+      @if (orderDetails.discount) {
+      <div class="breakdown-item discount">
+        <span class="breakdown-label">Discount:</span>
+        <span class="discount-code">{{ orderDetails.discount.code }}</span>
+        <span class="breakdown-value discount-amount">-${{ orderDetails.discount.amount }}</span>
+      </div>
+      }
+      
+      <div class="breakdown-item">
+        <span class="breakdown-label">Taxes:</span>
+        <span class="breakdown-value">${{ orderDetails.taxes }}</span>
+      </div>
+    </div>
+
+    <!-- Total -->
+    <div class="total-section">
+      <div class="total-item">
+        <span class="total-label">Total:</span>
+        <span class="total-amount">${{ orderDetails.total }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Continue Button -->
+  <div class="continue-section">
+    <button class="continue-button" (click)="onContinue()">
+      Continue
+    </button>
+  </div>
+</div>

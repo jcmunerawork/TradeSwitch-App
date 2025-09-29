@@ -47,6 +47,9 @@ import { getBestTrade, getTotalSpend } from './utils/firebase-data-utils';
 import { Timestamp } from 'firebase/firestore';
 import { initialStrategyState } from '../strategy/store/strategy.reducer';
 import { AccountData } from '../auth/models/userModel';
+import { PlanLimitationsGuard } from '../../guards/plan-limitations.guard';
+import { PlanLimitationModalData } from '../../shared/interfaces/plan-limitation-modal.interface';
+import { PlanLimitationModalComponent } from '../../shared/components/plan-limitation-modal/plan-limitation-modal.component';
 
 @Component({
   selector: 'app-report',
@@ -61,6 +64,7 @@ import { AccountData } from '../auth/models/userModel';
     PnlGraphComponent,
     CalendarComponent,
     WinLossChartComponent,
+    PlanLimitationModalComponent,
   ],
 })
 export class ReportComponent implements OnInit {
@@ -86,6 +90,9 @@ export class ReportComponent implements OnInit {
   showAccountDropdown = false;
   showReloadButton = false;
   
+  // Balance data from API
+  balanceData: any = null;
+  
   // Local storage keys
   private readonly STORAGE_KEYS = {
     REPORT_DATA: 'tradeSwitch_reportData',
@@ -94,13 +101,24 @@ export class ReportComponent implements OnInit {
     USER_DATA: 'tradeSwitch_userData'
   };
 
+  // Plan limitation modal
+  planLimitationModal: PlanLimitationModalData = {
+    showModal: false,
+    modalType: 'blocked',
+    title: '',
+    message: '',
+    primaryButtonText: '',
+    onPrimaryAction: () => {}
+  };
+
   constructor(
     @Inject(PLATFORM_ID) private platformId: any,
     private store: Store,
     private reportService: ReportService,
     private userService: AuthService,
     private strategySvc: SettingsService,
-    private router: Router
+    private router: Router,
+    private planLimitationsGuard: PlanLimitationsGuard
   ) {}
 
   ngAfterViewInit() {
@@ -126,16 +144,7 @@ export class ReportComponent implements OnInit {
     this.getHistoryPluginUsage();
     this.listenGroupedTrades();
     this.fetchUserRules();
-
-    // Deshabilitado temporalmente para evitar recargas automáticas que causan duplicación de datos
-    // this.updateSubscription = interval(120000).subscribe(() => {
-    //   if (this.userKey) {
-    //     this.startLoading();
-    //     if (this.user) {
-    //       this.fetchUserAccounts();
-    //     }
-    //   }
-    // });
+    this.checkUserAccess();
   }
 
   private startLoading() {
@@ -147,7 +156,6 @@ export class ReportComponent implements OnInit {
     }
     
     this.loadingTimeout = setTimeout(() => {
-      console.warn('Loading timeout reached, forcing stop');
       this.loading = false;
       this.showReloadButton = true;
     }, 10000); // 10 segundos máximo
@@ -175,7 +183,6 @@ export class ReportComponent implements OnInit {
           this.accountHistory = reportData.accountHistory;
           this.stats = reportData.stats;
           this.store.dispatch(setGroupedTrades({ groupedTrades: this.accountHistory }));
-          console.log('Datos de reporte cargados desde localStorage:', this.accountHistory.length, 'trades');
         }
       }
 
@@ -183,21 +190,18 @@ export class ReportComponent implements OnInit {
       const savedAccountsData = localStorage.getItem(this.STORAGE_KEYS.ACCOUNTS_DATA);
       if (savedAccountsData) {
         this.accountsData = JSON.parse(savedAccountsData);
-        console.log('Cuentas cargadas desde localStorage:', this.accountsData.length, 'cuentas');
       }
 
       // Cargar cuenta actual
       const savedCurrentAccount = localStorage.getItem(this.STORAGE_KEYS.CURRENT_ACCOUNT);
       if (savedCurrentAccount) {
         this.currentAccount = JSON.parse(savedCurrentAccount);
-        console.log('Cuenta actual cargada desde localStorage:', this.currentAccount?.accountName);
       }
 
       // Cargar datos de usuario
       const savedUserData = localStorage.getItem(this.STORAGE_KEYS.USER_DATA);
       if (savedUserData) {
         this.user = JSON.parse(savedUserData);
-        console.log('Datos de usuario cargados desde localStorage');
       }
 
     } catch (error) {
@@ -234,8 +238,6 @@ export class ReportComponent implements OnInit {
       if (this.user) {
         localStorage.setItem(this.STORAGE_KEYS.USER_DATA, JSON.stringify(this.user));
       }
-
-      console.log('Datos guardados en localStorage');
     } catch (error) {
       console.error('Error guardando datos:', error);
     }
@@ -249,7 +251,6 @@ export class ReportComponent implements OnInit {
       localStorage.removeItem(this.STORAGE_KEYS.ACCOUNTS_DATA);
       localStorage.removeItem(this.STORAGE_KEYS.CURRENT_ACCOUNT);
       localStorage.removeItem(this.STORAGE_KEYS.USER_DATA);
-      console.log('Datos guardados limpiados');
     } catch (error) {
       console.error('Error limpiando datos guardados:', error);
     }
@@ -358,7 +359,6 @@ export class ReportComponent implements OnInit {
         } else {
           this.store.dispatch(resetConfig({ config: initialStrategyState }));
           this.config = this.prepareConfigDisplayData(initialStrategyState);
-          console.warn('No config');
         }
       })
       .catch((err) => {
@@ -429,17 +429,134 @@ export class ReportComponent implements OnInit {
       profitFactor: calculateProfitFactor(trades),
       avgWinLossTrades: calculateAvgWinLossTrades(trades),
       totalTrades: calculateTotalTrades(trades),
+      activePositions: 0, // Se calculará desde los trades originales
     };
     
     return stats;
   }
 
-  fetchUserKey(account: AccountData) {
-    console.log('Fetching user key for account:', account.accountName);
+  computeStatsFromBalance(balanceData: any, trades: { pnl?: number }[]) {
+    // Filtrar trades terminados (cerrados con PnL calculado)
+    const completedTrades = this.getCompletedTrades(trades);
+    const activePositions = this.getActivePositions(trades);
     
+    const stats = {
+      netPnl: this.calculateNetPnlFromTrades(completedTrades),
+      tradeWinPercent: this.calculateTradeWinPercentFromTrades(completedTrades),
+      profitFactor: this.calculateProfitFactorFromTrades(completedTrades),
+      avgWinLossTrades: this.calculateAvgWinLossFromTrades(completedTrades),
+      totalTrades: completedTrades.length, // Solo trades cerrados
+      activePositions: activePositions.length, // Solo posiciones abiertas
+    };
+    
+    return stats;
+  }
+
+  private getCompletedTrades(trades: any[]): any[] {
+    // Trades terminados: están cerrados (isOpen = false) y tienen PnL calculado
+    return trades.filter(trade => 
+      trade.isOpen === false && trade.pnl !== undefined && trade.pnl !== null
+    );
+  }
+
+  private getActivePositions(trades: any[]): any[] {
+    // Posiciones activas: están abiertas (isOpen = true)
+    return trades.filter(trade => trade.isOpen === true);
+  }
+
+  private calculateNetPnlFromTrades(trades: { pnl?: number }[]): number {
+    // Pérdida Neta = (Suma de todas las ganancias) - (Suma de todas las pérdidas)
+    const validTrades = trades.filter(t => t.pnl !== undefined && t.pnl !== null);
+    if (validTrades.length === 0) return 0;
+    
+    const totalGains = validTrades
+      .filter(t => t.pnl! > 0)
+      .reduce((sum, t) => sum + t.pnl!, 0);
+    
+    const totalLosses = Math.abs(validTrades
+      .filter(t => t.pnl! < 0)
+      .reduce((sum, t) => sum + t.pnl!, 0));
+    
+    // Net P&L puede ser negativo: ganancias - pérdidas
+    const netPnl = totalGains - totalLosses;
+    return Math.round(netPnl * 100) / 100; // Round to 2 decimal places
+  }
+
+  private calculateTradeWinPercentFromTrades(trades: { pnl?: number }[]): number {
+    // % de Operaciones Ganadoras = (Número de Operaciones Ganadoras / Número Total de Operaciones) * 100
+    const validTrades = trades.filter(t => t.pnl !== undefined && t.pnl !== null);
+    if (validTrades.length === 0) return 0;
+    
+    const winningTrades = validTrades.filter(t => t.pnl! > 0).length;
+    const winPercent = (winningTrades / validTrades.length) * 100;
+    return Math.round(winPercent * 100) / 100; // Round to 2 decimal places
+  }
+
+  private calculateProfitFactorFromTrades(trades: { pnl?: number }[]): number {
+    // Factor de Beneficio = (Suma Total de Ganancias de Todas las Operaciones Ganadoras) / (Suma Total de Pérdidas de Todas las Operaciones Perdedoras)
+    const validTrades = trades.filter(t => t.pnl !== undefined && t.pnl !== null);
+    if (validTrades.length === 0) return 0;
+    
+    const totalProfits = validTrades
+      .filter(t => t.pnl! > 0)
+      .reduce((sum, t) => sum + t.pnl!, 0);
+    
+    const totalLosses = Math.abs(validTrades
+      .filter(t => t.pnl! < 0)
+      .reduce((sum, t) => sum + t.pnl!, 0));
+    
+    // Si no hay pérdidas, el factor es infinito (pero lo limitamos a 999.99)
+    if (totalLosses === 0) {
+      return totalProfits > 0 ? 999.99 : 0;
+    }
+    
+    // Si no hay ganancias, el factor es 0
+    if (totalProfits === 0) {
+      return 0;
+    }
+    
+    // Factor de beneficio: ganancias / pérdidas
+    const profitFactor = totalProfits / totalLosses;
+    return Math.round(profitFactor * 100) / 100; // Round to 2 decimal places
+  }
+
+  private calculateAvgWinLossFromTrades(trades: { pnl?: number }[]): number {
+    // Ganancia Promedio (Avg Win) = Suma Total de Ganancias / Número de Operaciones Ganadoras
+    // Pérdida Promedio (Avg Loss) = Suma Total de Pérdidas / Número de Operaciones Perdedoras
+    const validTrades = trades.filter(t => t.pnl !== undefined && t.pnl !== null);
+    if (validTrades.length === 0) return 0;
+    
+    const winningTrades = validTrades.filter(t => t.pnl! > 0);
+    const losingTrades = validTrades.filter(t => t.pnl! < 0);
+    
+    // Calcular ganancia promedio
+    const avgWin = winningTrades.length > 0 
+      ? winningTrades.reduce((sum, t) => sum + t.pnl!, 0) / winningTrades.length 
+      : 0;
+    
+    // Calcular pérdida promedio
+    const avgLoss = losingTrades.length > 0 
+      ? Math.abs(losingTrades.reduce((sum, t) => sum + t.pnl!, 0) / losingTrades.length)
+      : 0;
+    
+    // Si no hay pérdidas, el ratio es infinito
+    if (avgLoss === 0) {
+      return avgWin > 0 ? 999.99 : 0;
+    }
+    
+    // Si no hay ganancias, el ratio es 0
+    if (avgWin === 0) {
+      return 0;
+    }
+    
+    // Ratio: ganancia promedio / pérdida promedio
+    const ratio = avgWin / avgLoss;
+    return Math.round(ratio * 100) / 100; // Round to 2 decimal places
+  }
+
+  fetchUserKey(account: AccountData) {
     // Timeout de seguridad para getUserKey
     const userKeyTimeout = setTimeout(() => {
-      console.error('getUserKey timeout - forcing stop');
       this.stopLoading();
     }, 8000);
 
@@ -452,7 +569,6 @@ export class ReportComponent implements OnInit {
       .subscribe({
         next: (key: string) => {
           clearTimeout(userKeyTimeout);
-          console.log('User key received:', key ? 'Success' : 'Empty');
           
           this.userKey = key;
           const now = new Date();
@@ -472,7 +588,7 @@ export class ReportComponent implements OnInit {
           this.fetchHistoryData(
             key,
             account.accountID,
-            account.accountNumber
+            1
           );
 
           this.store.dispatch(setUserKey({ userKey: key }));
@@ -491,20 +607,26 @@ export class ReportComponent implements OnInit {
     accountId: string,
     accNum: number
   ) {
-    console.log('Fetching history data for account:', accountId);
-    
     // Timeout de seguridad para getHistoryData
     const historyTimeout = setTimeout(() => {
-      console.error('getHistoryData timeout - forcing stop');
       this.stopLoading();
     }, 8000);
+
+    this.reportService.getBalanceData(accountId, key, accNum).subscribe({
+      next: (balanceData) => {
+        // Store balance data for calculations
+        this.balanceData = balanceData;
+      },
+      error: (err) => {
+        console.error('Error fetching balance data:', err);
+      },
+    });
 
     this.reportService
       .getHistoryData(accountId, key, accNum)
       .subscribe({
         next: (groupedTrades: GroupedTrade[]) => {
           clearTimeout(historyTimeout);
-          console.log('History data received:', groupedTrades.length, 'trades');
           
           // Reemplazar en lugar de acumular para evitar duplicados
           this.store.dispatch(
@@ -529,12 +651,18 @@ export class ReportComponent implements OnInit {
   }
 
   updateReportStats(store: Store, groupedTrades: GroupedTrade[]) {
-    this.stats = this.computeStats(groupedTrades);
-    store.dispatch(setNetPnL({ netPnL: this.stats.netPnl }));
-    store.dispatch(setTradeWin({ tradeWin: this.stats.tradeWinPercent }));
-    store.dispatch(setProfitFactor({ profitFactor: this.stats.profitFactor }));
-    store.dispatch(setAvgWnL({ avgWnL: this.stats.avgWinLossTrades }));
-    store.dispatch(setTotalTrades({ totalTrades: this.stats.totalTrades }));
+    // Use balance data if available, otherwise fallback to trade calculations
+    if (this.balanceData) {
+      this.stats = this.computeStatsFromBalance(this.balanceData, groupedTrades);
+    } else {
+      this.stats = this.computeStats(groupedTrades);
+    }
+    
+    store.dispatch(setNetPnL({ netPnL: this.stats?.netPnl || 0 }));
+    store.dispatch(setTradeWin({ tradeWin: this.stats?.tradeWinPercent || 0 }));
+    store.dispatch(setProfitFactor({ profitFactor: this.stats?.profitFactor || 0 }));
+    store.dispatch(setAvgWnL({ avgWnL: this.stats?.avgWinLossTrades || 0 }));
+    store.dispatch(setTotalTrades({ totalTrades: this.stats?.totalTrades || 0 }));
     
     // Guardar stats actualizados en localStorage
     this.saveDataToStorage();
@@ -618,63 +746,27 @@ export class ReportComponent implements OnInit {
     return this.currentAccount?.server || 'No Server';
   }
 
-  getCurrentAccountPlan(): string {
-    return this.getAccountPlan(this.currentAccount);
+  async getCurrentAccountPlan(): Promise<string> {
+    return await this.getAccountPlan(this.currentAccount);
   }
 
-  getPlanInfo(planName: string): { name: string; price: string; accounts: number; strategies: number } {
-    const plans = {
-      'Free': { name: 'Free', price: '$0/month', accounts: 1, strategies: 1 },
-      'Starter': { name: 'Starter', price: '$35/month', accounts: 2, strategies: 3 },
-      'Pro': { name: 'Pro', price: '$99/month', accounts: 6, strategies: 8 }
-    };
+  async getAccountPlan(account: AccountData | null): Promise<string> {
+    if (!account || !this.user?.id) return 'Free';
     
-    return plans[planName as keyof typeof plans] || plans['Free'];
+    // Use the guard to get the real plan information
+    return await this.getUserPlanName();
   }
 
-  getAccountPlan(account: AccountData | null): string {
-    if (!account) return 'Free';
+  private async getUserPlanName(): Promise<string> {
+    if (!this.user?.id) return 'Free';
     
-    // Determine plan based on user data and account information
-    return this.determineUserPlan(account);
-  }
-
-  private determineUserPlan(account: AccountData): string {
-    // Check if user has subscription_date (indicates paid plan)
-    if (this.user?.subscription_date && this.user.subscription_date > 0) {
-      // Check subscription status
-      if (this.user.status === 'purchased') {
-        // Determine plan based on number of accounts and other factors
-        const accountCount = this.accountsData.length;
-        const hasMultipleStrategies = this.config && this.config.length > 1;
-        
-        // Pro Plan: 6 accounts, 8 strategies, or high usage indicators
-        if (accountCount >= 6 || (accountCount >= 2 && this.user.number_trades > 100)) {
-          return 'Pro';
-        }
-        // Starter Plan: 2 accounts, 3 strategies, or moderate usage
-        else if (accountCount >= 2 || (accountCount >= 1 && this.user.number_trades > 20)) {
-          return 'Starter';
-        }
-        // Free Plan: 1 account, 1 strategy
-        else {
-          return 'Free';
-        }
-      }
+    try {
+      const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
+      return limitations.planName;
+    } catch (error) {
+      console.error('Error getting user plan name:', error);
+      return 'Free';
     }
-    
-    // Check if user has any trading activity (might indicate a trial or free tier)
-    if (this.user?.number_trades && this.user.number_trades > 0) {
-      const accountCount = this.accountsData.length;
-      
-      // If user has multiple accounts but no subscription, they might be on trial
-      if (accountCount >= 2) {
-        return 'Starter';
-      }
-    }
-    
-    // Default to Free plan if no subscription and no activity
-    return 'Free';
   }
 
   toggleAccountDropdown() {
@@ -701,12 +793,12 @@ export class ReportComponent implements OnInit {
     this.router.navigate(['/edit-strategy']);
   }
 
-  exportAllData() {
-    const csvData = this.generateAllReportsCSV();
+  async exportAllData() {
+    const csvData = await this.generateAllReportsCSV();
     this.downloadCSV(csvData, `my-reports-${new Date().toISOString().split('T')[0]}.csv`);
   }
 
-  generateAllReportsCSV(): string {
+  async generateAllReportsCSV(): Promise<string> {
     const headers = [
       'Date', 
       'Account Name', 
@@ -721,10 +813,11 @@ export class ReportComponent implements OnInit {
     const rows = [headers.join(',')];
 
     // Add summary data
+    const currentPlan = await this.getCurrentAccountPlan();
     const summaryRow = [
       new Date().toISOString().split('T')[0],
       this.getCurrentAccountName(),
-      this.getCurrentAccountPlan(),
+      currentPlan,
       this.stats?.netPnl?.toFixed(2) || '0',
       this.stats?.totalTrades?.toString() || '0',
       `${this.stats?.tradeWinPercent?.toFixed(1) || '0'}%`,
@@ -740,7 +833,7 @@ export class ReportComponent implements OnInit {
       const tradeRow = [
         tradeDate,
         this.getCurrentAccountName(),
-        this.getCurrentAccountPlan(),
+        currentPlan, // Use the same plan for all trades
         (trade.pnl || 0).toFixed(2),
         '1',
         trade.pnl && trade.pnl > 0 ? '100' : '0',
@@ -776,7 +869,6 @@ export class ReportComponent implements OnInit {
 
   // Método para recargar datos manualmente
   reloadData() {
-    console.log('Manual reload triggered');
     this.showReloadButton = false;
     this.startLoading();
     
@@ -796,9 +888,28 @@ export class ReportComponent implements OnInit {
 
   // Método para forzar recarga de cuentas
   refreshAccounts() {
-    console.log('Refreshing accounts...');
     if (this.user) {
       this.fetchUserAccounts();
     }
+  }
+
+  // Check user access and show blocking modal if needed
+  async checkUserAccess() {
+    if (!this.user?.id) return;
+
+    try {
+      const accessCheck = await this.planLimitationsGuard.checkReportAccessWithModal(this.user.id);
+      
+      if (!accessCheck.canAccess && accessCheck.modalData) {
+        this.planLimitationModal = accessCheck.modalData;
+      }
+    } catch (error) {
+      console.error('Error checking user access:', error);
+    }
+  }
+
+  // Plan limitation modal methods
+  onClosePlanLimitationModal() {
+    this.planLimitationModal.showModal = false;
   }
 }

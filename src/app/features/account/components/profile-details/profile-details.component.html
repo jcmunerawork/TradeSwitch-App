@@ -1,0 +1,182 @@
+<!-- Profile Details Section -->
+<div class="profile-details-section">
+  <div class="main-titles color-background d-flex flex-col mb-24">
+    <h1 class="subtitle mb-8">Profile Details</h1>
+    <h3 class="regularText">
+      Manage your personal information and account settings.
+    </h3>
+  </div>
+
+  <!-- Profile Information Form -->
+  <div class="profile-form-section">
+    <div class="form-card">
+      <h2 class="form-title">Personal Information</h2>
+      
+      <form [formGroup]="profileForm" (ngSubmit)="onUpdateProfile()">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="firstName" class="form-label">First Name</label>
+            <input
+              type="text"
+              id="firstName"
+              formControlName="firstName"
+              class="form-input"
+              [class.error]="profileForm.get('firstName')?.errors && profileForm.get('firstName')?.touched"
+              placeholder="Enter your first name"
+            />
+            <div class="error-message" *ngIf="getFieldError('firstName')">
+              {{ getFieldError('firstName') }}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="lastName" class="form-label">Last Name</label>
+            <input
+              type="text"
+              id="lastName"
+              formControlName="lastName"
+              class="form-input"
+              [class.error]="profileForm.get('lastName')?.errors && profileForm.get('lastName')?.touched"
+              placeholder="Enter your last name"
+            />
+            <div class="error-message" *ngIf="getFieldError('lastName')">
+              {{ getFieldError('lastName') }}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="email" class="form-label">Email Address</label>
+            <input
+              type="email"
+              id="email"
+              formControlName="email"
+              class="form-input"
+              [class.error]="profileForm.get('email')?.errors && profileForm.get('email')?.touched"
+              placeholder="Enter your email address"
+              readonly
+            />
+            <div class="form-note">Email cannot be changed</div>
+          </div>
+
+          <div class="form-group">
+            <label for="birthday" class="form-label">Birthday</label>
+            <input
+              type="date"
+              id="birthday"
+              formControlName="birthday"
+              class="form-input"
+              [class.error]="profileForm.get('birthday')?.errors && profileForm.get('birthday')?.touched"
+            />
+            <div class="error-message" *ngIf="getFieldError('birthday')">
+              {{ getFieldError('birthday') }}
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="submit"
+            class="btn-primary"
+            [disabled]="profileForm.invalid || isLoading"
+          >
+            <span *ngIf="isLoading" class="loading-spinner"></span>
+            {{ isLoading ? 'Updating...' : 'Update Profile' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Password Change Section -->
+  <div class="password-section">
+    <div class="password-card">
+      <div class="password-header">
+        <h2 class="form-title">Change Password</h2>
+        <p class="password-description">
+          Update your password to keep your account secure.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="btn-secondary"
+        (click)="togglePasswordForm()"
+        [disabled]="isLoading"
+      >
+        {{ showPasswordForm ? 'Cancel' : 'Change Password' }}
+      </button>
+
+      <!-- Password Change Form -->
+      <form
+        *ngIf="showPasswordForm"
+        [formGroup]="passwordForm"
+        (ngSubmit)="onChangePassword()"
+        class="password-form"
+      >
+        <div class="form-group">
+          <label for="currentPassword" class="form-label">Current Password</label>
+          <input
+            type="password"
+            id="currentPassword"
+            formControlName="currentPassword"
+            class="form-input"
+            [class.error]="passwordForm.get('currentPassword')?.errors && passwordForm.get('currentPassword')?.touched"
+            placeholder="Enter your current password"
+          />
+          <div class="error-message" *ngIf="getPasswordFieldError('currentPassword')">
+            {{ getPasswordFieldError('currentPassword') }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="newPassword" class="form-label">New Password</label>
+          <input
+            type="password"
+            id="newPassword"
+            formControlName="newPassword"
+            class="form-input"
+            [class.error]="passwordForm.get('newPassword')?.errors && passwordForm.get('newPassword')?.touched"
+            placeholder="Enter your new password"
+          />
+          <div class="error-message" *ngIf="getPasswordFieldError('newPassword')">
+            {{ getPasswordFieldError('newPassword') }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword" class="form-label">Confirm New Password</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            formControlName="confirmPassword"
+            class="form-input"
+            [class.error]="passwordForm.get('confirmPassword')?.errors && passwordForm.get('confirmPassword')?.touched"
+            placeholder="Confirm your new password"
+          />
+          <div class="error-message" *ngIf="getPasswordFieldError('confirmPassword')">
+            {{ getPasswordFieldError('confirmPassword') }}
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="submit"
+            class="btn-primary"
+            [disabled]="passwordForm.invalid || isLoading"
+          >
+            <span *ngIf="isLoading" class="loading-spinner"></span>
+            {{ isLoading ? 'Updating...' : 'Update Password' }}
+          </button>
+        </div>
+
+        <!-- Success/Error Messages -->
+        <div class="message success" *ngIf="passwordChangeMessage">
+          {{ passwordChangeMessage }}
+        </div>
+        <div class="message error" *ngIf="passwordChangeError">
+          {{ passwordChangeError }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

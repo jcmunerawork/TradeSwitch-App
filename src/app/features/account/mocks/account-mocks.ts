@@ -11,6 +11,20 @@ export const MOCK_PLAN_DETAILS: PlanDetails = {
 
 export const PLANS: PlanCard[] = [
   {
+    name: 'Free',
+    price: 0,
+    period: '/month',
+    icon: 'circle',
+    color: '#4b7ee8',
+    features: [
+      { label: 'Trading Accounts', value: '1' },
+      { label: 'Consistency Rules', value: 'YES' },
+      { label: 'Trading Journal', value: 'YES' },
+      { label: 'Live Statistics', value: 'YES' },
+    ],
+    cta: 'Change Plan',
+  },
+  {
     name: 'Starter',
     price: 35,
     period: '/month',
@@ -22,7 +36,7 @@ export const PLANS: PlanCard[] = [
       { label: 'Trading Journal', value: 'YES' },
       { label: 'Live Statistics', value: 'YES' },
     ],
-    cta: 'Get Starter Now',
+    cta: 'Change Plan',
   },
   {
     name: 'Pro',
@@ -37,6 +51,6 @@ export const PLANS: PlanCard[] = [
       { label: 'Trading Journal', value: 'YES' },
       { label: 'Live Statistics', value: 'YES' },
     ],
-    cta: 'Change Plan',
+    cta: 'Get Starter Now',
   },
 ];

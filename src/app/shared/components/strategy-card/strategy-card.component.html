@@ -3,37 +3,39 @@
   <div class="card-header">
     <div class="strategy-info">
       <div class="strategy-icon">
-        <span class="material-icons" style="font-size: 22px;">psychology_alt</span>
+        <div class="icon-strategy"></div>
       </div>
       <div class="strategy-details">
-        <h3 class="strategy-name">{{ strategy.name }}</h3>
+        <div class="strategy-name-container">
+          <h3 class="strategy-name">{{ strategy.name }}</h3>
+          <button class="action-btn edit-btn" (click)="onEdit()" title="Edit strategy">
+            <span class="material-symbols-outlined" style="font-size: 18px;">edit</span>
+          </button>
+        </div>
         <div class="strategy-status">
           <span class="status-dot" [class]="getStatusClass()"></span>
-          <span class="status-text">{{ strategy.status }}</span>
+          <span class="status-text">{{ getStatusText() }}</span>
         </div>
       </div>
     </div>
     
     <div class="card-actions">
-      <button class="action-btn edit-btn" (click)="onEdit()" title="Edit strategy">
-        <span class="material-icons" style="font-size: 20px;">edit</span>
-      </button>
       <button class="action-btn favorite-btn" (click)="onFavorite()" [class.active]="strategy.isFavorite" title="Add to favorites">
-        <span class="material-icons" style="font-size: 20px;">favorite</span>
+        <span class="material-symbols-outlined" style="font-size: 20px;">favorite</span>
       </button>
       <div class="more-options-container">
         <button class="action-btn more-btn" (click)="onMoreOptions($event)" title="More options">
-          <span class="material-icons" style="font-size: 20px;">more_horiz</span>
+          <span class="material-symbols-outlined" style="font-size: 20px;">more_horiz</span>
         </button>
         
         <!-- Mini Options Menu -->
         <div class="options-menu" *ngIf="showOptionsMenu" (click)="$event.stopPropagation()">
           <button class="option-btn duplicate-btn" (click)="onDuplicate()">
-            <span class="material-icons" style="font-size: 20px;">content_copy</span>
+            <span class="material-symbols-outlined" style="font-size: 20px;">content_copy</span>
             <span>Duplicate</span>
           </button>
           <button class="option-btn delete-btn" (click)="onDelete()">
-            <span class="material-icons" style="font-size: 20px;">delete</span>
+            <span class="material-symbols-outlined" style="font-size: 20px;">delete</span>
             <span>Delete</span>
           </button>
         </div>
@@ -54,14 +56,14 @@
     </div>
     
     <div class="metric-row">
-      <span class="metric-label">Times Applied</span>
-      <span class="metric-value">{{ strategy.timesApplied }}</span>
+      <span class="metric-label">Days Active</span>
+      <span class="metric-value">{{ strategy.days_active }}</span>
     </div>
     
     <div class="metric-row">
       <span class="metric-label">Win Rate</span>
       <div class="win-rate-container">
-        <span class="metric-value">{{ strategy.winRate }}%</span>
+        <span class="metric-value">{{ formatPercentage(strategy.winRate) }}</span>
         <div class="progress-bar">
           <div class="progress-fill" [style.width]="getWinRateWidth()"></div>
         </div>

@@ -1,155 +1,225 @@
-<div class="main-titles color-background d-flex flex-col mb-30">
+@if (!showSubscriptionProcessing && !showOrderSummary) {
+<div class="main-titles color-background d-flex flex-col mb-24">
   <h1 class="subtitle mb-8">Membership details</h1>
   <h3 class="regularText">
     Here you can view the details of your current membership.
   </h3>
 </div>
 
-<div class="plan-info color-background mb-64">
-  <div class="column">
-    <div>
-      <strong class="boldRegularText">Current Plan</strong>
-      <div class="regularText color-text-gray mt-6">
-        {{ planDetails?.currentPlan }}
+<!-- Membership Details Section -->
+<div class="membership-details-section">
+  <div class="membership-info">
+    <div class="info-column">
+      <div class="info-item">
+        <span class="info-label">Current Plan</span>
+        <span class="info-value">{{ userPlan?.name || 'Free Plan' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Renewal date</span>
+        <span class="info-value">{{ renewalDate }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Remaining until renewal</span>
+        <span class="info-value">{{ remainingDays }} days</span>
       </div>
     </div>
-    <div>
-      <strong class="boldRegularText">Renewal date</strong>
-      <div class="regularText color-text-gray mt-6">
-        {{ planDetails?.renewalDate }}
+    <div class="info-column">
+      <div class="info-item">
+        <span class="info-label">Price</span>
+        <span class="info-value">${{ userPlan?.price || '0.00' }}</span>
       </div>
-    </div>
-    <div>
-      <strong class="boldRegularText">Remaining until renewal</strong>
-      <div class="regularText color-text-gray mt-6">
-        {{ planDetails?.remainingUntilRenewal }}
+      <div class="info-item">
+        <span class="info-label">Activation Fee</span>
+        <span class="info-value">N/A</span>
       </div>
-    </div>
-  </div>
-  <div class="column">
-    <div>
-      <strong class="boldRegularText">Price</strong>
-      <div class="regularText color-text-gray mt-6">
-        ${{ planDetails?.price }}
-      </div>
-    </div>
-    <div>
-      <strong class="boldRegularText">Activation Fee</strong>
-      <div class="regularText color-text-gray mt-6">
-        {{ planDetails?.activationFee }}
-      </div>
-    </div>
-    <div>
-      <strong class="boldRegularText">Billing cycle</strong>
-      <div class="regularText color-text-gray mt-6">
-        {{ planDetails?.billingCycle }}
+      <div class="info-item">
+        <span class="info-label">Billing cycle</span>
+        <span class="info-value">Monthly</span>
       </div>
     </div>
   </div>
 </div>
 
-<div class="main-titles color-background d-flex flex-col mb-30">
+<div class="main-titles color-background d-flex flex-col mb-24">
   <h1 class="subtitle mb-8">Plan benefits</h1>
   <h3 class="regularText">
     Here's a quick look at what's included in your current plan.
   </h3>
 </div>
 
-<div class="plan-info color-background mb-64">
-  <div class="column">
-    <div class="fake-checkbox-row">
-      <div class="fake-checkbox checked"></div>
-      <span class="regularText">Profit target: $6,000</span>
+<!-- Plan Benefits Section -->
+<div class="plan-benefits-section">
+  <div class="benefits-list">
+    <div class="benefit-item">
+      <div class="benefit-checkbox checked"></div>
+      <span class="benefit-text">Trading accounts: {{ userPlan?.tradingAccounts || 1 }}</span>
     </div>
-    <div class="fake-checkbox-row">
-      <div class="fake-checkbox checked"></div>
-      <span class="regularText">Trailing Max Drawndown: $3,500</span>
+    <div class="benefit-item">
+      <div class="benefit-checkbox checked"></div>
+      <span class="benefit-text">Consistency rules</span>
     </div>
-    <div class="fake-checkbox-row">
-      <div class="fake-checkbox checked"></div>
-      <span class="regularText">Activation Fee: $3,500</span>
+    <div class="benefit-item">
+      <div class="benefit-checkbox checked"></div>
+      <span class="benefit-text">Strategies: {{ userPlan?.strategies || 1 }}</span>
     </div>
-  </div>
-  <div class="column">
-    <div class="fake-checkbox-row">
-      <div class="fake-checkbox checked"></div>
-      <span class="regularText">Max contracts: 6</span>
+    <div class="benefit-item">
+      <div class="benefit-checkbox checked"></div>
+      <span class="benefit-text">Trading journal</span>
     </div>
-    <div class="fake-checkbox-row">
-      <div class="fake-checkbox checked"></div>
-      <span class="regularText">Daily Loss Limit: $3,500</span>
-    </div>
-    <div class="fake-checkbox-row">
-      <div class="fake-checkbox checked"></div>
-      <span class="regularText">Trailing Max Drawndown: $3,500</span>
+    <div class="benefit-item">
+      <div class="benefit-checkbox checked"></div>
+      <span class="benefit-text">Live Statistics</span>
     </div>
   </div>
 </div>
 
-<div class="main-titles color-background d-flex flex-col mb-30">
-  <h1 class="subtitle mb-8">Compare plans</h1>
-  <h3 class="regularText">Choose a membership that's right for you</h3>
+<div class="main-titles color-background mb-30">
+  <div class="d-flex flex-col">
+    <h1 class="subtitle mb-12">Compare plans</h1>
+    <h3 class="regularText">Choose a membership that's right for you</h3>
+  </div>
+
+  <button class="manage-subscription-btn regularText signUp" (click)="onManageSubscription()">Manage Subscription</button>
 </div>
 
-<section
-  class="plans-list d-flex items-center justify-center items-center mb-64"
->
-  @for (item of plansData; track $index) {
-  <div
-    class="plan-card d-flex p-24 flex-col items-start color-background regularText"
-    [class.isMostPopular]="item.mostPopular"
-  >
-    <div class="plan-card-header d-flex items-start justify-start">
-      <div
-        class="card-icon d-flex items-center justify-center p-10"
-        [class.isSquare]="item.icon === 'square'"
-        [class.isCircle]="item.icon === 'circle'"
-      >
-        @if (item.icon === 'square') {
-        <div class="square-icon"></div>
-        } @if (item.icon === 'circle') {
-        <div class="circle-icon"></div>
+<!-- Plan Comparison Table -->
+<div class="plan-comparison-section">
+  <div class="comparison-table">
+    <!-- Benefits Column -->
+    <div class="benefits-column">
+      <div class="benefits-header">
+        <h3 class="benefits-title">Benefits</h3>
+      </div>
+      <div class="benefits-text-list">
+        <div class="benefit-item">Trading Accounts</div>
+        <div class="benefit-item">Strategies</div>
+        <div class="benefit-item">Consistency Rules</div>
+        <div class="benefit-item">Trading Journal</div>
+        <div class="benefit-item">Live Statistics</div>
+      </div>
+    </div>
+
+    <!-- Plan Cards -->
+    <div class="plans-container">
+      @for (item of plansData; track $index) {
+      <div class="plan-card" [class.current-plan]="isCurrentPlan(item.name)">
+        @if (isCurrentPlan(item.name)) {
+        <div class="current-plan-badge">
+          <span>Your Current Plan</span>
+        </div>
         }
-      </div>
-      <div class="plan-card-titles d-flex flex-col items-start">
-        <h2 class="planName subtitle">{{ item.name }}</h2>
-        <h2 class="subtitle mt-12">
-          <span class="titleText">${{ item.price }}</span> /month
-        </h2>
-      </div>
-      @if(item.mostPopular) {
-      <div class="popular py-4 px-6">
-        <span class="mostPopular p-10 regularSemiText">Most Popular</span>
+        
+        <div class="plan-header">
+          <h3 class="plan-name">{{ item.name }}</h3>
+          <div class="plan-price">
+            <span class="price">${{ item.price }}</span>
+            <span class="period">/month</span>
+          </div>
+        </div>
+
+        <div class="plan-features">
+          <div class="feature-row">
+            <span class="feature-value">{{ getTradingAccounts(item.name) }}</span>
+          </div>
+          <div class="feature-row">
+            <span class="feature-value">{{ getStrategies(item.name) }}</span>
+          </div>
+          <div class="feature-row">
+            <span class="feature-check">✓</span>
+          </div>
+          <div class="feature-row">
+            <span class="feature-check">✓</span>
+          </div>
+          <div class="feature-row">
+            <span class="feature-check">✓</span>
+          </div>
+        </div>
+
+        <div class="plan-footer">
+          <button 
+            class="plan-button" 
+            [class.current-plan-button]="isCurrentPlan(item.name)"
+            [disabled]="isCurrentPlan(item.name)"
+            (click)="onPlanChange(item)"
+          >
+            {{ getButtonText(item.name) }}
+          </button>
+        </div>
       </div>
       }
     </div>
-    <div class="plan-features">
-      <ul class="d-flex flex-col items-start">
-        @for (feature of item.features; track $index) {
-        <li class="feature-item d-flex justify-between regularText">
-          <p>{{ feature.label }}</p>
-          <p [ngClass]="{ 'color-primary-500': feature.value === 'YES' }">
-            {{ feature.value }}
-          </p>
-        </li>
-        }
-      </ul>
+  </div>
+</div>
+
+<!--
+  <div class="main-titles color-background d-flex flex-col mb-24">
+    <h1 class="subtitle mb-8">Cancel Plan</h1>
+    <h3 class="regularText">
+      You can cancel your current plan at any time from here.
+    </h3>
+  </div>
+  
+  <div class="access-buttons d-flex items-center">
+    <button class="access-btn regularText login">Change my Plan</button>
+    <button class="access-btn regularText signUp" (click)="onCancelPlan()">Cancel my Membership</button>
+  </div>
+-->
+
+@if (showCancelPlanProcessing) {
+<!-- Cancel plan confirmation popup -->
+<div class="cancel-plan-popup">
+  <div class="popup-overlay" (click)="cancelCancelPlan()"></div>
+  <div class="popup-content">
+    <div class="popup-header">
+      <h3 class="popup-title">Cancel Membership</h3>
+      <button class="close-btn" (click)="cancelCancelPlan()">×</button>
     </div>
-    <div class="plan-card-footer d-flex items-center justify-center">
-      <button class="btn-primary regularSemiText">{{ item.cta }}</button>
+    
+    <div class="popup-body">
+      <div class="warning-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      
+      <h4 class="warning-title">Are you sure you want to cancel your membership?</h4>
+      <p class="warning-text">
+        This action will immediately cancel your current plan and you will lose access to all premium features. 
+        This action cannot be undone.
+      </p>
+      
+      <div class="current-plan-info">
+        <p class="plan-label">Current Plan:</p>
+        <p class="plan-name">{{ userPlan?.name || 'Unknown Plan' }}</p>
+      </div>
+    </div>
+    
+    <div class="popup-footer">
+      <button class="btn-cancel" (click)="cancelCancelPlan()">
+        Keep Membership
+      </button>
+      <button class="btn-confirm" (click)="confirmCancelPlan()">
+        Yes, Cancel Plan
+      </button>
     </div>
   </div>
-  }
-</section>
-
-<div class="main-titles color-background d-flex flex-col mb-30">
-  <h1 class="subtitle mb-8">Cancel Plan</h1>
-  <h3 class="regularText">
-    You can cancel your current plan at any time from here.
-  </h3>
 </div>
+}
+}
 
-<div class="access-buttons d-flex items-center">
-  <button class="access-btn regularText login">Change my Plan</button>
-  <button class="access-btn regularText signUp">Cancel my Membership</button>
-</div>
+<!-- Componentes de procesamiento de pago y resumen -->
+@if (showSubscriptionProcessing) {
+<app-subscription-processing
+  [config]="subscriptionProcessingConfig"
+  (paymentSuccess)="onPaymentProcessingSuccess()"
+  (paymentError)="onPaymentProcessingError()"
+  (goBack)="onPaymentProcessingGoBack()"
+></app-subscription-processing>
+}
+
+@if (showOrderSummary) {
+<app-order-summary
+  [config]="orderSummaryConfig"
+  (continue)="onOrderSummaryContinue()"
+></app-order-summary>
+}

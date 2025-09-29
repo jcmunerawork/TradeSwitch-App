@@ -1,0 +1,90 @@
+<div class="payment-processing-container">
+  <!-- Header con botón X -->
+  <div class="header-section">
+    <button class="close-button" (click)="onGoBack()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Contenido principal -->
+  <div class="processing-content">
+    @if (processingStatus === 'processing') {
+      <!-- Estado de procesamiento -->
+      <div class="processing-state">
+        <div class="loading-spinner">
+          <div class="spinner-ring"></div>
+        </div>
+        
+        <h1 class="main-title">
+          <span class="highlight">Almost there!</span> {{ getContextTitle() }}
+        </h1>
+        
+        <div class="info-messages">
+          <p class="info-text">This process is safe and encrypted. Please don't refresh.</p>
+          <div class="security-info">
+            <svg class="shield-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>SECURED DATA PROCESSING</span>
+          </div>
+        </div>
+        
+        <p class="warning-text">
+          Please do not refresh, close or click back button in this page. Your data might loss.
+        </p>
+      </div>
+    }
+
+    @if (processingStatus === 'success') {
+      <!-- Estado de éxito -->
+      <div class="success-state">
+        <div class="success-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="22,4 12,14.01 9,11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        
+        <h1 class="main-title success-title">
+          <span class="highlight">Payment Successful!</span>
+        </h1>
+        
+        <p class="success-message">
+          {{ getSuccessMessage() }}
+        </p>
+      </div>
+    }
+
+    @if (processingStatus === 'error') {
+      <!-- Estado de error -->
+      <div class="error-state">
+        <div class="error-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2"/>
+            <line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </div>
+        
+        <h1 class="main-title error-title">
+          <span class="highlight">Payment Failed</span>
+        </h1>
+        
+        <p class="error-message">
+          {{ errorMessage || 'There was an error processing your payment.' }}
+        </p>
+        
+        <div class="error-actions">
+          <button class="retry-button" (click)="onRetry()">
+            Try Again
+          </button>
+          <button class="back-button" (click)="onGoBack()">
+            Go Back
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

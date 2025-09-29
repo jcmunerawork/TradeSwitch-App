@@ -1,4 +1,15 @@
 <div class="regularText color-background">
+  @if (initialLoading) {
+  <!-- Loading State -->
+  <div class="loading-container d-flex flex-col align-items-center justify-center">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+    </div>
+    <h3 class="loading-title">Loading your strategies...</h3>
+    <p class="loading-description">Please wait while we load your data.</p>
+  </div>
+  } @else {
+  <!-- Main Content -->
   <div class="mb-20 d-flex justify-between">
     <div>
       <h2 class="titleText mb-30">My Strategy</h2>
@@ -6,7 +17,7 @@
     </div>
   </div>
   <!-- Control Bar -->
-  <div class="control-bar d-flex flex-row justify-end align-items-center mb-20">
+  <div class="control-bar d-flex flex-row justify-end align-items-center mb-4">
     <!-- Search Input -->
     <div class="search-container">
       <div class="search-input-wrapper">
@@ -27,7 +38,12 @@
     </button> -->
     
     <!-- New Strategy Button -->
-    <button class="add-strategy-btn d-flex align-items-center gap-8" (click)="toggleStrategySelector()">
+    <button 
+      class="add-strategy-btn d-flex align-items-center gap-8" 
+      [class.disabled]="isAddStrategyDisabled"
+      [disabled]="isAddStrategyDisabled"
+      (click)="isAddStrategyDisabled ? null : toggleStrategySelector()"
+    >
       <span class="material-symbols-outlined" style="font-size: 20px;">add</span>
       <span>Add Strategy</span>
     </button>
@@ -85,18 +101,24 @@
     <h3 class="section-title">Active Strategy</h3>
     <p class="section-description">Currently active strategy configuration.</p>
     
-    <!-- Strategy Card -->
-    <app-strategy-card
-      [strategy]="strategyCard"
-      [showCustomizeButton]="true"
-      customizeButtonText="Customize strategy"
-      (edit)="onStrategyEdit($event)"
-      (favorite)="onStrategyFavorite($event)"
-      (moreOptions)="onStrategyMoreOptions($event)"
-      (customize)="onStrategyCustomize($event)"
-      (duplicate)="copyStrategy($event)"
-      (delete)="deleteStrategy($event)"
-    ></app-strategy-card>
+    <!-- Active Strategy Grid - Always 2 columns, but only left column filled -->
+    <div class="active-strategy-grid">
+      <div class="active-strategy-card">
+        <app-strategy-card
+          [strategy]="strategyCard"
+          [showCustomizeButton]="true"
+          customizeButtonText="Customize strategy"
+          (edit)="onStrategyEdit($event)"
+          (favorite)="onStrategyFavorite($event)"
+          (moreOptions)="onStrategyMoreOptions($event)"
+          (customize)="onStrategyCustomize($event)"
+          (duplicate)="copyStrategy($event)"
+          (delete)="deleteStrategy($event)"
+        ></app-strategy-card>
+      </div>
+      <!-- Empty space for right column -->
+      <div class="empty-strategy-slot"></div>
+    </div>
   </div>
   }
 
@@ -114,12 +136,16 @@
           [strategy]="getCardDataByStrategyId(getStrategyId(strategy)) || {
             id: getStrategyId(strategy),
             name: strategy.name,
-            status: 'Inactive',
+            status: false,
             lastModified: formatDate(strategy.updated_at.toDate()),
             rules: 0,
-            timesApplied: strategy.days_active || 0,
+            days_active: strategy.days_active || 0,
             winRate: 0,
-            isFavorite: false
+            isFavorite: false,
+            created_at: strategy.created_at,
+            updated_at: strategy.updated_at,
+            userId: strategy.userId,
+            configurationId: strategy.configurationId
           }"
           [showCustomizeButton]="true"
           customizeButtonText="Activate strategy"
@@ -182,23 +208,9 @@
   }
 
 <!-- Upgrade Modal -->
-@if (showUpgradeModal) {
-<div class="modal-overlay" (click)="onCloseUpgradeModal()">
-  <div class="upgrade-modal" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2 class="modal-title">Ready to expand your trading?</h2>
-      <button class="modal-close" (click)="onCloseUpgradeModal()">
-        <span class="material-symbols-outlined" style="font-size: 20px;">close</span>
-      </button>
-    </div>
-    <div class="modal-body">
-      <p class="modal-message">{{ upgradeModalMessage }}</p>
-    </div>
-    <div class="modal-footer">
-      <button class="upgrade-btn" (click)="onSeeUpgradeOptions()">
-        See upgrade options
-      </button>
-    </div>
-  </div>
-</div>
-}
+<!-- Plan Limitation Modal -->
+<app-plan-limitation-modal
+  [modalData]="planLimitationModal"
+  (closeModal)="onClosePlanLimitationModal()"
+></app-plan-limitation-modal>
+  }

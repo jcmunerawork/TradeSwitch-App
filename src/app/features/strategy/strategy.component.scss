@@ -1,4 +1,66 @@
+// Loading Styles
+.loading-container {
+  min-height: 400px;
+  width: 100%;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner {
+  margin-bottom: 20px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #4a4a4a;
+  border-top: 3px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #e3e3e3;
+  margin-bottom: 8px;
+}
+
+.loading-description {
+  font-size: 14px;
+  color: #8e8e93;
+  text-align: center;
+  max-width: 300px;
+}
+
 // Control Bar
+.new-strategy-form {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 10px;
+}
+
+.strategy-name-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #4a4a4a;
+  background: #2a2a2a;
+  font-size: 14px;
+  color: #e3e3e3;
+}
+
 .control-bar {
   width: 100%;
   padding: 16px 0;
@@ -77,6 +139,19 @@
       transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(155, 245, 38, 0.3);
     }
+
+    &.disabled {
+      background: #4a4a4a;
+      color: #8e8e93;
+      cursor: not-allowed;
+      opacity: 0.6;
+      
+      &:hover {
+        background: #4a4a4a;
+        transform: none;
+        box-shadow: none;
+      }
+    }
   }
   
   .icon-filter {
@@ -126,32 +201,32 @@
   .selector-actions {
     display: flex;
     gap: 8px;
-    
-    .create-btn, .cancel-btn {
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .create-btn {
-      background: #9bf526;
-      color: #1a1a1a;
-      border: none;
-      
-      &:hover { background: #8ae51a; }
-    }
-    
-    .cancel-btn {
-      background: transparent;
-      color: #8e8e93;
-      border: 1px solid #4a4a4a;
-      
-      &:hover { background: #3a3a3a; border-color: #8e8e93; }
-    }
   }
+}
+
+.create-btn, .cancel-btn {
+  padding: 12px 18px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.create-btn {
+  background: #9bf526;
+  color: #1a1a1a;
+  border: none;
+  
+  &:hover { background: #8ae51a; }
+}
+
+.cancel-btn {
+  background: transparent;
+  color: #8e8e93;
+  border: 1px solid #4a4a4a;
+  
+  &:hover { background: #3a3a3a; border-color: #8e8e93; }
 }
 
 // Plan Banner
@@ -302,12 +377,37 @@
   }
 }
 
-// Grid
+// Active Strategy Grid - Always 2 columns
+.active-strategy-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .empty-strategy-slot {
+    // Espacio vacío en la columna derecha
+    // Puede tener un estilo sutil o permanecer invisible
+    background: transparent;
+    
+    &::before {
+      opacity: 0.5;
+    }
+    
+    @media (max-width: 768px) {
+      display: none; // Ocultar en móvil ya que solo hay una columna
+    }
+  }
+}
+
+// Other Strategies Grid - 2 columns that grow down
 .strategies-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
-  margin-top: 16px;
   
   @media (max-width: 768px) {
     grid-template-columns: 1fr;

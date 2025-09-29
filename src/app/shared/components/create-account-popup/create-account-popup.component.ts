@@ -31,17 +31,11 @@ export class CreateAccountPopupComponent implements OnChanges {
     if (changes['visible'] && changes['visible'].currentValue === true) {
       this.setAccountNumber();
     }
-    
-    // Debug: Log when currentAccountCount changes
-    if (changes['currentAccountCount']) {
-      console.log('Current account count changed:', this.currentAccountCount);
-    }
   }
 
   private setAccountNumber() {
     // Set the account number to be the next number after current count
     this.newAccount.accountNumber = this.currentAccountCount + 1;
-    console.log('Setting account number:', this.newAccount.accountNumber, 'based on current count:', this.currentAccountCount);
   }
 
 

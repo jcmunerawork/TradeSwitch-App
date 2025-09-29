@@ -1,11 +1,14 @@
-import { Timestamp } from 'firebase/firestore';
 
 export enum UserStatus {
+  ADMIN = 'admin',
+  CREATED = 'created',
   PURCHASED = 'purchased',
   PENDING = 'pending',
-  UNVERIFIED = 'unverified',
+  ACTIVE = 'active',
+  PROCESSING = 'processing',
+  CANCELLED = 'cancelled',
+  EXPIRED = 'expired',
   BANNED = 'banned',
-  CREATED = 'created',
 }
 
 export interface overviewSubscriptionData {

@@ -8,10 +8,10 @@
           <span class="date">{{ selectedDate }}</span>
           <span class="separator">|</span>
           <span class="net-pnl" [ngClass]="netPnl >= 0 ? 'positive' : 'negative'">
-            Net P&L {{ netPnl >= 0 ? '+' : '' }}${{ netPnl.toFixed(2) }}
+            Net P&L {{ netPnl >= 0 ? '+' : '' }}{{ formatCurrency(netPnl) }}
           </span>
           <div class="roi-badge" [ngClass]="netPnl >= 0 ? 'positive' : 'negative'">
-            <span class="roi-value">{{ Math.abs(netRoi).toFixed(1) }}%</span>
+            <span class="roi-value">{{ formatPercentage(Math.abs(netRoi)) }}</span>
             <span class="roi-arrow" [ngClass]="netPnl >= 0 ? 'up' : 'down'">
               {{ netPnl >= 0 ? '↗' : '↘' }}
             </span>
@@ -61,10 +61,10 @@
             <div class="table-cell side-cell">{{ trade.side }}</div>
             <div class="table-cell instrument-cell">{{ trade.instrument }}</div>
             <div class="table-cell pnl-cell" [ngClass]="trade.netPnl >= 0 ? 'positive' : 'negative'">
-              {{ trade.netPnl >= 0 ? '+' : '' }}${{ trade.netPnl.toFixed(2) }}
+              {{ trade.netPnl >= 0 ? '+' : '' }}{{ formatCurrency(trade.netPnl) }}
             </div>
             <div class="table-cell roi-cell">
-              {{ trade.netPnl >= 0 ? '' : '(' }}{{ trade.netRoi.toFixed(1) }}%{{ trade.netPnl < 0 ? ')' : '' }}
+              {{ trade.netPnl >= 0 ? '' : '(' }}{{ formatPercentage(trade.netRoi) }}{{ trade.netPnl < 0 ? ')' : '' }}
             </div>
             <div class="table-cell strategy-cell">
               <span 

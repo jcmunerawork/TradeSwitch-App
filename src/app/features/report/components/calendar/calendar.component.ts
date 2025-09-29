@@ -12,6 +12,7 @@ import {
   PluginHistoryRecord,
 } from '../../models/report.model';
 import { ReportService } from '../../service/report.service';
+import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 import { TradesPopupComponent } from '../trades-popup/trades-popup.component';
 
 @Component({
@@ -35,6 +36,7 @@ export class CalendarComponent {
   selectedDay: CalendarDay | null = null;
 
   constructor(private reportSvc: ReportService) {}
+  private numberFormatter = new NumberFormatterService();
 
   ngOnChanges(changes: SimpleChanges) {
     this.currentDate = new Date();
@@ -285,5 +287,13 @@ export class CalendarComponent {
   onClosePopup() {
     this.showTradesPopup = false;
     this.selectedDay = null;
+  }
+
+  formatCurrency(value: number): string {
+    return this.numberFormatter.formatCurrency(value);
+  }
+
+  formatPercentage(value: number): string {
+    return this.numberFormatter.formatPercentage(value);
   }
 }

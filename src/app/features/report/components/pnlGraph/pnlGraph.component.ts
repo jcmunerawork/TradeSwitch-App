@@ -15,6 +15,7 @@ import { ChartType } from 'chart.js';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { getMonthlyPnL } from '../../utils/normalization-utils';
 import { FormsModule } from '@angular/forms';
+import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
 @Component({
   selector: 'app-PnL-Graph',
@@ -28,6 +29,7 @@ export class PnlGraphComponent implements OnInit, OnChanges {
   @Output() onYearChange = new EventEmitter<string>();
 
   public chartOptions: any;
+  private numberFormatter = new NumberFormatterService();
 
   year!: string;
   dateRanges: { label: string; value: string }[] = [];
@@ -151,7 +153,7 @@ export class PnlGraphComponent implements OnInit, OnChanges {
       tooltip: {
         theme: 'dark',
         x: { show: true },
-        custom: function ({ series, seriesIndex, dataPointIndex, w }: any) {
+        custom: ({ series, seriesIndex, dataPointIndex, w }: any) => {
           const value = series[seriesIndex][dataPointIndex];
           const category = w.globals.categoryLabels[dataPointIndex];
 
@@ -177,15 +179,18 @@ export class PnlGraphComponent implements OnInit, OnChanges {
             direction = null;
           }
 
+          const formattedValue = this.numberFormatter.formatCurrency(value);
+          const formattedPercent = this.numberFormatter.formatPercentageValue(percentDiff);
+          
           return `<div class=" ${cardClass} regularText color-background d-flex flex-col toolTip-container items-start">
           <p class="smallText color-text-gray">${category}, ${yearValue}</p>
           <div class="d-flex text-container items-center ">
                     <p class= "subtitle">
-                    $${value}
+                    ${formattedValue}
           </p>
           ${
             percentDiff != null
-              ? `<span class="smallText py-4 px-6 d-flex justify-center items-center ${validatorClass}">${percentDiff}% <span class="${
+              ? `<span class="smallText py-4 px-6 d-flex justify-center items-center ${validatorClass}">${formattedPercent}% <span class="${
                   direction === 'up'
                     ? 'icon-status-arrow-up'
                     : 'icon-status-arrow'

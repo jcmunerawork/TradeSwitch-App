@@ -17,6 +17,16 @@
   }
 </div>
 
+@if (selectedIndex === 0) {
+<app-profile-details></app-profile-details>
+}
+
 @if (selectedIndex === 1) {
 <app-plan-settings [planDetails]="selectedPlanDetails"></app-plan-settings>
 }
+
+<!--
+  @if (selectedIndex === 2) {
+  <app-subscription-history></app-subscription-history>
+  }
+-->

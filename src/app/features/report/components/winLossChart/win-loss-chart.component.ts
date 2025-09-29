@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, Input, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { GroupedTrade } from '../../models/report.model';
+import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
 @Component({
   selector: 'app-win-loss-chart',
@@ -14,6 +15,7 @@ export class WinLossChartComponent implements OnInit, OnChanges {
   @Input() values!: GroupedTrade[];
 
   public chartOptions: any;
+  private numberFormatter = new NumberFormatterService();
   public winLossData: {
     winValue: number;
     lossValue: number;
@@ -80,6 +82,9 @@ export class WinLossChartComponent implements OnInit, OnChanges {
     }
 
     // Si hay datos, mostrar el gráfico normal
+    console.log('📊 Chart Options - Series:', [this.winLossData.winValue, this.winLossData.lossValue]);
+    console.log('📊 Chart Options - WinLossData:', this.winLossData);
+    
     return {
       chart: {
         type: 'donut',
@@ -90,9 +95,9 @@ export class WinLossChartComponent implements OnInit, OnChanges {
         fontFamily: 'Inter, Arial, sans-serif',
         background: 'transparent',
       },
-      series: [this.winLossData.lossValue, this.winLossData.winValue],
-      labels: ['Loss', 'Win'],
-      colors: ['#EC221F', '#9BF526'],
+      series: [this.winLossData.winValue, this.winLossData.lossValue],
+      labels: ['Win', 'Loss'],
+      colors: ['#9BF526', '#EC221F'],
       dataLabels: {
         enabled: false
       },
@@ -111,11 +116,14 @@ export class WinLossChartComponent implements OnInit, OnChanges {
       },
       tooltip: {
         enabled: true,
-        custom: function ({ series, seriesIndex, dataPointIndex, w }: any) {
+        custom: ({ series, seriesIndex, dataPointIndex, w }: any) => {
           const value = series[seriesIndex];
           const percentage = w.globals.seriesPercent[seriesIndex];
-          const isLoss = seriesIndex === 0;
-          const color = isLoss ? '#EC221F' : '#9BF526';
+          const isWin = seriesIndex === 0; // Ahora el índice 0 es Win
+          const color = isWin ? '#9BF526' : '#EC221F';
+          
+          const formattedValue = this.numberFormatter.formatCurrency(value);
+          const formattedPercentage = this.numberFormatter.formatPercentageValue(percentage);
           
           return `
             <div class="custom-tooltip" style="
@@ -135,12 +143,12 @@ export class WinLossChartComponent implements OnInit, OnChanges {
                 font-weight: 700;
                 color: #333;
                 margin-bottom: 4px;
-              ">${value.toFixed(2)}</div>
+              ">${formattedValue}</div>
               <div style="
                 font-size: 12px;
                 font-weight: 500;
                 color: ${color};
-              ">${percentage.toFixed(1)}%</div>
+              ">${formattedPercentage}%</div>
             </div>
           `;
         }
@@ -180,15 +188,34 @@ export class WinLossChartComponent implements OnInit, OnChanges {
     const winPercentage = totalTrades > 0 ? (totalWinTrades / totalTrades) * 100 : 0;
     const lossPercentage = totalTrades > 0 ? (totalLossTrades / totalTrades) * 100 : 0;
 
-    return {
+    const result = {
       winValue: Math.round(winValue * 100) / 100,
       lossValue: Math.round(lossValue * 100) / 100,
       winPercentage: Math.round(winPercentage * 10) / 10,
       lossPercentage: Math.round(lossPercentage * 10) / 10
     };
+
+    console.log('🔍 Win/Loss Chart Data:', {
+      totalTrades: this.values.length,
+      totalWinTrades,
+      totalLossTrades,
+      winAmount,
+      lossAmount,
+      result
+    });
+
+    return result;
   }
 
   getWinLossData() {
     return this.calculateWinLossData();
+  }
+
+  formatCurrency(value: number): string {
+    return this.numberFormatter.formatCurrency(value);
+  }
+
+  formatPercentage(value: number): string {
+    return this.numberFormatter.formatPercentage(value);
   }
 }

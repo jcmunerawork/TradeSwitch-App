@@ -14,6 +14,13 @@ export interface historyTrade {
   updatedAt: string;
   isCloseAction: boolean;
   position_Id: string;
+  // Nuevos campos de la API
+  stopLoss?: string;
+  takeProfit?: string;
+  strategyId?: string;
+  createdDate?: string;
+  filledQty?: string;
+  avgPrice?: string;
 }
 
 export interface GroupedTrade {
@@ -24,6 +31,15 @@ export interface GroupedTrade {
   sell_price?: string;
   totalSpend?: number;
   updatedAt: string;
+  // Nuevas propiedades para claridad
+  entryPrice?: string;
+  exitPrice?: string;
+  side?: string; // 'buy' o 'sell' de la posición
+  isWon?: boolean;
+  isOpen?: boolean;
+  stopLoss?: string;
+  takeProfit?: string;
+  allTrades?: historyTrade[]; // Todos los trades de esta posición
 }
 
 export interface StatConfig {
@@ -32,6 +48,7 @@ export interface StatConfig {
   profitFactor: number;
   avgWinLossTrades: number;
   totalTrades: number;
+  activePositions: number;
 }
 
 export interface displayConfigData {

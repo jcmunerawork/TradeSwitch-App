@@ -1,0 +1,217 @@
+.profile-details-section {
+  font-family: "SF Pro Display";
+  padding-right: 1.5rem;
+}
+
+.main-titles {
+  margin-bottom: 2rem;
+}
+
+.form-card, .password-card {
+  margin-bottom: 2rem;
+}
+
+.form-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 1rem 0;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #a0a0a0;
+}
+
+.form-input {
+  padding: 0.75rem 1rem;
+  border: 1px solid #4a4a4a;
+  border-radius: 0.5rem;
+  background: #1a1a1b;
+  color: #fff;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: #9bf526;
+    box-shadow: 0 0 0 2px rgba(155, 245, 38, 0.1);
+  }
+
+  &.error {
+    border-color: #ff3b30;
+  }
+
+  &[readonly] {
+    background: #2a2a2b;
+    color: #a0a0a0;
+    cursor: not-allowed;
+  }
+}
+
+.form-note {
+  font-size: 0.75rem;
+  color: #a0a0a0;
+  font-style: italic;
+}
+
+.error-message {
+  font-size: 0.75rem;
+  color: #ff3b30;
+  margin-top: 0.25rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.btn-primary {
+  background: #9bf526;
+  color: #222325;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &:hover:not(:disabled) {
+    background: #8ae51f;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.btn-secondary {
+  background: transparent;
+  color: #fff;
+  border: 1px solid #4a4a4a;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: #2a2a2b;
+    border-color: #6a6a6a;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+// Password Section
+.password-section {
+  margin-top: 2rem;
+}
+
+.password-header {
+  margin-bottom: 1.5rem;
+}
+
+.password-description {
+  font-size: 0.875rem;
+  color: #a0a0a0;
+  margin: 0.5rem 0 0 0;
+}
+
+.password-form {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #4a4a4a;
+}
+
+.message {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-top: 1rem;
+
+  &.success {
+    background: rgba(20, 174, 92, 0.15);
+    color: #14ae5c;
+    border: 1px solid rgba(20, 174, 92, 0.3);
+  }
+
+  &.error {
+    background: rgba(255, 59, 48, 0.15);
+    color: #ff3b30;
+    border: 1px solid rgba(255, 59, 48, 0.3);
+  }
+}
+
+// Responsive Design
+@media (max-width: 1024px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .form-actions {
+    justify-content: stretch;
+  }
+
+  .btn-primary, .btn-secondary {
+    flex: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-details-section {
+    padding-right: 0;
+  }
+
+  .form-card, .password-card {
+    padding: 1.5rem;
+  }
+
+  .form-grid {
+    gap: 0.75rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+}

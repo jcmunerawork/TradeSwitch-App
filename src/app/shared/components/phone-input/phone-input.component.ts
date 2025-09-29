@@ -1,7 +1,7 @@
 import { Component, Input, forwardRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, FormsModule, ReactiveFormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { CountryService, CountryOption } from '../../../services/countryService';
+import { CountryOption, CountryService } from '../../services/countryService';
 
 interface CountryCode {
   code: string;

@@ -17,44 +17,71 @@
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: stretch;
   margin-bottom: 12px;
+  min-height: 60px;
 }
 
 .strategy-info {
   display: flex;
-  align-items: flex-start;
+  justify-content: start;
   gap: 12px;
-  flex: 1;
 }
 
 .strategy-icon {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #3967d7 0%, #5b8cff 100%);
-  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  min-width: 50px;
+  min-height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: #5186E433;
+  border-radius: 8px;
   flex-shrink: 0;
 
   .icon-strategy {
-    color: white;
-    font-size: 18px;
+    width: 30px;
+    height: 30px;
+    border: 2px solid #5186E4;
+    border-radius: 50%;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    &::before {
+      content: none;
+    }
   }
 }
 
 .strategy-details {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0px;
+  margin: 0px;
   min-width: 0;
+  height: 100%;
+}
+
+.strategy-name-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  margin: 0px;
 }
 
 .strategy-name {
   color: #e3e3e3;
   font-size: 16px;
   font-weight: 600;
-  margin: 0 0 8px 0;
   line-height: 1.2;
+  margin: 0;
+  flex: 1;
 }
 
 .strategy-status {
@@ -91,6 +118,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 100%;
+  align-self: stretch;
 }
 
 .action-btn {
@@ -345,4 +374,11 @@
 
 .delete-btn:hover {
   color: #e74c3c;
+}
+
+// Estilos para días activos
+.days-active {
+  color: #27ae60;
+  font-weight: 600;
+  font-size: 14px;
 }

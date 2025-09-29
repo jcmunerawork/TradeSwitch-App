@@ -1,7 +1,8 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, Injectable } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { User, UserStatus } from '../../models/overview';
 import { FormsModule } from '@angular/forms';
+import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
 @Component({
   selector: 'app-trade-switch-table',
@@ -10,6 +11,7 @@ import { FormsModule } from '@angular/forms';
   templateUrl: './tradeSwitchTable.component.html',
   styleUrls: ['./tradeSwitchTable.component.scss'],
 })
+@Injectable()
 export class TradeSwitchTableComponent {
   @Input() users: User[] = [];
   initialStatus: UserStatus = undefined as unknown as UserStatus;
@@ -18,6 +20,8 @@ export class TradeSwitchTableComponent {
   showFilter = false;
   currentPage: number = 1;
   itemsPerPage: number = 10;
+
+  private numberFormatter = new NumberFormatterService();
 
   private _searchTerm = '';
   get searchTerm(): string {
@@ -110,5 +114,9 @@ export class TradeSwitchTableComponent {
 
   nextPage() {
     this.goToPage(this.currentPage + 1);
+  }
+
+  formatCurrency(value: number | null | undefined): string {
+    return this.numberFormatter.formatCurrency(value);
   }
 }

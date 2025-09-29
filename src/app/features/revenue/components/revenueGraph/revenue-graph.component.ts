@@ -3,6 +3,7 @@ import { Component, Inject, Input, PLATFORM_ID } from '@angular/core';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { FormsModule } from '@angular/forms';
 import { DailyRevenueData, MonthlyRevenueData } from '../../models/revenue';
+import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
 @Component({
   selector: 'app-revenue-graph',
@@ -16,6 +17,7 @@ export class RevenueGraphComponent {
   @Input() monthlyData!: MonthlyRevenueData[];
 
   actualYear: number = new Date().getFullYear();
+  private numberFormatter = new NumberFormatterService();
 
   filterType: 'day' | 'month' | 'year' = 'day';
 
@@ -262,7 +264,7 @@ export class RevenueGraphComponent {
       tooltip: {
         theme: 'dark',
         x: { show: true },
-        custom: function ({ series, seriesIndex, dataPointIndex, w }: any) {
+        custom: ({ series, seriesIndex, dataPointIndex, w }: any) => {
           const value = series[seriesIndex][dataPointIndex];
           const prevValue =
             dataPointIndex > 0 ? series[seriesIndex][dataPointIndex - 1] : null;
@@ -288,14 +290,17 @@ export class RevenueGraphComponent {
             direction = null;
           }
 
+          const formattedValue = this.numberFormatter.formatCurrency(value);
+          const formattedPercent = this.numberFormatter.formatPercentageValue(percentDiff);
+          
           return `<div class=" ${cardClass} regularText color-background d-flex flex-col toolTip-container items-start">
           <p class="smallText color-text-gray">${actualYear}</p>
           <div class="d-flex text-container items-center ">
-            <p class= "subtitle">$${value}</p>
+            <p class= "subtitle">${formattedValue}</p>
             ${
               percentDiff != null
                 ? `<span class="smallText py-4 px-6 d-flex justify-center items-center ${validatorClass}">
-                     ${percentDiff}% <span class="${
+                     ${formattedPercent}% <span class="${
                     direction === 'up'
                       ? 'icon-status-arrow-up'
                       : 'icon-status-arrow'

@@ -1,0 +1,42 @@
+@if (modalData.showModal) {
+<!-- Modal Overlay -->
+<div class="modal-overlay" (click)="onCloseModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <div class="modal-icon">
+        @if (modalData.modalType === 'upgrade') {
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        } @else {
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        }
+      </div>
+      <button class="close-btn" (click)="onCloseModal()">×</button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body">
+      <h3 class="modal-title">{{ modalData.title }}</h3>
+      <p class="modal-message">{{ modalData.message }}</p>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      @if (modalData.secondaryButtonText) {
+        <button class="btn-secondary" (click)="onSecondaryAction()">
+          {{ modalData.secondaryButtonText }}
+        </button>
+      }
+      <button class="btn-primary" (click)="onPrimaryAction()">
+        {{ modalData.primaryButtonText }}
+      </button>
+    </div>
+
+  </div>
+</div>
+}

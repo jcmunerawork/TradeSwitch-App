@@ -5,23 +5,25 @@ import { SettingsService } from '../strategy/service/strategy.service';
 import { ReportService } from '../report/service/report.service';
 import { CommonModule } from '@angular/common';
 import { PlanSettingsComponent } from './components/plan-management/plan-settings.component';
+import { ProfileDetailsComponent } from './components/profile-details/profile-details.component';
+import { SubscriptionHistoryComponent } from './components/subscription-history/subscription-history.component';
 import { PlanDetails } from './models/account-settings';
 import { MOCK_PLAN_DETAILS } from './mocks/account-mocks';
 
 @Component({
   selector: 'app-account',
-  imports: [CommonModule, PlanSettingsComponent],
+  imports: [CommonModule, PlanSettingsComponent, ProfileDetailsComponent, SubscriptionHistoryComponent],
   templateUrl: './account.component.html',
   styleUrl: './account.component.scss',
   standalone: true,
 })
 export class AccountComponent implements OnInit {
   user: User | null = null;
-  selectedIndex: number = 1;
+  selectedIndex: number = 0;
   tabs: { label: string }[] = [
     { label: 'Profile Details' },
     { label: 'Plan Management' },
-    { label: 'Billing Management' },
+    /*{ label: 'Subscription History' },*/
   ];
   selectedPlanDetails: PlanDetails | null = null;
 

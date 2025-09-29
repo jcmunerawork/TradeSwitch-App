@@ -8,3 +8,31 @@
   );
   gap: 1rem;
 }
+
+// Clases de color para los valores
+.color-success {
+  color: #9BF526 !important;
+}
+
+.color-error {
+  color: #EC221F !important;
+}
+
+.color-background {
+  color: #ffffff !important;
+}
+
+// Asegurar que las clases se apliquen correctamente
+.kpi-value {
+  &.color-success {
+    color: #9BF526 !important;
+  }
+  
+  &.color-error {
+    color: #EC221F !important;
+  }
+  
+  &.color-background {
+    color: #ffffff !important;
+  }
+}

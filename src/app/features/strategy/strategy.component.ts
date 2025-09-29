@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { User } from '../overview/models/overview';
@@ -18,8 +18,12 @@ import { StrategyState } from '../strategy/models/strategy.model';
 import { AccountData } from '../auth/models/userModel';
 import { setUserKey } from '../report/store/report.actions';
 import { selectUserKey } from '../report/store/report.selectors';
+import { GlobalStrategyUpdaterService } from '../../shared/services/global-strategy-updater.service';
 import { allRules } from '../strategy/store/strategy.selectors';
 import { selectNetPnL } from '../report/store/report.selectors';
+import { PlanLimitationsGuard } from '../../guards/plan-limitations.guard';
+import { PlanLimitationModalData } from '../../shared/interfaces/plan-limitation-modal.interface';
+import { PlanLimitationModalComponent } from '../../shared/components/plan-limitation-modal/plan-limitation-modal.component';
 
 
 @Component({
@@ -29,15 +33,17 @@ import { selectNetPnL } from '../report/store/report.selectors';
     FormsModule,
     TextInputComponent,
     StrategyCardComponent,
+    PlanLimitationModalComponent,
   ],
   templateUrl: './strategy.component.html',
   styleUrl: './strategy.component.scss',
   standalone: true,
 })
-export class Strategy implements OnInit {
+export class Strategy implements OnInit, OnDestroy {
   config: any = {};
   user: User | null = null;
   loading = false;
+  initialLoading = true;
   
   // Plan detection and banner
   accountsData: AccountData[] = [];
@@ -45,9 +51,18 @@ export class Strategy implements OnInit {
   planBannerMessage = '';
   planBannerType = 'info'; // 'info', 'warning', 'success'
   
-  // Upgrade modal
-  showUpgradeModal = false;
-  upgradeModalMessage = '';
+  // Plan limitation modal
+  planLimitationModal: PlanLimitationModalData = {
+    showModal: false,
+    modalType: 'upgrade',
+    title: '',
+    message: '',
+    primaryButtonText: '',
+    onPrimaryAction: () => {}
+  };
+
+  // Button state
+  isAddStrategyDisabled = false;
   
   // Report data for strategy card
   tradeWin: number = 0;
@@ -67,12 +82,16 @@ export class Strategy implements OnInit {
   strategyCard: StrategyCardData = {
     id: '1',
     name: 'My Trading Strategy',
-    status: 'Active',
+    status: true,
     lastModified: 'Never',
     rules: 0,
-    timesApplied: 0,
+    days_active: 0,
     winRate: 0,
-    isFavorite: false
+    isFavorite: false,
+    created_at: null,
+    updated_at: null,
+    userId: '',
+    configurationId: ''
   };
 
   constructor(
@@ -81,15 +100,104 @@ export class Strategy implements OnInit {
     private strategySvc: SettingsService,
     private reportSvc: ReportService,
     private authService: AuthService,
+    private globalStrategyUpdater: GlobalStrategyUpdaterService,
+    private planLimitationsGuard: PlanLimitationsGuard,
   ) {}
 
-  ngOnInit(): void {
-    this.getUserData();
-    this.getActualBalance();
-    this.listenConfigurations();
-    this.fetchUserAccounts();
-    this.listenReportData();
-    this.loadUserStrategies();
+  async ngOnInit(): Promise<void> {
+    this.initialLoading = true;
+    
+    try {
+      // Ejecutar todas las operaciones de inicialización
+      await Promise.all([
+        this.initializeUserData(),
+        this.initializeAccounts(),
+        this.initializeStrategies(),
+        this.initializeReportData()
+      ]);
+      
+      await Promise.all([
+        this.listenConfigurations(),
+        this.listenReportData(),
+        this.initializeGlobalStrategyUpdater()
+      ]);
+      
+    } catch (error) {
+      console.error('Error during initialization:', error);
+    } finally {
+      this.initialLoading = false;
+    }
+  }
+
+  /**
+   * Inicializa los datos del usuario
+   */
+  private async initializeUserData(): Promise<void> {
+    return new Promise((resolve) => {
+      this.store.select(selectUser).subscribe({
+        next: (user) => {
+          this.user = user.user;
+          resolve();
+        },
+        error: (err) => {
+          console.error('Error fetching user data', err);
+          resolve();
+        },
+      });
+    });
+  }
+
+  /**
+   * Inicializa las cuentas del usuario
+   */
+  private async initializeAccounts(): Promise<void> {
+    if (this.user?.id) {
+      try {
+        const accounts = await this.authService.getUserAccounts(this.user.id);
+        this.accountsData = accounts || [];
+        this.checkPlanLimitations();
+        this.fetchUserKey();
+      } catch (error) {
+        console.error('Error loading accounts:', error);
+      }
+    }
+  }
+
+  /**
+   * Inicializa las estrategias del usuario
+   */
+  private async initializeStrategies(): Promise<void> {
+    if (this.user?.id) {
+      try {
+        await this.loadUserStrategies();
+      } catch (error) {
+        console.error('Error loading strategies:', error);
+      }
+    }
+  }
+
+  /**
+   * Inicializa los datos de reporte
+   */
+  private async initializeReportData(): Promise<void> {
+    try {
+      this.getActualBalance();
+    } catch (error) {
+      console.error('Error loading report data:', error);
+    }
+  }
+
+  /**
+   * Inicializa el servicio global de actualización de estrategias
+   */
+  private initializeGlobalStrategyUpdater(): void {
+    if (this.user?.id) {
+      this.globalStrategyUpdater.updateAllStrategies(this.user.id);
+    }
+  }
+
+  ngOnDestroy(): void {
+    // Limpiar recursos si es necesario
   }
 
   fetchUserKey() {
@@ -97,7 +205,7 @@ export class Strategy implements OnInit {
       // Use the first account's credentials
       const firstAccount = this.accountsData[0];
       this.reportSvc
-        .getUserKey(this.user.email, firstAccount.brokerPassword, firstAccount.server)
+        .getUserKey(firstAccount.emailTradingAccount, firstAccount.brokerPassword, firstAccount.server)
         .subscribe({
           next: (key: string) => {
             this.store.dispatch(setUserKey({ userKey: key }));
@@ -274,33 +382,19 @@ export class Strategy implements OnInit {
     return this.strategyCardsData.find(card => card.id === strategyId);
   }
 
-  onNewStrategy() {
-    const currentPlan = this.determineUserPlan();
+  async onNewStrategy() {
+    if (!this.user?.id || this.isAddStrategyDisabled) return;
+
     const activeStrategies = this.getActiveStrategyCount();
+    const accessCheck = await this.planLimitationsGuard.checkStrategyCreationWithModal(this.user.id, activeStrategies);
     
-    // Check plan limits
-    let maxStrategies = 0;
-    switch (currentPlan) {
-      case 'Free':
-        maxStrategies = 1;
-        break;
-      case 'Starter':
-        maxStrategies = 3;
-        break;
-      case 'Pro':
-        maxStrategies = 8;
-        break;
-    }
-    
-    // If user has reached the limit, show upgrade modal
-    if (activeStrategies >= maxStrategies) {
-      this.showUpgradeModal = true;
-      this.upgradeModalMessage = `You've reached the strategy limit for your ${currentPlan} plan. Move to a higher plan and keep growing your account.`;
+    if (!accessCheck.canCreate) {
+      if (accessCheck.modalData) {
+        this.planLimitationModal = accessCheck.modalData;
+      }
       return;
     }
     
-    // If within limits, proceed to create new strategy
-    console.log('Creating new strategy...');
     this.router.navigate(['/edit-strategy']);
   }
 
@@ -310,18 +404,14 @@ export class Strategy implements OnInit {
   }
 
   onStrategyFavorite(strategyId: string) {
-    console.log('Toggle favorite for strategy:', strategyId);
     // TODO: Implementar funcionalidad de favoritos en la base de datos
     // Por ahora solo actualizar el estado local
     const strategy = this.userStrategies.find(s => (s as any).id === strategyId);
     if (strategy) {
-      // Aquí se podría actualizar en la base de datos
-      console.log('Strategy favorited:', strategy.name);
     }
   }
 
   onStrategyMoreOptions(strategyId: string) {
-    console.log('More options for strategy:', strategyId);
     // TODO: Implementar menú de opciones (copiar, eliminar, etc.)
     // Por ahora mostrar opciones básicas
     const strategy = this.userStrategies.find(s => (s as any).id === strategyId);
@@ -336,7 +426,6 @@ export class Strategy implements OnInit {
   }
 
   onStrategyCustomize(strategyId: string) {
-    console.log('Customize strategy rules:', strategyId);
     this.router.navigate(['/edit-strategy'], { queryParams: { strategyId: strategyId } });
   }
 
@@ -498,14 +587,28 @@ export class Strategy implements OnInit {
     this.showPlanBanner = false;
   }
 
-  // Upgrade modal methods
-  onCloseUpgradeModal() {
-    this.showUpgradeModal = false;
+  // Plan limitation modal methods
+  onClosePlanLimitationModal() {
+    this.planLimitationModal.showModal = false;
   }
 
-  onSeeUpgradeOptions() {
-    this.showUpgradeModal = false;
-    this.router.navigate(['/account']);
+  // Check strategy limitations and update button state
+  async checkStrategyLimitations() {
+    if (!this.user?.id) {
+      this.isAddStrategyDisabled = true;
+      return;
+    }
+
+    try {
+      // Contar el total de estrategias del usuario (activas + inactivas)
+      const totalStrategies = this.userStrategies.length + (this.activeStrategy ? 1 : 0);
+      const accessCheck = await this.planLimitationsGuard.checkStrategyCreationWithModal(this.user.id, totalStrategies);
+      
+      this.isAddStrategyDisabled = !accessCheck.canCreate;
+    } catch (error) {
+      console.error('Error checking strategy limitations:', error);
+      this.isAddStrategyDisabled = true;
+    }
   }
 
   // ===== MÉTODOS PARA MÚLTIPLES ESTRATEGIAS =====
@@ -533,6 +636,9 @@ export class Strategy implements OnInit {
       if (this.activeStrategy) {
         this.updateStrategyCardWithActiveStrategy();
       }
+      
+      // Verificar limitaciones después de cargar las estrategias
+      this.checkStrategyLimitations();
     } catch (error) {
       console.error('❌ Error loading user strategies:', error);
     }
@@ -552,12 +658,16 @@ export class Strategy implements OnInit {
         this.strategyCardsData.push({
           id: (strategy as any).id,
           name: strategy.name,
-          status: strategy.status ? 'Active' : 'Inactive',
+          status: strategy.status,
           lastModified: this.formatDate(strategy.updated_at.toDate()),
           rules: 0,
-          timesApplied: strategy.days_active || 0,
+          days_active: strategy.days_active || 0,
           winRate: 0,
-          isFavorite: false
+          isFavorite: false,
+          created_at: strategy.created_at,
+          updated_at: strategy.updated_at,
+          userId: strategy.userId,
+          configurationId: strategy.configurationId
         });
       }
     }
@@ -631,8 +741,6 @@ export class Strategy implements OnInit {
 
       // 6. Recargar estrategias para mostrar la nueva
       await this.loadUserStrategies();
-      
-      console.log('New strategy created:', strategyId);
     } catch (error) {
       console.error('Error creating strategy:', error);
       alert('Error creating strategy. Please try again.');
@@ -654,8 +762,6 @@ export class Strategy implements OnInit {
       const currentConfig = this.config;
       const balance = currentConfig?.riskPerTrade?.balance || 0;
       this.loadConfig(balance);
-      
-      console.log('Strategy activated:', strategyId);
     } catch (error) {
       console.error('Error activating strategy:', error);
       alert('Error activating strategy. Please try again.');
@@ -682,8 +788,6 @@ export class Strategy implements OnInit {
           this.store.dispatch(resetConfig({ config: initialStrategyState }));
         }
       }
-      
-      console.log('Strategy deleted:', strategyId);
     } catch (error) {
       console.error('Error deleting strategy:', error);
       alert('Error deleting strategy. Please try again.');
@@ -702,8 +806,6 @@ export class Strategy implements OnInit {
       
       // Recargar estrategias (una sola llamada)
       await this.loadUserStrategies();
-      
-      console.log('Strategy name updated:', strategyId);
     } catch (error) {
       console.error('Error updating strategy name:', error);
       alert('Error updating strategy name. Please try again.');
@@ -735,13 +837,17 @@ export class Strategy implements OnInit {
       this.strategyCard = {
         id: (this.activeStrategy as any).id,
         name: strategyData.overview.name, // Nombre de la estrategia desde overview
-        status: strategyData.overview.status ? 'Active' : 'Inactive', // Estado desde overview
+        status: strategyData.overview.status, // Estado desde overview
         lastModified: lastModified, // updated_at formateado desde overview
         rules: activeRules, // Reglas activas de configuration
-        timesApplied: strategyData.overview.days_active || 0, // days_active desde overview
+        days_active: strategyData.overview.days_active || 0, // days_active desde overview
         winRate: winRate, // Win rate (por implementar)
-        isFavorite: this.strategyCard.isFavorite
-      } as StrategyCardData;
+        isFavorite: this.strategyCard.isFavorite,
+        created_at: strategyData.overview.created_at,
+        updated_at: strategyData.overview.updated_at,
+        userId: strategyData.overview.userId,
+        configurationId: strategyData.overview.configurationId
+      };
     } catch (error) {
       console.error('Error updating strategy card with active strategy:', error);
     }
@@ -784,12 +890,16 @@ export class Strategy implements OnInit {
         return {
           id: (strategy as any).id,
           name: strategy.name,
-          status: strategy.status ? 'Active' : 'Inactive',
+          status: strategy.status,
           lastModified: this.formatDate(strategy.updated_at.toDate()),
           rules: 0,
-          timesApplied: strategy.days_active || 0,
+          days_active: strategy.days_active || 0,
           winRate: 0,
-          isFavorite: false
+          isFavorite: false,
+          created_at: strategy.created_at,
+          updated_at: strategy.updated_at,
+          userId: strategy.userId,
+          configurationId: strategy.configurationId
         };
       }
 
@@ -805,12 +915,16 @@ export class Strategy implements OnInit {
       const cardData: StrategyCardData = {
         id: (strategy as any).id,
         name: strategyData.overview.name, // Nombre desde overview
-        status: strategyData.overview.status ? 'Active' : 'Inactive', // Estado desde overview
+        status: strategyData.overview.status, // Estado desde overview
         lastModified: lastModified, // updated_at desde overview
         rules: activeRules, // Reglas activas de configuration
-        timesApplied: strategyData.overview.days_active || 0, // days_active desde overview
+        days_active: strategyData.overview.days_active || 0, // days_active desde overview
         winRate: winRate, // Win rate (por implementar)
-        isFavorite: false
+        isFavorite: false,
+        created_at: strategyData.overview.created_at,
+        updated_at: strategyData.overview.updated_at,
+        userId: strategyData.overview.userId,
+        configurationId: strategyData.overview.configurationId
       };
 
       return cardData;
@@ -820,12 +934,16 @@ export class Strategy implements OnInit {
       return {
         id: (strategy as any).id,
         name: strategy.name,
-        status: strategy.status ? 'Active' : 'Inactive',
+        status: strategy.status,
         lastModified: this.formatDate(strategy.updated_at.toDate()),
         rules: 0,
-        timesApplied: strategy.days_active || 0,
+        days_active: strategy.days_active || 0,
         winRate: 0,
-        isFavorite: false
+        isFavorite: false,
+        created_at: strategy.created_at,
+        updated_at: strategy.updated_at,
+        userId: strategy.userId,
+        configurationId: strategy.configurationId
       };
     }
   }
@@ -864,7 +982,6 @@ export class Strategy implements OnInit {
       // Recargar estrategias (una sola llamada)
       await this.loadUserStrategies();
       
-      console.log('Strategy copied:', newStrategyId);
     } catch (error) {
       console.error('Error copying strategy:', error);
       alert('Error copying strategy. Please try again.');

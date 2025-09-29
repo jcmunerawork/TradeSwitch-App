@@ -31,16 +31,18 @@
       <a class="forgot-password" href="#">Forgot Your Password?</a>
     </div>
 
-    <button type="submit" class="login-button" [disabled]="loginForm.invalid">
+    <button type="submit" class="login-button">
       Log In
     </button>
 
-    <div class="login-methods-separator">
-      <span class="separator-line"></span>
-      Or login with
-      <span class="separator-line"></span>
-    </div>
-
+    
+    <!-- 
+      <div class="login-methods-separator">
+        <span class="separator-line"></span>
+        Or login with
+        <span class="separator-line"></span>
+      </div>
+      
     <div class="social-buttons-container">
       <button class="social-button" type="button" (click)="signInWithGoogle()">
         <img
@@ -55,7 +57,8 @@
         Apple
       </button>
     </div>
-
+    -->
+    
     <div class="signup-link">
       <div>Don’t have an account?</div>
       <a routerLink="/signup">Sign Up</a>

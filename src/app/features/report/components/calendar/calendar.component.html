@@ -79,13 +79,13 @@
           @if (cell.tradesCount > 0) {
           <div class="cell-content d-flex flex-col">
             <div class="pnl-amount">
-              ${{ cell.pnlTotal < 0 ? cell.pnlTotal : cell.pnlTotal.toFixed(4) }}
+              {{ formatCurrency(cell.pnlTotal) }}
             </div>
             <div class="trades-info">
               {{ cell.tradesCount }} Trade{{ cell.tradesCount > 1 ? "s" : "" }}
             </div>
             <div class="win-percentage">
-              {{ cell.tradeWinPercent }}%
+              {{ formatPercentage(cell.tradeWinPercent) }}
             </div>
           </div>
           }
@@ -99,7 +99,7 @@
           </div>
           <div class="week-content">
             <div class="week-total" [ngClass]="getWeekTotal(week) >= 0 ? 'positive' : 'negative'">
-              ${{ getWeekTotal(week).toFixed(2) }}
+              {{ formatCurrency(getWeekTotal(week)) }}
             </div>
             <div class="week-days">
               {{ getWeekActiveDays(week) }} days

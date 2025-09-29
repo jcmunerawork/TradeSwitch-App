@@ -1,0 +1,83 @@
+<div class="plan-selection-container">
+  <!-- Header con botón X -->
+  <div class="header-section">
+    <div class="main-titles color-background d-flex flex-col mb-48">
+      <h1 class="titleText mb-32">Start Subscription</h1>
+      <h3 class="regularText">
+        Select the right plan for you
+      </h3>
+    </div>
+
+    <button class="close-button" (click)="onGoBack()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Cards de planes -->
+  <section class="plans-list d-flex items-center justify-center items-center mb-64">
+    @for (item of plansData; track $index) {
+    <div
+      class="plan-card d-flex p-24 flex-col items-start color-background regularText"
+      [class.isMostPopular]="item.mostPopular"
+    >
+      <div class="plan-card-header d-flex items-start justify-start">
+        <div
+          class="card-icon d-flex items-center justify-center p-10"
+          [class.isTriangle]="item.icon === 'triangle'"
+          [class.isCircle]="item.icon === 'circle'"
+          [class.isSquare]="item.icon === 'square'"
+        >
+          @if (item.icon === 'triangle') {
+          <div class="triangle-icon"></div>
+          } @if (item.icon === 'circle') {
+          <div class="circle-icon"></div>
+          } @if (item.icon === 'square') {
+          <div class="square-icon"></div>
+          }
+        </div>
+        <div class="plan-card-titles d-flex flex-col items-start">
+          <h2 class="planName subtitle">{{ item.name }}</h2>
+          <h2 class="subtitle mt-12">
+            <span class="titleText">${{ item.price }}</span> {{ item.period }}
+          </h2>
+        </div>
+        @if(item.mostPopular) {
+        <div class="popular py-4 px-6">
+          <span class="mostPopular p-10 regularSemiText">Most Popular</span>
+        </div>
+        }
+      </div>
+      <div class="plan-features">
+        <ul class="d-flex flex-col items-start">
+          @for (feature of item.features; track $index) {
+          <li class="feature-item d-flex justify-between regularText">
+            <p>{{ feature.label }}</p>
+            <div class="feature-value">
+              @if (isNumeric(feature.value)) {
+                <p [ngClass]="{ 'color-primary-500': feature.value === 'YES' }">
+                  {{ feature.value }}
+                </p>
+              } @else {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="check-icon">
+                  <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              }
+            </div>
+          </li>
+          }
+        </ul>
+      </div>
+      <div class="plan-card-footer d-flex items-center justify-center">
+        <button 
+          class="btn-primary regularSemiText"
+          (click)="onPlanSelect(item)"
+        >
+          {{ item.cta }}
+        </button>
+      </div>
+    </div>
+    }
+  </section>
+</div>

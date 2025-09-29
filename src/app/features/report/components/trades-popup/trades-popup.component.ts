@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CalendarDay, GroupedTrade } from '../../models/report.model';
+import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
 export interface TradeDetail {
   openTime: string;
@@ -28,6 +29,7 @@ export class TradesPopupComponent {
   trades: TradeDetail[] = [];
   netPnl: number = 0;
   netRoi: number = 0;
+  private numberFormatter = new NumberFormatterService();
   selectedDate: string = '';
 
   // Expose Math to template
@@ -150,5 +152,13 @@ export class TradesPopupComponent {
   onFilter() {
     // Implementar lógica de filtrado
     console.log('Filter clicked');
+  }
+
+  formatCurrency(value: number): string {
+    return this.numberFormatter.formatCurrency(value);
+  }
+
+  formatPercentage(value: number): string {
+    return this.numberFormatter.formatPercentage(value);
   }
 }

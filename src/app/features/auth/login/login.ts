@@ -4,6 +4,8 @@ import {
   FormGroup,
   ReactiveFormsModule,
   Validators,
+  AbstractControl,
+  ValidationErrors,
 } from '@angular/forms';
 import { PasswordInputComponent } from '../../../shared/components/password-input/password-input.component';
 import { TextInputComponent } from '../../../shared/components';
@@ -37,16 +39,17 @@ export class Login {
     private router: Router
   ) {
     this.loginForm = this.fb.group({
-      loginEmail: ['', [Validators.required, Validators.email]],
+      loginEmail: ['', [Validators.required, Validators.email, this.emailValidator]],
       password: ['', [Validators.required]],
       rememberMe: [false],
     });
   }
 
   onSubmit(): void {
+    // Validar campos antes de proceder
+    this.validateLoginFields();
+    
     if (this.loginForm.valid) {
-      console.log('Login:', this.loginForm.value);
-
       const userCredentials = this.createUserCredentialsObject();
       this.authService
         .login(userCredentials)
@@ -54,7 +57,6 @@ export class Login {
           this.authService
             .getUserData(response.user.uid)
             .then((userData: User) => {
-              console.log('User data:', userData);
               this.store.dispatch(setUserData({ user: userData }));
               if (userData.isAdmin) {
                 this.router.navigate(['/overview']);
@@ -64,7 +66,7 @@ export class Login {
             });
         })
         .catch((error: any) => {
-          alert('Login failed. Please try again.');
+          this.handleLoginError(error);
         });
     }
   }
@@ -88,5 +90,70 @@ export class Login {
   signInWithApple(): void {
     // TODO: Implement Apple sign-in
     console.log('Apple sign-in');
+  }
+
+  // Validador personalizado para email
+  private emailValidator(control: AbstractControl): ValidationErrors | null {
+    if (!control.value) return null;
+    
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    
+    if (!emailRegex.test(control.value)) {
+      return { invalidEmailFormat: true };
+    }
+    
+    return null;
+  }
+
+  // Validar campos del formulario
+  private validateLoginFields(): void {
+    const errors: string[] = [];
+    
+    const emailControl = this.loginForm.get('loginEmail');
+    const passwordControl = this.loginForm.get('password');
+
+    // Validar email
+    if (emailControl?.errors?.['required']) {
+      errors.push('Email is required');
+    } else if (emailControl?.errors?.['email']) {
+      errors.push('Invalid email format');
+    } else if (emailControl?.errors?.['invalidEmailFormat']) {
+      errors.push('Invalid email format. Must contain @ and a valid domain');
+    }
+
+    // Validar contraseña
+    if (passwordControl?.errors?.['required']) {
+      errors.push('Password is required');
+    }
+
+    // Mostrar alerta si hay errores
+    if (errors.length > 0) {
+      alert('Validation errors:\n\n' + errors.join('\n'));
+    }
+  }
+
+  // Manejar errores de login
+  private handleLoginError(error: any): void {
+    console.error('Login error:', error);
+    
+    let errorMessage = 'Login failed. ';
+    
+    // Verificar tipo de error específico
+    if (error.code === 'auth/user-not-found') {
+      errorMessage += 'No account found with this email.';
+    } else if (error.code === 'auth/wrong-password') {
+      errorMessage += 'Incorrect password.';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage += 'Invalid email format.';
+    } else if (error.code === 'auth/user-disabled') {
+      errorMessage += 'This account has been disabled.';
+    } else if (error.code === 'auth/too-many-requests') {
+      errorMessage += 'Too many failed attempts. Please try again later.';
+    } else {
+      // Error genérico - verificar si es problema de credenciales
+      errorMessage += 'Email or password is incorrect. Please check your credentials and try again.';
+    }
+    
+    alert(errorMessage);
   }
 }

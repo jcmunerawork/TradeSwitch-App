@@ -1,8 +1,9 @@
-import { Component, Input, Output } from '@angular/core';
+import { Component, Input, Output, Injectable } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { FormsModule } from '@angular/forms';
 import { RevenueFilter, RevenueTableRow } from '../../models/revenue';
+import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
 @Component({
   selector: 'app-revenue-table',
@@ -11,6 +12,7 @@ import { RevenueFilter, RevenueTableRow } from '../../models/revenue';
   templateUrl: './revenue-table.component.html',
   styleUrls: ['./revenue-table.component.scss'],
 })
+@Injectable()
 export class RevenueTableComponent {
   @Input() revenueRows: RevenueTableRow[] = [];
 
@@ -21,6 +23,8 @@ export class RevenueTableComponent {
   sortAsc: boolean = true;
 
   filter: RevenueFilter = {};
+
+  private numberFormatter = new NumberFormatterService();
 
   private _searchTerm = '';
   get searchTerm(): string {
@@ -142,5 +146,9 @@ export class RevenueTableComponent {
         matchesMaxTotalSales
       );
     });
+  }
+
+  formatCurrency(value: number | null | undefined): string {
+    return this.numberFormatter.formatCurrency(value);
   }
 }

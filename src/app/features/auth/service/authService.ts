@@ -176,4 +176,76 @@ export class AuthService {
       .asObservable()
       .pipe(filter((state): state is boolean => state !== null));
   }
+
+  /**
+   * Obtiene el usuario autenticado actual
+   * @returns Usuario autenticado o null si no está autenticado
+   */
+  getCurrentUser(): any {
+    try {
+      if (!this.isBrowser) {
+        return null;
+      }
+      return getAuth().currentUser;
+    } catch (error) {
+      console.error('Error obteniendo usuario actual:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Obtiene un usuario por su ID
+   * @param userId ID del usuario
+   * @returns Promise con el usuario o null si no existe
+   */
+  async getUserById(userId: string): Promise<User | null> {
+    try {
+      if (!this.isBrowser || !this.db) {
+        return null;
+      }
+
+      const userDoc = await getDoc(doc(this.db, 'users', userId));
+      if (userDoc.exists()) {
+        return { id: userDoc.id, ...userDoc.data() } as User;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error obteniendo usuario por ID:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Actualiza un usuario existente
+   * @param userId ID del usuario
+   * @param userData Datos actualizados del usuario
+   * @returns Promise void
+   */
+  async updateUser(userId: string, userData: Partial<User>): Promise<void> {
+    try {
+      if (!this.isBrowser || !this.db) {
+        throw new Error('No se puede actualizar usuario en el servidor');
+      }
+
+      await setDoc(doc(this.db, 'users', userId), {
+        ...userData,
+        lastUpdated: new Date().getTime()
+      }, { merge: true });
+      
+      console.log('Usuario actualizado exitosamente:', userId);
+    } catch (error) {
+      console.error('Error actualizando usuario:', error);
+      throw error;
+    }
+  }
+
+  async getBearerTokenFirebase(userId: string): Promise<string> {
+    const token = await getAuth().currentUser?.getIdToken().then((token) => {
+      return token;
+    });
+    if (!token) {
+      throw new Error('Token not found');
+    }
+    return token;
+  }
 }

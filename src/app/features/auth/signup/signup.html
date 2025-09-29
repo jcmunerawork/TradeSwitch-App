@@ -1,3 +1,4 @@
+@if (!showPlanSelection && !showPaymentProcessing && !showOrderSummary) {
 <div class="signup-container">
   <div class="signup-header">
     <h1 class="signup-title">Create account</h1>
@@ -61,40 +62,40 @@
       <button
         type="submit"
         class="submit-button"
-        [disabled]="signupForm.invalid"
       >
-        Submit
+        Next
       </button>
+      <!-- 
+        <div class="signup-methods-separator">
+          <span class="separator-line"></span>
+          Or sign up with
+          <span class="separator-line"></span>
+        </div>
+  
+        <div class="social-buttons-container">
+          <button
+            class="social-button"
+            type="button"
+            (click)="signInWithGoogle()"
+          >
+            <img
+              src="assets/google-logo.svg"
+              alt="Google logo"
+              class="social-icon"
+            />
+            Google
+          </button>
+          <button class="social-button" type="button" (click)="signInWithApple()">
+            <img
+              src="assets/apple-logo.svg"
+              alt="Apple logo"
+              class="social-icon"
+            />
+            Apple
+          </button>
+        </div>
+      -->
       @if (!isAdminSignup) {
-      <div class="signup-methods-separator">
-        <span class="separator-line"></span>
-        Or sign up with
-        <span class="separator-line"></span>
-      </div>
-
-      <div class="social-buttons-container">
-        <button
-          class="social-button"
-          type="button"
-          (click)="signInWithGoogle()"
-        >
-          <img
-            src="assets/google-logo.svg"
-            alt="Google logo"
-            class="social-icon"
-          />
-          Google
-        </button>
-        <button class="social-button" type="button" (click)="signInWithApple()">
-          <img
-            src="assets/apple-logo.svg"
-            alt="Apple logo"
-            class="social-icon"
-          />
-          Apple
-        </button>
-      </div>
-
       <p class="login-text">
         Already have an account? <a routerLink="/login">Log in</a>
       </p>
@@ -103,3 +104,22 @@
   </form>
   } 
 </div>
+} @else if (showPlanSelection) {
+<app-plan-selection 
+  [userData]="userData"
+  (planSelected)="onPlanSelected($event)"
+  (goBack)="onGoBackToSignup()"
+></app-plan-selection>
+} @else if (showPaymentProcessing) {
+<app-subscription-processing
+  [config]="subscriptionProcessingConfig"
+  (paymentSuccess)="onPaymentProcessingSuccess()"
+  (paymentError)="onPaymentProcessingError()"
+  (goBack)="onPaymentProcessingGoBack()"
+></app-subscription-processing>
+} @else if (showOrderSummary) {
+<app-order-summary
+  [config]="orderSummaryConfig"
+  (continue)="onOrderSummaryContinue()"
+></app-order-summary>
+}
