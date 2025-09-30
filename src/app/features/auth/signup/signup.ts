@@ -353,6 +353,7 @@ export class SignupComponent implements OnInit {
         userData: this.userData
       };
 
+      this.onPaymentProcessingSuccess();
       await this.simulatePaymentProcessing(priceId, bearerTokenFirebase);
       
       // Después de abrir la nueva pestaña, el modal de procesamiento ya está visible
@@ -412,7 +413,7 @@ export class SignupComponent implements OnInit {
   async onPaymentProcessingSuccess(): Promise<void> {
     try {
       // Actualizar el usuario con el plan seleccionado
-      await this.updateUserWithPlan();
+      //await this.updateUserWithPlan();
       
       // Crear el pago en la subcolección de payments
       await this.createUserSubscription();
@@ -479,7 +480,7 @@ export class SignupComponent implements OnInit {
       const paymentData: Omit<Subscription, 'id' | 'created_at' | 'updated_at'> = {
         planId: "Cb1B0tpxdE6AP6eMZDo0",
         status: UserStatus.CREATED,
-        userId: this.currentUserId
+        userId: this.currentUserId,
       };
 
       // Crear el pago en la subcolección de payments

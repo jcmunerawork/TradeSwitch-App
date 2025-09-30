@@ -179,32 +179,32 @@
 }
 
 .trades-table {
-  background: #1a1a1a;
-  border: 1px solid #333;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 8px;
   overflow: hidden;
+  padding: 0;
 }
 
 .table-header {
   display: grid;
-  grid-template-columns: 1fr 0.8fr 0.8fr 1.5fr 1fr 1fr 1fr 1.5fr;
-  background: linear-gradient(135deg, #1e3a8a 0%, #1a1a1a 100%);
-  border-bottom: 1px solid #333;
+  grid-template-columns: 1fr 0.8fr 0.8fr 1.5fr 1fr 1.5fr;
+  background: rgba(59, 130, 246, 0.05);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .header-cell {
   padding: 12px 16px;
-  color: #8e8e93;
+  color: #b0b0b0;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   font-family: 'Inter', Arial, sans-serif;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-right: 1px solid #333;
-  
-  &:last-child {
-    border-right: none;
-  }
+  letter-spacing: 0.3px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .table-body {
@@ -214,12 +214,12 @@
 
 .table-row {
   display: grid;
-  grid-template-columns: 1fr 0.8fr 0.8fr 1.5fr 1fr 1fr 1fr 1.5fr;
-  border-bottom: 1px solid #2a2a2a;
+  grid-template-columns: 1fr 0.8fr 0.8fr 1.5fr 1fr 1.5fr;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
   transition: background-color 0.2s;
   
   &:hover {
-    background: #222;
+    background: rgba(59, 130, 246, 0.05);
   }
   
   &:last-child {
@@ -229,48 +229,78 @@
 
 .table-cell {
   padding: 12px 16px;
-  color: #e3e3e3;
+  color: #e0e0e0;
   font-size: 14px;
   font-family: 'Inter', Arial, sans-serif;
-  border-right: 1px solid #2a2a2a;
   display: flex;
   align-items: center;
-  
-  &:last-child {
-    border-right: none;
-  }
+  justify-content: center;
+  text-align: center;
 }
 
 .time-cell {
-  font-family: 'Courier New', monospace;
-  font-size: 13px;
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
 }
 
 .ticker-badge {
   display: inline-block;
   padding: 4px 8px;
-  border-radius: 4px;
-  color: #1a1a1a;
+  border-radius: 12px;
+  background: #6b7280;
+  color: white;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   font-family: 'Inter', Arial, sans-serif;
   text-transform: uppercase;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.5px;
 }
 
 .side-cell {
-  font-weight: 500;
+  font-weight: 400;
   font-family: 'Inter', Arial, sans-serif;
+  font-size: 14px;
 }
 
 .instrument-cell {
-  font-family: 'Courier New', monospace;
-  font-size: 13px;
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
 }
 
 .pnl-cell {
-  font-weight: 600;
+  font-weight: 500;
   font-family: 'Inter', Arial, sans-serif;
+  font-size: 14px;
+  
+  &.positive {
+    color: #10B981;
+    
+    .pnl-value {
+      background: rgba(16, 185, 129, 0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+  }
+  
+  &.negative {
+    color: #EF4444;
+    
+    .pnl-value {
+      background: rgba(239, 68, 68, 0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+  }
+}
+
+.roi-cell {
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
   
   &.positive {
     color: #10B981;
@@ -281,20 +311,40 @@
   }
 }
 
-.roi-cell {
-  font-family: 'Inter', Arial, sans-serif;
-  font-size: 13px;
-}
-
 .strategy-icon {
-  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
   font-weight: bold;
+  
+  &.followed {
+    background: #10B981;
+    color: white;
+    
+    &::before {
+      content: '✓';
+    }
+  }
+  
+  &.not-followed {
+    background: #EF4444;
+    color: white;
+    
+    &::before {
+      content: '−';
+    }
+  }
 }
 
 .strategy-name-cell {
-  font-size: 13px;
-  color: #8e8e93;
+  font-size: 14px;
+  color: #e0e0e0;
   font-family: 'Inter', Arial, sans-serif;
+  font-weight: 400;
 }
 
 // Scrollbar styling

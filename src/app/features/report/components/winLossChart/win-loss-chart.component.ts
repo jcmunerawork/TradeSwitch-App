@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { NgApexchartsModule } from 'ng-apexcharts';
-import { GroupedTrade } from '../../models/report.model';
+import { GroupedTradeFinal } from '../../models/report.model';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
 @Component({
@@ -12,7 +12,7 @@ import { NumberFormatterService } from '../../../../shared/utils/number-formatte
   imports: [CommonModule, NgApexchartsModule],
 })
 export class WinLossChartComponent implements OnInit, OnChanges {
-  @Input() values!: GroupedTrade[];
+  @Input() values!: GroupedTradeFinal[];
 
   public chartOptions: any;
   private numberFormatter = new NumberFormatterService();
@@ -46,8 +46,8 @@ export class WinLossChartComponent implements OnInit, OnChanges {
       return {
         chart: {
           type: 'donut',
-          height: 200,
-          width: 200,
+          height: 300,
+          width: 300,
           toolbar: { show: false },
           foreColor: '#fff',
           fontFamily: 'Inter, Arial, sans-serif',
@@ -62,7 +62,7 @@ export class WinLossChartComponent implements OnInit, OnChanges {
         plotOptions: {
           pie: {
             donut: {
-              size: '70%',
+              size: '85%',
               labels: {
                 show: false // No mostrar texto dentro del círculo
               }
@@ -80,22 +80,18 @@ export class WinLossChartComponent implements OnInit, OnChanges {
         }
       };
     }
-
-    // Si hay datos, mostrar el gráfico normal
-    console.log('📊 Chart Options - Series:', [this.winLossData.winValue, this.winLossData.lossValue]);
-    console.log('📊 Chart Options - WinLossData:', this.winLossData);
     
     return {
       chart: {
         type: 'donut',
-        height: 200,
-        width: 200,
+        height: 300,
+        width: 300,
         toolbar: { show: false },
         foreColor: '#fff',
         fontFamily: 'Inter, Arial, sans-serif',
         background: 'transparent',
       },
-      series: [this.winLossData.winValue, this.winLossData.lossValue],
+      series: [this.winLossData.winPercentage, this.winLossData.lossPercentage],
       labels: ['Win', 'Loss'],
       colors: ['#9BF526', '#EC221F'],
       dataLabels: {
@@ -104,7 +100,7 @@ export class WinLossChartComponent implements OnInit, OnChanges {
       plotOptions: {
         pie: {
           donut: {
-            size: '70%',
+            size: '85%',
             labels: {
               show: false
             }
@@ -117,12 +113,13 @@ export class WinLossChartComponent implements OnInit, OnChanges {
       tooltip: {
         enabled: true,
         custom: ({ series, seriesIndex, dataPointIndex, w }: any) => {
-          const value = series[seriesIndex];
           const percentage = w.globals.seriesPercent[seriesIndex];
           const isWin = seriesIndex === 0; // Ahora el índice 0 es Win
           const color = isWin ? '#9BF526' : '#EC221F';
           
-          const formattedValue = this.numberFormatter.formatCurrency(value);
+          // Usar los valores monetarios reales en lugar del porcentaje
+          const moneyValue = isWin ? this.winLossData.winValue : this.winLossData.lossValue;
+          const formattedValue = this.numberFormatter.formatCurrency(moneyValue);
           const formattedPercentage = this.numberFormatter.formatPercentageValue(percentage);
           
           return `
@@ -170,7 +167,7 @@ export class WinLossChartComponent implements OnInit, OnChanges {
     let lossAmount = 0;
 
     this.values.forEach(trade => {
-      const pnl = trade.pnl || 0;
+      const pnl = trade.pnl ?? 0;
       if (pnl > 0) {
         totalWinTrades++;
         winAmount += pnl;
@@ -180,13 +177,14 @@ export class WinLossChartComponent implements OnInit, OnChanges {
       }
     });
 
-    // Calcular promedio real de trades ganados y perdidos
-    const winValue = totalWinTrades > 0 ? winAmount / totalWinTrades : 0;
-    const lossValue = totalLossTrades > 0 ? lossAmount / totalLossTrades : 0;
-    
+    // Calcular solo winValue (plata real ganada) y winPercentage
+    const winValue = winAmount; // Plata real ganada
     const totalTrades = totalWinTrades + totalLossTrades;
     const winPercentage = totalTrades > 0 ? (totalWinTrades / totalTrades) * 100 : 0;
-    const lossPercentage = totalTrades > 0 ? (totalLossTrades / totalTrades) * 100 : 0;
+    
+    // Calcular lossValue y lossPercentage como lo que falta para completar
+    const lossValue = lossAmount; // Plata real perdida
+    const lossPercentage = 100 - winPercentage; // Lo que falta para llegar al 100%
 
     const result = {
       winValue: Math.round(winValue * 100) / 100,
@@ -194,15 +192,6 @@ export class WinLossChartComponent implements OnInit, OnChanges {
       winPercentage: Math.round(winPercentage * 10) / 10,
       lossPercentage: Math.round(lossPercentage * 10) / 10
     };
-
-    console.log('🔍 Win/Loss Chart Data:', {
-      totalTrades: this.values.length,
-      totalWinTrades,
-      totalLossTrades,
-      winAmount,
-      lossAmount,
-      result
-    });
 
     return result;
   }

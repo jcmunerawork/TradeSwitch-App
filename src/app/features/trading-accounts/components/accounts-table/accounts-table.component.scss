@@ -360,3 +360,19 @@ th:nth-child(6), td:nth-child(6) { width: 100px; } // File upload
 th:nth-child(7), td:nth-child(7) { width: 100px; } // Clear trades
 th:nth-child(8), td:nth-child(8) { width: 100px; } // Delete account
 th:nth-child(9), td:nth-child(9) { width: 80px; }  // Actions
+
+// Loading text style
+.loading-text {
+  color: #9ca3af;
+  font-style: italic;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

@@ -419,6 +419,55 @@ export class SettingsService {
     }
   }
 
+  // Actualizar fechas de activación/desactivación de estrategias
+  async updateStrategyDates(userId: string, strategyId: string, dateActive?: Date, dateInactive?: Date): Promise<void> {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return;
+    }
+
+    try {
+      const strategyRef = doc(this.db, 'configuration-overview', strategyId);
+      const strategyDoc = await getDoc(strategyRef);
+      
+      if (!strategyDoc.exists()) {
+        throw new Error('Strategy not found');
+      }
+
+      const currentData = strategyDoc.data();
+      const updateData: any = {};
+
+      // Solo actualizar si se proporciona un valor válido
+      if (dateActive !== undefined && dateActive !== null) {
+        const currentDateActive = currentData['dateActive'] || [];
+        const newDateActive = [...currentDateActive, Timestamp.fromDate(dateActive)];
+        updateData.dateActive = newDateActive;
+        
+        // Si se está activando, cambiar status a true
+        updateData.status = true;
+      }
+
+      // Solo actualizar si se proporciona un valor válido
+      if (dateInactive !== undefined && dateInactive !== null) {
+        const currentDateInactive = currentData['dateInactive'] || [];
+        const newDateInactive = [...currentDateInactive, Timestamp.fromDate(dateInactive)];
+        updateData.dateInactive = newDateInactive;
+        
+        // Si se está desactivando, cambiar status a false
+        updateData.status = false;
+      }
+
+      // Actualizar timestamp solo si hay cambios
+      if (Object.keys(updateData).length > 0) {
+        updateData.updated_at = Timestamp.now();
+        await updateDoc(strategyRef, updateData);
+      }
+    } catch (error) {
+      console.error('Error updating strategy dates:', error);
+      throw error;
+    }
+  }
+
   // Eliminar una estrategia
   async deleteStrategyView(strategyId: string): Promise<void> {
     if (!this.db) {

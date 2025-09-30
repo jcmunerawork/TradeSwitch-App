@@ -46,8 +46,8 @@
 
 .chart-wrapper {
   position: relative;
-  width: 200px;
-  height: 200px;
+  width: 300px;
+  height: 300px;
 }
 
 // Overlay para estado sin datos
@@ -103,30 +103,31 @@
 }
 
 .loss-segment {
-  left: 20%;
-  top: 50%;
+  left: 15%;
+  top: 45%;
   transform: translateY(-50%);
 }
 
 .win-segment {
-  right: 20%;
-  top: 50%;
+  right: 15%;
+  top: 45%;
   transform: translateY(-50%);
 }
 
 .segment-value {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: #e3e3e3;
   font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
-  line-height: 1.2;
+  line-height: 1.3;
+  margin-bottom: 2px;
 }
 
 .segment-percentage {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
-  line-height: 1.2;
+  line-height: 1.3;
   
   &.loss-color {
     color: #EC221F;
@@ -146,15 +147,15 @@
 // Responsive adjustments
 @media (max-width: 768px) {
   .chart-wrapper {
-    width: 180px;
-    height: 180px;
+    width: 250px;
+    height: 250px;
   }
   
   .segment-value {
-    font-size: 14px;
+    font-size: 16px;
   }
   
   .segment-percentage {
-    font-size: 11px;
+    font-size: 12px;
   }
 }

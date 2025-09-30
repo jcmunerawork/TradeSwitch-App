@@ -8,12 +8,13 @@ import {
 } from '@angular/core';
 import {
   CalendarDay,
-  GroupedTrade,
+  GroupedTradeFinal,
   PluginHistoryRecord,
 } from '../../models/report.model';
 import { ReportService } from '../../service/report.service';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 import { TradesPopupComponent } from '../trades-popup/trades-popup.component';
+import { ConfigurationOverview } from '../../../strategy/models/strategy.model';
 
 @Component({
   selector: 'app-calendar',
@@ -23,9 +24,9 @@ import { TradesPopupComponent } from '../trades-popup/trades-popup.component';
   imports: [CommonModule, TradesPopupComponent],
 })
 export class CalendarComponent {
-  @Input() groupedTrades!: GroupedTrade[];
-  @Input() pluginHistory!: PluginHistoryRecord[];
+  @Input() groupedTrades!: GroupedTradeFinal[];
   @Output() strategyFollowedPercentageChange = new EventEmitter<number>();
+  @Input() strategies!: ConfigurationOverview[];
 
   calendar: CalendarDay[][] = [];
   currentDate!: Date;
@@ -44,7 +45,7 @@ export class CalendarComponent {
 
     this.generateCalendar(this.selectedMonth);
 
-    if (this.pluginHistory && this.pluginHistory.length > 0) {
+    if (this.strategies && this.strategies.length > 0) {
       this.getPercentageStrategyFollowedLast30Days();
     }
   }
@@ -54,11 +55,11 @@ export class CalendarComponent {
   }
 
   generateCalendar(targetMonth: Date) {
-    const tradesByDay: { [date: string]: GroupedTrade[] } = {};
+    const tradesByDay: { [date: string]: GroupedTradeFinal[] } = {};
 
     // Agrupar trades por día usando la zona horaria del dispositivo
     this.groupedTrades.forEach((trade) => {
-      const tradeDate = new Date(Number(trade.updatedAt));
+      const tradeDate = new Date(Number(trade.lastModified));
       // Usar la zona horaria local del dispositivo
       const key = `${tradeDate.getFullYear()}-${tradeDate.getMonth()}-${tradeDate.getDate()}`;
 
@@ -69,7 +70,7 @@ export class CalendarComponent {
     // Verificar duplicados de manera simple
     const allTrades = Object.values(tradesByDay).flat();
     const uniqueTrades = allTrades.filter((trade, index, self) => 
-      index === self.findIndex(t => t.position_Id === trade.position_Id)
+      index === self.findIndex(t => t.positionId === trade.positionId)
     );
 
     // Generar calendario del mes objetivo
@@ -93,26 +94,20 @@ export class CalendarComponent {
       const pnlTotal = trades.reduce((acc, t) => acc + (t.pnl ?? 0), 0);
 
       const wins = trades.filter((t) => (t.pnl ?? 0) > 0).length;
+      const losses = trades.filter((t) => (t.pnl ?? 0) < 0).length;
       const tradesCount = trades.length;
       const tradeWinPercent = tradesCount > 0 ? Math.round((wins / tradesCount) * 1000) / 10 : 0;
       
-      let usedPluginToday = false;
-      if (this.pluginHistory && this.pluginHistory.length > 0) {
-        const foundRecord = this.pluginHistory.find((record) => {
-          const recordDate = new Date(record.updatedOn);
-          return recordDate.getFullYear() === currentDay.getFullYear() &&
-                 recordDate.getMonth() === currentDay.getMonth() &&
-                 recordDate.getDate() === currentDay.getDate();
-        });
-        usedPluginToday = foundRecord?.isActive ?? false;
-      }
+      // Determinar si es un "buen" día basándose en trades ganados vs perdidos
+      // Si hay más trades ganados que perdidos, es un buen día
+      const isGoodDay = tradesCount > 0 ? wins > losses : false;
 
       days.push({
         date: new Date(currentDay),
-        trades: trades,
+        trades: trades as GroupedTradeFinal[],
         pnlTotal,
         tradesCount: trades.length,
-        followedStrategy: usedPluginToday,
+        followedStrategy: isGoodDay,
         tradeWinPercent: Math.round(tradeWinPercent),
       });
 
@@ -199,14 +194,14 @@ export class CalendarComponent {
   private getEarliestTradeDate(): Date {
     if (!this.groupedTrades || this.groupedTrades.length === 0) return new Date();
     
-    const dates = this.groupedTrades.map(trade => new Date(Number(trade.updatedAt)));
+    const dates = this.groupedTrades.map(trade => new Date(Number(trade.lastModified)));
     return new Date(Math.min(...dates.map(d => d.getTime())));
   }
 
   private getLatestTradeDate(): Date {
     if (!this.groupedTrades || this.groupedTrades.length === 0) return new Date();
     
-    const dates = this.groupedTrades.map(trade => new Date(Number(trade.updatedAt)));
+    const dates = this.groupedTrades.map(trade => new Date(Number(trade.lastModified)));
     return new Date(Math.max(...dates.map(d => d.getTime())));
   }
 

@@ -1,4 +1,4 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import {
   Component,
   Inject,
@@ -10,8 +10,7 @@ import {
   EventEmitter,
   SimpleChanges,
 } from '@angular/core';
-import { GroupedTrade } from '../../models/report.model';
-import { ChartType } from 'chart.js';
+import { GroupedTrade, GroupedTradeFinal } from '../../models/report.model';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { getMonthlyPnL } from '../../utils/normalization-utils';
 import { FormsModule } from '@angular/forms';
@@ -25,7 +24,7 @@ import { NumberFormatterService } from '../../../../shared/utils/number-formatte
   imports: [CommonModule, NgApexchartsModule, FormsModule],
 })
 export class PnlGraphComponent implements OnInit, OnChanges {
-  @Input() values!: GroupedTrade[];
+  @Input() values!: GroupedTradeFinal[];
   @Output() onYearChange = new EventEmitter<string>();
 
   public chartOptions: any;
@@ -37,8 +36,8 @@ export class PnlGraphComponent implements OnInit, OnChanges {
   // Date filter properties
   showDateFilter = false;
   selectedDate: string = '';
-  filteredData: GroupedTrade[] = [];
-  originalData: GroupedTrade[] = [];
+  filteredData: GroupedTradeFinal[] = [];
+  originalData: GroupedTradeFinal[] = [];
 
   constructor(@Inject(PLATFORM_ID) private platformId: any) {}
 
@@ -90,7 +89,7 @@ export class PnlGraphComponent implements OnInit, OnChanges {
     }
   }
 
-  getChartOptions(trades: GroupedTrade[]): any {
+  getChartOptions(trades: GroupedTradeFinal[]): any {
     const yearValue = this.year;
     const filteredTrades = this.applyYearFilter(trades);
     
@@ -212,7 +211,7 @@ export class PnlGraphComponent implements OnInit, OnChanges {
     };
   }
 
-  applyYearFilter(trades: GroupedTrade[]): GroupedTrade[] {
+  applyYearFilter(trades: GroupedTradeFinal[]): GroupedTradeFinal[] {
     if (!trades || trades.length === 0) return [];
     
     let filteredTrades = [...trades];
@@ -220,14 +219,14 @@ export class PnlGraphComponent implements OnInit, OnChanges {
     // Filter by year
     const yearValue = parseInt(this.year);
     filteredTrades = filteredTrades.filter(trade => {
-      const tradeDate = new Date(Number(trade.updatedAt));
+      const tradeDate = new Date(Number(trade.lastModified));
       return tradeDate.getFullYear() === yearValue;
     });
 
     return filteredTrades;
   }
 
-  applyDateFilter(trades: GroupedTrade[], selectedDate: string): GroupedTrade[] {
+  applyDateFilter(trades: GroupedTradeFinal[], selectedDate: string): GroupedTradeFinal[] {
     if (!selectedDate || selectedDate === '') {
       return trades;
     }
@@ -237,17 +236,17 @@ export class PnlGraphComponent implements OnInit, OnChanges {
     const endOfDay = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate() + 1);
 
     return trades.filter(trade => {
-      const tradeDate = new Date(Number(trade.updatedAt));
+      const tradeDate = new Date(Number(trade.lastModified));
       return tradeDate >= startOfDay && tradeDate < endOfDay;
     });
   }
 
 
-  getMonthlyChartConfig(trades: GroupedTrade[], yearValue: string) {
+  getMonthlyChartConfig(trades: GroupedTradeFinal[], yearValue: string) {
     const monthlyMap: { [label: string]: number } = {};
     
     trades.forEach(trade => {
-      const date = new Date(Number(trade.updatedAt));
+      const date = new Date(Number(trade.lastModified));
       const tradeYear = date.getFullYear();
       const yearValueNum = parseInt(yearValue);
       
@@ -328,7 +327,7 @@ export class PnlGraphComponent implements OnInit, OnChanges {
     
     const years = new Set<number>();
     this.values.forEach(trade => {
-      const date = new Date(Number(trade.updatedAt));
+      const date = new Date(Number(trade.lastModified));
       years.add(date.getFullYear());
     });
     

@@ -752,7 +752,26 @@ export class Strategy implements OnInit, OnDestroy {
     if (!this.user?.id) return;
 
     try {
-      await this.strategySvc.activateStrategyView(this.user.id, strategyId);
+      const currentTimestamp = new Date();
+      
+      // Verificar si hay una estrategia activa actualmente
+      if (this.activeStrategy && (this.activeStrategy as any).id !== strategyId) {
+        // Hay una estrategia activa diferente, desactivarla primero
+        await this.strategySvc.updateStrategyDates(
+          this.user.id, 
+          (this.activeStrategy as any).id, 
+          undefined, // No agregar a dateActive
+          currentTimestamp // Agregar timestamp actual a dateInactive
+        );
+      }
+      
+      // Activar la nueva estrategia
+      await this.strategySvc.updateStrategyDates(
+        this.user.id, 
+        strategyId, 
+        currentTimestamp, // Agregar timestamp actual a dateActive
+        undefined // No agregar a dateInactive
+      );
       
       // Recargar estrategias (una sola llamada)
       await this.loadUserStrategies();

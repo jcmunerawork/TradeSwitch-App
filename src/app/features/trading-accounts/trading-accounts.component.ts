@@ -85,6 +85,7 @@ export class TradingAccountsComponent {
     this.userSvc
       .getUserAccounts(this.user?.id || '')
       .then((docSnap) => {
+        
         if (docSnap && docSnap.length > 0) {
           this.usersData = docSnap;
           this.loading = false;
@@ -139,10 +140,11 @@ export class TradingAccountsComponent {
 
   getActualBalance(key: string, account: AccountData) {
     return this.reportSvc
-      .getBalanceData(account.accountID, key, account.accountNumber)
+      .getBalanceData(account.accountID, key, 1)
       .pipe(
-        concatMap((balance) => {
-          account.balance = balance;
+        concatMap((balanceData) => {
+          // Guardar el balance en la cuenta
+          account.balance = balanceData.balance || 0;
           return [account];
         })
       );

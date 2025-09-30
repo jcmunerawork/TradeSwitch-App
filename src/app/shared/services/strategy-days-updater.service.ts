@@ -13,7 +13,6 @@ export class StrategyDaysUpdaterService {
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {
     this.isBrowser = isPlatformBrowser(this.platformId);
     if (this.isBrowser) {
-      const { firebaseApp } = require('../../firebase/firebase.init.ts');
       this.db = getFirestore(firebaseApp);
     }
   }

@@ -20,6 +20,7 @@ import { ReportService } from './service/report.service';
 import {
   displayConfigData,
   GroupedTrade,
+  GroupedTradeFinal,
   MonthlyReport,
   PluginHistoryRecord,
   StatConfig,
@@ -36,7 +37,7 @@ import { PnlGraphComponent } from './components/pnlGraph/pnlGraph.component';
 import { CalendarComponent } from './components/calendar/calendar.component';
 import { SettingsService } from '../strategy/service/strategy.service';
 import { resetConfig } from '../strategy/store/strategy.actions';
-import { RuleType, StrategyState } from '../strategy/models/strategy.model';
+import { ConfigurationOverview, RuleType, StrategyState } from '../strategy/models/strategy.model';
 import { WinLossChartComponent } from './components/winLossChart/win-loss-chart.component';
 import moment from 'moment-timezone';
 import { Router } from '@angular/router';
@@ -50,6 +51,7 @@ import { AccountData } from '../auth/models/userModel';
 import { PlanLimitationsGuard } from '../../guards/plan-limitations.guard';
 import { PlanLimitationModalData } from '../../shared/interfaces/plan-limitation-modal.interface';
 import { PlanLimitationModalComponent } from '../../shared/components/plan-limitation-modal/plan-limitation-modal.component';
+import { StrategyCardData } from '../../shared/components/strategy-card/strategy-card.interface';
 
 @Component({
   selector: 'app-report',
@@ -71,7 +73,7 @@ export class ReportComponent implements OnInit {
   accessToken: string | null = null;
   accountDetails: any = null;
   accountsData: AccountData[] = [];
-  accountHistory: GroupedTrade[] = [];
+  accountHistory: GroupedTradeFinal[] = [];
   errorMessage: string | null = null;
   stats?: StatConfig;
   userKey!: string;
@@ -83,7 +85,7 @@ export class ReportComponent implements OnInit {
   requestYear: number = 0;
   private updateSubscription?: Subscription;
   private loadingTimeout?: any;
-  pluginHistory: PluginHistoryRecord[] = [];
+  strategies: ConfigurationOverview[] = [];
   
   // Account management
   currentAccount: AccountData | null = null;
@@ -141,7 +143,7 @@ export class ReportComponent implements OnInit {
     
     // Luego obtener datos frescos en background
     this.getUserData();
-    this.getHistoryPluginUsage();
+    this.initializeStrategies();
     this.listenGroupedTrades();
     this.fetchUserRules();
     this.checkUserAccess();
@@ -182,7 +184,15 @@ export class ReportComponent implements OnInit {
         if (reportData.accountHistory && reportData.stats) {
           this.accountHistory = reportData.accountHistory;
           this.stats = reportData.stats;
-          this.store.dispatch(setGroupedTrades({ groupedTrades: this.accountHistory }));
+          // Convertir a GroupedTradeFinal si es necesario
+          const groupedTrades = Array.isArray(reportData.accountHistory) ? 
+            reportData.accountHistory.map((trade: any) => ({
+              ...trade,
+              pnl: trade.pnl ?? 0,
+              isWon: trade.isWon ?? false,
+              isOpen: trade.isOpen ?? false
+            })) : [];
+          this.store.dispatch(setGroupedTrades({ groupedTrades }));
         }
       }
 
@@ -256,24 +266,14 @@ export class ReportComponent implements OnInit {
     }
   }
 
-  private isDataStale(): boolean {
-    if (!isPlatformBrowser(this.platformId)) return true;
-    
-    try {
-      const savedReportData = localStorage.getItem(this.STORAGE_KEYS.REPORT_DATA);
-      if (savedReportData) {
-        const reportData = JSON.parse(savedReportData);
-        const lastUpdated = reportData.lastUpdated || 0;
-        const now = Date.now();
-        const fiveMinutes = 5 * 60 * 1000; // 5 minutos
-        
-        return (now - lastUpdated) > fiveMinutes;
+  private async initializeStrategies(): Promise<void> {
+    if (this.user?.id) {
+      try {
+        this.strategies = await this.strategySvc.getUserStrategyViews(this.user.id);
+      } catch (error) {
+        console.error('Error loading strategies:', error);
       }
-    } catch (error) {
-      console.error('Error verificando antigüedad de datos:', error);
     }
-    
-    return true;
   }
 
   ngOnDestroy() {
@@ -281,12 +281,6 @@ export class ReportComponent implements OnInit {
     if (this.loadingTimeout) {
       clearTimeout(this.loadingTimeout);
     }
-  }
-
-  getHistoryPluginUsage() {
-    this.reportService.getPluginUsageHistory(this.user?.id).then((history) => {
-      this.pluginHistory = [...history];
-    });
   }
 
   getUserData() {
@@ -466,14 +460,14 @@ export class ReportComponent implements OnInit {
 
   private calculateNetPnlFromTrades(trades: { pnl?: number }[]): number {
     // Pérdida Neta = (Suma de todas las ganancias) - (Suma de todas las pérdidas)
-    const validTrades = trades.filter(t => t.pnl !== undefined && t.pnl !== null);
-    if (validTrades.length === 0) return 0;
+    // Usar todos los trades, ya que están normalizados con valores por defecto
+    if (trades.length === 0) return 0;
     
-    const totalGains = validTrades
+    const totalGains = trades
       .filter(t => t.pnl! > 0)
       .reduce((sum, t) => sum + t.pnl!, 0);
     
-    const totalLosses = Math.abs(validTrades
+    const totalLosses = Math.abs(trades
       .filter(t => t.pnl! < 0)
       .reduce((sum, t) => sum + t.pnl!, 0));
     
@@ -484,24 +478,22 @@ export class ReportComponent implements OnInit {
 
   private calculateTradeWinPercentFromTrades(trades: { pnl?: number }[]): number {
     // % de Operaciones Ganadoras = (Número de Operaciones Ganadoras / Número Total de Operaciones) * 100
-    const validTrades = trades.filter(t => t.pnl !== undefined && t.pnl !== null);
-    if (validTrades.length === 0) return 0;
+    if (trades.length === 0) return 0;
     
-    const winningTrades = validTrades.filter(t => t.pnl! > 0).length;
-    const winPercent = (winningTrades / validTrades.length) * 100;
+    const winningTrades = trades.filter(t => t.pnl! > 0).length;
+    const winPercent = (winningTrades / trades.length) * 100;
     return Math.round(winPercent * 100) / 100; // Round to 2 decimal places
   }
 
   private calculateProfitFactorFromTrades(trades: { pnl?: number }[]): number {
     // Factor de Beneficio = (Suma Total de Ganancias de Todas las Operaciones Ganadoras) / (Suma Total de Pérdidas de Todas las Operaciones Perdedoras)
-    const validTrades = trades.filter(t => t.pnl !== undefined && t.pnl !== null);
-    if (validTrades.length === 0) return 0;
+    if (trades.length === 0) return 0;
     
-    const totalProfits = validTrades
+    const totalProfits = trades
       .filter(t => t.pnl! > 0)
       .reduce((sum, t) => sum + t.pnl!, 0);
     
-    const totalLosses = Math.abs(validTrades
+    const totalLosses = Math.abs(trades
       .filter(t => t.pnl! < 0)
       .reduce((sum, t) => sum + t.pnl!, 0));
     
@@ -523,11 +515,10 @@ export class ReportComponent implements OnInit {
   private calculateAvgWinLossFromTrades(trades: { pnl?: number }[]): number {
     // Ganancia Promedio (Avg Win) = Suma Total de Ganancias / Número de Operaciones Ganadoras
     // Pérdida Promedio (Avg Loss) = Suma Total de Pérdidas / Número de Operaciones Perdedoras
-    const validTrades = trades.filter(t => t.pnl !== undefined && t.pnl !== null);
-    if (validTrades.length === 0) return 0;
+    if (trades.length === 0) return 0;
     
-    const winningTrades = validTrades.filter(t => t.pnl! > 0);
-    const losingTrades = validTrades.filter(t => t.pnl! < 0);
+    const winningTrades = trades.filter(t => t.pnl! > 0);
+    const losingTrades = trades.filter(t => t.pnl! < 0);
     
     // Calcular ganancia promedio
     const avgWin = winningTrades.length > 0 
@@ -625,7 +616,7 @@ export class ReportComponent implements OnInit {
     this.reportService
       .getHistoryData(accountId, key, accNum)
       .subscribe({
-        next: (groupedTrades: GroupedTrade[]) => {
+        next: (groupedTrades: GroupedTradeFinal[]) => {
           clearTimeout(historyTimeout);
           
           // Reemplazar en lugar de acumular para evitar duplicados
@@ -650,13 +641,27 @@ export class ReportComponent implements OnInit {
       });
   }
 
-  updateReportStats(store: Store, groupedTrades: GroupedTrade[]) {
-    // Use balance data if available, otherwise fallback to trade calculations
-    if (this.balanceData) {
-      this.stats = this.computeStatsFromBalance(this.balanceData, groupedTrades);
-    } else {
-      this.stats = this.computeStats(groupedTrades);
-    }
+  updateReportStats(store: Store, groupedTrades: GroupedTradeFinal[]) {
+    // Normalizar todos los trades - asignar valores por defecto cuando falten
+    const normalizedTrades = groupedTrades.map(trade => ({
+      ...trade,
+      pnl: trade.pnl ?? 0, // Si no hay PnL, usar 0
+      entryPrice: trade.avgPrice ?? 0, // Usar avgPrice como entryPrice
+      exitPrice: trade.avgPrice ?? 0, // Usar avgPrice como exitPrice
+      buy_price: trade.side === 'buy' ? trade.price : '0', // Precio de compra si es buy
+      sell_price: trade.side === 'sell' ? trade.price : '0', // Precio de venta si es sell
+      quantity: Number(trade.qty) ?? 0 // Usar qty como quantity
+    }));
+    
+    // Usar todos los trades normalizados para estadísticas
+    this.stats = {
+      netPnl: this.calculateNetPnlFromTrades(normalizedTrades),
+      tradeWinPercent: this.calculateTradeWinPercentFromTrades(normalizedTrades),
+      profitFactor: this.calculateProfitFactorFromTrades(normalizedTrades),
+      avgWinLossTrades: this.calculateAvgWinLossFromTrades(normalizedTrades),
+      totalTrades: normalizedTrades.length, // Usar todos los trades
+      activePositions: groupedTrades.filter(trade => trade.isOpen === true).length
+    };
     
     store.dispatch(setNetPnL({ netPnL: this.stats?.netPnl || 0 }));
     store.dispatch(setTradeWin({ tradeWin: this.stats?.tradeWinPercent || 0 }));
@@ -829,17 +834,17 @@ export class ReportComponent implements OnInit {
 
     // Add detailed trade data
     this.accountHistory.forEach(trade => {
-      const tradeDate = new Date(Number(trade.updatedAt)).toISOString().split('T')[0];
+      const tradeDate = new Date(Number(trade.lastModified)).toISOString().split('T')[0];
       const tradeRow = [
         tradeDate,
         this.getCurrentAccountName(),
         currentPlan, // Use the same plan for all trades
-        (trade.pnl || 0).toFixed(2),
+        (trade.pnl || 0).toFixed(2), // P&L calculado correctamente
         '1',
-        trade.pnl && trade.pnl > 0 ? '100' : '0',
+        trade.pnl && trade.pnl > 0 ? '100' : '0', // Win percentage basado en P&L real
         'Yes',
         '1.00',
-        (trade.pnl || 0).toFixed(2)
+        (trade.pnl || 0).toFixed(2) // P&L neto (mismo que P&L ya que no hay fees en el cálculo)
       ];
       rows.push(tradeRow.join(','));
     });

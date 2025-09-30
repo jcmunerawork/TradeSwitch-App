@@ -3,6 +3,16 @@
     <div>
       <h1 class="titleText mb-30">Edit Strategy</h1>
       <p>Design a strategy that supports your consistency with TradeSwitch.</p>
+      
+      <!-- Plugin Active Warning Message -->
+      <div *ngIf="isPluginActive" class="plugin-warning-message mb-20 p-15 bg-red-100 border-radius-8 border-left-4-red">
+        <div class="d-flex align-items-center gap-10">
+          <span class="material-symbols-outlined color-red-500" style="font-size: 20px;">warning</span>
+          <p class="color-red-500 inputText mb-0">
+            <strong>Active plugin detected:</strong> You must deactivate the plugin to save strategy rules.
+          </p>
+        </div>
+      </div>
     </div>
     <div class="action-buttons d-flex gap-16">
       <button 
@@ -14,9 +24,10 @@
       <button 
         class="save-btn p-10 bg-primary-400 color-bg-black inputText"
         (click)="saveStrategy()"
-        [disabled]="loading"
+        [disabled]="loading || isPluginActive"
+        [class.disabled]="isPluginActive"
       >
-        {{ loading ? 'Saving...' : 'Save Strategy' }}
+        {{ loading ? 'Saving...' : (isPluginActive ? 'Plugin Active - Cannot Save' : 'Save Strategy') }}
       </button>
     </div>
   </div>
@@ -44,14 +55,9 @@
             />
           } @else {
             <h3 class="strategy-name color-white mb-0 mr-4">{{ currentStrategyName }}</h3>
-            <button 
-              class="edit-name-btn d-flex align-items-center justify-center"
-              (click)="startEditName()"
-            >
-              <span class="icon-edit"></span>
-            </button>
-          }
-        </div>
+            <span class="material-symbols-outlined text-white hover:text-[#726d6d] mb-2" style="font-size: 20px; cursor: pointer;" (click)="startEditName()">edit</span>
+        }
+      </div>
         
         <!-- Last Modified -->
         <p class="last-modified color-gray-400 mb-0">{{ lastModifiedText }}</p>
@@ -59,13 +65,15 @@
     </div>
     
     <!-- Favorite Button -->
-    <button 
-      class="favorite-btn d-flex align-items-center justify-center"
-      [class.favorited]="isFavorited"
-      (click)="toggleFavorite()"
-    >
-      <span class="icon-heart"></span>
-    </button>
+    <!--
+      <button 
+        class="favorite-btn d-flex align-items-center justify-center"
+        [class.favorited]="isFavorited"
+        (click)="toggleFavorite()"
+      >
+        <span class="icon-heart"></span>
+      </button>
+    -->
   </div>
 
   <!-- Panel de reglas disponibles -->

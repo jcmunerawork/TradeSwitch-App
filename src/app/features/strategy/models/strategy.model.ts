@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 export enum RuleType {
   ASSETS_ALLOWED = 'ASSETS ALLOWED',
   DAYS_ALLOWED = 'DAYS ALLOWED',
@@ -83,4 +85,6 @@ export interface ConfigurationOverview {
   updated_at: any; // Timestamp de Firebase
   days_active: number;
   configurationId: string; // ID del documento en la colección 'configurations'
+  dateActive?: any[]; // Fecha cuando se activó la estrategia
+  dateInactive?: any[]; // Fecha cuando se desactivó la estrategia
 }

@@ -128,9 +128,11 @@
         .icon-edit {
           width: 16px;
           height: 16px;
-          background: #9ca3af;
-          mask: url("data:image/svg+xml;utf8,<svg fill='currentColor' viewBox='0 0 24 24'><path d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/></svg>") no-repeat center;
-          mask-size: contain;
+          color: #f4f6f8;
+        }
+
+        .icon-edit:hover {
+          color: #726d6d;
         }
       }
       
@@ -183,5 +185,34 @@
       mask-size: contain;
       transition: background-color 0.2s ease;
     }
+  }
+}
+
+// Plugin warning message styles
+.plugin-warning-message {
+  background: rgba(239, 68, 68, 0.1) !important;
+  border-left: 4px solid #EF4444 !important;
+  border-radius: 8px;
+  
+  .material-symbols-outlined {
+    color: #EF4444 !important;
+  }
+  
+  p {
+    color: #EF4444 !important;
+    font-weight: 500;
+  }
+}
+
+// Disabled button styles
+.save-btn.disabled {
+  background: #6B7280 !important;
+  color: #9CA3AF !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+  
+  &:hover {
+    background: #6B7280 !important;
+    color: #9CA3AF !important;
   }
 }

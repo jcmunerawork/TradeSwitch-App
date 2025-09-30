@@ -3,12 +3,11 @@
     <!-- Header -->
     <div class="popup-header">
       <div class="header-content">
-        <h2 class="popup-title">Trades Information</h2>
         <div class="date-info">
           <span class="date">{{ selectedDate }}</span>
           <span class="separator">|</span>
           <span class="net-pnl" [ngClass]="netPnl >= 0 ? 'positive' : 'negative'">
-            Net P&L {{ netPnl >= 0 ? '+' : '' }}{{ formatCurrency(netPnl) }}
+            P&L {{ netPnl >= 0 ? '+' : '' }}{{ formatCurrency(netPnl) }}
           </span>
           <div class="roi-badge" [ngClass]="netPnl >= 0 ? 'positive' : 'negative'">
             <span class="roi-value">{{ formatPercentage(Math.abs(netRoi)) }}</span>
@@ -43,9 +42,7 @@
           <div class="header-cell">Open time</div>
           <div class="header-cell">Ticker</div>
           <div class="header-cell">Side</div>
-          <div class="header-cell">Instrument</div>
-          <div class="header-cell">Net P&L</div>
-          <div class="header-cell">Net ROI</div>
+          <div class="header-cell">P&L</div>
           <div class="header-cell">Followed strategy</div>
           <div class="header-cell">Strategy name</div>
         </div>
@@ -54,23 +51,16 @@
           <div class="table-row" *ngFor="let trade of trades">
             <div class="table-cell time-cell">{{ trade.openTime }}</div>
             <div class="table-cell ticker-cell">
-              <span class="ticker-badge" [style.background-color]="getTickerColor(trade.ticker)">
-                {{ trade.ticker }}
-              </span>
+              <span class="ticker-badge">{{ trade.ticker }}</span>
             </div>
             <div class="table-cell side-cell">{{ trade.side }}</div>
-            <div class="table-cell instrument-cell">{{ trade.instrument }}</div>
             <div class="table-cell pnl-cell" [ngClass]="trade.netPnl >= 0 ? 'positive' : 'negative'">
-              {{ trade.netPnl >= 0 ? '+' : '' }}{{ formatCurrency(trade.netPnl) }}
-            </div>
-            <div class="table-cell roi-cell">
-              {{ trade.netPnl >= 0 ? '' : '(' }}{{ formatPercentage(trade.netRoi) }}{{ trade.netPnl < 0 ? ')' : '' }}
+              <span class="pnl-value">{{ trade.netPnl >= 0 ? '+' : '' }}{{ formatCurrency(trade.netPnl) }}</span>
             </div>
             <div class="table-cell strategy-cell">
               <span 
                 class="strategy-icon" 
-                [ngClass]="getStrategyIcon(trade.followedStrategy)"
-                [style.color]="getStrategyColor(trade.followedStrategy)"
+                [ngClass]="trade.followedStrategy ? 'followed' : 'not-followed'"
               ></span>
             </div>
             <div class="table-cell strategy-name-cell">{{ trade.strategyName }}</div>

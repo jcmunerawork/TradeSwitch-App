@@ -72,8 +72,6 @@ export class EditHoursAllowedComponent implements OnInit {
   constructor(private store: Store, private settingsService: SettingsService) {}
 
   ngOnInit(): void {
-    console.log('Available timezones:', this.timezones.slice(0, 10));
-    console.log('Current config timezone:', this.config.timezone);
     this.listenRuleConfiguration();
   }
 

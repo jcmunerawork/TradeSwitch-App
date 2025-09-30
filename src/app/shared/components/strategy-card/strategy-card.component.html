@@ -20,11 +20,13 @@
     </div>
     
     <div class="card-actions">
-      <button class="action-btn favorite-btn" (click)="onFavorite()" [class.active]="strategy.isFavorite" title="Add to favorites">
-        <span class="material-symbols-outlined" style="font-size: 20px;">favorite</span>
-      </button>
+      <!--
+        <button class="action-btn favorite-btn" (click)="onFavorite()" [class.active]="strategy.isFavorite" title="Add to favorites">
+          <span class="material-symbols-outlined" style="font-size: 20px;">favorite</span>
+        </button>
+      -->
       <div class="more-options-container">
-        <button class="action-btn more-btn" (click)="onMoreOptions($event)" title="More options">
+        <button class="action-btn more-btn" (click)="onMoreOptions($event)" (mousedown)="$event.preventDefault()" title="More options">
           <span class="material-symbols-outlined" style="font-size: 20px;">more_horiz</span>
         </button>
         

@@ -1,36 +1,4 @@
-/**
- * ========================================================================================
- * FLUJO COMPLETO DE CARGA Y GESTIÓN DE REGLAS DE ESTRATEGIAS
- * ========================================================================================
- * 
- * ESTE COMPONENTE MANEJA DOS ESCENARIOS:
- * 1. NUEVA ESTRATEGIA: Todas las reglas empiezan en "Available Rules"
- * 2. ESTRATEGIA EXISTENTE: Las reglas se cargan desde Firebase según su estado isActive
- * 
- * FLUJO DE INICIALIZACIÓN:
- * 1. ngOnInit() → Inicia todos los procesos en paralelo
- * 2. getStrategyId() → Detecta si es nueva estrategia o existente
- * 3. loadStrategyConfiguration() → Carga datos de Firebase (solo si es existente)
- * 4. listenConfigurations() → Escucha cambios en el store
- * 5. initializeRulesFromConfiguration() → Distribuye reglas entre paneles
- * 
- * FLUJO DE INTERACCIÓN:
- * 6. listenToStoreChanges() → Escucha cambios cuando usuario interactúa
- * 7. updateMyChoicesFromConfig() → Actualiza UI en tiempo real
- * 8. save() → Guarda solo las reglas de "My Choices" en Firebase
- * 
- * ESTRUCTURA DE DATOS:
- * - this.config: Reglas en "Available Rules" (isActive = false)
- * - this.myChoices: Reglas en "My Choices" (isActive = true)
- * - Store: Estado centralizado de todas las reglas
- * 
- * FIREBASE:
- * - configuration-overview: Metadatos (nombre, fecha, etc.)
- * - configurations: Reglas específicas con estado isActive
- * ========================================================================================
- */
-
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
@@ -58,6 +26,7 @@ import { EditAssetsAllowedComponent } from './components/edit-assets-allowed/edi
 import { EditHoursAllowedComponent } from './components/edit-hours-allowed/edit-hours-allowed.component';
 import { AuthService } from '../../auth/service/authService';
 import { AccountData } from '../../auth/models/userModel';
+import { PluginHistoryService, PluginHistory } from '../../../shared/services/plugin-history.service';
 
 @Component({
   selector: 'app-edit-strategy',
@@ -77,7 +46,7 @@ import { AccountData } from '../../auth/models/userModel';
   styleUrl: './edit-strategy.component.scss',
   standalone: true,
 })
-export class EditStrategyComponent implements OnInit {
+export class EditStrategyComponent implements OnInit, OnDestroy {
   config$: Observable<StrategyState>;
   config: StrategyState | null = null;
   myChoices: StrategyState | null = null;
@@ -95,6 +64,11 @@ export class EditStrategyComponent implements OnInit {
   editingStrategyName: string = '';
   accountsData: AccountData[] = [];
   currentAccount: AccountData | null = null;
+  
+  // Plugin history properties
+  pluginHistory: PluginHistory[] = [];
+  isPluginActive: boolean = false;
+  private pluginSubscription: any = null;
 
   constructor(
     private store: Store,
@@ -102,7 +76,8 @@ export class EditStrategyComponent implements OnInit {
     private route: ActivatedRoute,
     private strategySvc: SettingsService,
     private reportSvc: ReportService,
-    private authService: AuthService
+    private authService: AuthService,
+    private pluginHistoryService: PluginHistoryService
   ) {
     this.config$ = this.store.select(allRules);
   }
@@ -123,6 +98,9 @@ export class EditStrategyComponent implements OnInit {
     
     // 4. Obtener ID de estrategia desde la URL (si existe)
     this.getStrategyId();
+    
+    // 5. Configurar listener en tiempo real para plugin history (después de obtener user)
+    // Se ejecutará en getUserData() cuando el usuario esté disponible
   }
 
   /**
@@ -195,7 +173,6 @@ export class EditStrategyComponent implements OnInit {
       this.initializeAsNewStrategy();
     } else {
       // HAY REGLAS ACTIVAS = Distribuir entre paneles
-      console.log('HAY REGLAS ACTIVAS - Distribuyendo entre paneles');
       this.distributeActiveRules(configurationData);
     }
   }
@@ -352,6 +329,13 @@ export class EditStrategyComponent implements OnInit {
     this.store.select(selectUser).subscribe({
       next: (user) => {
         this.user = user.user;
+        
+        // Configurar listener de plugin history cuando el usuario esté disponible
+        if (this.user?.id) {
+          this.setupPluginHistoryListener();
+        } else {
+          console.warn('User ID not available yet');
+        }
       },
       error: (err) => {
         console.error('Error fetching user data', err);
@@ -600,6 +584,12 @@ export class EditStrategyComponent implements OnInit {
   }
 
   saveStrategy() {
+    // Verificar si se puede guardar (plugin no activo)
+    if (!this.canSaveStrategy()) {
+      alert('Cannot save strategy while plugin is active. Please deactivate the plugin first.');
+      return;
+    }
+    
     this.confirmPopupVisible = true;
   }
 
@@ -750,6 +740,81 @@ export class EditStrategyComponent implements OnInit {
 
   discardChanges() {
     this.router.navigate(['/strategy']);
+  }
+
+  /**
+   * MÉTODO 8: Cargar plugin history y verificar si está activo
+   * FLUJO DE VERIFICACIÓN:
+   * - Cargar plugin history desde Firebase
+   * - Verificar si algún plugin está activo
+   * - Bloquear botón de guardar si está activo
+   */
+  setupPluginHistoryListener() {
+    console.log('Setting up plugin history listener...');
+    console.log('User ID:', this.user?.id);
+    
+    if (!this.user?.id) {
+      console.warn('No user ID available for plugin history listener');
+      return;
+    }
+
+    try {
+      console.log('Creating subscription for user:', this.user.id);
+      
+      // Suscribirse al Observable del servicio con userId
+      this.pluginSubscription = this.pluginHistoryService.getPluginHistoryRealtime(this.user.id).subscribe({
+        next: (pluginHistory: PluginHistory[]) => {
+          console.log('Received plugin history:', pluginHistory);
+          this.pluginHistory = pluginHistory;
+          
+          // Verificar si el plugin está activo (solo hay uno por usuario)
+          if (pluginHistory.length > 0) {
+            this.isPluginActive = pluginHistory[0].isActive === true;
+            console.log('Plugin found, isActive:', pluginHistory[0].isActive);
+          } else {
+            // No hay plugin para este usuario
+            this.isPluginActive = false;
+            console.log('No plugin found for user');
+          }
+          
+          console.log('Plugin history updated (real-time) for user:', this.user?.id, this.pluginHistory);
+          console.log('Is plugin active:', this.isPluginActive);
+        },
+        error: (error) => {
+          console.error('Error in plugin history subscription:', error);
+          this.isPluginActive = false;
+        }
+      });
+      
+      console.log('Plugin history listener setup completed');
+      
+    } catch (error) {
+      console.error('Error setting up plugin history listener:', error);
+      this.isPluginActive = false;
+    }
+  }
+
+  /**
+   * MÉTODO 9: Verificar si se puede guardar la estrategia
+   * FLUJO DE VALIDACIÓN:
+   * - Si el plugin está activo, no se puede guardar
+   * - Si el plugin no está activo, se puede guardar normalmente
+   */
+  canSaveStrategy(): boolean {
+    return !this.isPluginActive;
+  }
+
+  /**
+   * MÉTODO 10: Limpiar recursos al destruir el componente
+   * FLUJO DE LIMPIEZA:
+   * - Desuscribirse del listener de Firebase
+   * - Evitar memory leaks
+   */
+  ngOnDestroy() {
+    if (this.pluginSubscription) {
+      this.pluginSubscription.unsubscribe();
+      this.pluginSubscription = null;
+    }
   }
 }
 

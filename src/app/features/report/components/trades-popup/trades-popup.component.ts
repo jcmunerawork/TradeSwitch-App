@@ -1,15 +1,15 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, Output, EventEmitter } from '@angular/core';
-import { CalendarDay, GroupedTrade } from '../../models/report.model';
+import { CalendarDay } from '../../models/report.model';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
+import { GroupedTradeFinal } from '../../models/report.model';
+import { ConfigurationOverview } from '../../../strategy/models/strategy.model';
 
 export interface TradeDetail {
   openTime: string;
   ticker: string;
   side: 'Long' | 'Short';
-  instrument: string;
   netPnl: number;
-  netRoi: number;
   followedStrategy: boolean;
   strategyName: string;
 }
@@ -24,6 +24,7 @@ export interface TradeDetail {
 export class TradesPopupComponent {
   @Input() visible: boolean = false;
   @Input() selectedDay: CalendarDay | null = null;
+  @Input() strategies: ConfigurationOverview[] = [];
   @Output() close = new EventEmitter<void>();
 
   trades: TradeDetail[] = [];
@@ -46,18 +47,15 @@ export class TradesPopupComponent {
 
     this.selectedDate = this.formatDate(this.selectedDay.date);
     this.netPnl = this.selectedDay.pnlTotal;
-    this.netRoi = this.calculateNetRoi();
     
     // Convertir trades del día a formato de detalle
     this.trades = this.selectedDay.trades.map((trade, index) => ({
-      openTime: this.formatTime(new Date(Number(trade.updatedAt))),
-      ticker: this.generateTicker(index),
+      openTime: this.formatTime(new Date(Number(trade.lastModified))),
+      ticker: trade.instrument ?? 'N/A',
       side: this.determineSide(trade),
-      instrument: this.generateInstrument(index),
-      netPnl: trade.pnl || 0,
-      netRoi: this.calculateTradeRoi(trade),
-      followedStrategy: this.selectedDay?.followedStrategy || false,
-      strategyName: 'Swing Trading Strategy'
+      netPnl: trade.pnl ?? 0,
+      followedStrategy: this.selectedDay?.followedStrategy ?? false,
+      strategyName: this.getStrategyNameForTrade(trade)
     }));
 
     // Ordenar por tiempo (más reciente primero)
@@ -83,37 +81,57 @@ export class TradesPopupComponent {
     });
   }
 
-  generateTicker(index: number): string {
-    // Generar tickers simulados basados en el índice
-    const tickers = ['YM', 'MYM', 'ES', 'NQ', 'RTY'];
-    return tickers[index % tickers.length];
+  determineSide(trade: GroupedTradeFinal): 'Long' | 'Short' {
+    // Usar el campo side real del trade para determinar Long/Short
+    if (trade.side === 'buy') {
+      return 'Long';
+    } else if (trade.side === 'sell') {
+      return 'Short';
+    }
+    // Fallback basado en PnL si no hay side
+    return (trade.pnl ?? 0) >= 0 ? 'Long' : 'Short';
   }
 
-  generateInstrument(index: number): string {
-    // Generar instrumentos simulados basados en el índice
-    const ticker = this.generateTicker(index);
-    const currentDate = new Date();
-    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-    const day = String(currentDate.getDate()).padStart(2, '0');
-    const year = currentDate.getFullYear();
-    return `${ticker} ${month}-${day}-${year}`;
-  }
+  getStrategyNameForTrade(trade: GroupedTradeFinal): string {
+    if (!this.strategies || this.strategies.length === 0) {
+      return 'Swing Trading Strategy';
+    }
 
-  determineSide(trade: GroupedTrade): 'Long' | 'Short' {
-    // Lógica para determinar si es Long o Short basado en el trade
-    // Por ahora asumimos que si el PnL es positivo es Long, si es negativo es Short
-    return (trade.pnl || 0) >= 0 ? 'Long' : 'Short';
-  }
-
-  calculateNetRoi(): number {
-    // Calcular ROI neto del día (simplificado)
-    return this.netPnl !== 0 ? (this.netPnl / Math.abs(this.netPnl)) * 100 : 0;
-  }
-
-  calculateTradeRoi(trade: GroupedTrade): number {
-    // Calcular ROI individual del trade (simplificado)
-    const pnl = trade.pnl || 0;
-    return pnl !== 0 ? (pnl / Math.abs(pnl)) * 100 : 0;
+    const tradeDate = new Date(Number(trade.lastModified));
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // 11:59 PM del día actual
+    
+    // Buscar la estrategia que estaba activa en la fecha del trade
+    for (const strategy of this.strategies) {
+      if (strategy.dateActive && strategy.dateActive.length > 0) {
+        // Revisar cada período de activación de esta estrategia
+        for (let i = 0; i < strategy.dateActive.length; i++) {
+          const activeDate = new Date(strategy.dateActive[i].seconds * 1000);
+          let inactiveDate: Date;
+          
+          // Si hay fecha de desactivación correspondiente, usarla
+          if (strategy.dateInactive && strategy.dateInactive.length > i) {
+            inactiveDate = new Date(strategy.dateInactive[i].seconds * 1000);
+          } else {
+            // No hay fecha de desactivación, verificar si está activa actualmente
+            // Si dateActive tiene más elementos que dateInactive, está activa
+            const isCurrentlyActive = strategy.dateActive.length > (strategy.dateInactive?.length || 0);
+            if (isCurrentlyActive) {
+              inactiveDate = today;
+            } else {
+              continue; // Esta activación ya fue desactivada
+            }
+          }
+          
+          // Verificar si el trade está dentro de este rango de actividad
+          if (tradeDate >= activeDate && tradeDate <= inactiveDate) {
+            return strategy.name;
+          }
+        }
+      }
+    }
+    
+    return 'Swing Trading Strategy';
   }
 
   getTickerColor(ticker: string): string {

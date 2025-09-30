@@ -1,5 +1,5 @@
 import { createAction, props } from '@ngrx/store';
-import { GroupedTrade } from '../models/report.model';
+import { GroupedTrade, GroupedTradeFinal } from '../models/report.model';
 
 export const getReportHistory = createAction(
   '[Report] get report history trades',
@@ -18,7 +18,7 @@ export const setUserKey = createAction(
 
 export const setGroupedTrades = createAction(
   '[Report] Set Grouped Trades',
-  props<{ groupedTrades: GroupedTrade[] }>()
+  props<{ groupedTrades: GroupedTradeFinal[] }>()
 );
 
 export const setNetPnL = createAction(

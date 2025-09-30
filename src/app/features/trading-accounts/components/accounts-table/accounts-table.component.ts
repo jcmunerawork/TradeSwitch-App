@@ -1,4 +1,4 @@
-import { Component, Input, Output } from '@angular/core';
+import { Component, Input, Output, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { FormsModule } from '@angular/forms';
@@ -8,6 +8,7 @@ import { Timestamp } from 'firebase/firestore';
 import { AccountData } from '../../../auth/models/userModel';
 import { ShowConfirmationComponent } from '../show-confirmation/show-confirmation.component';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-accounts-table',
@@ -16,7 +17,7 @@ import { Router } from '@angular/router';
   templateUrl: './accounts-table.component.html',
   styleUrls: ['./accounts-table.component.scss'],
 })
-export class AccountsTableComponent {
+export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   @Input() accounts: AccountData[] = [];
   @Output() delete = new EventEmitter<AccountData>();
 
@@ -29,7 +30,12 @@ export class AccountsTableComponent {
   sortAsc: boolean = true;
   showConfirmation = false;
 
-  constructor(private router: Router) {}
+  // Balance properties (now handled by parent component)
+  private subscriptions: Subscription[] = [];
+
+  constructor(
+    private router: Router
+  ) {}
 
   private _searchTerm = '';
   accountToDelete!: AccountData;
@@ -154,5 +160,35 @@ export class AccountsTableComponent {
     this.showConfirmation = false;
     this.accountToDelete = {} as AccountData;
   }
+
+  ngOnInit() {
+    // Cargar balances para todas las cuentas
+    this.loadAccountBalances();
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['accounts']) {
+      // Recargar balances cuando cambien las cuentas
+      if (this.accounts && this.accounts.length > 0) {
+        this.loadAccountBalances();
+      }
+    }
+  }
+
+  ngOnDestroy() {
+    // Limpiar todas las suscripciones
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+  }
+
+  /**
+   * Carga el balance real para todas las cuentas usando el ReportService
+   * Nota: Los balances se cargan desde el componente padre (trading-accounts)
+   */
+  loadAccountBalances() {
+    // Los balances se cargan desde el componente padre
+    // Este método se mantiene para compatibilidad pero no hace nada
+  }
+
+
 
 }

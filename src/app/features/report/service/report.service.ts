@@ -1,11 +1,14 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { map, Observable } from 'rxjs';
+import { map, Observable, switchMap } from 'rxjs';
 import {
   GroupedTrade,
+  GroupedTradeFinal,
+  BalanceData,
   historyTrade,
   MonthlyReport,
+  InstrumentDetails,
 } from '../models/report.model';
 import {
   arrayToHistoryTrade,
@@ -55,24 +58,6 @@ export class ReportService {
     await setDoc(doc(this.db, 'monthly_reports', id), monthlyReport);
   }
 
-  async getPluginUsageHistory(idToSearch: string): Promise<any[]> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return [];
-    }
-
-    const ref = collection(this.db, 'plugin_history');
-    const q = query(ref, where('id', '==', idToSearch));
-
-    const matchingDocs: any[] | PromiseLike<any[]> = [];
-    const querySnapshot = await getDocs(q);
-    querySnapshot.forEach((doc) => {
-      matchingDocs.push(doc.data());
-    });
-
-    return matchingDocs;
-  }
-
   getUserKey(
     email: string,
     password: string,
@@ -95,7 +80,7 @@ export class ReportService {
     accountId: string,
     accessToken: string,
     accNum: number
-  ): Observable<GroupedTrade[]> {
+  ): Observable<GroupedTradeFinal[]> {
     const headers = new HttpHeaders({
       Authorization: `Bearer ${accessToken}`,
       accNum: accNum,
@@ -107,10 +92,17 @@ export class ReportService {
         { headers }
       )
       .pipe(
-        map((details) => {
+        switchMap(async (details) => {
           const historyTrades: historyTrade[] =
             details.d.ordersHistory.map(arrayToHistoryTrade);
-          const groupedTrades = groupOrdersByPosition(historyTrades);
+          
+          // Pasar accessToken y accNum a la función
+          const groupedTrades = await groupOrdersByPosition(historyTrades, {
+            getInstrumentDetails: (accessToken: string, tradableInstrumentId: string, routeId: string, accNum: number) => {
+              return this.getInstrumentDetails(accessToken, tradableInstrumentId, routeId, accNum);
+            }
+          }, accessToken, accNum);
+          
           return groupedTrades;
         })
       );
@@ -134,37 +126,74 @@ export class ReportService {
       .pipe(
         map((details) => {
           // Extract all balance data for calculations
-          const accountData = details.d.accountDetailsData;
-          const balanceData = {
-            balance: accountData[0], // balance
-            projectedBalance: accountData[1], // projectedBalance
-            availableFunds: accountData[2], // availableFunds
-            blockedBalance: accountData[3], // blockedBalance
-            cashBalance: accountData[4], // cashBalance
-            unsettledCash: accountData[5], // unsettledCash
-            withdrawalAvailable: accountData[6], // withdrawalAvailable
-            stocksValue: accountData[7], // stocksValue
-            optionValue: accountData[8], // optionValue
-            initialMarginReq: accountData[9], // initialMarginReq
-            maintMarginReq: accountData[10], // maintMarginReq
-            marginWarningLevel: accountData[11], // marginWarningLevel
-            blockedForStocks: accountData[12], // blockedForStocks
-            stockOrdersReq: accountData[13], // stockOrdersReq
-            stopOutLevel: accountData[14], // stopOutLevel
-            warningMarginReq: accountData[15], // warningMarginReq
-            marginBeforeWarning: accountData[16], // marginBeforeWarning
-            todayGross: accountData[17], // todayGross - A gross profit for today
-            todayNet: accountData[18], // todayNet - A total profit or loss realized from positions today
-            todayFees: accountData[19], // todayFees - Fees paid today
-            todayVolume: accountData[20], // todayVolume - A total volume traded for today
-            todayTradesCount: accountData[21], // todayTradesCount - A number of trades done for today
-            openGrossPnL: accountData[22], // openGrossPnL - A profit or loss on all currently opened positions
-            openNetPnL: accountData[23], // openNetPnL - A net profit or loss on open positions
-            positionsCount: accountData[24], // positionsCount - A number of currently opened positions
-            ordersCount: accountData[25] // ordersCount - A number of currently placed pending orders
+          const accountData = details.d;
+          
+          // Mapear el array accountDetailsData a las propiedades específicas
+          const accountDetailsData = accountData.accountDetailsData;
+          const balanceData: BalanceData = {
+            balance: accountDetailsData[0] || 0,
+            projectedBalance: accountDetailsData[1] || 0,
+            availableFunds: accountDetailsData[2] || 0,
+            blockedBalance: accountDetailsData[3] || 0,
+            cashBalance: accountDetailsData[4] || 0,
+            unsettledCash: accountDetailsData[5] || 0,
+            withdrawalAvailable: accountDetailsData[6] || 0,
+            stocksValue: accountDetailsData[7] || 0,
+            optionValue: accountDetailsData[8] || 0,
+            initialMarginReq: accountDetailsData[9] || 0,
+            maintMarginReq: accountDetailsData[10] || 0,
+            marginWarningLevel: accountDetailsData[11] || 0,
+            blockedForStocks: accountDetailsData[12] || 0,
+            stockOrdersReq: accountDetailsData[13] || 0,
+            stopOutLevel: accountDetailsData[14] || 0,
+            warningMarginReq: accountDetailsData[15] || 0,
+            marginBeforeWarning: accountDetailsData[16] || 0,
+            todayGross: accountDetailsData[17] || 0,
+            todayNet: accountDetailsData[18] || 0,
+            todayFees: accountDetailsData[19] || 0,
+            todayVolume: accountDetailsData[20] || 0,
+            todayTradesCount: accountDetailsData[21] || 0,
+            openGrossPnL: accountDetailsData[22] || 0,
+            openNetPnL: accountDetailsData[23] || 0,
+            positionsCount: accountDetailsData[24] || 0,
+            ordersCount: accountDetailsData[25] || 0
           };
-
+          
           return balanceData;
+        })
+      );
+  }
+
+  getInstrumentDetails(
+    accessToken: string,
+    tradableInstrumentId: string,
+    routeId: string,
+    accNum: number
+  ): Observable<InstrumentDetails> {
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${accessToken}`,
+      accNum: accNum.toString(),
+    });
+
+    // Agregar routeId como query parameter
+    const params = new HttpParams()
+      .set('routeId', routeId);
+
+    return this.http
+      .get<any>(
+        `https://demo.tradelocker.com/backend-api/trade/instruments/${tradableInstrumentId}`,
+        { 
+          headers,
+          params
+        }
+      )
+      .pipe(
+        map((details) => {
+          // Extract all instrument data for calculations
+          const instrumentData = details.d;
+          const instrumentDetailsData: InstrumentDetails = instrumentData;
+
+          return instrumentDetailsData;
         })
       );
   }

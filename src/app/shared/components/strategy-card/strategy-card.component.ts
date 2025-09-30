@@ -29,7 +29,9 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
     created_at: null,
     updated_at: null,
     userId: '',
-    configurationId: ''
+    configurationId: '',
+    dateActive: [],
+    dateInactive: []
   };
 
   @Input() showCustomizeButton: boolean = true;
@@ -98,9 +100,10 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
   }
 
   onMoreOptions(event: Event) {
+    event.preventDefault();
     event.stopPropagation();
     this.showOptionsMenu = !this.showOptionsMenu;
-    this.moreOptions.emit(this.strategy.id);
+    // Removed moreOptions.emit() to prevent Google alert
   }
 
   onCustomize() {
