@@ -307,7 +307,7 @@ export class SignupComponent implements OnInit {
       // Guardar IDs para el componente de procesamiento (sin crear pago aún)
       this.currentUserId = userId;
 
-      await fetch('http://localhost:3000/payments/create-customer', {
+      await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-customer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -376,7 +376,7 @@ export class SignupComponent implements OnInit {
       throw new Error('Price ID or bearer token not found');
     }
 
-    const response = await fetch('http://localhost:3000/payments/create-checkout-session', {
+    const response = await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-checkout-session', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

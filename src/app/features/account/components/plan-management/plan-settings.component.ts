@@ -347,7 +347,7 @@ export class PlanSettingsComponent implements OnInit {
 
     const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
 
-    const response = await fetch('http://localhost:3000/payments/create-portal-session', {
+    const response = await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-portal-session', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
