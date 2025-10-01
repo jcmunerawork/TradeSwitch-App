@@ -307,16 +307,6 @@ export class SignupComponent implements OnInit {
       // Guardar IDs para el componente de procesamiento (sin crear pago aún)
       this.currentUserId = userId;
 
-      await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-customer', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          id: userId
-        })
-      });
-
       this.authService
         .login(userCredentials)
         .then((response: any) => {
@@ -353,7 +343,18 @@ export class SignupComponent implements OnInit {
         userData: this.userData
       };
 
-      this.onPaymentProcessingSuccess();
+      await this.onPaymentProcessingSuccess();
+
+      await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-customer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: userId
+        })
+      });
+
       await this.simulatePaymentProcessing(priceId, bearerTokenFirebase);
       
       // Después de abrir la nueva pestaña, el modal de procesamiento ya está visible

@@ -122,58 +122,77 @@
   </div>
   }
 
-  <!-- Other Strategies Section -->
-  @if (userStrategies.length > 0) {
-  <!-- Hay otras estrategias, mostrar las cards -->
-  <div class="other-strategies d-flex flex-col">
-    <h3 class="section-title">Other Strategies</h3>
-    <p class="section-description">Manage your other strategy configurations.</p>
-    
-    <div class="strategies-grid">
-      @for (strategy of filteredStrategies; track getStrategyId(strategy)) {
-        @if (!strategy.status) {
-        <app-strategy-card
-          [strategy]="getCardDataByStrategyId(getStrategyId(strategy)) || {
-            id: getStrategyId(strategy),
-            name: strategy.name,
-            status: false,
-            lastModified: formatDate(strategy.updated_at.toDate()),
-            rules: 0,
-            days_active: strategy.days_active || 0,
-            winRate: 0,
-            isFavorite: false,
-            created_at: strategy.created_at,
-            updated_at: strategy.updated_at,
-            userId: strategy.userId,
-            configurationId: strategy.configurationId
-          }"
-          [showCustomizeButton]="true"
-          customizeButtonText="Activate strategy"
-          (edit)="onStrategyEdit($event)"
-          (favorite)="onStrategyFavorite($event)"
-          (moreOptions)="onStrategyMoreOptions($event)"
-          (customize)="activateStrategy($event)"
-          (duplicate)="copyStrategy($event)"
-          (delete)="deleteStrategy($event)"
-        ></app-strategy-card>
+  <!-- Other Strategies Section - Only show if plan allows multiple strategies -->
+  @if (canCreateMultipleStrategies()) {
+    @if (userStrategies.length > 0) {
+    <!-- Hay otras estrategias, mostrar las cards -->
+    <div class="other-strategies d-flex flex-col">
+      <h3 class="section-title">Other Strategies</h3>
+      <p class="section-description">Manage your other strategy configurations.</p>
+      
+      <div class="strategies-grid">
+        @for (strategy of filteredStrategies; track getStrategyId(strategy)) {
+          @if (!strategy.status) {
+          <app-strategy-card
+            [strategy]="getCardDataByStrategyId(getStrategyId(strategy)) || {
+              id: getStrategyId(strategy),
+              name: strategy.name,
+              status: false,
+              lastModified: formatDate(strategy.updated_at.toDate()),
+              rules: 0,
+              days_active: strategy.days_active || 0,
+              winRate: 0,
+              isFavorite: false,
+              created_at: strategy.created_at,
+              updated_at: strategy.updated_at,
+              userId: strategy.userId,
+              configurationId: strategy.configurationId
+            }"
+            [showCustomizeButton]="true"
+            customizeButtonText="Activate strategy"
+            (edit)="onStrategyEdit($event)"
+            (favorite)="onStrategyFavorite($event)"
+            (moreOptions)="onStrategyMoreOptions($event)"
+            (customize)="activateStrategy($event)"
+            (duplicate)="copyStrategy($event)"
+            (delete)="deleteStrategy($event)"
+          ></app-strategy-card>
+          }
         }
-      }
+      </div>
     </div>
-  </div>
-  } @else if (activeStrategy && userStrategies.length === 0) {
-  <!-- Solo tiene la estrategia activa y puede añadir más -->
+    } @else if (activeStrategy && userStrategies.length === 0) {
+    <!-- Solo tiene la estrategia activa y puede añadir más -->
+    <div class="other-strategies d-flex flex-col">
+      <h3 class="section-title">Other Strategies</h3>
+      <p class="section-description">You can add more strategies to your plan.</p>
+      
+      <div class="empty-strategies d-flex flex-col align-items-center">
+        <div class="empty-icon">
+          <span class="material-symbols-outlined" style="font-size: 28px;">add_circle</span>
+        </div>
+        <h3 class="empty-title">Add more strategies</h3>
+        <p class="empty-description">Your plan allows you to create additional strategies.</p>
+        <button class="create-first-btn" (click)="onNewStrategy()" [disabled]="isAddStrategyDisabled">
+          Create Additional Strategy
+        </button>
+      </div>
+    </div>
+    }
+  } @else {
+  <!-- Plan Free - Show upgrade message -->
   <div class="other-strategies d-flex flex-col">
     <h3 class="section-title">Other Strategies</h3>
-    <p class="section-description">You can add more strategies to your plan.</p>
+    <p class="section-description">Upgrade your plan to create multiple strategies.</p>
     
     <div class="empty-strategies d-flex flex-col align-items-center">
       <div class="empty-icon">
-        <span class="material-symbols-outlined" style="font-size: 28px;">add_circle</span>
+        <span class="material-symbols-outlined" style="font-size: 28px; color: #9BF526;">lock</span>
       </div>
-      <h3 class="empty-title">Add more strategies</h3>
-      <p class="empty-description">Your plan allows you to create additional strategies.</p>
-      <button class="create-first-btn" (click)="toggleStrategySelector()">
-        Create Additional Strategy
+      <h3 class="empty-title">Upgrade to create more strategies</h3>
+      <p class="empty-description">Your Free plan allows only 1 strategy. Upgrade to Starter or Pro for more.</p>
+      <button class="create-first-btn" (click)="onUpgradePlan()">
+        Upgrade Plan
       </button>
     </div>
   </div>

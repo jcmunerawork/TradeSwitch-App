@@ -27,6 +27,7 @@ import { EditHoursAllowedComponent } from './components/edit-hours-allowed/edit-
 import { AuthService } from '../../auth/service/authService';
 import { AccountData } from '../../auth/models/userModel';
 import { PluginHistoryService, PluginHistory } from '../../../shared/services/plugin-history.service';
+import { Instrument } from '../../report/models/report.model';
 
 @Component({
   selector: 'app-edit-strategy',
@@ -64,6 +65,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   editingStrategyName: string = '';
   accountsData: AccountData[] = [];
   currentAccount: AccountData | null = null;
+  availableInstruments: string[] = [];
   
   // Plugin history properties
   pluginHistory: PluginHistory[] = [];
@@ -284,6 +286,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         .subscribe({
           next: (key: string) => {
             this.store.dispatch(setUserKey({ userKey: key }));
+            // After getting userKey, load instruments
+            this.loadInstruments(key, firstAccount);
           },
           error: (err) => {
             console.error('Error fetching user key:', err);
@@ -294,6 +298,23 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       console.warn('No user email or accounts available for fetching user key');
       this.store.dispatch(setUserKey({ userKey: '' }));
     }
+  }
+
+  loadInstruments(userKey: string, account: AccountData) {
+    this.reportSvc.getAllInstruments(
+      userKey, 
+      account.accountNumber, 
+      account.accountID
+    ).subscribe({
+      next: (instruments: Instrument[]) => {
+        // Extraer solo los nombres de los instrumentos
+        this.availableInstruments = instruments.map(instrument => instrument.name);
+      },
+      error: (err) => {
+        console.error('Error loading instruments:', err);
+        this.availableInstruments = [];
+      }
+    });
   }
 
   getActualBalance() {
@@ -750,8 +771,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
    * - Bloquear botón de guardar si está activo
    */
   setupPluginHistoryListener() {
-    console.log('Setting up plugin history listener...');
-    console.log('User ID:', this.user?.id);
     
     if (!this.user?.id) {
       console.warn('No user ID available for plugin history listener');
@@ -759,34 +778,27 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     }
 
     try {
-      console.log('Creating subscription for user:', this.user.id);
       
       // Suscribirse al Observable del servicio con userId
       this.pluginSubscription = this.pluginHistoryService.getPluginHistoryRealtime(this.user.id).subscribe({
         next: (pluginHistory: PluginHistory[]) => {
-          console.log('Received plugin history:', pluginHistory);
           this.pluginHistory = pluginHistory;
           
           // Verificar si el plugin está activo (solo hay uno por usuario)
           if (pluginHistory.length > 0) {
             this.isPluginActive = pluginHistory[0].isActive === true;
-            console.log('Plugin found, isActive:', pluginHistory[0].isActive);
           } else {
             // No hay plugin para este usuario
             this.isPluginActive = false;
             console.log('No plugin found for user');
           }
           
-          console.log('Plugin history updated (real-time) for user:', this.user?.id, this.pluginHistory);
-          console.log('Is plugin active:', this.isPluginActive);
         },
         error: (error) => {
           console.error('Error in plugin history subscription:', error);
           this.isPluginActive = false;
         }
       });
-      
-      console.log('Plugin history listener setup completed');
       
     } catch (error) {
       console.error('Error setting up plugin history listener:', error);

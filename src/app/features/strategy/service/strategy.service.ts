@@ -177,7 +177,8 @@ export class SettingsService {
         created_at: now,
         updated_at: now,
         days_active: 0,
-        configurationId
+        configurationId,
+        dateActive: [now],
       };
 
       const docRef = await addDoc(collection(this.db, 'configuration-overview'), overviewData as any);

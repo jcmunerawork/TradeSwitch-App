@@ -179,4 +179,63 @@
       </form>
     </div>
   </div>
+
+  <!-- Delete Account Section -->
+  <div class="delete-account-section">
+    <div class="delete-account-card">
+      <h2 class="form-title">Delete Account</h2>
+      <p class="delete-account-description">
+        Delete your account to permanently remove your data.
+      </p>
+    </div>
+
+    <button 
+      class="delete-account-btn" 
+      (click)="showDeleteAccountModal()"
+      [disabled]="isDeletingAccount"
+    >
+      {{ isDeletingAccount ? 'Deleting...' : 'Delete Account' }}
+    </button>
+  </div>
+
+  <!-- Delete Account Modal -->
+  <div class="delete-account-modal" *ngIf="showDeleteModal">
+    <div class="modal-content">
+      <h2 class="form-title">Delete Account</h2>
+      <p class="delete-account-description">
+        Are you sure you want to delete your account? This action will:
+      </p>
+      <ul class="deletion-warning-list">
+        <li>Permanently delete all your data</li>
+        <li>Remove all your trading accounts</li>
+        <li>Delete all your strategies and configurations</li>
+        <li>Remove your report history</li>
+        <li>Delete all your subscriptions and payments</li>
+        <li>This action CANNOT be undone</li>
+      </ul>
+      
+      <div class="modal-actions">
+        <button 
+          class="delete-account-btn" 
+          (click)="confirmDeleteAccount()"
+          [disabled]="isDeletingAccount"
+        >
+          <span *ngIf="isDeletingAccount" class="loading-spinner"></span>
+          {{ isDeletingAccount ? 'Deleting...' : 'Yes, Delete Account' }}
+        </button>
+        <button 
+          class="cancel-account-btn" 
+          (click)="cancelDeleteAccount()"
+          [disabled]="isDeletingAccount"
+        >
+          Cancel
+        </button>
+      </div>
+
+      <!-- Error Message -->
+      <div class="error-message" *ngIf="deleteAccountError">
+        {{ deleteAccountError }}
+      </div>
+    </div>
+  </div>
 </div>

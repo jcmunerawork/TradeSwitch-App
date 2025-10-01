@@ -47,6 +47,8 @@ export class TradesPopupComponent {
 
     this.selectedDate = this.formatDate(this.selectedDay.date);
     this.netPnl = this.selectedDay.pnlTotal;
+
+    console.log(this.selectedDay.trades);
     
     // Convertir trades del día a formato de detalle
     this.trades = this.selectedDay.trades.map((trade, index) => ({

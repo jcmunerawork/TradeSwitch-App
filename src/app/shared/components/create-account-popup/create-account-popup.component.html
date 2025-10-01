@@ -16,8 +16,8 @@
           type="number" 
           class="form-input" 
           [(ngModel)]="newAccount.accountNumber"
-          readonly
-          style="background: #2a2a2a; color: #8e8e93;"
+          placeholder="Enter the account number you have in the trade, normally it's 1"
+          min="1"
         >
       </div>
       
@@ -63,13 +63,12 @@
       
       <div class="form-group">
         <label class="form-label">Broker*</label>
-        <div class="form-select-wrapper">
-          <select class="form-select" [(ngModel)]="newAccount.broker">
-            <option value="">Select broker</option>
-            <option value="TopStepX">TradeLocker</option>
-          </select>
-          <span class="material-symbols-outlined select-arrow">arrow_drop_down</span>
-        </div>
+        <input
+          type="text"
+          class="form-input"
+          [(ngModel)]="newAccount.broker"
+          placeholder="Enter broker name (e.g., TradeLocker)"
+        />
       </div>
 
       <div class="form-group">

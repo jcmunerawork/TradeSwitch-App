@@ -178,7 +178,7 @@ export class PnlGraphComponent implements OnInit, OnChanges {
             direction = null;
           }
 
-          const formattedValue = this.numberFormatter.formatCurrency(value);
+          const formattedValue = this.getFormatedValue(value);
           const formattedPercent = this.numberFormatter.formatPercentageValue(percentDiff);
           
           return `<div class=" ${cardClass} regularText color-background d-flex flex-col toolTip-container items-start">
@@ -415,5 +415,11 @@ export class PnlGraphComponent implements OnInit, OnChanges {
         }
       }
     };
+  }
+
+  getFormatedValue(value: number): string {
+
+    return this.numberFormatter.formatCurrencyValue(value);
+
   }
 }

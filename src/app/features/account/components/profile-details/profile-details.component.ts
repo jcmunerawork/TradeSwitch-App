@@ -5,7 +5,9 @@ import { Store } from '@ngrx/store';
 import { User } from '../../../overview/models/overview';
 import { selectUser } from '../../../auth/store/user.selectios';
 import { AuthService } from '../../../auth/service/authService';
-import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
+import { AccountDeletionService } from '../../../../shared/services/account-deletion.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-profile-details',
@@ -22,10 +24,15 @@ export class ProfileDetailsComponent implements OnInit {
   showPasswordForm = false;
   passwordChangeMessage = '';
   passwordChangeError = '';
+  showDeleteModal = false;
+  isDeletingAccount = false;
+  deleteAccountError = '';
 
   // Inyectar servicios
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
+  private accountDeletionService = inject(AccountDeletionService);
+  private router = inject(Router);
 
   constructor(private store: Store) {
     this.profileForm = this.fb.group({
@@ -198,5 +205,75 @@ export class ProfileDetailsComponent implements OnInit {
       }
     }
     return '';
+  }
+
+  /**
+   * Muestra el modal de confirmación para eliminar la cuenta
+   */
+  showDeleteAccountModal(): void {
+    this.showDeleteModal = true;
+    this.deleteAccountError = '';
+  }
+
+  /**
+   * Cancela la eliminación de cuenta
+   */
+  cancelDeleteAccount(): void {
+    this.showDeleteModal = false;
+    this.deleteAccountError = '';
+  }
+
+  /**
+   * Elimina la cuenta del usuario y todos sus datos asociados
+   */
+  async confirmDeleteAccount(): Promise<void> {
+    if (!this.user) {
+      this.deleteAccountError = 'User not found';
+      return;
+    }
+
+    this.isDeletingAccount = true;
+    this.deleteAccountError = '';
+
+    try {
+      console.log('🗑️ Starting account deletion for user:', this.user.id);
+
+      // 1. Delete all Firebase data
+      const firebaseDataDeleted: boolean = await this.accountDeletionService.deleteUserData(this.user.id);
+      
+      if (!firebaseDataDeleted) {
+        throw new Error('Error deleting Firebase data');
+      }
+
+      // 2. Delete user from Firebase Auth
+      const currentUser = this.authService.getCurrentUser();
+      if (currentUser) {
+        await deleteUser(currentUser);
+        console.log('✅ User deleted from Firebase Auth');
+      }
+
+      // 3. Clear local store
+      this.store.dispatch({
+        type: '[User] Clear User'
+      });
+
+      // 4. Redirect to login
+      this.router.navigate(['/login']);
+      
+      console.log('✅ Account deleted successfully');
+
+    } catch (error: any) {
+      console.error('❌ Error deleting account:', error);
+      
+      if (error.code === 'auth/requires-recent-login') {
+        this.deleteAccountError = 'For security, you need to sign in again before deleting your account';
+      } else if (error.code === 'auth/too-many-requests') {
+        this.deleteAccountError = 'Too many attempts. Please try again later';
+      } else {
+        this.deleteAccountError = 'Error deleting account. Please try again';
+      }
+    } finally {
+      this.isDeletingAccount = false;
+    }
   }
 }

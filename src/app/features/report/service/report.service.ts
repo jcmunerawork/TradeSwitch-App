@@ -9,6 +9,7 @@ import {
   historyTrade,
   MonthlyReport,
   InstrumentDetails,
+  Instrument,
 } from '../models/report.model';
 import {
   arrayToHistoryTrade,
@@ -194,6 +195,35 @@ export class ReportService {
           const instrumentDetailsData: InstrumentDetails = instrumentData;
 
           return instrumentDetailsData;
+        })
+      );
+  }
+
+  getAllInstruments(
+    accessToken: string,
+    accNum: number,
+    accountId: string
+  ): Observable<Instrument[]> {
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${accessToken}`,
+      accNum: accNum.toString(),
+    });
+
+    return this.http
+      .get<any>(
+        `https://demo.tradelocker.com/backend-api/trade/accounts/${accountId}/instruments`,
+        { headers }
+      )
+      .pipe(
+        map((details) => {
+          return details.d.instruments;
+        })
+      )
+      .pipe(
+        map((instruments) => {
+          return instruments.map((instrument: Instrument) => {
+            return instrument;
+          });
         })
       );
   }

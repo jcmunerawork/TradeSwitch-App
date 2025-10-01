@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, Input } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { SettingsService } from '../../../service/strategy.service';
 import {
@@ -8,7 +8,6 @@ import {
 } from '../../../store/strategy.selectors';
 import {
   AssetsAllowedConfig,
-  availableSymbols,
   Days,
   DaysAllowedConfig,
   MaxDailyTradesConfig,
@@ -29,6 +28,8 @@ import { CommonModule } from '@angular/common';
   standalone: true,
 })
 export class EditAssetsAllowedComponent implements OnInit {
+  @Input() availableSymbolsOptions: string[] = [];
+
   config: AssetsAllowedConfig = {
     isActive: false,
     type: RuleType.ASSETS_ALLOWED,
@@ -36,12 +37,14 @@ export class EditAssetsAllowedComponent implements OnInit {
   };
 
   symbols: string[] = [];
-  availableSymbolsOptions: string[] = availableSymbols;
   selectedInstrument: string | undefined = undefined;
 
   dropdownOpen = false;
 
-  constructor(private store: Store, private settingsService: SettingsService) {}
+  constructor(
+    private store: Store, 
+    private settingsService: SettingsService
+  ) {}
 
   closeDropdown() {
     this.dropdownOpen = false;
@@ -107,4 +110,5 @@ export class EditAssetsAllowedComponent implements OnInit {
   private updateConfig(config: AssetsAllowedConfig) {
     this.store.dispatch(setAssetsAllowedConfig({ config }));
   }
+
 }

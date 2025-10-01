@@ -89,7 +89,6 @@ export class PluginHistoryService {
                         ...doc.data()
                     } as PluginHistory));
                     
-                    console.log('Plugin history updated (real-time) for user:', userId, pluginHistory);
                     subscriber.next(pluginHistory);
                 }, 
                 (error) => {

@@ -18,17 +18,17 @@ export class StrategyDaysUpdaterService {
   }
 
   /**
-   * Actualiza los días activos de todas las estrategias del usuario
-   * @param userId - ID del usuario
+   * Updates active days for all user strategies
+   * @param userId - User ID
    */
   async updateAllStrategiesDaysActive(userId: string): Promise<void> {
     if (!this.isBrowser || !this.db) {
-      console.warn('StrategyDaysUpdaterService: No se puede ejecutar en el servidor');
+      console.warn('StrategyDaysUpdaterService: Cannot execute on server');
       return;
     }
 
     try {
-      // Obtener todas las estrategias del usuario
+      // Get all user strategies
       const strategiesRef = collection(this.db, 'configuration-overview');
       const q = query(strategiesRef);
       const querySnapshot = await getDocs(q);
@@ -38,11 +38,11 @@ export class StrategyDaysUpdaterService {
       querySnapshot.forEach((docSnapshot) => {
         const data = docSnapshot.data();
         
-        // Verificar que la estrategia pertenece al usuario
+        // Verify that the strategy belongs to the user
         if (data['userId'] === userId && data['created_at']) {
           const daysActive = this.calculateDaysActive(data['created_at']);
           
-          // Actualizar siempre para mantener sincronizado
+          // Always update to keep synchronized
           strategiesToUpdate.push({
             id: docSnapshot.id,
             daysActive: daysActive
@@ -50,7 +50,7 @@ export class StrategyDaysUpdaterService {
         }
       });
 
-      // Actualizar todas las estrategias
+      // Update all strategies
       const updatePromises = strategiesToUpdate.map(strategy => 
         updateDoc(doc(this.db!, 'configuration-overview', strategy.id), {
           days_active: strategy.daysActive,
@@ -63,23 +63,23 @@ export class StrategyDaysUpdaterService {
       }
 
     } catch (error) {
-      console.error('StrategyDaysUpdaterService: Error al actualizar días activos:', error);
+      console.error('StrategyDaysUpdaterService: Error updating active days:', error);
       throw error;
     }
   }
 
   /**
-   * Actualiza los días activos de la estrategia activa del usuario
-   * @param userId - ID del usuario
+   * Updates active days for the user's active strategy
+   * @param userId - User ID
    */
   async updateActiveStrategyDaysActive(userId: string): Promise<void> {
     if (!this.isBrowser || !this.db) {
-      console.warn('StrategyDaysUpdaterService: No se puede ejecutar en el servidor');
+      console.warn('StrategyDaysUpdaterService: Cannot execute on server');
       return;
     }
 
     try {
-      // Buscar la estrategia activa del usuario
+      // Find the user's active strategy
       const strategiesRef = collection(this.db, 'configuration-overview');
       const q = query(
         strategiesRef,
@@ -89,44 +89,44 @@ export class StrategyDaysUpdaterService {
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        console.log('StrategyDaysUpdaterService: No se encontró estrategia activa para el usuario:', userId);
+        console.log('StrategyDaysUpdaterService: No active strategy found for user:', userId);
         return;
       }
 
-      // Solo debe haber una estrategia activa
+      // There should only be one active strategy
       const activeStrategyDoc = querySnapshot.docs[0];
       const data = activeStrategyDoc.data();
       
       if (!data['created_at']) {
-        console.warn('StrategyDaysUpdaterService: Estrategia activa sin fecha de creación');
+        console.warn('StrategyDaysUpdaterService: Active strategy without creation date');
         return;
       }
 
       const daysActive = this.calculateDaysActive(data['created_at']);
       
-      // Solo actualizar si los días han cambiado
+      // Only update if days have changed
       if (data['days_active'] !== daysActive) {
         await updateDoc(activeStrategyDoc.ref, {
           days_active: daysActive,
           updated_at: Timestamp.now()
         });
-        console.log(`StrategyDaysUpdaterService: Actualizada estrategia activa ${activeStrategyDoc.id} con ${daysActive} días activos`);
+        console.log(`StrategyDaysUpdaterService: Updated active strategy ${activeStrategyDoc.id} with ${daysActive} active days`);
       }
 
     } catch (error) {
-      console.error('StrategyDaysUpdaterService: Error al actualizar días activos de la estrategia activa:', error);
+      console.error('StrategyDaysUpdaterService: Error updating active strategy days:', error);
       throw error;
     }
   }
 
   /**
-   * Actualiza los días activos de una estrategia específica
-   * @param strategyId - ID de la estrategia
-   * @param userId - ID del usuario (para verificación de seguridad)
+   * Updates active days for a specific strategy
+   * @param strategyId - Strategy ID
+   * @param userId - User ID (for security verification)
    */
   async updateStrategyDaysActive(strategyId: string, userId: string): Promise<void> {
     if (!this.isBrowser || !this.db) {
-      console.warn('StrategyDaysUpdaterService: No se puede ejecutar en el servidor');
+      console.warn('StrategyDaysUpdaterService: Cannot execute on server');
       return;
     }
 
@@ -142,13 +142,13 @@ export class StrategyDaysUpdaterService {
       });
 
       if (!strategyData || !strategyData['created_at']) {
-        console.warn('StrategyDaysUpdaterService: Estrategia no encontrada o sin fecha de creación');
+        console.warn('StrategyDaysUpdaterService: Strategy not found or without creation date');
         return;
       }
 
       const daysActive = this.calculateDaysActive(strategyData['created_at']);
       
-      // Solo actualizar si los días han cambiado
+      // Only update if days have changed
       if (strategyData['days_active'] !== daysActive) {
         await updateDoc(strategyRef, {
           days_active: daysActive,
@@ -157,55 +157,55 @@ export class StrategyDaysUpdaterService {
       }
 
     } catch (error) {
-      console.error('StrategyDaysUpdaterService: Error al actualizar días activos de la estrategia:', error);
+      console.error('StrategyDaysUpdaterService: Error updating strategy active days:', error);
       throw error;
     }
   }
 
   /**
-   * Calcula los días activos desde la fecha de creación
-   * @param createdAt - Timestamp de Firebase o fecha de creación
-   * @returns Número de días activos
+   * Calculates active days since creation date
+   * @param createdAt - Firebase timestamp or creation date
+   * @returns Number of active days
    */
   private calculateDaysActive(createdAt: any): number {
     let createdDate: Date;
 
-    // Manejar diferentes tipos de timestamp de Firebase
+    // Handle different Firebase timestamp types
     if (createdAt && typeof createdAt.toDate === 'function') {
-      // Es un Timestamp de Firebase
+      // It's a Firebase Timestamp
       createdDate = createdAt.toDate();
     } else if (createdAt && createdAt.seconds) {
-      // Es un objeto con seconds
+      // It's an object with seconds
       createdDate = new Date(createdAt.seconds * 1000);
     } else if (createdAt instanceof Date) {
-      // Ya es una fecha
+      // Already a date
       createdDate = createdAt;
     } else if (typeof createdAt === 'string') {
-      // Es un string de fecha
+      // It's a date string
       createdDate = new Date(createdAt);
     } else {
-      console.warn('StrategyDaysUpdaterService: Formato de fecha no reconocido:', createdAt);
+      console.warn('StrategyDaysUpdaterService: Unrecognized date format:', createdAt);
       return 0;
     }
 
-    // Obtener la fecha actual y la fecha de creación en formato YYYY-MM-DD (sin horas)
+    // Get current date and creation date in YYYY-MM-DD format (without hours)
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const createdDay = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
     
-    // Calcular la diferencia en días completos
+    // Calculate difference in complete days
     const diffTime = today.getTime() - createdDay.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
-    // Si es el mismo día, retornar 0
-    // Si han pasado días completos, retornar la diferencia
+    // If it's the same day, return 0
+    // If complete days have passed, return the difference
     return Math.max(0, diffDays);
   }
 
   /**
-   * Obtiene los días activos de una estrategia sin actualizar en Firebase
-   * @param createdAt - Timestamp de Firebase o fecha de creación
-   * @returns Número de días activos
+   * Gets active days of a strategy without updating in Firebase
+   * @param createdAt - Firebase timestamp or creation date
+   * @returns Number of active days
    */
   getDaysActive(createdAt: any): number {
     return this.calculateDaysActive(createdAt);

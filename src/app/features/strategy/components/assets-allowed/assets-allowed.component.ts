@@ -8,7 +8,6 @@ import {
 } from '../../store/strategy.selectors';
 import {
   AssetsAllowedConfig,
-  availableSymbols,
   Days,
   DaysAllowedConfig,
   MaxDailyTradesConfig,
@@ -36,7 +35,7 @@ export class AssetsAllowedComponent implements OnInit {
   };
 
   symbols: string[] = [];
-  availableSymbolsOptions: string[] = availableSymbols;
+  availableSymbolsOptions: string[] = [];
   selectedInstrument: string | undefined = undefined;
 
   dropdownOpen = false;

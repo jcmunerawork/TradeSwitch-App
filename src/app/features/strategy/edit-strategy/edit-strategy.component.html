@@ -89,7 +89,7 @@
       } @if (config && config.daysAllowed.isActive) {
       <app-edit-days-allowed></app-edit-days-allowed>
       } @if (config && config.assetsAllowed.isActive) {
-      <app-edit-assets-allowed></app-edit-assets-allowed>
+      <app-edit-assets-allowed [availableSymbolsOptions]="availableInstruments"></app-edit-assets-allowed>
       } @if (config && config.hoursAllowed.isActive) {
       <app-edit-hours-allowed></app-edit-hours-allowed>
       }
@@ -107,7 +107,7 @@
       } @if (myChoices && myChoices.daysAllowed.isActive) {
       <app-edit-days-allowed></app-edit-days-allowed>
       } @if (myChoices && myChoices.assetsAllowed.isActive) {
-      <app-edit-assets-allowed></app-edit-assets-allowed>
+      <app-edit-assets-allowed [availableSymbolsOptions]="availableInstruments"></app-edit-assets-allowed>
       } @if (myChoices && myChoices.hoursAllowed.isActive) {
       <app-edit-hours-allowed></app-edit-hours-allowed>
       }

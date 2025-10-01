@@ -144,6 +144,21 @@ export class AuthService {
     return !querySnapshot.empty; // Returns true if email exists for another user
   }
 
+  async checkAccountIdExists(accountID: string, currentUserId: string): Promise<boolean> {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return false;
+    }
+    const accountsCollection = collection(this.db, 'accounts');
+    const q = query(
+      accountsCollection, 
+      where('accountID', '==', accountID),
+      where('userId', '!=', currentUserId) // Exclude current user's accounts
+    );
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty; // Returns true if accountID exists for another user
+  }
+
   async deleteAccount(accountId: string): Promise<void> {
     if (!this.db) {
       console.warn('Firestore not available in SSR');

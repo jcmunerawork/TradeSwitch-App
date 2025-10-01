@@ -152,6 +152,31 @@ export interface InstrumentDetails {
   type: string; // "CRYPTO"
 }
 
+export interface Instrument {
+  barSource: string;
+  continuous: boolean;
+  contractMonth: string;
+  country: number;
+  description: string;
+  hasDaily: boolean;
+  hasIntraday: boolean;
+  id: number;
+  localizedName: string;
+  routes: Array<{
+    id: string;
+    type: string;
+  }>;
+  logoUrl: string;
+  marketDataExchange: string;
+  name: string;
+  strikePrice: number;
+  strikeType: string;
+  tradableInstrumentId: number;
+  tradingExchange: string;
+  type: string;
+  underlierId: number;
+}
+
 export interface StatConfig {
   netPnl: number;
   tradeWinPercent: number;

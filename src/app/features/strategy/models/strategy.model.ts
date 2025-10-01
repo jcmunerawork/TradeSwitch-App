@@ -19,16 +19,6 @@ export enum Days {
   SUNDAY = 'Sunday',
 }
 
-export const availableSymbols = [
-  'XMRUSD',
-  'BTCUSD',
-  'ETHEUR',
-  'XLMUSD',
-  'ZECUSD',
-  'BTCEUR',
-  'ADAUSD',
-];
-
 export interface MaxDailyTradesConfig {
   isActive: boolean;
   type: RuleType;

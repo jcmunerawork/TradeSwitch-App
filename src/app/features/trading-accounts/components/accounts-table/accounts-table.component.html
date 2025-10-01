@@ -7,9 +7,17 @@
         <h1 class="subtitle mb-6">Accounts</h1>
       </div>
       <div class="table-actions-container smallText d-flex items-center">
-        <div class="search-user-container d-flex items-center p-10 mr-10">
+        <div 
+          class="search-user-container d-flex items-center p-10 mr-10"
+          onmouseover="this.style.border='1px solid rgba(158, 196, 242, 0.2)'"
+          onmouseout="this.style.border=''"
+          style="cursor: pointer; transition: all 0.2s ease;"
+        >
           <label for="search-user" class="mr-10"
-            ><span class="material-symbols-outlined color-background" style="font-size: 18px">search</span
+            ><span 
+              class="material-symbols-outlined color-background"
+              style="font-size: 18px;"
+            >search</span
           ></label>
           <input
             id="search-account"
@@ -23,8 +31,16 @@
         <button
           class="sort-Btn regularText color-secondary-300 p-10 mr-10"
           (click)="toggleSort()"
+          style="cursor: pointer; transition: all 0.2s ease;"
+          onmouseover="this.style.backgroundColor='rgba(158, 196, 242, 0.2)'; this.style.transform='translateY(-1px)'"
+          onmouseout="this.style.backgroundColor=''; this.style.transform='translateY(0)'"
         >
-          <span class="material-symbols-outlined" style="font-size: 18px">swap_vert</span>
+          <span 
+            class="material-symbols-outlined" 
+            style="font-size: 18px; transition: all 0.2s ease;"
+            onmouseover="this.style.transform='rotate(180deg)'"
+            onmouseout="this.style.transform='rotate(0deg)'"
+          >swap_vert</span>
           Sort by: Last Update
         </button>
 
@@ -66,6 +82,9 @@
             <button
               class="filter-btn p-10 bg-primary-400 color-bg-black inputText"
               (click)="apply()"
+              style="cursor: pointer; transition: all 0.2s ease;"
+              onmouseover="this.style.backgroundColor='#8AE01A'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(155, 245, 38, 0.3)'"
+              onmouseout="this.style.backgroundColor=''; this.style.transform='translateY(0)'; this.style.boxShadow=''"
             >
               Apply
             </button>
@@ -90,8 +109,10 @@
             <th class="regularText py-18">Balance</th>
             <th class="regularText py-18">Profit calculation</th>
             <th class="regularText py-18">Last update</th>
-            <th class="regularText py-18">File upload</th>
-            <th class="regularText py-18">Clear trades</th>
+            <!--
+              <th class="regularText py-18">File upload</th>
+              <th class="regularText py-18">Clear trades</th>
+            -->
             <th class="regularText py-18">Delete account</th>
             <th class="regularText py-18">Actions</th>
           </tr>
@@ -139,22 +160,44 @@
                 {{ account.createdAt.toDate() | date : "MM/dd/yyyy h:mm a" }}
               </p>
             </td>
-            <td class="smallText">
-              <span class="material-symbols-outlined color-secondary-500" title="Upload" style="font-size: 24px">upload</span>
-            </td>
-            <td class="smallText">
-              <span class="material-symbols-outlined color-red" title="Clear trades" style="font-size: 24px">cancel</span>
-            </td>
+            <!--
+              <td class="smallText">
+                <span 
+                  class="material-symbols-outlined color-secondary-500" 
+                  title="Upload" 
+                  style="font-size: 24px; cursor: pointer; transition: all 0.2s ease;"
+                  onmouseover="this.style.transform='scale(1.2)'; this.style.opacity='0.8'"
+                  onmouseout="this.style.transform='scale(1)'; this.style.opacity='1'"
+                >upload</span>
+              </td>
+              <td class="smallText">
+                <span 
+                  class="material-symbols-outlined color-red" 
+                  title="Clear trades" 
+                  style="font-size: 24px; cursor: pointer; transition: all 0.2s ease;"
+                  onmouseover="this.style.transform='scale(1.2)'; this.style.opacity='0.8'"
+                  onmouseout="this.style.transform='scale(1)'; this.style.opacity='1'"
+                >cancel</span>
+              </td>
+            -->
             <td class="smallText">
               <span
                 (click)="deleteAccount(account)"
                 class="material-symbols-outlined color-red"
-                style="font-size: 24px"
+                style="font-size: 24px; cursor: pointer; transition: all 0.2s ease;"
                 title="Delete account"
+                onmouseover="this.style.transform='scale(1.2)'; this.style.opacity='0.8'"
+                onmouseout="this.style.transform='scale(1)'; this.style.opacity='1'"
               >delete</span>
             </td>
             <td class="smallText">
-              <span class="material-symbols-outlined color-secondary-500" style="font-size: 24px" title="More options">more_horiz</span>
+              <span 
+                class="material-symbols-outlined color-secondary-500" 
+                style="font-size: 24px; cursor: pointer; transition: all 0.2s ease;" 
+                title="More options"
+                onmouseover="this.style.transform='scale(1.2)'; this.style.opacity='0.8'"
+                onmouseout="this.style.transform='scale(1)'; this.style.opacity='1'"
+              >more_horiz</span>
             </td>
           </tr>
           }

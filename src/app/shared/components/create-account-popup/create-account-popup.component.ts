@@ -27,15 +27,10 @@ export class CreateAccountPopupComponent implements OnChanges {
   ) {}
 
   ngOnChanges(changes: SimpleChanges) {
-    // When the popup becomes visible, set the account number based on current count
+    // When the popup becomes visible, reset the form
     if (changes['visible'] && changes['visible'].currentValue === true) {
-      this.setAccountNumber();
+      this.resetForm();
     }
-  }
-
-  private setAccountNumber() {
-    // Set the account number to be the next number after current count
-    this.newAccount.accountNumber = this.currentAccountCount + 1;
   }
 
 
@@ -78,7 +73,7 @@ export class CreateAccountPopupComponent implements OnChanges {
     // Basic validation
     if (!this.newAccount.accountName || !this.newAccount.broker || 
         !this.newAccount.emailTradingAccount || !this.newAccount.brokerPassword || 
-        !this.newAccount.server || !this.newAccount.accountID) {
+        !this.newAccount.server || !this.newAccount.accountID || !this.newAccount.accountNumber) {
       alert('Please fill in all required fields.');
       return;
     }
@@ -98,16 +93,23 @@ export class CreateAccountPopupComponent implements OnChanges {
         return;
       }
       
-      // 3. Create account object for Firebase
+      // 3. Validate account ID is not already used by another user
+      const accountIdExists = await this.validateAccountIdNotUsed();
+      if (accountIdExists) {
+        alert('This account ID is already registered by another user.');
+        return;
+      }
+      
+      // 4. Create account object for Firebase
       const accountData = this.createAccountObject();
       
-      // 4. Save to Firebase
+      // 5. Save to Firebase
       await this.authService.createAccount(accountData);
       
-      // 5. Show success modal
+      // 6. Show success modal
       this.showSuccessModal = true;
       
-      // 6. Emit the created account data
+      // 7. Emit the created account data
       this.create.emit(accountData);
       
     } catch (error) {
@@ -129,7 +131,7 @@ export class CreateAccountPopupComponent implements OnChanges {
       emailTradingAccount: '',
       brokerPassword: '',
       accountID: '',
-      accountNumber: 0,
+      accountNumber: 1, // Default to 1 as suggested
       balance: 0,
     };
   }
@@ -197,6 +199,20 @@ export class CreateAccountPopupComponent implements OnChanges {
       return !emailExists;
     } catch (error) {
       console.error('Error validating email uniqueness:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Validates that the account ID is not already used by another user
+   * Uses direct query to Firebase for better performance
+   */
+  private async validateAccountIdNotUsed(): Promise<boolean> {
+    try {
+      const accountIdExists = await this.authService.checkAccountIdExists(this.newAccount.accountID, this.userId);
+      return !accountIdExists;
+    } catch (error) {
+      console.error('Error validating account ID uniqueness:', error);
       return false;
     }
   }

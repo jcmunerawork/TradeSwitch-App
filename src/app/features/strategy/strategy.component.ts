@@ -524,6 +524,12 @@ export class Strategy implements OnInit, OnDestroy {
     return 'Free';
   }
 
+  // Check if the current plan allows multiple strategies
+  canCreateMultipleStrategies(): boolean {
+    const currentPlan = this.determineUserPlan();
+    return currentPlan !== 'Free';
+  }
+
   private getActiveStrategyCount(): number {
     if (!this.config) return 0;
     
