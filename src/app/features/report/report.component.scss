@@ -1,11 +1,41 @@
 .report-container {
   position: relative;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  
+  @media (max-width: 768px) {
+    padding: 0 8px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0 4px;
+  }
+}
+
+// Main titles container
+.main-titles {
+  @media (max-width: 768px) {
+    margin-bottom: 24px;
+  }
+  
+  @media (max-width: 480px) {
+    margin-bottom: 16px;
+  }
 }
 
 // Estilos para el contenido de loading
 .loading-content {
   padding: 60px 20px;
   text-align: center;
+  
+  @media (max-width: 768px) {
+    padding: 40px 16px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 30px 12px;
+  }
 }
 
 .loading-spinner-container {
@@ -134,25 +164,33 @@ a {
   border-radius: 6px;
 }
 .stats-card-container {
-  min-width: 71.3125rem;
-  display: flex;
-  gap: 24px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  align-items: flex-start;
-  box-sizing: border-box;
-  scrollbar-width: none;
-  padding-right: 160px; // Cambiar margin por padding para que el scroll incluya el espacio
+  width: 100%;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 16px;
+  align-items: stretch;
+  justify-content: flex-start;
+  margin-bottom: 24px;
+  overflow: visible !important; // Asegurar que no haya scroll
 
-  -ms-overflow-style: none;
   .stat-card {
-    min-width: 16.5625rem;
-    flex: 0 0 auto;
+    flex: 1 1 0; // Se distribuyen uniformemente en el espacio disponible
+    min-width: fit-content; // Sin ancho mínimo fijo
+    width: auto; // Ancho automático
+    height: auto;
+    flex-shrink: 1; // Pueden comprimirse si es necesario
+    overflow: hidden; // Evitar que el contenido se desborde
+    text-overflow: ellipsis; // Truncar texto si es necesario
   }
-}
 
-.stats-card-container::-webkit-scrollbar {
-  display: none;
+  // Responsive adjustments - solo ajustar gap
+  @media (max-width: 768px) {
+    gap: 12px;
+  }
+
+  @media (max-width: 480px) {
+    gap: 8px;
+  }
 }
 
 .middle-container {
@@ -169,6 +207,42 @@ a {
   app-win-loss-chart {
     flex: 0 0 40%;
     min-width: 300px;
+  }
+  
+  // Responsive adjustments
+  @media (max-width: 1200px) {
+    gap: 16px;
+    
+    app-PnL-Graph {
+      flex: 0 0 65%;
+      min-width: 350px;
+    }
+    
+    app-win-loss-chart {
+      flex: 0 0 35%;
+      min-width: 250px;
+    }
+  }
+  
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    gap: 16px;
+    
+    app-PnL-Graph {
+      flex: 1;
+      min-width: unset;
+      width: 100%;
+    }
+    
+    app-win-loss-chart {
+      flex: 1;
+      min-width: unset;
+      width: 100%;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    gap: 12px;
   }
 }
 
@@ -199,22 +273,70 @@ a {
 .account-header {
   background: transparent;
   margin-bottom: 24px;
+  
+  // Responsive layout
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
+  @media (max-width: 480px) {
+    margin-bottom: 16px;
+    gap: 8px;
+  }
 }
 
 .account-info {
+  width: auto;
+  gap: 2px;
+
+  @media (max-width: 1024px) {
+    width: 100%;
+    gap: 0px;
+  }
+
+  .account-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    width: auto;
+    
+    @media (max-width: 1024px) {
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+  }
+  
   .account-name {
     font-size: 18px;
     font-weight: 600;
-    margin: 0 0 4px 0;
+    margin: 0;
     font-family: 'Inter', Arial, sans-serif;
+    
+    @media (max-width: 1024px) {
+      font-size: 16px;
+    }
   }
   
   .account-details {
     gap: 4px;
+    margin-top: 0px;
+
+    @media (max-width: 1024px) {
+      margin-top: 0px;
+    }
     
     .account-server {
       font-size: 14px;
       font-family: 'Inter', Arial, sans-serif;
+      
+      @media (max-width: 1024px) {
+        font-size: 12px;
+      }
     }
   }
 }
@@ -223,6 +345,20 @@ a {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+  justify-content: flex-end;
+  gap: 8px;
+
+  @media (max-width: 1024px) {
+    flex-wrap: nowrap;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
 }
 
 .export-btn,
@@ -240,6 +376,30 @@ a {
   transition: all 0.2s ease;
   border: none;
   text-decoration: none;
+  
+  @media (max-width: 768px) {
+    padding: 8px 12px;
+    font-size: 13px;
+    gap: 6px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 10px 16px;
+    font-size: 14px;
+    justify-content: center;
+  }
+}
+
+.edit-strategy-btn {
+  @media (max-width: 1024px) {
+    width: 100%;
+  }
+}
+
+.change-account-btn {
+  @media (max-width: 1024px) {
+    width: 100%;
+  }
 }
 
 .export-btn {
@@ -250,6 +410,27 @@ a {
   &:hover {
     background: rgba(30, 50, 80, 0.9);
     border-color: #4A6FA5;
+  }
+}
+
+// Botón que aparece al lado del título (solo en mobile - menor a md)
+.export-btn-title {
+  @media (min-width: 1024px) {
+    display: none !important;
+  }
+  
+  @media (max-width: 1024px) {
+    display: flex !important;
+    padding: 6px 12px;
+    font-size: 13px;
+    gap: 6px;
+  }
+}
+
+// Botón que aparece en la sección de botones (solo en desktop - md y mayor)
+.export-btn-desktop {
+  @media (max-width: 1024px) {
+    display: none !important;
   }
 }
 
@@ -278,6 +459,10 @@ a {
 
 .change-account-dropdown {
   position: relative;
+  
+  @media (max-width: 1024px) {
+    width: 100%;
+  }
 }
 
 .account-dropdown {
@@ -291,6 +476,13 @@ a {
   z-index: 1000;
   min-width: 200px;
   margin-top: 4px;
+  
+  @media (max-width: 480px) {
+    right: auto;
+    left: 0;
+    width: 100%;
+    min-width: unset;
+  }
 }
 
 .account-dropdown-header {

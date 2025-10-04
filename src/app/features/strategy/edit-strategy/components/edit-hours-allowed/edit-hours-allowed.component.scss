@@ -9,6 +9,33 @@
     );
 }
 
+.label-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+  
+  @media (max-width: 472px) {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    margin-left: 8px;
+    gap: 10px;
+  }
+}
+
+.timezone-container {
+  @media (max-width: 400px) {
+    .timezone-select {
+      width: 100%;
+      font-size: 14px;
+      padding: 6px 12px;
+    }
+  }
+}
+
 .timezone-select {
   width: 12rem;
   padding: 8px 16px;

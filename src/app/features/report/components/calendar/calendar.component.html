@@ -1,8 +1,16 @@
 <div class="calendar-grid d-flex flex-col p-22">
-  <div
-    class="calendar-titles mb-14 d-flex items-center inputText color-background justify-between"
-  >
-    <div class="month-navigation d-flex align-items-center gap-12">
+  <div class="calendar-titles mb-14 d-flex flex-col gap-12">
+    <!-- Primera fila: Título y Export Data -->
+    <div class="calendar-header-row d-flex items-center justify-between">
+      <p class="calendar-title">My Strategy</p>
+      <button class="export-btn d-flex align-items-center gap-8" (click)="exportData()">
+        <span>Export Data</span>
+        <span class="material-symbols-outlined" style="font-size: 18px">call_made</span>
+      </button>
+    </div>
+    
+    <!-- Segunda fila: Selector de meses -->
+    <div class="month-navigation d-flex align-items-center justify-center gap-12">
       <button 
         class="nav-arrow nav-arrow-left" 
         [disabled]="!canNavigateLeft()"
@@ -23,12 +31,6 @@
         <span class="material-symbols-outlined" style="font-size: 20px;">chevron_right</span>
       </button>
     </div>
-    
-    <p class="calendar-title">My Strategy</p>
-    <button class="export-btn d-flex align-items-center gap-8" (click)="exportData()">
-      <span>Export Data</span>
-      <span class="material-symbols-outlined" style="font-size: 18px">call_made</span>
-    </button>
   </div>
   <div
     class="calendar-header mb-14 d-flex flex-center items-center justify-between"
@@ -58,7 +60,7 @@
           }"
           (click)="onDayClick(cell)"
         >
-          <div class="cell-header d-flex justify-between align-items-start">
+          <div class="cell-header">
             @if (cell.tradesCount > 0) {
             <div
               class="strategy-icon"
@@ -92,8 +94,8 @@
         </div>
         }
         
-        <!-- Weekly Summary Card for this week -->
-        <div class="week-summary-card">
+        <!-- Weekly Summary Card for this week - Desktop -->
+        <div class="week-summary-card desktop-only">
           <div class="week-header">
             <h4 class="week-title">Week {{ $index + 1 }}</h4>
           </div>
@@ -109,6 +111,25 @@
       </div>
       }
     </div>
+  </div>
+  
+  <!-- Weekly Summary Grid - Mobile -->
+  <div class="weekly-summary-grid mobile-only">
+    @for (week of calendar; track $index) {
+    <div class="week-summary-card-mobile">
+      <div class="week-header">
+        <h4 class="week-title">Week {{ $index + 1 }}</h4>
+      </div>
+      <div class="week-content">
+        <div class="week-total" [ngClass]="getWeekTotal(week) >= 0 ? 'positive' : 'negative'">
+          {{ formatCurrency(getWeekTotal(week)) }}
+        </div>
+        <div class="week-days">
+          {{ getWeekActiveDays(week) }} days
+        </div>
+      </div>
+    </div>
+    }
   </div>
 
   <!-- Trades Popup -->

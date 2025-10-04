@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { TradeLockerApiService } from '../../services/tradelocker-api.service';
 import { AuthService } from '../../../features/auth/service/authService';
 import { AccountData } from '../../../features/auth/models/userModel';
 import { Timestamp } from 'firebase/firestore';
@@ -17,19 +17,26 @@ export class CreateAccountPopupComponent implements OnChanges {
   @Input() visible = false;
   @Input() userId: string = '';
   @Input() currentAccountCount: number = 0;
+  @Input() editMode = false;
+  @Input() accountToEdit: AccountData | null = null;
   @Output() close = new EventEmitter<void>();
   @Output() create = new EventEmitter<any>();
+  @Output() update = new EventEmitter<any>();
   @Output() cancel = new EventEmitter<void>();
 
   constructor(
     private authService: AuthService,
-    private http: HttpClient
+    private tradeLockerApiService: TradeLockerApiService
   ) {}
 
   ngOnChanges(changes: SimpleChanges) {
-    // When the popup becomes visible, reset the form
+    // When the popup becomes visible, reset or populate the form
     if (changes['visible'] && changes['visible'].currentValue === true) {
-      this.resetForm();
+      if (this.editMode && this.accountToEdit) {
+        this.populateFormForEdit();
+      } else {
+        this.resetForm();
+      }
     }
   }
 
@@ -86,36 +93,65 @@ export class CreateAccountPopupComponent implements OnChanges {
         return;
       }
       
-      // 2. Validate account email is not already used by another user
-      const emailExists = await this.validateEmailNotUsed();
-      if (emailExists) {
-        alert('This broker email is already registered by another user.');
+      // 2. Validate account email and ID uniqueness
+      const validationResult = await this.validateAccountUniqueness();
+      if (!validationResult.isValid) {
+        alert(validationResult.message);
         return;
       }
       
-      // 3. Validate account ID is not already used by another user
-      const accountIdExists = await this.validateAccountIdNotUsed();
-      if (accountIdExists) {
-        alert('This account ID is already registered by another user.');
-        return;
+      if (this.editMode && this.accountToEdit) {
+        // Update existing account
+        await this.updateAccount();
+      } else {
+        // Create new account
+        await this.createNewAccount();
       }
-      
-      // 4. Create account object for Firebase
-      const accountData = this.createAccountObject();
-      
-      // 5. Save to Firebase
-      await this.authService.createAccount(accountData);
-      
-      // 6. Show success modal
-      this.showSuccessModal = true;
-      
-      // 7. Emit the created account data
-      this.create.emit(accountData);
       
     } catch (error) {
-      console.error('Error creating trading account:', error);
-      alert('Failed to create trading account. Please try again.');
+      console.error('Error processing trading account:', error);
+      alert(`Failed to ${this.editMode ? 'update' : 'create'} trading account. Please try again.`);
     }
+  }
+
+  private async createNewAccount() {
+    // Create account object for Firebase
+    const accountData = this.createAccountObject();
+    
+    // Save to Firebase
+    await this.authService.createAccount(accountData);
+    
+    // Show success modal
+    this.showSuccessModal = true;
+    
+    // Emit the created account data
+    this.create.emit(accountData);
+  }
+
+  private async updateAccount() {
+    if (!this.accountToEdit) return;
+
+    // Create updated account object
+    const updatedAccountData: AccountData = {
+      ...this.accountToEdit,
+      accountName: this.newAccount.accountName,
+      broker: this.newAccount.broker,
+      server: this.newAccount.server,
+      emailTradingAccount: this.newAccount.emailTradingAccount,
+      brokerPassword: this.newAccount.brokerPassword,
+      accountID: this.newAccount.accountID,
+      accountNumber: this.newAccount.accountNumber,
+      balance: this.newAccount.balance,
+    };
+    
+    // Update in Firebase
+    await this.authService.updateAccount(this.accountToEdit.id, updatedAccountData);
+    
+    // Show success modal
+    this.showSuccessModal = true;
+    
+    // Emit the updated account data
+    this.update.emit(updatedAccountData);
   }
 
   onGoToList() {
@@ -134,6 +170,21 @@ export class CreateAccountPopupComponent implements OnChanges {
       accountNumber: 1, // Default to 1 as suggested
       balance: 0,
     };
+  }
+
+  populateFormForEdit() {
+    if (this.accountToEdit) {
+      this.newAccount = {
+        accountName: this.accountToEdit.accountName || '',
+        broker: this.accountToEdit.broker || '',
+        server: this.accountToEdit.server || '',
+        emailTradingAccount: this.accountToEdit.emailTradingAccount || '',
+        brokerPassword: this.accountToEdit.brokerPassword || '',
+        accountID: this.accountToEdit.accountID || '',
+        accountNumber: this.accountToEdit.accountNumber || 1,
+        balance: this.accountToEdit.balance || 0,
+      };
+    }
   }
 
   private createAccountObject(): AccountData {
@@ -162,8 +213,11 @@ export class CreateAccountPopupComponent implements OnChanges {
    */
   private async validateAccountInTradeLocker(): Promise<boolean> {
     try {
-      const tokenResponse = await this.getJWTToken();
-      return !!(tokenResponse && tokenResponse.accessToken);
+      return await this.tradeLockerApiService.validateAccount({
+        email: this.newAccount.emailTradingAccount,
+        password: this.newAccount.brokerPassword,
+        server: this.newAccount.server
+      });
     } catch (error) {
       console.error('Error validating account in TradeLocker:', error);
       return false;
@@ -171,49 +225,38 @@ export class CreateAccountPopupComponent implements OnChanges {
   }
 
   /**
-   * Gets JWT token from TradeLocker using account credentials
+   * Validates that both email and account ID are unique across all accounts
+   * Returns validation result with appropriate message
    */
-  private async getJWTToken(): Promise<any> {
-    const tokenUrl = 'https://demo.tradelocker.com/backend-api/auth/jwt/token';
-    
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-    });
-
-    const body = {
-      email: this.newAccount.emailTradingAccount,
-      password: this.newAccount.brokerPassword,
-      server: this.newAccount.server
-    };
-
-    return this.http.post(tokenUrl, body, { headers }).toPromise();
-  }
-
-  /**
-   * Validates that the broker email is not already used by another user
-   * Uses direct query to Firebase for better performance
-   */
-  private async validateEmailNotUsed(): Promise<boolean> {
+  private async validateAccountUniqueness(): Promise<{isValid: boolean, message: string}> {
     try {
+      // Check if email is already used by another user
       const emailExists = await this.authService.checkEmailExists(this.newAccount.emailTradingAccount, this.userId);
-      return !emailExists;
-    } catch (error) {
-      console.error('Error validating email uniqueness:', error);
-      return false;
-    }
-  }
+      if (emailExists) {
+        return {
+          isValid: false,
+          message: 'This account is already registered. Try with another account or delete the existing trade account it is linked to.'
+        };
+      }
 
-  /**
-   * Validates that the account ID is not already used by another user
-   * Uses direct query to Firebase for better performance
-   */
-  private async validateAccountIdNotUsed(): Promise<boolean> {
-    try {
+      // Check if account ID is already used by another user
       const accountIdExists = await this.authService.checkAccountIdExists(this.newAccount.accountID, this.userId);
-      return !accountIdExists;
+      if (accountIdExists) {
+        return {
+          isValid: false,
+          message: 'This account is already registered. Try with another account or delete the existing trade account it is linked to.'
+        };
+      }
+
+      return {
+        isValid: true,
+        message: ''
+      };
     } catch (error) {
-      console.error('Error validating account ID uniqueness:', error);
-      return false;
+      return {
+        isValid: false,
+        message: 'This account is already registered. Try with another account or delete the existing trade account it is linked to.'
+      };
     }
   }
 }

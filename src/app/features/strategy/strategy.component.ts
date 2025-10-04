@@ -22,8 +22,7 @@ import { GlobalStrategyUpdaterService } from '../../shared/services/global-strat
 import { allRules } from '../strategy/store/strategy.selectors';
 import { selectNetPnL } from '../report/store/report.selectors';
 import { PlanLimitationsGuard } from '../../guards/plan-limitations.guard';
-import { PlanLimitationModalData } from '../../shared/interfaces/plan-limitation-modal.interface';
-import { PlanLimitationModalComponent } from '../../shared/components/plan-limitation-modal/plan-limitation-modal.component';
+import { AppContextService } from '../../shared/context';
 
 
 @Component({
@@ -33,7 +32,6 @@ import { PlanLimitationModalComponent } from '../../shared/components/plan-limit
     FormsModule,
     TextInputComponent,
     StrategyCardComponent,
-    PlanLimitationModalComponent,
   ],
   templateUrl: './strategy.component.html',
   styleUrl: './strategy.component.scss',
@@ -51,15 +49,6 @@ export class Strategy implements OnInit, OnDestroy {
   planBannerMessage = '';
   planBannerType = 'info'; // 'info', 'warning', 'success'
   
-  // Plan limitation modal
-  planLimitationModal: PlanLimitationModalData = {
-    showModal: false,
-    modalType: 'upgrade',
-    title: '',
-    message: '',
-    primaryButtonText: '',
-    onPrimaryAction: () => {}
-  };
 
   // Button state
   isAddStrategyDisabled = false;
@@ -102,12 +91,16 @@ export class Strategy implements OnInit, OnDestroy {
     private authService: AuthService,
     private globalStrategyUpdater: GlobalStrategyUpdaterService,
     private planLimitationsGuard: PlanLimitationsGuard,
+    private appContext: AppContextService
   ) {}
 
   async ngOnInit(): Promise<void> {
     this.initialLoading = true;
     
     try {
+      // Suscribirse a los datos del contexto
+      this.subscribeToContextData();
+      
       // Ejecutar todas las operaciones de inicialización
       await Promise.all([
         this.initializeUserData(),
@@ -127,6 +120,37 @@ export class Strategy implements OnInit, OnDestroy {
     } finally {
       this.initialLoading = false;
     }
+  }
+
+  private subscribeToContextData() {
+    // Suscribirse a los datos del usuario
+    this.appContext.currentUser$.subscribe(user => {
+      this.user = user;
+    });
+
+    // Suscribirse a las cuentas del usuario
+    this.appContext.userAccounts$.subscribe(accounts => {
+      this.accountsData = accounts;
+    });
+
+    // Suscribirse a las estrategias del usuario
+    this.appContext.userStrategies$.subscribe(strategies => {
+      this.userStrategies = strategies;
+      this.filteredStrategies = strategies;
+      this.updateStrategyCard();
+    });
+
+    // Suscribirse a los estados de carga
+    this.appContext.isLoading$.subscribe(loading => {
+      this.loading = loading.strategies;
+    });
+
+    // Suscribirse a los errores
+    this.appContext.errors$.subscribe(errors => {
+      if (errors.strategies) {
+        console.error('Error en estrategias:', errors.strategies);
+      }
+    });
   }
 
   /**
@@ -155,7 +179,7 @@ export class Strategy implements OnInit, OnDestroy {
       try {
         const accounts = await this.authService.getUserAccounts(this.user.id);
         this.accountsData = accounts || [];
-        this.checkPlanLimitations();
+        await this.checkPlanLimitations();
         this.fetchUserKey();
       } catch (error) {
         console.error('Error loading accounts:', error);
@@ -226,16 +250,17 @@ export class Strategy implements OnInit, OnDestroy {
       .select(selectUserKey)
       .pipe()
       .subscribe({
-        next: (userKey) => {
+        next: async (userKey) => {
           if (userKey === '') {
             this.fetchUserKey();
           } else {
             // Use the first account's data dynamically
             if (this.accountsData.length > 0) {
               const firstAccount = this.accountsData[0];
+              // El servicio ya actualiza el contexto automáticamente
               this.reportSvc.getBalanceData(firstAccount.accountID as string, userKey, firstAccount.accountNumber as number).subscribe({
-                next: (balance) => {
-                  this.loadConfig(balance);
+                next: async (balance) => {
+                  await this.loadConfig(balance);
                 },
                 error: (err) => {
                   console.error('Error fetching balance data', err);
@@ -243,7 +268,7 @@ export class Strategy implements OnInit, OnDestroy {
               });
             } else {
               console.warn('No accounts available for fetching balance');
-              this.loadConfig(0);
+              await this.loadConfig(0);
             }
           }
         },
@@ -261,19 +286,19 @@ export class Strategy implements OnInit, OnDestroy {
     });
   }
 
-  loadConfig(balance: number) {
+  async loadConfig(balance: number) {
     this.loading = true;
     
     // Primero intentar cargar la estrategia activa
     if (this.activeStrategy) {
-      this.loadActiveStrategyConfig(balance);
+      await this.loadActiveStrategyConfig(balance);
       return;
     }
 
     // Si no hay estrategia activa, cargar desde configurations (compatibilidad)
     this.strategySvc
       .getConfiguration(this.user?.id || '')
-      .then((configuration) => {
+      .then(async (configuration) => {
         if (configuration) {
           const riskPerTradeBalance = {
             ...configuration.riskPerTrade,
@@ -295,13 +320,13 @@ export class Strategy implements OnInit, OnDestroy {
           this.store.dispatch(resetConfig({ config: initialStrategyState }));
         }
         this.loading = false;
-        this.checkPlanLimitations();
+        await this.checkPlanLimitations();
       })
-      .catch((err) => {
+      .catch(async (err) => {
         this.store.dispatch(resetConfig({ config: initialStrategyState }));
         this.loading = false;
         console.error('Error to get the config', err);
-        this.checkPlanLimitations();
+        await this.checkPlanLimitations();
       });
   }
 
@@ -385,13 +410,12 @@ export class Strategy implements OnInit, OnDestroy {
   async onNewStrategy() {
     if (!this.user?.id || this.isAddStrategyDisabled) return;
 
-    const activeStrategies = this.getActiveStrategyCount();
-    const accessCheck = await this.planLimitationsGuard.checkStrategyCreationWithModal(this.user.id, activeStrategies);
+    // Contar el total de estrategias del usuario (activas + inactivas)
+    const totalStrategies = this.userStrategies.length + (this.activeStrategy ? 1 : 0);
+    const accessCheck = await this.planLimitationsGuard.checkStrategyCreationWithModal(this.user.id, totalStrategies);
     
     if (!accessCheck.canCreate) {
-      if (accessCheck.modalData) {
-        this.planLimitationModal = accessCheck.modalData;
-      }
+      // El banner ya se muestra automáticamente, no necesitamos modal
       return;
     }
     
@@ -432,9 +456,9 @@ export class Strategy implements OnInit, OnDestroy {
   // Plan detection and banner methods
   fetchUserAccounts() {
     if (this.user?.id) {
-      this.authService.getUserAccounts(this.user.id).then((accounts) => {
+      this.authService.getUserAccounts(this.user.id).then(async (accounts) => {
         this.accountsData = accounts || [];
-        this.checkPlanLimitations();
+        await this.checkPlanLimitations();
         // After loading accounts, try to fetch user key
         this.fetchUserKey();
       });
@@ -489,45 +513,10 @@ export class Strategy implements OnInit, OnDestroy {
     return `${month} ${day}, ${year}`;
   }
 
-  private determineUserPlan(): string {
-    if (!this.user) return 'Free';
-    
-    // Check if user has subscription_date (indicates paid plan)
-    if (this.user.subscription_date && this.user.subscription_date > 0) {
-      if (this.user.status === 'purchased') {
-        const accountCount = this.accountsData.length;
-        const strategyCount = this.getActiveStrategyCount();
-        
-        // Pro Plan: 6 accounts, 8 strategies, or high usage indicators
-        if (accountCount >= 6 || (accountCount >= 2 && this.user.number_trades > 100)) {
-          return 'Pro';
-        }
-        // Starter Plan: 2 accounts, 3 strategies, or moderate usage
-        else if (accountCount >= 2 || (accountCount >= 1 && this.user.number_trades > 20)) {
-          return 'Starter';
-        }
-        // Free Plan: 1 account, 1 strategy
-        else {
-          return 'Free';
-        }
-      }
-    }
-    
-    // Check if user has any trading activity
-    if (this.user.number_trades && this.user.number_trades > 0) {
-      const accountCount = this.accountsData.length;
-      if (accountCount >= 2) {
-        return 'Starter';
-      }
-    }
-    
-    return 'Free';
-  }
-
   // Check if the current plan allows multiple strategies
   canCreateMultipleStrategies(): boolean {
-    const currentPlan = this.determineUserPlan();
-    return currentPlan !== 'Free';
+    // This will be determined by the plan limitations guard
+    return true; // Default to true, let the guard handle the actual validation
   }
 
   private getActiveStrategyCount(): number {
@@ -542,47 +531,60 @@ export class Strategy implements OnInit, OnDestroy {
     return count;
   }
 
-  private checkPlanLimitations() {
-    const currentPlan = this.determineUserPlan();
-    const activeStrategies = this.getActiveStrategyCount();
-    
-    this.showPlanBanner = false;
-    this.planBannerMessage = '';
-    this.planBannerType = 'info';
-
-    switch (currentPlan) {
-      case 'Free':
-        if (activeStrategies >= 1) {
-          this.showPlanBanner = true;
-          this.planBannerMessage = 'You have reached your strategy limit on the Free plan. Want more? Upgrade anytime.';
-          this.planBannerType = 'warning';
-        }
-        break;
-        
-      case 'Starter':
-        if (activeStrategies >= 3) {
-          this.showPlanBanner = true;
-          this.planBannerMessage = 'You have reached your strategy limit on the Starter plan. Want more? Upgrade anytime.';
-          this.planBannerType = 'warning';
-        } else if (activeStrategies >= 2) {
-          this.showPlanBanner = true;
-          this.planBannerMessage = `You have ${3 - activeStrategies} strategies left on your current plan. Want more? Upgrade anytime.`;
-          this.planBannerType = 'info';
-        }
-        break;
-        
-      case 'Pro':
-        if (activeStrategies >= 8) {
-          this.showPlanBanner = true;
-          this.planBannerMessage = 'You have reached your strategy limit on the Pro plan. Contact support for custom solutions.';
-          this.planBannerType = 'warning';
-        } else if (activeStrategies >= 6) {
-          this.showPlanBanner = true;
-          this.planBannerMessage = `You have ${8 - activeStrategies} strategies left on your current plan. Want more? Upgrade anytime.`;
-          this.planBannerType = 'info';
-        }
-        break;
+  private async checkPlanLimitations() {
+    if (!this.user?.id) {
+      this.showPlanBanner = false;
+      return;
     }
+
+    try {
+      // Get user's plan limitations from the guard
+      const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
+      const totalStrategies = this.userStrategies.length + (this.activeStrategy ? 1 : 0);
+      
+      this.showPlanBanner = false;
+      this.planBannerMessage = '';
+      this.planBannerType = 'info';
+
+      // If user needs subscription or is banned/cancelled
+      if (limitations.needsSubscription || limitations.isBanned || limitations.isCancelled) {
+        this.showPlanBanner = true;
+        this.planBannerMessage = this.getBlockedMessage(limitations);
+        this.planBannerType = 'warning';
+        return;
+      }
+
+      // Check if user has reached strategy limit
+      if (totalStrategies >= limitations.maxStrategies) {
+        this.showPlanBanner = true;
+        this.planBannerMessage = `You've reached the strategy limit for your ${limitations.planName} plan. Move to a higher plan and keep growing your account.`;
+        this.planBannerType = 'warning';
+      } else if (totalStrategies >= limitations.maxStrategies - 1) {
+        // Show warning when close to limit
+        this.showPlanBanner = true;
+        this.planBannerMessage = `You have ${limitations.maxStrategies - totalStrategies} strategies left on your current plan. Want more? Upgrade anytime.`;
+        this.planBannerType = 'info';
+      }
+    } catch (error) {
+      console.error('Error checking plan limitations:', error);
+      this.showPlanBanner = false;
+    }
+  }
+
+  private getBlockedMessage(limitations: any): string {
+    if (limitations.isBanned) {
+      return 'Your account has been banned. Please contact support for assistance.';
+    }
+    
+    if (limitations.isCancelled) {
+      return 'Your subscription has been cancelled. Please purchase a plan to access this functionality.';
+    }
+    
+    if (limitations.needsSubscription) {
+      return 'You need to purchase a plan to access this functionality.';
+    }
+    
+    return 'Access denied. Please contact support for assistance.';
   }
 
   onUpgradePlan() {
@@ -593,10 +595,6 @@ export class Strategy implements OnInit, OnDestroy {
     this.showPlanBanner = false;
   }
 
-  // Plan limitation modal methods
-  onClosePlanLimitationModal() {
-    this.planLimitationModal.showModal = false;
-  }
 
   // Check strategy limitations and update button state
   async checkStrategyLimitations() {
@@ -611,6 +609,8 @@ export class Strategy implements OnInit, OnDestroy {
       const accessCheck = await this.planLimitationsGuard.checkStrategyCreationWithModal(this.user.id, totalStrategies);
       
       this.isAddStrategyDisabled = !accessCheck.canCreate;
+      
+      // El banner se actualiza automáticamente en checkPlanLimitations()
     } catch (error) {
       console.error('Error checking strategy limitations:', error);
       this.isAddStrategyDisabled = true;

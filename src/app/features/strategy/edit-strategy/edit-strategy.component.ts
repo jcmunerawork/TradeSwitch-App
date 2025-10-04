@@ -329,6 +329,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
             // Use the first account's data dynamically
             if (this.accountsData.length > 0) {
               const firstAccount = this.accountsData[0];
+              // El servicio ya actualiza el contexto automáticamente
               this.reportSvc.getBalanceData(firstAccount.accountID as string, userKey, firstAccount.accountNumber as number).subscribe({
                 next: (balance) => {
                   this.loadConfig(balance);

@@ -20,6 +20,7 @@ import { Subscription } from 'rxjs';
 export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   @Input() accounts: AccountData[] = [];
   @Output() delete = new EventEmitter<AccountData>();
+  @Output() edit = new EventEmitter<AccountData>();
 
   initialMinBalance = 0;
   initialMaxBalance = 1000000;
@@ -148,6 +149,10 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   deleteAccount(account: AccountData) {
     this.showConfirmation = true;
     this.accountToDelete = account;
+  }
+
+  editAccount(account: AccountData) {
+    this.edit.emit(account);
   }
 
   confirmDelete() {

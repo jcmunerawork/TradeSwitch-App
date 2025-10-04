@@ -9,6 +9,7 @@ import { ProfileDetailsComponent } from './components/profile-details/profile-de
 import { SubscriptionHistoryComponent } from './components/subscription-history/subscription-history.component';
 import { PlanDetails } from './models/account-settings';
 import { MOCK_PLAN_DETAILS } from './mocks/account-mocks';
+import { AppContextService } from '../../shared/context';
 
 @Component({
   selector: 'app-account',
@@ -30,11 +31,24 @@ export class AccountComponent implements OnInit {
   constructor(
     private store: Store,
     private strategySvc: SettingsService,
-    private reportSvc: ReportService
+    private reportSvc: ReportService,
+    private appContext: AppContextService
   ) {}
 
   ngOnInit(): void {
     this.selectedPlanDetails = MOCK_PLAN_DETAILS;
+    
+    // Suscribirse a los datos del usuario desde el contexto
+    this.appContext.currentUser$.subscribe(user => {
+      this.user = user;
+    });
+    
+    // Cargar datos del usuario si no están disponibles
+    if (!this.user) {
+      this.appContext.setLoading('user', true);
+      // Aquí se podría implementar la carga de datos del usuario si es necesario
+      this.appContext.setLoading('user', false);
+    }
   }
 
   selectTypeData(index: number): void {

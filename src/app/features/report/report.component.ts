@@ -4,6 +4,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Store } from '@ngrx/store';
+import { AppContextService } from '../../shared/context';
 import {
   getUserKey,
   setAvgWnL,
@@ -120,7 +121,8 @@ export class ReportComponent implements OnInit {
     private userService: AuthService,
     private strategySvc: SettingsService,
     private router: Router,
-    private planLimitationsGuard: PlanLimitationsGuard
+    private planLimitationsGuard: PlanLimitationsGuard,
+    private appContext: AppContextService
   ) {}
 
   ngAfterViewInit() {
@@ -141,12 +143,51 @@ export class ReportComponent implements OnInit {
     // Cargar datos guardados primero para mostrar inmediatamente
     this.loadSavedData();
     
+    // Suscribirse a los datos del contexto
+    this.subscribeToContextData();
+    
     // Luego obtener datos frescos en background
     this.getUserData();
     this.initializeStrategies();
     this.listenGroupedTrades();
     this.fetchUserRules();
     this.checkUserAccess();
+  }
+
+  private subscribeToContextData() {
+    // Suscribirse a los datos del usuario
+    this.appContext.currentUser$.subscribe(user => {
+      this.user = user;
+    });
+
+    // Suscribirse a las cuentas del usuario
+    this.appContext.userAccounts$.subscribe(accounts => {
+      this.accountsData = accounts;
+      if (accounts.length > 0 && !this.currentAccount) {
+        this.currentAccount = accounts[0];
+      }
+    });
+
+    // Suscribirse a las estrategias del usuario
+    this.appContext.userStrategies$.subscribe(strategies => {
+      this.strategies = strategies;
+    });
+
+    // Suscribirse a los estados de carga
+    this.appContext.isLoading$.subscribe(loading => {
+      if (loading.accounts) {
+        this.startLoading();
+      } else {
+        this.stopLoading();
+      }
+    });
+
+    // Suscribirse a los errores
+    this.appContext.errors$.subscribe(errors => {
+      if (errors.accounts) {
+        this.errorMessage = errors.accounts;
+      }
+    });
   }
 
   private startLoading() {
@@ -546,11 +587,7 @@ export class ReportComponent implements OnInit {
   }
 
   fetchUserKey(account: AccountData) {
-    // Timeout de seguridad para getUserKey
-    const userKeyTimeout = setTimeout(() => {
-      this.stopLoading();
-    }, 8000);
-
+    // Usar el servicio que ya actualiza el contexto automáticamente
     this.reportService
       .getUserKey(
         account.emailTradingAccount,
@@ -559,8 +596,6 @@ export class ReportComponent implements OnInit {
       )
       .subscribe({
         next: (key: string) => {
-          clearTimeout(userKeyTimeout);
-          
           this.userKey = key;
           const now = new Date();
           const currentYear = now.getUTCFullYear();
@@ -585,7 +620,6 @@ export class ReportComponent implements OnInit {
           this.store.dispatch(setUserKey({ userKey: key }));
         },
         error: (err) => {
-          clearTimeout(userKeyTimeout);
           console.error('Error fetching user key:', err);
           this.store.dispatch(setUserKey({ userKey: '' }));
           this.stopLoading();
@@ -598,11 +632,7 @@ export class ReportComponent implements OnInit {
     accountId: string,
     accNum: number
   ) {
-    // Timeout de seguridad para getHistoryData
-    const historyTimeout = setTimeout(() => {
-      this.stopLoading();
-    }, 8000);
-
+    // Los servicios ya actualizan el contexto automáticamente
     this.reportService.getBalanceData(accountId, key, accNum).subscribe({
       next: (balanceData) => {
         // Store balance data for calculations
@@ -617,8 +647,6 @@ export class ReportComponent implements OnInit {
       .getHistoryData(accountId, key, accNum)
       .subscribe({
         next: (groupedTrades: GroupedTradeFinal[]) => {
-          clearTimeout(historyTimeout);
-          
           // Reemplazar en lugar de acumular para evitar duplicados
           this.store.dispatch(
             setGroupedTrades({
@@ -633,7 +661,6 @@ export class ReportComponent implements OnInit {
           this.stopLoading();
         },
         error: (err) => {
-          clearTimeout(historyTimeout);
           console.error('Error fetching history data:', err);
           this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
           this.stopLoading();

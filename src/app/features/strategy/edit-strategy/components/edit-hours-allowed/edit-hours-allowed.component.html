@@ -1,36 +1,36 @@
 <div class="config-row d-flex flex-col py-12 justify-between">
-  <div class="d-flex justify-between mb-4">
-    <div class="d-flex items-center">
-      <label class="custom-checkbox m-6">
-        <input
-          type="checkbox"
-          id="toggle-hours-allowed"
-          [checked]="config.isActive"
-          (change)="onToggleActive($event)"
-        />
-        <span class="checkmark"></span>
-      </label>
+  <div class="d-flex items-center mb-12">
+    <label class="custom-checkbox m-6">
+      <input
+        type="checkbox"
+        id="toggle-hours-allowed"
+        [checked]="config.isActive"
+        (change)="onToggleActive($event)"
+      />
+      <span class="checkmark"></span>
+    </label>
 
+    <div class="label-container">
       <label
         for="toggle-hours-allowed"
         [ngClass]="{ deactivated: !config.isActive }"
         >Only allow trades between:</label
       >
-    </div>
-    <div>
-      <select
-        id="timezone"
-        [ngModel]="config.timezone"
-        [disabled]="!config.isActive"
-        (ngModelChange)="onTimezoneChange($event)"
-        class="timezone-select inputText color-light-gray"
-      >
-        @for (tz of timezones; track $index) {
-        <option [value]="tz.value">
-          {{ tz.label }}
-        </option>
-        }
-      </select>
+      <div class="timezone-container">
+        <select
+          id="timezone"
+          [ngModel]="config.timezone"
+          [disabled]="!config.isActive"
+          (ngModelChange)="onTimezoneChange($event)"
+          class="timezone-select inputText color-light-gray"
+        >
+          @for (tz of timezones; track $index) {
+          <option [value]="tz.value">
+            {{ tz.label }}
+          </option>
+          }
+        </select>
+      </div>
     </div>
   </div>
 

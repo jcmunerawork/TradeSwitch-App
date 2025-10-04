@@ -28,22 +28,21 @@
         [legend]="chartOptions.legend"
         [tooltip]="chartOptions.tooltip"
         [stroke]="chartOptions.stroke"
-        style="width: 100%"
       ></apx-chart>
-      
-      <!-- Labels internos solo cuando hay datos -->
-      @if (values && values.length > 0) {
-      <div class="chart-labels-overlay">
-        <div class="loss-segment">
-          <div class="segment-value">{{ formatCurrency(winLossData.lossValue) }}</div>
-          <div class="segment-percentage loss-color">{{ formatPercentage(winLossData.lossPercentage) }}</div>
-        </div>
-        <div class="win-segment">
-          <div class="segment-value">{{ formatCurrency(winLossData.winValue) }}</div>
-          <div class="segment-percentage win-color">{{ formatPercentage(winLossData.winPercentage) }}</div>
-        </div>
-      </div>
-      }
     </div>
+    
+    <!-- Labels debajo del círculo solo cuando hay datos -->
+    @if (values && values.length > 0) {
+    <div class="chart-labels-overlay">
+      <div class="loss-segment">
+        <div class="segment-value">{{ formatCurrency(winLossData.lossValue) }}</div>
+        <div class="segment-percentage loss-color">{{ formatPercentage(winLossData.lossPercentage) }}</div>
+      </div>
+      <div class="win-segment">
+        <div class="segment-value">{{ formatCurrency(winLossData.winValue) }}</div>
+        <div class="segment-percentage win-color">{{ formatPercentage(winLossData.winPercentage) }}</div>
+      </div>
+    </div>
+    }
   </div>
 </div>

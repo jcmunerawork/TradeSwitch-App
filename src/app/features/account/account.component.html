@@ -1,11 +1,11 @@
-<div class="main-titles color-background d-flex flex-col mb-48">
-  <h1 class="titleText mb-32">My Account</h1>
+<div class="main-titles color-background d-flex flex-col mb-24">
+  <h1 class="titleText mb-16">My Account</h1>
   <h3 class="regularText">
     Review your plan, billing cycle, and update your subscription preferences.
   </h3>
 </div>
 
-<div class="btn-group d-flex p-10 align-center mb-48">
+<div class="btn-group d-flex align-center mb-24">
   @for (item of tabs; track $index) {
   <button
     [class.active]="selectedIndex === $index"

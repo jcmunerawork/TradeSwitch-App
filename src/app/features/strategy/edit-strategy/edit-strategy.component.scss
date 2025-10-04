@@ -1,10 +1,19 @@
 .rules {
   gap: 60px;
   width: 100%;
+
+  @media (max-width: 1200px) {
+    gap: 30px;
+  }
+
+  @media (max-width: 1024px) {
+    display: none; // Ocultar completamente el container desktop en mobile
+  }
   
   .rules-container {
     flex: 1;
     width: 100%;
+    min-width: 300px;
     border-radius: 8px;
     border: 0.5px solid #2f2f2f;
     background: linear-gradient(
@@ -32,7 +41,27 @@
         )
         top right / 50% 50% no-repeat;
 
+    &.available_rules {
+      @media (max-width: 1024px) {
+        display: none !important; // Ocultar completamente "Available Rules" en mobile
+      }
+    }
+
     padding: 1.875rem;
+
+    @media (max-width: 1024px) {
+      min-width: unset;
+      width: 100%;
+      padding: 1.25rem;
+    }
+
+    @media (max-width: 768px) {
+      padding: 1rem;
+    }
+
+    @media (max-width: 480px) {
+      padding: 0.75rem;
+    }
 
     &.my_choices {
       border-color: #5087e4;
@@ -60,6 +89,70 @@
             rgba(80, 135, 228, 0.05) 50%
           )
           top right / 50% 50% no-repeat;
+
+      @media (max-width: 1024px) {
+        display: none !important; // Ocultar completamente "My Choices" en mobile
+      }
+    }
+  }
+
+  // Títulos responsive
+  .desktop-title {
+    @media (max-width: 1024px) {
+      display: none;
+    }
+  }
+
+  .mobile-title {
+    display: none;
+    
+    @media (max-width: 1024px) {
+      display: block;
+    }
+  }
+}
+
+// Mobile Rules Container
+.mobile-rules-container {
+  display: none;
+  
+  @media (max-width: 1024px) {
+    display: block;
+    width: 100%;
+    border-radius: 8px;
+    border: 0.5px solid #2f2f2f;
+    background: linear-gradient(
+          to bottom right,
+          rgba(57, 103, 215, 0.1) 0%,
+          rgba(57, 103, 215, 0.01) 50%
+        )
+        bottom right / 50% 50% no-repeat,
+      linear-gradient(
+          to bottom left,
+          rgba(57, 103, 215, 0.1) 0%,
+          rgba(57, 103, 215, 0.01) 50%
+        )
+        bottom left / 50% 50% no-repeat,
+      linear-gradient(
+          to top left,
+          rgba(57, 103, 215, 0.1) 0%,
+          rgba(57, 103, 215, 0.01) 50%
+        )
+        top left / 50% 50% no-repeat,
+      linear-gradient(
+          to top right,
+          rgba(57, 103, 215, 0.1) 0%,
+          rgba(57, 103, 215, 0.01) 50%
+        )
+        top right / 50% 50% no-repeat;
+    padding: 1.25rem;
+
+    @media (max-width: 768px) {
+      padding: 1rem;
+    }
+
+    @media (max-width: 480px) {
+      padding: 0.75rem;
     }
   }
 }
@@ -68,12 +161,23 @@
   gap: 1rem;
   width: min-content;
 
+  @media (max-width: 768px) {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.75rem;
+  }
+
   .discard-btn {
     height: fit-content;
     width: min-content;
     background: rgba(188, 254, 99, 0.1);
     border: 1px solid #9bf526;
     border-radius: 6px;
+
+    @media (max-width: 768px) {
+      width: 100%;
+      justify-content: center;
+    }
   }
 
   .save-btn {
@@ -81,11 +185,30 @@
     width: min-content;
     border-radius: 6px;
     border: none;
+
+    @media (max-width: 768px) {
+      width: 100%;
+      justify-content: center;
+    }
   }
 }
 
 // Mini Strategy Card Styles
 .mini-strategy-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 30px;
+  padding: 20px;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 0px;
+  }
   
   .strategy-icon {
     width: 40px;
@@ -97,14 +220,44 @@
     display: flex;
     align-items: center;
     justify-content: center;
+
+    @media (max-width: 768px) {
+      margin-right: 0;
+      width: 36px;
+      height: 36px;
+    }
   }
   
   .strategy-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 4px;
+
+    @media (max-width: 768px) {
+      width: 100%;
+    }
+
     .strategy-name-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+
       .strategy-name {
         font-size: 18px;
         font-weight: 600;
         margin: 0;
+
+        @media (max-width: 768px) {
+          font-size: 16px;
+          margin-left: 8px;
+        }
+
+        @media (max-width: 480px) {
+          font-size: 14px;
+        }
       }
       
       .edit-name-btn {
@@ -119,6 +272,11 @@
         display: flex;
         align-items: center;
         justify-content: center;
+
+        @media (max-width: 768px) {
+          width: 20px;
+          height: 20px;
+        }
         
         &:hover {
           opacity: 1;
@@ -129,6 +287,11 @@
           width: 16px;
           height: 16px;
           color: #f4f6f8;
+
+          @media (max-width: 768px) {
+            width: 14px;
+            height: 14px;
+          }
         }
 
         .icon-edit:hover {
@@ -142,6 +305,17 @@
         padding: 4px 8px;
         border-radius: 4px;
         min-width: 200px;
+
+        @media (max-width: 768px) {
+          font-size: 16px;
+          min-width: 150px;
+          margin-left: 8px;
+        }
+
+        @media (max-width: 480px) {
+          font-size: 14px;
+          min-width: 120px;
+        }
         
         &:focus {
           background: rgba(255, 255, 255, 0.1);
@@ -152,6 +326,15 @@
     .last-modified {
       font-size: 14px;
       margin: 0;
+
+      @media (max-width: 768px) {
+        font-size: 13px;
+        margin-left: 8px;
+      }
+
+      @media (max-width: 480px) {
+        font-size: 12px;
+      }
     }
   }
   
@@ -194,13 +377,33 @@
   border-left: 4px solid #EF4444 !important;
   border-radius: 8px;
   
+  @media (max-width: 768px) {
+    padding: 12px !important;
+  }
+  
   .material-symbols-outlined {
     color: #EF4444 !important;
+    
+    @media (max-width: 768px) {
+      font-size: 18px !important;
+    }
   }
   
   p {
     color: #EF4444 !important;
     font-weight: 500;
+    
+    @media (max-width: 768px) {
+      font-size: 13px !important;
+    }
+  }
+}
+
+// Header responsive
+.d-flex.justify-between {
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 16px;
   }
 }
 

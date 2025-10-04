@@ -28,9 +28,35 @@ export class WinLossChartComponent implements OnInit, OnChanges {
     lossPercentage: 0,
   };
 
+  private getDonutSize(): string {
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth <= 480) {
+        return '80%'; // Más delgado en pantallas muy pequeñas
+      } else if (window.innerWidth <= 768) {
+        return '75%'; // Delgado en tablets
+      } else if (window.innerWidth <= 1024) {
+        return '70%'; // Moderadamente delgado en pantallas medianas
+      }
+    }
+    return '80%'; // Tamaño normal en desktop
+  }
+
+  private getChartSize(): number {
+    // El tamaño ahora se controla completamente por CSS
+    // Retornamos un valor que será ignorado por ApexCharts
+    return 100;
+  }
+
   ngOnInit() {
     this.winLossData = this.calculateWinLossData();
     this.chartOptions = this.getChartOptions();
+    
+    // Listener para redimensionar el gráfico
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', () => {
+        this.chartOptions = this.getChartOptions();
+      });
+    }
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -46,8 +72,8 @@ export class WinLossChartComponent implements OnInit, OnChanges {
       return {
         chart: {
           type: 'donut',
-          height: 300,
-          width: 300,
+          height: '100%',
+          width: '100%',
           toolbar: { show: false },
           foreColor: '#fff',
           fontFamily: 'Inter, Arial, sans-serif',
@@ -62,7 +88,7 @@ export class WinLossChartComponent implements OnInit, OnChanges {
         plotOptions: {
           pie: {
             donut: {
-              size: '85%',
+              size: this.getDonutSize(),
               labels: {
                 show: false // No mostrar texto dentro del círculo
               }
@@ -84,8 +110,8 @@ export class WinLossChartComponent implements OnInit, OnChanges {
     return {
       chart: {
         type: 'donut',
-        height: 300,
-        width: 300,
+        height: '100%',
+        width: '100%',
         toolbar: { show: false },
         foreColor: '#fff',
         fontFamily: 'Inter, Arial, sans-serif',
@@ -100,7 +126,7 @@ export class WinLossChartComponent implements OnInit, OnChanges {
       plotOptions: {
         pie: {
           donut: {
-            size: '85%',
+            size: this.getDonutSize(),
             labels: {
               show: false
             }

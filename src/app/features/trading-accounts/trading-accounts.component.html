@@ -2,7 +2,7 @@
   <div class="d-flex justify-between align-items-center mb-12">
     <h1 class="titleText">My Trading Accounts</h1>
     <button 
-      class="add-account-header-btn d-flex align-items-center gap-8" 
+      class="add-account-header-btn desktop-add-btn" 
       [class.disabled]="isAddAccountDisabled"
       [disabled]="isAddAccountDisabled"
       (click)="isAddAccountDisabled ? null : onAddAccount()"
@@ -14,6 +14,16 @@
   <h3 class="regularText">
     View and manage all your connected trading accounts in one place.
   </h3>
+  <!-- Mobile Add Account Button -->
+  <button 
+    class="add-account-mobile-btn mobile-add-btn" 
+    [class.disabled]="isAddAccountDisabled"
+    [disabled]="isAddAccountDisabled"
+    (click)="isAddAccountDisabled ? null : onAddAccount()"
+  >
+    <span class="material-symbols-outlined" style="font-size: 20px;">add</span>
+    <span>Add Account</span>
+  </button>
 </div>
 
 @if (showPlanBanner) {
@@ -39,6 +49,7 @@
   <app-accounts-table
     [accounts]="usersData"
     (delete)="deleteAccount($event)"
+    (edit)="onEditAccount($event)"
   ></app-accounts-table>
   } @else if(!loading) {
   <!-- Empty State -->
@@ -62,8 +73,11 @@
   [visible]="showAddAccountModal"
   [userId]="user?.id || ''"
   [currentAccountCount]="usersData.length"
+  [editMode]="editMode"
+  [accountToEdit]="accountToEdit"
   (close)="onCloseAddAccountModal()"
   (create)="onAccountCreated($event)"
+  (update)="onAccountUpdated($event)"
   (cancel)="onAccountCanceled()"
 ></app-create-account-popup>
 

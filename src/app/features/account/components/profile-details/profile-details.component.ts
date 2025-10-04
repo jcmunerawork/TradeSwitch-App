@@ -8,6 +8,7 @@ import { AuthService } from '../../../auth/service/authService';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
 import { AccountDeletionService } from '../../../../shared/services/account-deletion.service';
 import { Router } from '@angular/router';
+import { AppContextService } from '../../../../shared/context';
 
 @Component({
   selector: 'app-profile-details',
@@ -33,6 +34,7 @@ export class ProfileDetailsComponent implements OnInit {
   private fb = inject(FormBuilder);
   private accountDeletionService = inject(AccountDeletionService);
   private router = inject(Router);
+  private appContext = inject(AppContextService);
 
   constructor(private store: Store) {
     this.profileForm = this.fb.group({
@@ -50,19 +52,20 @@ export class ProfileDetailsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.getUserData();
+    this.subscribeToContextData();
   }
 
-  private getUserData(): void {
-    this.store.select(selectUser).subscribe({
-      next: (userData) => {
-        this.user = userData.user;
+  private subscribeToContextData(): void {
+    // Suscribirse a los datos del usuario desde el contexto
+    this.appContext.currentUser$.subscribe({
+      next: (user) => {
+        this.user = user;
         if (this.user) {
           this.populateForm();
         }
       },
       error: (err) => {
-        console.error('Error fetching user data', err);
+        console.error('Error fetching user data from context', err);
       },
     });
   }
@@ -236,7 +239,6 @@ export class ProfileDetailsComponent implements OnInit {
     this.deleteAccountError = '';
 
     try {
-      console.log('🗑️ Starting account deletion for user:', this.user.id);
 
       // 1. Delete all Firebase data
       const firebaseDataDeleted: boolean = await this.accountDeletionService.deleteUserData(this.user.id);
@@ -249,7 +251,6 @@ export class ProfileDetailsComponent implements OnInit {
       const currentUser = this.authService.getCurrentUser();
       if (currentUser) {
         await deleteUser(currentUser);
-        console.log('✅ User deleted from Firebase Auth');
       }
 
       // 3. Clear local store
@@ -259,8 +260,6 @@ export class ProfileDetailsComponent implements OnInit {
 
       // 4. Redirect to login
       this.router.navigate(['/login']);
-      
-      console.log('✅ Account deleted successfully');
 
     } catch (error: any) {
       console.error('❌ Error deleting account:', error);

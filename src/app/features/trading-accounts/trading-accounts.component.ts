@@ -18,6 +18,7 @@ import { Router } from '@angular/router';
 import { PlanLimitationsGuard } from '../../guards/plan-limitations.guard';
 import { PlanLimitationModalData } from '../../shared/interfaces/plan-limitation-modal.interface';
 import { PlanLimitationModalComponent } from '../../shared/components/plan-limitation-modal/plan-limitation-modal.component';
+import { AppContextService } from '../../shared/context';
 
 @Component({
   selector: 'app-trading-accounts',
@@ -44,7 +45,8 @@ export class TradingAccountsComponent {
     private reportSvc: ReportService,
     private userSvc: AuthService,
     private router: Router,
-    private planLimitationsGuard: PlanLimitationsGuard
+    private planLimitationsGuard: PlanLimitationsGuard,
+    private appContext: AppContextService
   ) {}
 
   loading = false;
@@ -52,6 +54,8 @@ export class TradingAccountsComponent {
   
   // Plan detection and modal
   showAddAccountModal = false;
+  editMode = false;
+  accountToEdit: AccountData | null = null;
   planLimitationModal: PlanLimitationModalData = {
     showModal: false,
     modalType: 'upgrade',
@@ -70,9 +74,36 @@ export class TradingAccountsComponent {
   planBannerType = 'info'; // 'info', 'warning', 'success'
 
   ngOnInit(): void {
+    // Suscribirse a los datos del contexto
+    this.subscribeToContextData();
+    
     this.store.select(selectUser).subscribe((userState) => {
       this.user = userState?.user ?? null;
       this.loadConfig();
+    });
+  }
+
+  private subscribeToContextData() {
+    // Suscribirse a los datos del usuario
+    this.appContext.currentUser$.subscribe(user => {
+      this.user = user;
+    });
+
+    // Suscribirse a las cuentas del usuario
+    this.appContext.userAccounts$.subscribe(accounts => {
+      this.usersData = accounts;
+    });
+
+    // Suscribirse a los estados de carga
+    this.appContext.isLoading$.subscribe(loading => {
+      this.loading = loading.accounts;
+    });
+
+    // Suscribirse a los errores
+    this.appContext.errors$.subscribe(errors => {
+      if (errors.accounts) {
+        console.error('Error en cuentas:', errors.accounts);
+      }
     });
   }
 
@@ -154,10 +185,10 @@ export class TradingAccountsComponent {
     this.loading = true;
     this.userSvc
       .deleteAccount(account.id)
-      .then(() => {
+      .then(async () => {
         this.loading = false;
         this.loadConfig();
-        this.checkPlanLimitations(); // Check plan limitations after deleting account
+        await this.checkPlanLimitations(); // Check plan limitations after deleting account
         this.usersData = [...this.usersData];
       })
       .catch((err) => {
@@ -181,16 +212,29 @@ export class TradingAccountsComponent {
     }
     
     // If within limits, show add account modal
+    this.editMode = false;
+    this.accountToEdit = null;
+    this.showAddAccountModal = true;
+  }
+
+  // Edit account functionality
+  onEditAccount(account: AccountData) {
+    this.editMode = true;
+    this.accountToEdit = account;
     this.showAddAccountModal = true;
   }
 
   // Modal methods
   onCloseAddAccountModal() {
     this.showAddAccountModal = false;
+    this.editMode = false;
+    this.accountToEdit = null;
   }
 
   onAccountCanceled() {
     this.showAddAccountModal = false;
+    this.editMode = false;
+    this.accountToEdit = null;
   }
 
   // Plan limitation modal methods
@@ -211,8 +255,13 @@ export class TradingAccountsComponent {
       
       this.isAddAccountDisabled = !accessCheck.canCreate;
       
+      // Update plan banner based on the check
+      if (accessCheck.modalData) {
+        this.planLimitationModal = accessCheck.modalData;
+      }
+      
       // Show banner based on limitations
-      this.checkPlanLimitations();
+      await this.checkPlanLimitations();
     } catch (error) {
       console.error('Error checking account limitations:', error);
       this.isAddAccountDisabled = true;
@@ -220,82 +269,62 @@ export class TradingAccountsComponent {
   }
 
   // Plan detection and banner methods
-  private checkPlanLimitations() {
-    const currentPlan = this.determineUserPlan();
-    const currentAccountCount = this.usersData.length;
-    
-    this.showPlanBanner = false;
-    this.planBannerMessage = '';
-    this.planBannerType = 'info';
+  private async checkPlanLimitations() {
+    if (!this.user?.id) {
+      this.showPlanBanner = false;
+      return;
+    }
 
-    switch (currentPlan) {
-      case 'Free':
-        if (currentAccountCount >= 1) {
-          this.showPlanBanner = true;
-          this.planBannerMessage = 'You have reached your account limit on the Free plan. Want more? Upgrade anytime.';
-          this.planBannerType = 'warning';
-        }
-        break;
-        
-      case 'Starter':
-        if (currentAccountCount >= 2) {
-          this.showPlanBanner = true;
-          this.planBannerMessage = 'You have reached your account limit on the Starter plan. Want more? Upgrade anytime.';
-          this.planBannerType = 'warning';
-        } else if (currentAccountCount >= 1) {
-          this.showPlanBanner = true;
-          this.planBannerMessage = `You have ${2 - currentAccountCount} accounts left on your current plan. Want more? Upgrade anytime.`;
-          this.planBannerType = 'info';
-        }
-        break;
-        
-      case 'Pro':
-        if (currentAccountCount >= 6) {
-          this.showPlanBanner = true;
-          this.planBannerMessage = 'You have reached your account limit on the Pro plan. Contact support for custom solutions.';
-          this.planBannerType = 'warning';
-        } else if (currentAccountCount >= 4) {
-          this.showPlanBanner = true;
-          this.planBannerMessage = `You have ${6 - currentAccountCount} accounts left on your current plan. Want more? Upgrade anytime.`;
-          this.planBannerType = 'info';
-        }
-        break;
+    try {
+      // Get user's plan limitations from the guard
+      const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
+      const currentAccountCount = this.usersData.length;
+      
+      this.showPlanBanner = false;
+      this.planBannerMessage = '';
+      this.planBannerType = 'info';
+
+      // If user needs subscription or is banned/cancelled
+      if (limitations.needsSubscription || limitations.isBanned || limitations.isCancelled) {
+        this.showPlanBanner = true;
+        this.planBannerMessage = this.getBlockedMessage(limitations);
+        this.planBannerType = 'warning';
+        return;
+      }
+
+      // Check if user has reached account limit
+      if (currentAccountCount >= limitations.maxAccounts) {
+        this.showPlanBanner = true;
+        this.planBannerMessage = `You've reached the account limit for your ${limitations.planName} plan. Move to a higher plan and keep growing your account.`;
+        this.planBannerType = 'warning';
+      } else if (currentAccountCount >= limitations.maxAccounts - 1) {
+        // Show warning when close to limit
+        this.showPlanBanner = true;
+        this.planBannerMessage = `You have ${limitations.maxAccounts - currentAccountCount} accounts left on your current plan. Want more? Upgrade anytime.`;
+        this.planBannerType = 'info';
+      }
+    } catch (error) {
+      console.error('Error checking plan limitations:', error);
+      this.showPlanBanner = false;
     }
   }
 
-  private determineUserPlan(): string {
-    if (!this.user) return 'Free';
-    
-    // Check if user has subscription_date (indicates paid plan)
-    if (this.user.subscription_date && this.user.subscription_date > 0) {
-      if (this.user.status === 'purchased') {
-        const accountCount = this.usersData.length;
-        
-        // Pro Plan: 6 accounts, or high usage indicators
-        if (accountCount >= 6 || (accountCount >= 2 && this.user.number_trades > 100)) {
-          return 'Pro';
-        }
-        // Starter Plan: 2 accounts, or moderate usage
-        else if (accountCount >= 2 || (accountCount >= 1 && this.user.number_trades > 20)) {
-          return 'Starter';
-        }
-        // Free Plan: 1 account
-        else {
-          return 'Free';
-        }
-      }
+  private getBlockedMessage(limitations: any): string {
+    if (limitations.isBanned) {
+      return 'Your account has been banned. Please contact support for assistance.';
     }
     
-    // Check if user has any trading activity
-    if (this.user.number_trades && this.user.number_trades > 0) {
-      const accountCount = this.usersData.length;
-      if (accountCount >= 2) {
-        return 'Starter';
-      }
+    if (limitations.isCancelled) {
+      return 'Your subscription has been cancelled. Please purchase a plan to access this functionality.';
     }
     
-    return 'Free';
+    if (limitations.needsSubscription) {
+      return 'You need to purchase a plan to access this functionality.';
+    }
+    
+    return 'Access denied. Please contact support for assistance.';
   }
+
 
   onUpgradePlan() {
     this.router.navigate(['/account']);
@@ -306,11 +335,18 @@ export class TradingAccountsComponent {
   }
 
   // Popup event handlers
-  onAccountCreated(accountData: any) {
+  async onAccountCreated(accountData: any) {
     // Account is already created in Firebase by the popup component
     // Just reload the accounts and check plan limitations
     this.loadConfig(); // Reload accounts
-    this.checkPlanLimitations();
+    await this.checkPlanLimitations();
+  }
+
+  async onAccountUpdated(accountData: any) {
+    // Account is already updated in Firebase by the popup component
+    // Just reload the accounts and check plan limitations
+    this.loadConfig(); // Reload accounts
+    await this.checkPlanLimitations();
   }
 
 }

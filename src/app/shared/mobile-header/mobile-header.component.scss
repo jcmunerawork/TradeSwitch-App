@@ -1,0 +1,250 @@
+// Mobile Header - Solo visible en pantallas < md (768px)
+.mobile-header {
+  display: none;
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+  padding: 12px 16px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  
+  @media (max-width: 767px) {
+    display: block;
+  }
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 100%;
+}
+
+.logo-section {
+  .logo {
+    height: 32px;
+    width: auto;
+  }
+}
+
+.hamburger-btn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background: rgb(121, 118, 118);
+  }
+  
+  .material-symbols-outlined {
+    font-size: 24px;
+  }
+}
+
+// Mobile Sidebar Overlay
+.mobile-sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 1001;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  
+  &.active {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.mobile-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100%;
+  background: #1a1a1a;
+  border-right: 1px solid #333;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  
+  .mobile-sidebar-overlay.active & {
+    transform: translateX(0);
+  }
+}
+
+.mobile-sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #333;
+  
+  .logo-section {
+    .logo {
+      height: 28px;
+      width: auto;
+    }
+  }
+  
+  .close-btn {
+    background: none;
+    border: none;
+    color: #e3e3e3;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .material-symbols-outlined {
+      font-size: 24px;
+    }
+  }
+}
+
+.token-section {
+  padding: 16px;
+  border-bottom: 1px solid #333;
+  
+  .token-text {
+    color: #e3e3e3;
+    font-size: 12px;
+    margin: 0;
+    font-family: 'SF Pro', Arial, sans-serif;
+    
+    b {
+      color: #5186e3;
+      font-weight: 700;
+    }
+  }
+}
+
+.mobile-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  
+  .menu-item {
+    border-bottom: 1px solid #2a2a2a;
+    
+    a {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      color: #e3e3e3;
+      text-decoration: none;
+      transition: background-color 0.2s;
+      font-family: 'SF Pro', Arial, sans-serif;
+      font-size: 14px;
+      
+      &:hover {
+        background: #283046;
+        color: #5087e4;
+      }
+      
+      &.active {
+        background: #24304e;
+        color: white;
+      }
+      
+      .material-symbols-outlined {
+        font-size: 20px;
+        margin-right: 12px;
+        color: white;
+      }
+    }
+  }
+}
+
+.mobile-bottom {
+  padding: 16px;
+  border-top: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: 'SF Pro', Arial, sans-serif;
+  
+  .user-info {
+    display: flex;
+    align-items: center;
+    
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #283046;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+      margin-right: 12px;
+    }
+    
+    span:last-child {
+      color: #e3e3e3;
+      font-family: 'SF Pro', Arial, sans-serif;
+      font-size: 14px;
+    }
+  }
+  
+  .settings-link,
+  .logout-link {
+    display: flex;
+    align-items: center;
+    color: #e3e3e3;
+    text-decoration: none;
+    font-family: 'SF Pro', Arial, sans-serif;
+    font-size: 14px;
+    transition: color 0.2s;
+    
+    .material-symbols-outlined {
+      font-size: 20px;
+      margin-right: 12px;
+    }
+  }
+
+  .settings-link {
+    color: #9bf526;
+    cursor: pointer;
+  }
+  
+  .settings-link:hover {
+    color: #7fa72a;
+  }
+  
+  .logout-link {
+    color: #e4515b;
+    cursor: pointer;
+  }
+  
+  .logout-link:hover {
+    color: #973f45
+  }
+}
+
+// Ocultar en pantallas >= md
+@media (min-width: 768px) {
+  .mobile-header,
+  .mobile-sidebar-overlay {
+    display: none !important;
+  }
+}
