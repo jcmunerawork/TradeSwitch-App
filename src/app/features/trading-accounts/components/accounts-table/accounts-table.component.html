@@ -2,11 +2,11 @@
   class="table-container color-background d-flex flex-col justify-between p-24"
 >
   <div class="d-flex flex-col">
-    <div class="d-flex justify-between items-center mb-24">
+    <div class="accounts-header">
       <div class="table-titles">
         <h1 class="subtitle mb-6">Accounts</h1>
       </div>
-      <div class="table-actions-container smallText d-flex items-center">
+      <div class="table-actions-container smallText desktop-actions">
         <div 
           class="search-user-container d-flex items-center p-10 mr-10"
           onmouseover="this.style.border='1px solid rgba(158, 196, 242, 0.2)'"
@@ -93,6 +93,96 @@
         </div>
 
       </div>
+      
+      <!-- Mobile Actions -->
+      <div class="mobile-actions">
+        <div 
+          class="search-user-container d-flex items-center p-10"
+          onmouseover="this.style.border='1px solid rgba(158, 196, 242, 0.2)'"
+          onmouseout="this.style.border=''"
+          style="cursor: pointer; transition: all 0.2s ease;"
+        >
+          <label for="search-user" class="mr-10"
+            ><span 
+              class="material-symbols-outlined color-background"
+              style="font-size: 18px;"
+            >search</span
+          ></label>
+          <input
+            id="search-account-mobile"
+            type="text"
+            placeholder="Search account"
+            [(ngModel)]="searchTerm"
+            class="search-box color-background smallText"
+          />
+        </div>
+        
+        <div class="mobile-controls-row">
+          <button
+            class="sort-Btn regularText color-secondary-300 p-10"
+            (click)="toggleSort()"
+            style="cursor: pointer; transition: all 0.2s ease;"
+            onmouseover="this.style.backgroundColor='rgba(158, 196, 242, 0.2)'; this.style.transform='translateY(-1px)'"
+            onmouseout="this.style.backgroundColor=''; this.style.transform='translateY(0)'"
+          >
+            <span 
+              class="material-symbols-outlined" 
+              style="font-size: 18px; transition: all 0.2s ease;"
+              onmouseover="this.style.transform='rotate(180deg)'"
+              onmouseout="this.style.transform='rotate(0deg)'"
+            >swap_vert</span>
+            Sort by: Last Update
+          </button>
+
+          <div class="filter-container">
+            <button
+              class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
+              (click)="openFilter()"
+            >
+              <span class="material-symbols-outlined color-secondary-300" style="font-size: 18px">filter_alt</span> Filter
+            </button>
+            @if (showFilter) {
+            <div class="filter-modal py-20 px-24 d-flex flex-col">
+              <label class="mt-10">Balance:</label>
+              <div
+                class="percentage-input d-flex items-center justify-between p-10"
+              >
+                <input
+                  id="min-balance-mobile"
+                  type="number"
+                  [(ngModel)]="initialMinBalance"
+                  placeholder="Min Balance"
+                  class="search-box color-background smallText"
+                />
+                <label for="min-balance-mobile">min $</label>
+              </div>
+
+              <div
+                class="percentage-input d-flex items-center justify-between p-10"
+              >
+                <input
+                  id="max-balance-mobile"
+                  type="number"
+                  [(ngModel)]="initialMaxBalance"
+                  placeholder="Max Balance"
+                  class="search-box color-background smallText"
+                />
+                <label for="max-balance-mobile">max $</label>
+              </div>
+              <button
+                class="filter-btn p-10 bg-primary-400 color-bg-black inputText"
+                (click)="apply()"
+                style="cursor: pointer; transition: all 0.2s ease;"
+                onmouseover="this.style.backgroundColor='#8AE01A'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(155, 245, 38, 0.3)'"
+                onmouseout="this.style.backgroundColor=''; this.style.transform='translateY(0)'; this.style.boxShadow=''"
+              >
+                Apply
+              </button>
+            </div>
+            }
+          </div>
+        </div>
+      </div>
     </div>
     <div class="table-scroll-container">
       <table class="regularText">
@@ -113,8 +203,8 @@
               <th class="regularText py-18">File upload</th>
               <th class="regularText py-18">Clear trades</th>
             -->
+            <th class="regularText py-18">Edit account</th>
             <th class="regularText py-18">Delete account</th>
-            <th class="regularText py-18">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -181,6 +271,16 @@
               </td>
             -->
             <td class="smallText">
+              <span 
+                (click)="editAccount(account)"
+                class="material-symbols-outlined color-secondary-500" 
+                style="font-size: 24px; cursor: pointer; transition: all 0.2s ease;" 
+                title="Edit account"
+                onmouseover="this.style.transform='scale(1.2)'; this.style.opacity='0.8'"
+                onmouseout="this.style.transform='scale(1)'; this.style.opacity='1'"
+              >edit</span>
+            </td>
+            <td class="smallText">
               <span
                 (click)="deleteAccount(account)"
                 class="material-symbols-outlined color-red"
@@ -189,15 +289,6 @@
                 onmouseover="this.style.transform='scale(1.2)'; this.style.opacity='0.8'"
                 onmouseout="this.style.transform='scale(1)'; this.style.opacity='1'"
               >delete</span>
-            </td>
-            <td class="smallText">
-              <span 
-                class="material-symbols-outlined color-secondary-500" 
-                style="font-size: 24px; cursor: pointer; transition: all 0.2s ease;" 
-                title="More options"
-                onmouseover="this.style.transform='scale(1.2)'; this.style.opacity='0.8'"
-                onmouseout="this.style.transform='scale(1)'; this.style.opacity='1'"
-              >more_horiz</span>
             </td>
           </tr>
           }

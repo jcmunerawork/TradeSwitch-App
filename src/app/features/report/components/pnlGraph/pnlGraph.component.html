@@ -1,16 +1,18 @@
-<div class="pnl-graph-container p-24 d-flex flex-col items-start">
-  <div class="ml-10 d-flex justify-between items-center up-title">
+<div class="pnl-graph-container d-flex flex-col items-start">
+  <div class="ml-10 up-title">
     <div class="color-background">
       <p class="regularText">Total Profit</p>
-      <p class="secondTitle my-26">${{ getFormatedValue(getTotalProfit) }}</p>
+      <p class="secondTitle">${{ getFormatedValue(getTotalProfit) }}</p>
     </div>
     
     <!-- Filter Section -->
     <div class="filter-section">
       <!-- Active Date Filter -->
-      <div class="active-filters-container" *ngIf="selectedDate">
+      <div class="active-filters-container" *ngIf="selectedStartDate || selectedEndDate">
         <div class="filter-chip">
-          <span class="filter-label">{{ selectedDate | date:'short' }}</span>
+          <span class="filter-label">
+            {{ selectedStartDate | date:'short' }} - {{ selectedEndDate | date:'short' }}
+          </span>
           <button class="remove-filter-btn" (click)="clearDateFilter()">
             <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
           </button>
@@ -19,27 +21,43 @@
       
       <!-- Controls Row -->
       <div class="controls-row d-flex align-items-center gap-12">
-        
-        <button class="filter-btn mr-20" (click)="toggleDateFilter()">
+        <button class="filter-btn" (click)="toggleDateFilter()">
           <span>Date Filter</span>
           <span class="material-symbols-outlined filter-icon" style="font-size: 20px;">calendar_today</span>
         </button>
       </div>
       
       <!-- Date Filter Dropdown -->
-      <div class="filter-dropdown mr-20" *ngIf="showDateFilter">
+      <div class="filter-dropdown" *ngIf="showDateFilter">
         <div class="filter-dropdown-content">
           <div class="date-filter-section">
-            <h4 class="filter-title">Filter by Date</h4>
-            <input 
-              type="date" 
-              class="date-input"
-              [value]="selectedDate"
-              (change)="onDateSelected($any($event.target).value)"
-            >
+            <h4 class="filter-title">Filter by Date Range</h4>
+            <div class="date-inputs-container">
+              <div class="date-input-group">
+                <label class="date-label">From:</label>
+                <input 
+                  type="date" 
+                  class="date-input"
+                  [value]="selectedStartDate"
+                  (change)="onStartDateSelected($any($event.target).value)"
+                >
+              </div>
+              <div class="date-input-group">
+                <label class="date-label">To:</label>
+                <input 
+                  type="date" 
+                  class="date-input"
+                  [value]="selectedEndDate"
+                  (change)="onEndDateSelected($any($event.target).value)"
+                >
+              </div>
+            </div>
             <div class="filter-actions">
+              <button class="apply-btn" (click)="applyDateFilter()">
+                Apply
+              </button>
               <button class="clear-btn" (click)="clearDateFilter()">
-                Clear Filter
+                Clear
               </button>
             </div>
           </div>
@@ -59,5 +77,4 @@
     [tooltip]="chartOptions.tooltip"
     style="width: 100%"
   ></apx-chart>
-  <p class="smallText color-text-gray"></p>
 </div>

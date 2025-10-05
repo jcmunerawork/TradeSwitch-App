@@ -24,6 +24,7 @@ import { OrderSummaryComponent } from '../../../shared/components/order-summary/
 import { Subscription, SubscriptionService } from '../../../shared/services/subscription-service';
 import { setUserData } from '../store/user.actions';
 import { Store } from '@ngrx/store';
+import { AppContextService } from '../../../shared/context';
 
 @Component({
   selector: 'app-signup',
@@ -76,7 +77,8 @@ export class SignupComponent implements OnInit {
     private router: Router,
     private planService: PlanService,
     private subscriptionService: SubscriptionService,
-    private store: Store
+    private store: Store,
+    private appContext: AppContextService
   ) {
     this.signupForm = this.fb.group({
       firstName: ['', [Validators.required, Validators.minLength(2)]],
@@ -286,6 +288,10 @@ export class SignupComponent implements OnInit {
       this.showPlanSelection = false;
       this.showPaymentProcessing = true;
       
+      // Establecer estado de carga
+      this.appContext.setLoading('user', true);
+      this.appContext.setError('user', null);
+      
       // Crear el usuario primero
       const userCredentials = this.createUserCredentialsObject();
       const userResponse = await this.authService.register(userCredentials);
@@ -307,13 +313,33 @@ export class SignupComponent implements OnInit {
       // Guardar IDs para el componente de procesamiento (sin crear pago aún)
       this.currentUserId = userId;
 
+      // Actualizar contexto con datos del usuario
+      this.appContext.setCurrentUser(user);
+
       this.authService
         .login(userCredentials)
         .then((response: any) => {
           this.authService
             .getUserData(response.user.uid)
+            .then((userData: User) => {
+              // Actualizar contexto con datos completos del usuario
+              this.appContext.setCurrentUser(userData);
+              
+              // Mantener compatibilidad con NgRx
+              this.store.dispatch(setUserData({ user: userData }));
+              
+              // Limpiar estado de carga
+              this.appContext.setLoading('user', false);
+            })
+            .catch((error: any) => {
+              this.appContext.setLoading('user', false);
+              this.appContext.setError('user', 'Error al obtener datos del usuario');
+              console.error('Error in the login:', error);
+            });
         })
         .catch((error: any) => {
+          this.appContext.setLoading('user', false);
+          this.appContext.setError('user', 'Error de autenticación');
           console.error('Error in the login:', error);
         });
 

@@ -38,7 +38,6 @@ export class AccountDeletionService {
     }
 
     try {
-      console.log(`🗑️ Starting data deletion for user: ${userId}`);
       
       // Use batch for atomic operations
       const batch = writeBatch(this.db);
@@ -75,7 +74,6 @@ export class AccountDeletionService {
       // Execute all operations in batch
       if (operationsCount > 0) {
         await batch.commit();
-        console.log(`✅ Deleted ${operationsCount} documents for user ${userId}`);
         return true;
       } else {
         console.log(`⚠️ No data found to delete for user ${userId}`);

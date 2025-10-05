@@ -1,6 +1,6 @@
 <!-- Contenido principal -->
 <div class="main-titles color-background d-flex flex-col mb-50">
-  <h1 class="titleText mb-32">My Reports</h1>
+  <h1 class="titleText mb-20">My Reports</h1>
   <h3 class="regularText">
     Visualize your consistency while growing with TradeSwitch.
   </h3>
@@ -10,15 +10,23 @@
 @if(accountsData.length > 0) {
 <div class="account-header d-flex justify-between align-items-center mb-32">
   <div class="account-info d-flex flex-col">
-    <h2 class="account-name color-background">{{ getCurrentAccountName() }}</h2>
-    <div class="account-details d-flex align-items-center gap-8">
+    <div class="account-title-row d-flex align-items-center">
+      <h2 class="account-name color-background">{{ getCurrentAccountName() }}</h2>
+      @if (!loading) {
+      <button class="export-btn export-btn-title d-flex align-items-center gap-8" (click)="exportAllData()">
+        <span>Export Data</span>
+        <span class="material-symbols-outlined" style="font-size: 18px">call_made</span>
+      </button>
+      }
+    </div>
+    <div class="account-details d-flex align-items-center">
       <span class="account-server color-secondary-300">{{ getCurrentAccountServer() }}</span>
     </div>
   </div>
   
   <div class="action-buttons d-flex gap-12">
     @if (!loading) {
-    <button class="export-btn d-flex align-items-center gap-8" (click)="exportAllData()">
+    <button class="export-btn export-btn-desktop d-flex align-items-center gap-8" (click)="exportAllData()">
       <span>Export Data</span>
       <span class="material-symbols-outlined" style="font-size: 18px">call_made</span>
     </button>
@@ -84,7 +92,7 @@
     }
   </div>
 } @else {
-<div class="d-flex stats-card-container mb-24">
+<div class="stats-card-container">
   <app-stat-card
     class="stat-card"
     title="Balance"

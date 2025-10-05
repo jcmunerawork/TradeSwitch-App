@@ -10,39 +10,33 @@ import {
   signInWithPopup,
   UserCredential,
 } from 'firebase/auth';
-import {
-  getFirestore,
-  Firestore,
-  setDoc,
-  doc,
-  getDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  deleteDoc,
-} from 'firebase/firestore';
 import { BehaviorSubject, filter, first, Observable } from 'rxjs';
 import { User } from '../../overview/models/overview';
 import { auth } from '../../../firebase/firebase.init';
 import { AccountData, UserCredentials } from '../models/userModel';
+import { UsersOperationsService } from '../../../shared/services/users-operations.service';
+import { AccountsOperationsService } from '../../../shared/services/accounts-operations.service';
+import { TokensOperationsService, LinkToken } from '../../../shared/services/tokens-operations.service';
+import { AppContextService } from '../../../shared/context';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
   private isBrowser: boolean;
-  private db: ReturnType<typeof getFirestore> | null = null;
   private authStateSubject = new BehaviorSubject<boolean | null>(null);
   authStateChanged = this.authStateSubject.asObservable();
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private usersOperationsService: UsersOperationsService,
+    private accountsOperationsService: AccountsOperationsService,
+    private tokensOperationsService: TokensOperationsService,
+    private appContext: AppContextService
+  ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
 
     if (this.isBrowser) {
-      const { firebaseApp } = require('../../../firebase/firebase.init.ts');
-      this.db = getFirestore(firebaseApp);
-
       onAuthStateChanged(getAuth(), (user) => {
         this.authStateSubject.next(user !== null);
       });
@@ -59,113 +53,80 @@ export class AuthService {
     return createUserWithEmailAndPassword(getAuth(), user.email, user.password);
   }
 
-  getUserData(uid: String): Promise<User> {
-    if (this.db) {
-      const userDoc = doc(this.db, 'users', uid as string);
-      return getDoc(userDoc).then((doc) => {
-        if (doc.exists()) {
-          return doc.data() as User;
-        } else {
-          throw new Error('User not found');
-        }
-      });
-    } else {
-      console.warn('Firestore not available in SSR');
-      return Promise.resolve({} as User);
+  async getUserData(uid: String): Promise<User> {
+    this.appContext.setLoading('user', true);
+    this.appContext.setError('user', null);
+    
+    try {
+      const userData = await this.usersOperationsService.getUserData(uid as string);
+      this.appContext.setCurrentUser(userData);
+      this.appContext.setLoading('user', false);
+      return userData;
+    } catch (error) {
+      this.appContext.setLoading('user', false);
+      this.appContext.setError('user', 'Error al obtener datos del usuario');
+      throw error;
     }
   }
 
   async createLinkToken(token: LinkToken) {
-    if (this.db) {
-      await setDoc(doc(this.db, 'tokens', token.id), token);
-    } else {
-      console.warn('Firestore not available in SSR');
-      return;
-    }
+    return this.tokensOperationsService.createLinkToken(token);
   }
 
   async createUser(user: User) {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return;
-    }
-    await setDoc(doc(this.db, 'users', user.id), user);
+    return this.usersOperationsService.createUser(user);
   }
 
   async createAccount(account: AccountData) {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return;
+    this.appContext.setLoading('accounts', true);
+    this.appContext.setError('accounts', null);
+    
+    try {
+      await this.accountsOperationsService.createAccount(account);
+      // Actualizar contexto con la nueva cuenta
+      this.appContext.addAccount(account);
+      this.appContext.setLoading('accounts', false);
+    } catch (error) {
+      this.appContext.setLoading('accounts', false);
+      this.appContext.setError('accounts', 'Error al crear cuenta');
+      throw error;
     }
-    await setDoc(doc(this.db, 'accounts', account.id), account);
   }
 
   async getUserAccounts(userId: string): Promise<AccountData[] | null> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return null;
+    this.appContext.setLoading('accounts', true);
+    this.appContext.setError('accounts', null);
+    
+    try {
+      const accounts = await this.accountsOperationsService.getUserAccounts(userId);
+      this.appContext.setUserAccounts(accounts || []);
+      this.appContext.setLoading('accounts', false);
+      return accounts;
+    } catch (error) {
+      this.appContext.setLoading('accounts', false);
+      this.appContext.setError('accounts', 'Error al obtener cuentas del usuario');
+      throw error;
     }
-    const accountsCollection = collection(this.db, 'accounts');
-    const q = query(accountsCollection, where('userId', '==', userId));
-    const querySnapshot = await getDocs(q);
-    const accounts: AccountData[] = [];
-    querySnapshot.forEach((doc) => {
-      accounts.push(doc.data() as AccountData);
-    });
-    return accounts.length > 0 ? accounts : null;
   }
 
   async getAllAccounts(): Promise<AccountData[] | null> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return null;
-    }
-    const accountsCollection = collection(this.db, 'accounts');
-    const querySnapshot = await getDocs(accountsCollection);
-    const accounts: AccountData[] = [];
-    querySnapshot.forEach((doc) => {
-      accounts.push(doc.data() as AccountData);
-    });
-    return accounts.length > 0 ? accounts : null;
+    return this.accountsOperationsService.getAllAccounts();
   }
 
   async checkEmailExists(emailTradingAccount: string, currentUserId: string): Promise<boolean> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return false;
-    }
-    const accountsCollection = collection(this.db, 'accounts');
-    const q = query(
-      accountsCollection, 
-      where('emailTradingAccount', '==', emailTradingAccount),
-      where('userId', '!=', currentUserId) // Exclude current user's accounts
-    );
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty; // Returns true if email exists for another user
+    return this.accountsOperationsService.checkEmailExists(emailTradingAccount, currentUserId);
   }
 
   async checkAccountIdExists(accountID: string, currentUserId: string): Promise<boolean> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return false;
-    }
-    const accountsCollection = collection(this.db, 'accounts');
-    const q = query(
-      accountsCollection, 
-      where('accountID', '==', accountID),
-      where('userId', '!=', currentUserId) // Exclude current user's accounts
-    );
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty; // Returns true if accountID exists for another user
+    return this.accountsOperationsService.checkAccountIdExists(accountID, currentUserId);
+  }
+
+  async updateAccount(accountId: string, accountData: AccountData): Promise<void> {
+    return this.accountsOperationsService.updateAccount(accountId, accountData);
   }
 
   async deleteAccount(accountId: string): Promise<void> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return;
-    }
-    const accountDoc = doc(this.db, 'accounts', accountId);
-    await deleteDoc(accountDoc);
+    return this.accountsOperationsService.deleteAccount(accountId);
   }
 
   login(user: UserCredentials) {
@@ -214,20 +175,7 @@ export class AuthService {
    * @returns Promise con el usuario o null si no existe
    */
   async getUserById(userId: string): Promise<User | null> {
-    try {
-      if (!this.isBrowser || !this.db) {
-        return null;
-      }
-
-      const userDoc = await getDoc(doc(this.db, 'users', userId));
-      if (userDoc.exists()) {
-        return { id: userDoc.id, ...userDoc.data() } as User;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error obteniendo usuario por ID:', error);
-      return null;
-    }
+    return this.usersOperationsService.getUserById(userId);
   }
 
   /**
@@ -237,21 +185,7 @@ export class AuthService {
    * @returns Promise void
    */
   async updateUser(userId: string, userData: Partial<User>): Promise<void> {
-    try {
-      if (!this.isBrowser || !this.db) {
-        throw new Error('No se puede actualizar usuario en el servidor');
-      }
-
-      await setDoc(doc(this.db, 'users', userId), {
-        ...userData,
-        lastUpdated: new Date().getTime()
-      }, { merge: true });
-      
-      console.log('Usuario actualizado exitosamente:', userId);
-    } catch (error) {
-      console.error('Error actualizando usuario:', error);
-      throw error;
-    }
+    return this.usersOperationsService.updateUser(userId, userData);
   }
 
   async getBearerTokenFirebase(userId: string): Promise<string> {

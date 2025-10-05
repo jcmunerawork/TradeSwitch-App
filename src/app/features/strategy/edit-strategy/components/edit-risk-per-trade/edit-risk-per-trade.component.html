@@ -10,17 +10,19 @@
       <span class="checkmark"></span>
     </label>
 
-    <label
-      for="toggle-max-daily-trades"
-      [ngClass]="{ deactivated: !config.isActive }"
-    >
-      Limit my Risk per Trade:
-      <span class="ml-2 mr-26">${{ initialRiskTrade }}</span>
-    </label>
-    <p>
-      {{ "(" }}Actual Balance: <em>{{ config.balance | currency }}</em
-      >{{ ")" }}
-    </p>
+    <div class="label-container">
+      <label
+        for="toggle-max-daily-trades"
+        [ngClass]="{ deactivated: !config.isActive }"
+      >
+        Limit my Risk per Trade:
+        <span class="ml-2 mr-26">${{ initialRiskTrade }}</span>
+      </label>
+      <p class="balance-info">
+        {{ "(" }}Actual Balance: <em>{{ config.balance | currency }}</em
+        >{{ ")" }}
+      </p>
+    </div>
   </div>
   <div class="risk-per-trade-container flex-row d-flex items-center inputText">
     <div class="input-with-suffix">

@@ -9,6 +9,7 @@ import {
   PLATFORM_ID,
   EventEmitter,
   SimpleChanges,
+  HostListener,
 } from '@angular/core';
 import { GroupedTrade, GroupedTradeFinal } from '../../models/report.model';
 import { NgApexchartsModule } from 'ng-apexcharts';
@@ -35,7 +36,8 @@ export class PnlGraphComponent implements OnInit, OnChanges {
 
   // Date filter properties
   showDateFilter = false;
-  selectedDate: string = '';
+  selectedStartDate: string = '';
+  selectedEndDate: string = '';
   filteredData: GroupedTradeFinal[] = [];
   originalData: GroupedTradeFinal[] = [];
 
@@ -91,7 +93,12 @@ export class PnlGraphComponent implements OnInit, OnChanges {
 
   getChartOptions(trades: GroupedTradeFinal[]): any {
     const yearValue = this.year;
-    const filteredTrades = this.applyYearFilter(trades);
+    
+    // Si hay filtro de fechas activo, no aplicar filtro de año
+    let filteredTrades = trades;
+    if (!this.selectedStartDate && !this.selectedEndDate) {
+      filteredTrades = this.applyYearFilter(trades);
+    }
     
     // Use monthly chart by default
     const chartConfig = this.getMonthlyChartConfig(filteredTrades, yearValue);
@@ -226,24 +233,37 @@ export class PnlGraphComponent implements OnInit, OnChanges {
     return filteredTrades;
   }
 
-  applyDateFilter(trades: GroupedTradeFinal[], selectedDate: string): GroupedTradeFinal[] {
-    if (!selectedDate || selectedDate === '') {
+  applyDateRangeFilter(trades: GroupedTradeFinal[], startDate: string, endDate: string): GroupedTradeFinal[] {
+    if (!startDate && !endDate) {
       return trades;
     }
 
-    const filterDate = new Date(selectedDate);
-    const startOfDay = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate());
-    const endOfDay = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate() + 1);
+    const start = startDate ? new Date(startDate) : new Date(0);
+    const end = endDate ? new Date(endDate) : new Date();
+
+    // Si solo hay fecha de inicio, usar fin del día
+    if (startDate && !endDate) {
+      end.setHours(23, 59, 59, 999);
+    }
+    // Si solo hay fecha de fin, usar inicio del día
+    if (!startDate && endDate) {
+      start.setHours(0, 0, 0, 0);
+    }
 
     return trades.filter(trade => {
       const tradeDate = new Date(Number(trade.lastModified));
-      return tradeDate >= startOfDay && tradeDate < endOfDay;
+      return tradeDate >= start && tradeDate <= end;
     });
   }
 
 
   getMonthlyChartConfig(trades: GroupedTradeFinal[], yearValue: string) {
     const monthlyMap: { [label: string]: number } = {};
+    
+    // Si hay filtro de fechas activo, generar categorías dinámicas
+    if (this.selectedStartDate || this.selectedEndDate) {
+      return this.getDateRangeChartConfig(trades);
+    }
     
     trades.forEach(trade => {
       const date = new Date(Number(trade.lastModified));
@@ -271,6 +291,93 @@ export class PnlGraphComponent implements OnInit, OnChanges {
     return { data, categories };
   }
 
+  getDateRangeChartConfig(trades: GroupedTradeFinal[]) {
+    const dateMap: { [key: string]: number } = {};
+    
+    // Determinar el rango de fechas
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (this.selectedStartDate && this.selectedEndDate) {
+      startDate = new Date(this.selectedStartDate);
+      endDate = new Date(this.selectedEndDate);
+    } else if (this.selectedStartDate) {
+      startDate = new Date(this.selectedStartDate);
+      endDate = new Date();
+    } else if (this.selectedEndDate) {
+      startDate = new Date(0);
+      endDate = new Date(this.selectedEndDate);
+    } else {
+      // Fallback a año completo
+      const year = new Date().getFullYear();
+      startDate = new Date(year, 0, 1);
+      endDate = new Date(year, 11, 31);
+    }
+    
+    // Procesar trades en el rango
+    trades.forEach(trade => {
+      const tradeDate = new Date(Number(trade.lastModified));
+      if (tradeDate >= startDate && tradeDate <= endDate) {
+        const label = this.formatDateForChart(tradeDate);
+        const sum = (dateMap[label] ?? 0) + (trade.pnl ?? 0);
+        dateMap[label] = sum < 1 ? Math.round(sum * 100) / 100 : Math.round(sum);
+      }
+    });
+    
+    // Generar categorías dinámicas basadas en el rango
+    const categories = this.generateDateRangeCategories(startDate, endDate);
+    const data = categories.map(cat => dateMap[cat] ?? 0);
+    
+    return { data, categories };
+  }
+
+  formatDateForChart(date: Date): string {
+    const month = date.toLocaleString('en', { month: 'short' });
+    const day = date.getDate();
+    return `${month} ${day}`;
+  }
+
+  generateDateRangeCategories(startDate: Date, endDate: Date): string[] {
+    const categories: string[] = [];
+    const current = new Date(startDate);
+    
+    // Si el rango es menor a 30 días, mostrar por días
+    const diffTime = endDate.getTime() - startDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays <= 30) {
+      // Mostrar por días
+      while (current <= endDate) {
+        categories.push(this.formatDateForChart(new Date(current)));
+        current.setDate(current.getDate() + 1);
+      }
+    } else if (diffDays <= 90) {
+      // Mostrar por semanas
+      while (current <= endDate) {
+        const weekEnd = new Date(current);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        if (weekEnd > endDate) weekEnd.setTime(endDate.getTime());
+        
+        const startStr = this.formatDateForChart(new Date(current));
+        const endStr = this.formatDateForChart(weekEnd);
+        categories.push(`${startStr} - ${endStr}`);
+        
+        current.setDate(current.getDate() + 7);
+      }
+    } else {
+      // Mostrar por meses
+      while (current <= endDate) {
+        const month = current.toLocaleString('en', { month: 'short' });
+        const year = current.getFullYear();
+        categories.push(`${month} ${year}`);
+        
+        current.setMonth(current.getMonth() + 1);
+      }
+    }
+    
+    return categories;
+  }
+
   capitalizeFirstLetter(str: string): string {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -284,8 +391,12 @@ export class PnlGraphComponent implements OnInit, OnChanges {
 
   get getTotalProfit(): number {
     // Apply the same filters as the chart
-    const yearFiltered = this.applyYearFilter(this.filteredData);
-    const totalProfit = yearFiltered.reduce(
+    let filteredTrades = this.filteredData;
+    if (!this.selectedStartDate && !this.selectedEndDate) {
+      filteredTrades = this.applyYearFilter(this.filteredData);
+    }
+    
+    const totalProfit = filteredTrades.reduce(
       (acc, trade) => acc + (trade.pnl ?? 0),
       0
     );
@@ -298,23 +409,53 @@ export class PnlGraphComponent implements OnInit, OnChanges {
     this.showDateFilter = !this.showDateFilter;
   }
 
-  onDateSelected(date: string) {
-    this.selectedDate = date;
-    this.applyFilters();
+  closeDateFilter() {
+    this.showDateFilter = false;
   }
 
-  clearDateFilter() {
-    this.selectedDate = '';
-    this.filteredData = [...this.originalData];
-    this.updateChart();
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event) {
+    const target = event.target as HTMLElement;
+    const filterSection = target.closest('.filter-section');
+    if (!filterSection && this.showDateFilter) {
+      this.closeDateFilter();
+    }
   }
 
-  applyFilters() {
-    if (this.selectedDate) {
-      this.filteredData = this.applyDateFilter(this.originalData, this.selectedDate);
+  onStartDateSelected(date: string) {
+    this.selectedStartDate = date;
+  }
+
+  onEndDateSelected(date: string) {
+    this.selectedEndDate = date;
+  }
+
+  applyDateFilter() {
+    if (this.selectedStartDate || this.selectedEndDate) {
+      this.filteredData = this.applyDateRangeFilter(this.originalData, this.selectedStartDate, this.selectedEndDate);
+      // Actualizar el año basado en las fechas seleccionadas
+      this.updateYearFromDateRange();
     } else {
       this.filteredData = [...this.originalData];
     }
+    this.updateChart();
+    this.closeDateFilter();
+  }
+
+  updateYearFromDateRange() {
+    if (this.selectedStartDate) {
+      const startDate = new Date(this.selectedStartDate);
+      this.year = startDate.getFullYear().toString();
+    } else if (this.selectedEndDate) {
+      const endDate = new Date(this.selectedEndDate);
+      this.year = endDate.getFullYear().toString();
+    }
+  }
+
+  clearDateFilter() {
+    this.selectedStartDate = '';
+    this.selectedEndDate = '';
+    this.filteredData = [...this.originalData];
     this.updateChart();
   }
 

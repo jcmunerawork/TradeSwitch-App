@@ -9,6 +9,7 @@ import { FormsModule } from '@angular/forms';
 import { TradeSwitchTableComponent } from './components/tradeSwitch-table/tradeSwitchTable.component';
 import { TopListComponent } from './components/top-list/top-list.component';
 import { RouterLink } from '@angular/router';
+import { AppContextService } from '../../shared/context';
 
 @Component({
   selector: 'app-overview',
@@ -27,7 +28,11 @@ import { RouterLink } from '@angular/router';
 })
 export class Overview {
   topUsers: User[] = [];
-  constructor(private store: Store, private overviewSvc: OverviewService) {}
+  constructor(
+    private store: Store, 
+    private overviewSvc: OverviewService,
+    private appContext: AppContextService
+  ) {}
 
   loading = false;
   subscriptionsData: overviewSubscriptionData | null = null;
@@ -35,7 +40,22 @@ export class Overview {
   newUsers = 0;
 
   ngOnInit(): void {
+    this.subscribeToContextData();
     this.loadConfig();
+  }
+
+  private subscribeToContextData() {
+    // Suscribirse a los datos de overview desde el contexto
+    this.appContext.overviewData$.subscribe(data => {
+      this.usersData = data.allUsers;
+      // Convertir subscriptions a overviewSubscriptionData si es necesario
+      this.subscriptionsData = data.subscriptions as any;
+    });
+
+    // Suscribirse a los estados de carga
+    this.appContext.isLoading$.subscribe(loading => {
+      this.loading = loading.overview;
+    });
   }
 
   loadConfig() {

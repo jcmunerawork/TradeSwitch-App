@@ -1,7 +1,8 @@
-import { isPlatformBrowser } from '@angular/common';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
+import { TradeLockerApiService } from '../../../shared/services/tradelocker-api.service';
+import { MonthlyReportsService } from '../../../shared/services/monthly-reports.service';
+import { Injectable } from '@angular/core';
 import { map, Observable, switchMap } from 'rxjs';
+import { AppContextService } from '../../../shared/context';
 import {
   GroupedTrade,
   GroupedTradeFinal,
@@ -15,48 +16,17 @@ import {
   arrayToHistoryTrade,
   groupOrdersByPosition,
 } from '../utils/normalization-utils';
-import {
-  collection,
-  doc,
-  getDocs,
-  getFirestore,
-  query,
-  setDoc,
-  where,
-} from 'firebase/firestore';
-import { User } from '../../overview/models/overview';
-import { randomUUID } from 'crypto';
-import { newDataId } from '../utils/firebase-data-utils';
 
 @Injectable({ providedIn: 'root' })
 export class ReportService {
-  private isBrowser: boolean;
-  private db: ReturnType<typeof getFirestore> | null = null;
-
   constructor(
-    @Inject(PLATFORM_ID) private platformId: Object,
-    private http: HttpClient
-  ) {
-    this.isBrowser = isPlatformBrowser(this.platformId);
-    if (this.isBrowser) {
-      const { firebaseApp } = require('../../../firebase/firebase.init.ts');
-      this.db = getFirestore(firebaseApp);
-    }
-  }
+    private tradeLockerApiService: TradeLockerApiService,
+    private monthlyReportsService: MonthlyReportsService,
+    private appContext: AppContextService
+  ) {}
 
   async updateMonthlyReport(monthlyReport: MonthlyReport) {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return;
-    }
-
-    const id = newDataId(
-      monthlyReport.id,
-      monthlyReport.month,
-      monthlyReport.year
-    );
-
-    await setDoc(doc(this.db, 'monthly_reports', id), monthlyReport);
+    return this.monthlyReportsService.updateMonthlyReport(monthlyReport);
   }
 
   getUserKey(
@@ -64,17 +34,7 @@ export class ReportService {
     password: string,
     server: string
   ): Observable<string> {
-    return this.http
-      .post<any>('https://demo.tradelocker.com/backend-api/auth/jwt/token', {
-        email,
-        password,
-        server,
-      })
-      .pipe(
-        map((auth) => {
-          return auth.accessToken;
-        })
-      );
+    return this.tradeLockerApiService.getUserKey(email, password, server);
   }
 
   getHistoryData(
@@ -82,16 +42,10 @@ export class ReportService {
     accessToken: string,
     accNum: number
   ): Observable<GroupedTradeFinal[]> {
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${accessToken}`,
-      accNum: accNum,
-    });
-
-    return this.http
-      .get<any>(
-        `https://demo.tradelocker.com/backend-api/trade/accounts/${accountId}/ordersHistory`,
-        { headers }
-      )
+    this.appContext.setLoading('report', true);
+    this.appContext.setError('report', null);
+    
+    return this.tradeLockerApiService.getTradingHistory(accessToken, accountId, accNum)
       .pipe(
         switchMap(async (details) => {
           const historyTrades: historyTrade[] =
@@ -100,9 +54,13 @@ export class ReportService {
           // Pasar accessToken y accNum a la función
           const groupedTrades = await groupOrdersByPosition(historyTrades, {
             getInstrumentDetails: (accessToken: string, tradableInstrumentId: string, routeId: string, accNum: number) => {
-              return this.getInstrumentDetails(accessToken, tradableInstrumentId, routeId, accNum);
+              return this.tradeLockerApiService.getInstrumentDetails(accessToken, tradableInstrumentId, routeId, accNum);
             }
           }, accessToken, accNum);
+          
+          // Actualizar contexto con los datos del historial
+          this.appContext.updateReportHistory(groupedTrades);
+          this.appContext.setLoading('report', false);
           
           return groupedTrades;
         })
@@ -114,16 +72,10 @@ export class ReportService {
     accessToken: string,
     accNum: number
   ): Observable<any> {
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${accessToken}`,
-      accNum: accNum,
-    });
-
-    return this.http
-      .get<any>(
-        `https://demo.tradelocker.com/backend-api/trade/accounts/${accountId}/state`,
-        { headers }
-      )
+    this.appContext.setLoading('report', true);
+    this.appContext.setError('report', null);
+    
+    return this.tradeLockerApiService.getAccountBalance(accountId, accessToken, accNum)
       .pipe(
         map((details) => {
           // Extract all balance data for calculations
@@ -160,6 +112,10 @@ export class ReportService {
             ordersCount: accountDetailsData[25] || 0
           };
           
+          // Actualizar contexto con los datos de balance
+          this.appContext.updateReportBalance(balanceData);
+          this.appContext.setLoading('report', false);
+          
           return balanceData;
         })
       );
@@ -171,23 +127,7 @@ export class ReportService {
     routeId: string,
     accNum: number
   ): Observable<InstrumentDetails> {
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${accessToken}`,
-      accNum: accNum.toString(),
-    });
-
-    // Agregar routeId como query parameter
-    const params = new HttpParams()
-      .set('routeId', routeId);
-
-    return this.http
-      .get<any>(
-        `https://demo.tradelocker.com/backend-api/trade/instruments/${tradableInstrumentId}`,
-        { 
-          headers,
-          params
-        }
-      )
+    return this.tradeLockerApiService.getInstrumentDetails(accessToken, tradableInstrumentId, routeId, accNum)
       .pipe(
         map((details) => {
           // Extract all instrument data for calculations
@@ -204,16 +144,7 @@ export class ReportService {
     accNum: number,
     accountId: string
   ): Observable<Instrument[]> {
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${accessToken}`,
-      accNum: accNum.toString(),
-    });
-
-    return this.http
-      .get<any>(
-        `https://demo.tradelocker.com/backend-api/trade/accounts/${accountId}/instruments`,
-        { headers }
-      )
+    return this.tradeLockerApiService.getAllInstruments(accessToken, accountId, accNum)
       .pipe(
         map((details) => {
           return details.d.instruments;

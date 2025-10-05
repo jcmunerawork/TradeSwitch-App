@@ -15,6 +15,7 @@ import { Store } from '@ngrx/store';
 import { setUserData } from '../store/user.actions';
 import { User } from '../../overview/models/overview';
 import { UserCredentials } from '../models/userModel';
+import { AppContextService } from '../../../shared/context';
 
 @Component({
   selector: 'app-login',
@@ -36,7 +37,8 @@ export class Login {
     private fb: FormBuilder,
     private authService: AuthService,
     private store: Store,
-    private router: Router
+    private router: Router,
+    private appContext: AppContextService
   ) {
     this.loginForm = this.fb.group({
       loginEmail: ['', [Validators.required, Validators.email, this.emailValidator]],
@@ -51,21 +53,42 @@ export class Login {
     
     if (this.loginForm.valid) {
       const userCredentials = this.createUserCredentialsObject();
+      
+      // Establecer estado de carga
+      this.appContext.setLoading('user', true);
+      this.appContext.setError('user', null);
+      
       this.authService
         .login(userCredentials)
         .then((response: any) => {
           this.authService
             .getUserData(response.user.uid)
             .then((userData: User) => {
+              // Actualizar contexto con datos del usuario
+              this.appContext.setCurrentUser(userData);
+              
+              // Mantener compatibilidad con NgRx
               this.store.dispatch(setUserData({ user: userData }));
+              
+              // Limpiar estado de carga
+              this.appContext.setLoading('user', false);
+              
+              // Navegar según el tipo de usuario
               if (userData.isAdmin) {
                 this.router.navigate(['/overview']);
               } else {
                 this.router.navigate(['/strategy']);
               }
+            })
+            .catch((error: any) => {
+              this.appContext.setLoading('user', false);
+              this.appContext.setError('user', 'Error al obtener datos del usuario');
+              this.handleLoginError(error);
             });
         })
         .catch((error: any) => {
+          this.appContext.setLoading('user', false);
+          this.appContext.setError('user', 'Error de autenticación');
           this.handleLoginError(error);
         });
     }

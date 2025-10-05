@@ -1,6 +1,10 @@
 .profile-details-section {
   font-family: "SF Pro Display";
   padding-right: 1.5rem;
+
+  @media (max-width: 1024px) {
+    padding-right: 0;
+  }
 }
 
 .main-titles {
@@ -9,6 +13,11 @@
 
 .form-card, .password-card {
   margin-bottom: 2rem;
+  width: 100%;
+
+  @media (max-width: 1024px) {
+    padding: 0px !important;
+  }
 }
 
 .form-title {

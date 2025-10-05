@@ -1,0 +1,94 @@
+@if(userName && !isBanned) {
+<div class="mobile-header">
+  <div class="header-content">
+    <div class="logo-section">
+      <img src="assets/logo.png" alt="TradeSwitch" class="logo" />
+    </div>
+    
+    <button class="hamburger-btn" (click)="toggleMobileMenu()">
+      <span class="material-symbols-outlined">menu</span>
+    </button>
+  </div>
+</div>
+
+<!-- Mobile Sidebar Overlay -->
+<div class="mobile-sidebar-overlay" [class.active]="isMobileMenuOpen" (click)="closeMobileMenu()">
+  <div class="mobile-sidebar" (click)="$event.stopPropagation()">
+    <div class="mobile-sidebar-header">
+      <div class="logo-section">
+        <img src="assets/logo.png" alt="TradeSwitch" class="logo" />
+      </div>
+      <button class="close-btn" (click)="closeMobileMenu()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    
+    @if (userToken && !isAdmin) {
+      <div class="token-section">
+        <p class="token-text">
+          Your plugin token is <b>{{ userToken }}</b>
+        </p>
+      </div>
+    }
+    
+    <!-- Menú de navegación -->
+    <ul class="mobile-menu">
+      @if(!isAdmin) {
+        <li class="menu-item">
+          <a routerLink="/strategy" routerLinkActive="active" (click)="closeMobileMenu()">
+            <span class="material-symbols-outlined">content_paste_search</span>
+            <span>My Strategy</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a routerLink="/report" routerLinkActive="active" (click)="closeMobileMenu()">
+            <span class="material-symbols-outlined">bar_chart</span>
+            <span>My Reports</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a routerLink="/trading-accounts" routerLinkActive="active" (click)="closeMobileMenu()">
+            <span class="material-symbols-outlined">group_add</span>
+            <span>Trading Accounts</span>
+          </a>
+        </li>
+      } @if (isAdmin) {
+        <li class="menu-item">
+          <a routerLink="/overview" routerLinkActive="active" (click)="closeMobileMenu()">
+            <span class="material-symbols-outlined">monitoring</span>
+            <span>Overview</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a routerLink="/users" routerLinkActive="active" (click)="closeMobileMenu()">
+            <span class="material-symbols-outlined">group</span>
+            <span>Users</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a routerLink="/revenue" routerLinkActive="active" (click)="closeMobileMenu()">
+            <span class="material-symbols-outlined">attach_money</span>
+            <span>Revenue</span>
+          </a>
+        </li>
+      }
+    </ul>
+    
+    <!-- Sección inferior -->
+    <div class="mobile-bottom">
+      <div class="user-info">
+        <span class="avatar">{{ onlyNameInitials() }}</span>
+        <span>{{ userName }}</span>
+      </div>
+      <a class="settings-link" routerLink="/account" (click)="closeMobileMenu()">
+        <span class="material-symbols-outlined">settings</span>
+        <span>Account Settings</span>
+      </a>
+      <a class="logout-link" (click)="logout()">
+        <span class="material-symbols-outlined">logout</span>
+        <span>Log out</span>
+      </a>
+    </div>
+  </div>
+</div>
+}

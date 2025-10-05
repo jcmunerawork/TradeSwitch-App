@@ -453,15 +453,38 @@
   display: flex;
   gap: 0;
   overflow: hidden;
+  
+  @media (max-width: 1200px) {
+    overflow-x: auto;
+    gap: 1rem;
+  }
 }
 
 .benefits-column {
   flex: 0 0 200px;
   padding: 7rem 1.5rem 3rem 1.5rem;
+  
+  @media (max-width: 1200px) {
+    flex: 0 0 180px;
+    padding: 5rem 1rem 2rem 1rem;
+  }
+  
+  @media (max-width: 768px) {
+    flex: 0 0 160px;
+    padding: 3rem 0.75rem 1.5rem 0.75rem;
+  }
 }
 
 .benefits-header {
   margin-bottom: 2rem;
+  
+  @media (max-width: 1200px) {
+    margin-bottom: 1.5rem;
+  }
+  
+  @media (max-width: 768px) {
+    margin-bottom: 1rem;
+  }
 }
 
 .benefits-title {
@@ -469,6 +492,14 @@
   font-weight: 600;
   color: #fff;
   margin: 0;
+  
+  @media (max-width: 1200px) {
+    font-size: 1rem;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 0.875rem;
+  }
 }
 
 .benefits-list {
@@ -483,6 +514,16 @@
   flex-direction: column;
   gap: 2rem;
   margin-left: 12px;
+  
+  @media (max-width: 1200px) {
+    gap: 1.5rem;
+    margin-left: 8px;
+  }
+  
+  @media (max-width: 768px) {
+    gap: 1rem;
+    margin-left: 4px;
+  }
 }
 
 .benefit-item {
@@ -490,6 +531,15 @@
   color: #a0a0a0;
   font-weight: 300;
   line-height: 14px;
+  
+  @media (max-width: 1200px) {
+    font-size: 0.875rem;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+    line-height: 12px;
+  }
 }
 
 .plans-container {
@@ -497,6 +547,16 @@
   flex: 1;
   gap: 1.5rem;
   align-items: end;
+  
+  @media (max-width: 1200px) {
+    gap: 1rem;
+    min-width: 600px; // Mínimo para scroll horizontal
+  }
+  
+  @media (max-width: 768px) {
+    gap: 0.75rem;
+    min-width: 500px; // Mínimo reducido para mobile
+  }
 }
 
 .plan-card {
@@ -509,6 +569,7 @@
   flex-direction: column;
   gap: 1.5rem;
   height: fit-content;
+  min-width: 200px; // Ancho mínimo para cada card
 
   &:last-child {
     border-right: none;
@@ -516,6 +577,18 @@
 
   &.current-plan {
     background: rgba(81, 134, 228, 0.05);
+  }
+  
+  @media (max-width: 1200px) {
+    padding: 0.875rem 0.875rem;
+    gap: 1.25rem;
+    min-width: 180px;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.75rem 0.75rem;
+    gap: 1rem;
+    min-width: 160px;
   }
 }
 
@@ -527,12 +600,30 @@
   font-size: 0.75rem;
   font-weight: 600;
   width: fit-content;
+  
+  @media (max-width: 1200px) {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.7rem;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.3rem 0.55rem;
+    font-size: 0.65rem;
+  }
 }
 
 .plan-header {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  
+  @media (max-width: 1200px) {
+    gap: 0.4rem;
+  }
+  
+  @media (max-width: 768px) {
+    gap: 0.3rem;
+  }
 }
 
 .plan-name {
@@ -540,29 +631,69 @@
   font-weight: 600;
   color: #fff;
   margin: 0;
+  
+  @media (max-width: 1200px) {
+    font-size: 1.125rem;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 1rem;
+  }
 }
 
 .plan-price {
   display: flex;
   align-items: baseline;
   gap: 0.25rem;
+  
+  @media (max-width: 1200px) {
+    gap: 0.2rem;
+  }
+  
+  @media (max-width: 768px) {
+    gap: 0.15rem;
+  }
 }
 
 .price {
   font-size: 2rem;
   font-weight: 700;
   color: #fff;
+  
+  @media (max-width: 1200px) {
+    font-size: 1.75rem;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 1.5rem;
+  }
 }
 
 .period {
   font-size: 0.875rem;
   color: #a0a0a0;
+  
+  @media (max-width: 1200px) {
+    font-size: 0.8rem;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+  }
 }
 
 .plan-features {
   display: flex;
   flex-direction: column;
   gap: 1.3rem;
+  
+  @media (max-width: 1200px) {
+    gap: 1.1rem;
+  }
+  
+  @media (max-width: 768px) {
+    gap: 0.9rem;
+  }
 }
 
 .feature-row {
@@ -570,18 +701,42 @@
   align-items: center;
   justify-content: center;
   min-height: 1.5rem;
+  
+  @media (max-width: 1200px) {
+    min-height: 1.3rem;
+  }
+  
+  @media (max-width: 768px) {
+    min-height: 1.1rem;
+  }
 }
 
 .feature-value {
   font-size: 1rem;
   font-weight: 600;
   color: #fff;
+  
+  @media (max-width: 1200px) {
+    font-size: 0.9rem;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 0.8rem;
+  }
 }
 
 .feature-check {
   color: #9bf526;
   font-size: 1.125rem;
   font-weight: 700;
+  
+  @media (max-width: 1200px) {
+    font-size: 1rem;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 0.9rem;
+  }
 }
 
 .plan-footer {
@@ -613,6 +768,16 @@
       background: #8ae51f;
     }
   }
+  
+  @media (max-width: 1200px) {
+    padding: 0.65rem 0.875rem;
+    font-size: 0.8rem;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.55rem 0.75rem;
+    font-size: 0.75rem;
+  }
 }
 
 // Responsive Design
@@ -626,26 +791,28 @@
     gap: 1rem;
   }
 
+  // Mantener layout horizontal con scroll
   .comparison-table {
-    flex-direction: column;
+    overflow-x: auto;
+    gap: 1rem;
   }
 
   .benefits-column {
-    flex: none;
-    border-right: none;
-    border-bottom: 1px solid #4a4a4a;
+    flex: 0 0 180px;
+    border-right: 1px solid #4a4a4a;
   }
 
   .plans-container {
-    flex-direction: column;
+    flex-direction: row;
+    min-width: 600px;
   }
 
   .plan-card {
-    border-right: none;
-    border-bottom: 1px solid #4a4a4a;
+    border-right: 1px solid #4a4a4a;
+    border-bottom: none;
 
     &:last-child {
-      border-bottom: none;
+      border-right: none;
     }
   }
 }
@@ -667,11 +834,24 @@
     grid-template-columns: 1fr;
   }
 
+  // Mantener scroll horizontal en mobile también
+  .comparison-table {
+    overflow-x: auto;
+    gap: 0.75rem;
+  }
+
   .benefits-column {
-    padding: 1.5rem 1rem;
+    flex: 0 0 160px;
+    padding: 3rem 0.75rem 1.5rem 0.75rem;
+  }
+
+  .plans-container {
+    min-width: 500px;
+    gap: 0.75rem;
   }
 
   .plan-card {
-    padding: 1.5rem 1rem;
+    padding: 0.75rem 0.75rem;
+    min-width: 160px;
   }
 }

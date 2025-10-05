@@ -3,12 +3,13 @@ import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { LoadingPopupComponent } from '../../shared/pop-ups/loading-pop-up/loading-popup.component';
 import { FormsModule } from '@angular/forms';
-import { OverviewService } from '../overview/services/overview.service';
+import { UserManagementService } from '../../shared/services/user-management.service';
 import { UsersTableComponent } from './components/users-table/users-table.component';
 import { User, UserStatus } from '../overview/models/overview';
 import { Timestamp } from 'firebase/firestore';
 import { UserModalComponent } from './components/user-modal/user-modal.component';
 import { AuthService } from '../auth/service/authService';
+import { AppContextService } from '../../shared/context';
 
 @Component({
   selector: 'app-users-details',
@@ -28,44 +29,60 @@ export class UsersDetails {
   selectedUser: User | null = null;
   constructor(
     private store: Store,
-    private overviewSvc: OverviewService,
-    private userSvc: AuthService
+    private userManagementService: UserManagementService,
+    private userSvc: AuthService,
+    private appContext: AppContextService
   ) {}
 
   loading = false;
   usersData: User[] = [];
 
   ngOnInit(): void {
+    // Suscribirse a los datos del contexto
+    this.subscribeToContextData();
     this.loadConfig();
+  }
+
+  private subscribeToContextData() {
+    // Suscribirse a los datos del usuario actual
+    this.appContext.currentUser$.subscribe(user => {
+      // Verificar si el usuario actual es admin
+      if (user && user.isAdmin) {
+        // Solo los admins pueden ver esta página
+        this.loadUsersData();
+      }
+    });
+
+    // Suscribirse a los estados de carga
+    this.appContext.isLoading$.subscribe(loading => {
+      this.loading = loading.user;
+    });
+
+    // Suscribirse a los errores
+    this.appContext.errors$.subscribe(errors => {
+      if (errors.user) {
+        console.error('Error en gestión de usuarios:', errors.user);
+      }
+    });
   }
 
   loadConfig() {
     this.getUsersData();
   }
 
-  getUsersData() {
-    this.overviewSvc
-      .getUsersData()
-      .then((docSnap) => {
-        if (docSnap && !docSnap.empty && docSnap.docs.length > 0) {
-          this.usersData = docSnap.docs
-            .map((doc) => {
-              return {
-                ...(doc.data() as User),
-              };
-            })
-            .filter((user) => !user.isAdmin);
-          this.loading = false;
-        } else {
-          this.loading = false;
-          console.warn('No config');
-        }
-      })
-      .catch((err) => {
-        this.loading = false;
+  private loadUsersData() {
+    this.getUsersData();
+  }
 
-        console.error('Error to get the config', err);
-      });
+  async getUsersData() {
+    try {
+      const allUsers = await this.userManagementService.getAllUsers();
+      this.usersData = allUsers.filter((user) => !user.isAdmin);
+      this.loading = false;
+    } catch (error) {
+      this.loading = false;
+      console.error('Error getting users data:', error);
+    }
   }
 
   onBan(event: { username: string; reason: string }) {

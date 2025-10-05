@@ -42,10 +42,12 @@ $weight-regular: 400; // Regular
 
 .regularText {
   font-family: $font-interface !important;
-  font-size: 1rem;
+  font-size: clamp(0.875rem, 2.5vw, 1rem);
   font-style: normal;
   font-weight: 400;
-  line-height: 14px;
+  line-height: 1;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .smallText {
@@ -81,11 +83,14 @@ $weight-regular: 400; // Regular
 
 .titleText {
   font-family: $font-interface;
-  font-size: 3rem;
+  font-size: clamp(1.5rem, 4vw, 3rem);
   font-style: normal;
   font-weight: 700;
-  line-height: 1.3915rem;
+  line-height: 1;
   letter-spacing: -0.02719rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .subtitle {
@@ -99,9 +104,11 @@ $weight-regular: 400; // Regular
 
 .secondTitle {
   font-family: $font-interface;
-  font-size: 2.5rem;
+  font-size: clamp(2.5rem, 5vw, 3rem);
   font-style: normal;
   font-weight: 500;
-  line-height: 1.3915rem;
   letter-spacing: -0.02719rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }

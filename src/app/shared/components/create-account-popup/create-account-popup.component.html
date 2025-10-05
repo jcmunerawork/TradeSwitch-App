@@ -3,7 +3,7 @@
 <div class="modal-overlay" (click)="onClose()">
   <div class="create-account-modal" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h2 class="modal-title">Create Trading Account</h2>
+      <h2 class="modal-title">{{ editMode ? 'Edit Trading Account' : 'Create Trading Account' }}</h2>
       <button class="modal-close" (click)="onClose()">
         <span class="material-symbols-outlined">close</span>
       </button>
@@ -87,7 +87,7 @@
         Cancel
       </button>
       <button class="create-btn" (click)="onCreate()">
-        Create trading account
+        {{ editMode ? 'Update trading account' : 'Create trading account' }}
       </button>
     </div>
   </div>
@@ -99,14 +99,14 @@
 <div class="modal-overlay" (click)="onContinueEditing()">
   <div class="confirm-modal" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h2 class="modal-title">Cancel trading account creation?</h2>
+      <h2 class="modal-title">{{ editMode ? 'Cancel trading account update?' : 'Cancel trading account creation?' }}</h2>
     </div>
     <div class="modal-body">
-      <p class="modal-message">If you leave now, the information you've entered will not be saved.</p>
+      <p class="modal-message">{{ editMode ? 'If you leave now, your changes will not be saved.' : 'If you leave now, the information you\'ve entered will not be saved.' }}</p>
     </div>
     <div class="modal-footer">
       <button class="continue-btn" (click)="onContinueEditing()">
-        Continue editing
+        Continue {{ editMode ? 'editing' : 'creating' }}
       </button>
       <button class="confirm-cancel-btn" (click)="onConfirmCancel()">
         Yes, cancel
@@ -121,10 +121,10 @@
 <div class="modal-overlay" (click)="onGoToList()">
   <div class="success-modal" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h2 class="modal-title">Trading account created successfully</h2>
+      <h2 class="modal-title">{{ editMode ? 'Trading account updated successfully' : 'Trading account created successfully' }}</h2>
     </div>
     <div class="modal-body">
-      <p class="modal-message">The new account has been added to your list and can now access it.</p>
+      <p class="modal-message">{{ editMode ? 'The account has been updated successfully.' : 'The new account has been added to your list and can now access it.' }}</p>
     </div>
     <div class="modal-footer">
       <button class="success-btn" (click)="onGoToList()">

@@ -15,21 +15,49 @@
 .trades-popup {
   background: #1a1a1a;
   border: 1px solid #333;
-  border-radius: 12px;
+  border-radius: 8px;
   width: 90%;
-  max-width: 1200px;
-  max-height: 80vh;
+  max-width: 600px;
+  max-height: 60vh;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  
+  @media (max-width: 1024px) {
+    width: 95%;
+    max-width: 500px;
+    max-height: 65vh;
+  }
+  
+  @media (max-width: 768px) {
+    width: 98%;
+    max-height: 70vh;
+    border-radius: 6px;
+  }
+  
+  @media (max-width: 480px) {
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    border: none;
+  }
 }
 
 .popup-header {
   background: #2a2a2a;
-  padding: 20px 24px;
+  padding: 12px 16px;
   border-bottom: 1px solid #333;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  
+  @media (max-width: 768px) {
+    padding: 16px 20px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 12px 16px;
+  }
 }
 
 .header-content {
@@ -49,15 +77,15 @@
 .date-info {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 14px;
+  gap: 8px;
+  font-size: 12px;
 }
 
 .date {
   color: #e3e3e3;
   font-weight: 500;
   font-family: 'Inter', Arial, sans-serif;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .separator {
@@ -67,7 +95,7 @@
 .net-pnl {
   font-weight: 600;
   font-family: 'Inter', Arial, sans-serif;
-  font-size: 16px;
+  font-size: 14px;
   
   &.positive {
     color: #10B981;
@@ -127,9 +155,19 @@
 }
 
 .popup-content {
-  padding: 24px;
-  max-height: calc(80vh - 120px);
+  padding: 16px;
+  max-height: calc(60vh - 80px);
   overflow-y: auto;
+  
+  @media (max-width: 768px) {
+    padding: 20px;
+    max-height: calc(90vh - 100px);
+  }
+  
+  @media (max-width: 480px) {
+    padding: 16px;
+    max-height: calc(100vh - 80px);
+  }
 }
 
 .content-header {
@@ -150,6 +188,16 @@
 .controls {
   display: flex;
   gap: 12px;
+  
+  @media (max-width: 768px) {
+    gap: 8px;
+  }
+  
+  @media (max-width: 480px) {
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
 }
 
 .sort-btn,
@@ -171,6 +219,18 @@
     background: rgba(59, 130, 246, 0.2);
     border-color: rgba(59, 130, 246, 0.5);
   }
+  
+  @media (max-width: 768px) {
+    padding: 6px 10px;
+    font-size: 13px;
+    gap: 4px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 8px 12px;
+    font-size: 14px;
+    justify-content: center;
+  }
 }
 
 .sort-icon,
@@ -178,12 +238,38 @@
   font-size: 12px;
 }
 
+.trades-table-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 8px;
+  width: 100%;
+  
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #1a1a1a;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+}
+
 .trades-table {
   background: rgba(59, 130, 246, 0.1);
   border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   padding: 0;
+  min-width: 500px;
+  width: max-content; /* Asegura que la tabla mantenga su ancho natural */
 }
 
 .table-header {
@@ -194,17 +280,27 @@
 }
 
 .header-cell {
-  padding: 12px 16px;
+  padding: 8px 12px;
   color: #b0b0b0;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 500;
   font-family: 'Inter', Arial, sans-serif;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
   text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;
+  
+  @media (max-width: 768px) {
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 8px 10px;
+    font-size: 10px;
+  }
 }
 
 .table-body {
@@ -228,14 +324,24 @@
 }
 
 .table-cell {
-  padding: 12px 16px;
+  padding: 8px 12px;
   color: #e0e0e0;
-  font-size: 14px;
+  font-size: 12px;
   font-family: 'Inter', Arial, sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
+  
+  @media (max-width: 768px) {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
 }
 
 .time-cell {
@@ -372,21 +478,12 @@
     max-height: 90vh;
   }
   
-  .table-header,
-  .table-row {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-  
-  .header-cell,
-  .table-cell {
-    border-right: none;
-    border-bottom: 1px solid #2a2a2a;
-    padding: 8px 12px;
-  }
-  
   .controls {
     flex-direction: column;
     gap: 8px;
+  }
+  
+  .trades-table {
+    min-width: 500px; /* Reducir un poco el ancho mínimo en mobile */
   }
 }

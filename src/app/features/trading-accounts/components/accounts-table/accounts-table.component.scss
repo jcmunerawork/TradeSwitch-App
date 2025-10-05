@@ -54,6 +54,10 @@
 
 .search-user-container {
   border: 1px solid var(--White, #eaf2f8);
+
+  @media (max-width: 1024px) {
+    width: 100%;
+  }
 }
 
 .percentage-input {
@@ -375,5 +379,48 @@ th:nth-child(9), td:nth-child(9) { width: 80px; }  // Actions
   }
   50% {
     opacity: 0.5;
+  }
+}
+
+// Responsive styles
+.accounts-header {
+  @media (max-width: 1024px) {
+    .desktop-actions {
+      display: none;
+    }
+    
+    .mobile-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      width: 100%;
+      gap: 8px;
+      margin-top: 12px;
+      margin-bottom: 12px;
+      
+      .mobile-controls-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+      }
+    }
+  }
+  
+  @media (min-width: 1025px) {
+    .mobile-actions {
+      display: none;
+    }
+
+    .desktop-actions {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      width: 100%;
+      margin-top: 12px;
+      margin-bottom: 12px;
+    }
   }
 }
