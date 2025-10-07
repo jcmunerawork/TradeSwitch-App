@@ -1,108 +1,111 @@
 @if (!showPlanSelection && !showPaymentProcessing && !showOrderSummary) {
 <div class="signup-container">
-  <div class="signup-header">
-    <h1 class="signup-title">Create account</h1>
-    <p class="signup-subtitle">Because trading with rules starts right here</p>
-  </div>
-  @if (currentStep === 1 || isAdminSignup) {
+  <div class="signup-wrapper">
 
-  <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="signup-form">
-    <ng-container>
-      <app-text-input
-        name="firstName"
-        label="First Name"
-        placeholder="Your first name here"
-        formControlName="firstName"
-        class="form-input"
-      ></app-text-input>
-
-      <app-text-input
-        name="lastName"
-        label="Last Name"
-        placeholder="Your last name here"
-        formControlName="lastName"
-        class="form-input"
-      ></app-text-input>
-
-      <app-text-input
-        name="email"
-        label="Email"
-        placeholder="Your email here"
-        formControlName="email"
-        class="form-input"
-        type="email"
-      ></app-text-input>
-
-      <app-password-input
-        label="Password"
-        placeholder="Your password here"
-        formControlName="password"
-        class="form-input"
-        [showValidation]="true"
-        [userEmail]="signupForm.get('email')?.value || ''"
-        [userName]="signupForm.get('firstName')?.value || ''"
-      ></app-password-input>
-
-      <div>
-        <app-phone-input
-          label="Phone number"
-          placeholder="Your phone number here"
-          formControlName="phoneNumber"
+    <div class="signup-header">
+      <h1 class="signup-title">Create account</h1>
+      <p class="signup-subtitle">Because trading with rules starts right here</p>
+    </div>
+    @if (currentStep === 1 || isAdminSignup) {
+  
+    <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="signup-form">
+      <ng-container>
+        <app-text-input
+          name="firstName"
+          label="First Name"
+          placeholder="Your first name here"
+          formControlName="firstName"
           class="form-input"
-        ></app-phone-input>
-      </div>
-
-      <app-birthday-input
-        label="Birthday"
-        placeholder="Your birthday here"
-        formControlName="birthday"
-        class="form-input"
-      ></app-birthday-input>
-
-      <button
-        type="submit"
-        class="submit-button"
-      >
-        Next
-      </button>
-      <!-- 
-        <div class="signup-methods-separator">
-          <span class="separator-line"></span>
-          Or sign up with
-          <span class="separator-line"></span>
+        ></app-text-input>
+  
+        <app-text-input
+          name="lastName"
+          label="Last Name"
+          placeholder="Your last name here"
+          formControlName="lastName"
+          class="form-input"
+        ></app-text-input>
+  
+        <app-text-input
+          name="email"
+          label="Email"
+          placeholder="Your email here"
+          formControlName="email"
+          class="form-input"
+          type="email"
+        ></app-text-input>
+  
+        <app-password-input
+          label="Password"
+          placeholder="Your password here"
+          formControlName="password"
+          class="form-input"
+          [showValidation]="true"
+          [userEmail]="signupForm.get('email')?.value || ''"
+          [userName]="signupForm.get('firstName')?.value || ''"
+        ></app-password-input>
+  
+        <div>
+          <app-phone-input
+            label="Phone number"
+            placeholder="Your phone number here"
+            formControlName="phoneNumber"
+            class="form-input"
+          ></app-phone-input>
         </div>
   
-        <div class="social-buttons-container">
-          <button
-            class="social-button"
-            type="button"
-            (click)="signInWithGoogle()"
-          >
-            <img
-              src="assets/google-logo.svg"
-              alt="Google logo"
-              class="social-icon"
-            />
-            Google
-          </button>
-          <button class="social-button" type="button" (click)="signInWithApple()">
-            <img
-              src="assets/apple-logo.svg"
-              alt="Apple logo"
-              class="social-icon"
-            />
-            Apple
-          </button>
-        </div>
-      -->
-      @if (!isAdminSignup) {
-      <p class="login-text">
-        Already have an account? <a routerLink="/login">Log in</a>
-      </p>
-      }
-    </ng-container>
-  </form>
-  } 
+        <app-birthday-input
+          label="Birthday"
+          placeholder="Your birthday here"
+          formControlName="birthday"
+          class="form-input"
+        ></app-birthday-input>
+  
+        <button
+          type="submit"
+          class="submit-button"
+        >
+          Next
+        </button>
+        <!-- 
+          <div class="signup-methods-separator">
+            <span class="separator-line"></span>
+            Or sign up with
+            <span class="separator-line"></span>
+          </div>
+    
+          <div class="social-buttons-container">
+            <button
+              class="social-button"
+              type="button"
+              (click)="signInWithGoogle()"
+            >
+              <img
+                src="assets/google-logo.svg"
+                alt="Google logo"
+                class="social-icon"
+              />
+              Google
+            </button>
+            <button class="social-button" type="button" (click)="signInWithApple()">
+              <img
+                src="assets/apple-logo.svg"
+                alt="Apple logo"
+                class="social-icon"
+              />
+              Apple
+            </button>
+          </div>
+        -->
+        @if (!isAdminSignup) {
+        <p class="login-text">
+          Already have an account? <a routerLink="/login">Log in</a>
+        </p>
+        }
+      </ng-container>
+    </form>
+    } 
+  </div>
 </div>
 } @else if (showPlanSelection) {
 <app-plan-selection 

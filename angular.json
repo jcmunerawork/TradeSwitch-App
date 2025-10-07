@@ -41,6 +41,11 @@
             "stylePreprocessorOptions": {
               "includePaths": ["src/assets/styles"]
             },
+          "allowedCommonJsDependencies": [
+            "moment-timezone",
+            "@grpc/grpc-js",
+            "@grpc/proto-loader"
+          ],
             "server": "src/main.server.ts",
             "outputMode": "server",
             "ssr": {

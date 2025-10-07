@@ -1,5 +1,5 @@
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } from 'firebase/firestore';
 import { isPlatformBrowser } from '@angular/common';
 import { User } from '../../features/overview/models/overview';
 
@@ -112,6 +112,23 @@ export class UsersOperationsService {
     } catch (error) {
       console.error('Error getting all users:', error);
       return [];
+    }
+  }
+
+  /**
+   * Eliminar un usuario
+   */
+  async deleteUser(userId: string): Promise<void> {
+    try {
+      if (!this.isBrowser || !this.db) {
+        throw new Error('No se puede eliminar usuario en el servidor');
+      }
+
+      await deleteDoc(doc(this.db, 'users', userId));
+      console.log('Usuario eliminado exitosamente:', userId);
+    } catch (error) {
+      console.error('Error eliminando usuario:', error);
+      throw error;
     }
   }
 }

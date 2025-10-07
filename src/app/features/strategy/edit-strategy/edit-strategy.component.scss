@@ -16,6 +16,32 @@
     min-width: 300px;
     border-radius: 8px;
     border: 0.5px solid #2f2f2f;
+    padding: 1.875rem;
+    height: 600px;
+    overflow-y: auto;
+    
+    // Personalizar scrollbar
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: #4a4a4a;
+      border-radius: 3px;
+      
+      &:hover {
+        background: #6a6a6a;
+      }
+    }
+    
+    // Para Firefox
+    scrollbar-width: thin;
+    scrollbar-color: #4a4a4a transparent;
+
     background: linear-gradient(
           to bottom right,
           rgba(57, 103, 215, 0.1) 0%,
@@ -47,12 +73,24 @@
       }
     }
 
-    padding: 1.875rem;
+    // Alturas responsivas para desktop
+    @media (max-width: 1536px) { // 2xl
+      height: 550px;
+    }
+    
+    @media (max-width: 1280px) { // xl
+      height: 500px;
+    }
+    
+    @media (max-width: 1200px) {
+      height: 450px;
+    }
 
     @media (max-width: 1024px) {
       min-width: unset;
       width: 100%;
       padding: 1.25rem;
+      height: 400px; // Mobile height
     }
 
     @media (max-width: 768px) {
@@ -146,6 +184,30 @@
         )
         top right / 50% 50% no-repeat;
     padding: 1.25rem;
+    height: 400px;
+    overflow-y: auto;
+    
+    // Personalizar scrollbar para mobile
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: #4a4a4a;
+      border-radius: 3px;
+      
+      &:hover {
+        background: #6a6a6a;
+      }
+    }
+    
+    // Para Firefox
+    scrollbar-width: thin;
+    scrollbar-color: #4a4a4a transparent;
 
     @media (max-width: 768px) {
       padding: 1rem;
@@ -167,12 +229,57 @@
     gap: 0.75rem;
   }
 
+  .reset-btn {
+    height: fit-content;
+    width: min-content;
+    background: #dc2626; // red-600
+    border: 1px solid #dc2626;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover:not(.disabled) {
+      background: #b91c1c; // red-700
+      border-color: #b91c1c;
+      transform: translateY(-1px);
+    }
+
+    &:active:not(.disabled) {
+      transform: translateY(0);
+    }
+
+    &.disabled {
+      background: #6b7280; // gray-500
+      border-color: #6b7280;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    @media (max-width: 768px) {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
   .discard-btn {
     height: fit-content;
     width: min-content;
     background: rgba(188, 254, 99, 0.1);
     border: 1px solid #9bf526;
     border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(188, 254, 99, 0.2);
+      border-color: #9bf526;
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
 
     @media (max-width: 768px) {
       width: 100%;
@@ -185,6 +292,11 @@
     width: min-content;
     border-radius: 6px;
     border: none;
+
+    &.hover {
+      background: rgba(155, 245, 38, 0.2);
+      border-color: #9bf526;
+    }
 
     @media (max-width: 768px) {
       width: 100%;
@@ -376,6 +488,12 @@
   background: rgba(239, 68, 68, 0.1) !important;
   border-left: 4px solid #EF4444 !important;
   border-radius: 8px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
   
   @media (max-width: 768px) {
     padding: 12px !important;

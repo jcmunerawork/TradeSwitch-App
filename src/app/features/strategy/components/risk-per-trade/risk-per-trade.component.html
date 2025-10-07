@@ -14,38 +14,36 @@
       for="toggle-max-daily-trades"
       [ngClass]="{ deactivated: !config.isActive }"
     >
-      Limit my Risk per Trade:
-      <span class="ml-2 mr-26">${{ initialRiskTrade }}</span>
+      Limit my Risk per Trade
     </label>
-    <p>
-      {{ "(" }}Actual Balance: <em>{{ config.balance | currency }}</em
-      >{{ ")" }}
+  </div>
+
+  <!-- Información del balance y cálculo - Solo se muestra si está activo -->
+  <div *ngIf="config.isActive" class="balance-info mb-12">
+    <p class="balance-text">
+      {{ config.percentage_type === 'ACTUAL_B' ? 'Actual Balance' : 'Initial Balance' }}: 
+      <strong>${{ actualBalance | number:'1.2-2' }}</strong>
+    </p>
+    <p class="calculation-text">
+      {{ config.risk_ammount }}% = <strong>${{ calculatedAmount | number:'1.2-2' }}</strong>
     </p>
   </div>
-  <div class="risk-per-trade-container flex-row d-flex items-center inputText">
+
+  <!-- Input de porcentaje - Solo se muestra si está activo -->
+  <div *ngIf="config.isActive" class="input-group">
+    <label for="percentage-input" class="input-label">Percentage</label>
     <div class="input-with-suffix">
       <input
         type="number"
-        min="1"
-        id="risk-percentage-input"
-        [value]="config.maxRiskPercentage"
-        [disabled]="!config.isActive"
+        id="percentage-input"
+        [value]="config.risk_ammount"
         (change)="onChangePercentage($event)"
-        class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
+        class="custom-input"
+        min="0.01"
+        max="100"
+        step="0.01"
       />
       <span class="suffix">%</span>
-    </div>
-    <div class="input-with-prefix">
-      <span class="prefix">$</span>
-      <input
-        type="number"
-        min="1"
-        id="risk-price-input"
-        [value]="config.maxRiskPerTrade"
-        [disabled]="!config.isActive"
-        (change)="onChangeAmount($event)"
-        class="inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
-      />
     </div>
   </div>
 </div>

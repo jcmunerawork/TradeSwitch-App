@@ -13,7 +13,7 @@ import { AppContextService } from '../../shared/context';
 
 @Component({
   selector: 'app-account',
-  imports: [CommonModule, PlanSettingsComponent, ProfileDetailsComponent, SubscriptionHistoryComponent],
+  imports: [CommonModule, PlanSettingsComponent, ProfileDetailsComponent],
   templateUrl: './account.component.html',
   styleUrl: './account.component.scss',
   standalone: true,

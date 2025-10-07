@@ -1,6 +1,6 @@
 import { Component, Input, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ControlValueAccessor, FormsModule, ReactiveFormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { ControlValueAccessor, FormsModule, ReactiveFormsModule, NG_VALUE_ACCESSOR, Validator, AbstractControl, ValidationErrors, NG_VALIDATORS } from '@angular/forms';
 
 @Component({
   selector: 'app-password-input',
@@ -13,10 +13,15 @@ import { ControlValueAccessor, FormsModule, ReactiveFormsModule, NG_VALUE_ACCESS
       provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => PasswordInputComponent),
       multi: true
+    },
+    {
+      provide: NG_VALIDATORS,
+      useExisting: forwardRef(() => PasswordInputComponent),
+      multi: true
     }
   ]
 })
-export class PasswordInputComponent implements ControlValueAccessor {
+export class PasswordInputComponent implements ControlValueAccessor, Validator {
   @Input() label: string = 'Password';
   @Input() placeholder: string = '********************';
   @Input() required: boolean = false;
@@ -115,5 +120,42 @@ export class PasswordInputComponent implements ControlValueAccessor {
 
   togglePasswordVisibility(): void {
     this.showPassword = !this.showPassword;
+  }
+
+  // Implementación de Validator
+  validate(control: AbstractControl): ValidationErrors | null {
+    if (!control.value || !this.showValidation) {
+      return null;
+    }
+
+    const password = control.value;
+    const errors: ValidationErrors = {};
+
+    // Validar que no contenga nombre o email
+    if (this.containsNameOrEmail(password)) {
+      errors['containsNameOrEmail'] = true;
+    }
+
+    // Validar longitud mínima
+    if (password.length < 8) {
+      errors['minLength'] = true;
+    }
+
+    // Validar que tenga número o símbolo
+    if (!/[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      errors['hasNumberOrSymbol'] = true;
+    }
+
+    // Validar que tenga mayúscula
+    if (!/[A-Z]/.test(password)) {
+      errors['hasUppercase'] = true;
+    }
+
+    // Validar que tenga minúscula
+    if (!/[a-z]/.test(password)) {
+      errors['hasLowercase'] = true;
+    }
+
+    return Object.keys(errors).length > 0 ? errors : null;
   }
 }

@@ -162,4 +162,31 @@ export class AccountsOperationsService {
       };
     }
   }
+
+  /**
+   * Verificar si existe una cuenta con la combinación broker + server + accountID
+   */
+  async checkAccountExists(broker: string, server: string, accountID: string, currentUserId: string): Promise<boolean> {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return false;
+    }
+
+    try {
+      const accountsRef = collection(this.db, 'accounts');
+      const q = query(
+        accountsRef,
+        where('broker', '==', broker),
+        where('server', '==', server),
+        where('accountID', '==', accountID),
+        where('userId', '!=', currentUserId) // Excluir la cuenta actual si estamos editando
+      );
+      
+      const querySnapshot = await getDocs(q);
+      return !querySnapshot.empty;
+    } catch (error) {
+      console.error('Error checking account existence:', error);
+      return false;
+    }
+  }
 }

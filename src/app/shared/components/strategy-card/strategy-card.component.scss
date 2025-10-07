@@ -219,8 +219,38 @@
   }
 }
 
-.customize-btn {
+// Action Buttons Container
+.action-buttons {
+  display: flex;
+  gap: 12px;
   width: 100%;
+}
+
+.edit-strategy-btn {
+  flex: 1;
+  background: #2a2a2a;
+  border: 1px solid #4a4a4a;
+  border-radius: 8px;
+  color: #e3e3e3;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #3a3a3a;
+    border-color: #6a6a6a;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.customize-btn {
+  flex: 1;
   background: #1a3d1a;
   border: 1px solid #9bf526;
   border-radius: 8px;
@@ -240,6 +270,11 @@
   &:active {
     transform: translateY(0);
   }
+}
+
+// Customize button when it's the only button (active strategy)
+.customize-btn:not(.action-buttons .customize-btn) {
+  width: 100%;
 }
 
 // Icon styles

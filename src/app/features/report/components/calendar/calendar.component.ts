@@ -15,6 +15,7 @@ import { ReportService } from '../../service/report.service';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 import { TradesPopupComponent } from '../trades-popup/trades-popup.component';
 import { ConfigurationOverview } from '../../../strategy/models/strategy.model';
+import { PluginHistoryService, PluginHistory } from '../../../../shared/services/plugin-history.service';
 
 @Component({
   selector: 'app-calendar',
@@ -27,6 +28,7 @@ export class CalendarComponent {
   @Input() groupedTrades!: GroupedTradeFinal[];
   @Output() strategyFollowedPercentageChange = new EventEmitter<number>();
   @Input() strategies!: ConfigurationOverview[];
+  @Input() userId!: string; // Necesario para obtener el plugin history
 
   calendar: CalendarDay[][] = [];
   currentDate!: Date;
@@ -35,13 +37,24 @@ export class CalendarComponent {
   // Popup properties
   showTradesPopup = false;
   selectedDay: CalendarDay | null = null;
+  
+  // Plugin history properties
+  pluginHistory: PluginHistory | null = null;
 
-  constructor(private reportSvc: ReportService) {}
+  constructor(
+    private reportSvc: ReportService,
+    private pluginHistoryService: PluginHistoryService
+  ) {}
   private numberFormatter = new NumberFormatterService();
 
   ngOnChanges(changes: SimpleChanges) {
     this.currentDate = new Date();
     this.selectedMonth = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth());
+
+    // Cargar plugin history si tenemos userId
+    if (this.userId) {
+      this.loadPluginHistory();
+    }
 
     this.generateCalendar(this.selectedMonth);
 
@@ -52,6 +65,63 @@ export class CalendarComponent {
 
   emitStrategyFollowedPercentage(value: number): void {
     this.strategyFollowedPercentageChange.emit(value);
+  }
+
+  /**
+   * Cargar plugin history para el usuario
+   */
+  async loadPluginHistory() {
+    try {
+      const pluginHistoryArray = await this.pluginHistoryService.getPluginUsageHistory(this.userId);
+      if (pluginHistoryArray.length > 0) {
+        this.pluginHistory = pluginHistoryArray[0];
+        console.log('Plugin history loaded:', this.pluginHistory);
+      } else {
+        this.pluginHistory = null;
+        console.log('No plugin history found for user');
+      }
+    } catch (error) {
+      console.error('Error loading plugin history:', error);
+      this.pluginHistory = null;
+    }
+  }
+
+  /**
+   * Determinar si se siguió la estrategia basándose en los rangos de fechas del plugin
+   * @param tradeDate - Fecha del trade a validar
+   * @returns true si se siguió la estrategia, false si no
+   */
+  didFollowStrategy(tradeDate: Date): boolean {
+    if (!this.pluginHistory || !this.pluginHistory.dateActive || !this.pluginHistory.dateInactive) {
+      return false; // Sin plugin history, no se siguió estrategia
+    }
+
+    const dateActive = this.pluginHistory.dateActive;
+    const dateInactive = this.pluginHistory.dateInactive;
+    const now = new Date();
+
+    // Si dateActive tiene más elementos que dateInactive, está activo hasta ahora
+    if (dateActive.length > dateInactive.length) {
+      // El último rango activo va desde la última fecha de active hasta ahora
+      const lastActiveDate = new Date(dateActive[dateActive.length - 1]);
+      return tradeDate >= lastActiveDate && tradeDate <= now;
+    }
+
+    // Si tienen la misma cantidad, crear rangos de fechas
+    if (dateActive.length === dateInactive.length) {
+      // Crear rangos: active[0] -> inactive[0], active[1] -> inactive[1], etc.
+      for (let i = 0; i < dateActive.length; i++) {
+        const activeStart = new Date(dateActive[i]);
+        const inactiveEnd = new Date(dateInactive[i]);
+        
+        // Si el trade está dentro de este rango activo
+        if (tradeDate >= activeStart && tradeDate <= inactiveEnd) {
+          return true;
+        }
+      }
+    }
+
+    return false; // No está en ningún rango activo
   }
 
   generateCalendar(targetMonth: Date) {
@@ -98,16 +168,15 @@ export class CalendarComponent {
       const tradesCount = trades.length;
       const tradeWinPercent = tradesCount > 0 ? Math.round((wins / tradesCount) * 1000) / 10 : 0;
       
-      // Determinar si es un "buen" día basándose en trades ganados vs perdidos
-      // Si hay más trades ganados que perdidos, es un buen día
-      const isGoodDay = tradesCount > 0 ? wins > losses : false;
+      // Determinar si se siguió la estrategia basándose en los rangos de fechas del plugin
+      const followedStrategy = tradesCount > 0 ? this.didFollowStrategy(currentDay) : false;
 
       days.push({
         date: new Date(currentDay),
         trades: trades as GroupedTradeFinal[],
         pnlTotal,
         tradesCount: trades.length,
-        followedStrategy: isGoodDay,
+        followedStrategy: followedStrategy,
         tradeWinPercent: Math.round(tradeWinPercent),
       });
 

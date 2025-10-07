@@ -12,7 +12,7 @@ import {
 import { PhoneInputComponent } from '../../../shared/components/phone-input/phone-input.component';
 import { BirthdayInputComponent } from '../../../shared/components/birthday-input/birthday-input.component';
 import { TextInputComponent } from '../../../shared/components/text-input/text-input.component';
-import { AuthService } from '../service/authService';
+import { AuthService } from '../../../shared/services/auth.service';
 import { PasswordInputComponent } from '../../../shared/components/password-input/password-input.component';
 import { User, UserStatus } from '../../overview/models/overview';
 import { Timestamp } from 'firebase/firestore';
@@ -369,26 +369,41 @@ export class SignupComponent implements OnInit {
         userData: this.userData
       };
 
-      await this.onPaymentProcessingSuccess();
+      // PRIMERO: Verificar que el backend esté disponible
+      try {
+        const customerResponse = await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-customer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            id: userId
+          })
+        });
 
-      await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-customer', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          id: userId
-        })
-      });
+        if (!customerResponse.ok) {
+          throw new Error(`Error creating customer: ${customerResponse.status} ${customerResponse.statusText}`);
+        }
+      } catch (customerError: any) {
+        console.error('Error creating customer:', customerError);
+        // Si falla la creación del customer, eliminar la cuenta creada
+        await this.cleanupFailedAccount(userId);
+        throw new Error('Error connecting to payment service. Please try again.');
+      }
 
-      await this.simulatePaymentProcessing(priceId, bearerTokenFirebase);
+      // SEGUNDO: Intentar crear la sesión de pago
+      try {
+        await this.simulatePaymentProcessing(priceId, bearerTokenFirebase);
+      } catch (paymentError: any) {
+        console.error('Error in payment processing:', paymentError);
+        // Si falla el payment, eliminar la cuenta creada
+        await this.cleanupFailedAccount(userId);
+        throw new Error('Payment processing failed. Please try again.');
+      }
       
-      // Después de abrir la nueva pestaña, el modal de procesamiento ya está visible
-      // El componente SubscriptionProcessingComponent se encargará de monitorear el estado
-      
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error en el proceso de registro:', error);
-      this.onPaymentError();
+      this.onPaymentError('Error processing the subscription. Please try again.');
     }
   }
 
@@ -403,38 +418,44 @@ export class SignupComponent implements OnInit {
       throw new Error('Price ID or bearer token not found');
     }
 
-    const response = await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-checkout-session', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${bearerTokenFirebase}`
-      },
-      body: JSON.stringify({
-        priceId: priceId,
-      })
-    });
+    try {
+      const response = await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${bearerTokenFirebase}`
+        },
+        body: JSON.stringify({
+          priceId: priceId,
+        })
+      });
 
-    if (!response.ok) {
-      throw new Error('Error creating checkout session');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error creating checkout session: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const responseData = await response.json();
+      const paymentUrl = responseData.body?.url || responseData.url;
+      
+      if (!paymentUrl) {
+        throw new Error('Payment URL not found in response');
+      }
+
+      // Navegar a la URL de pago en la misma pestaña
+      window.location.href = paymentUrl;
+      
+    } catch (fetchError: any) {
+      console.error('Fetch error details:', fetchError);
+      throw new Error('Error connecting to payment service. Please try again.');
     }
-
-    const responseData = await response.json();
-    const paymentUrl = responseData.body?.url || responseData.url;
-    
-    if (!paymentUrl) {
-      throw new Error('Payment URL not found in response');
-    }
-
-    // Abrir la URL de pago en una nueva pestaña
-    window.open(paymentUrl, '_blank');
-    
-    // No llamar onPaymentSuccess aquí, ya que el procesamiento se maneja en el componente
   }
 
-  private onPaymentError(): void {
+  private onPaymentError(errorMessage?: string): void {
     this.showPaymentProcessing = false;
     this.showPlanSelection = true;
-    alert('Error processing the subscription. Please try again.');
+    const message = errorMessage || 'Error processing the subscription. Please try again.';
+    alert(message);
   }
 
   async onPaymentProcessingSuccess(): Promise<void> {
@@ -454,6 +475,42 @@ export class SignupComponent implements OnInit {
     this.showPaymentProcessing = false;
     this.showPlanSelection = true;
     alert('Error processing the subscription. Please try again.');
+  }
+
+  // Método para limpiar la cuenta si el payment falla
+  private async cleanupFailedAccount(userId: string): Promise<void> {
+    try {
+      
+      // 1. Eliminar usuario de Firebase Auth (esto elimina la autenticación)
+      const currentUser = this.authService.getCurrentUser();
+      if (currentUser) {
+        await currentUser.delete();
+        console.log('Firebase Auth user deleted');
+      }
+      
+      // 2. Eliminar datos del usuario de Firebase Firestore
+      await this.authService.deleteUser(userId);
+      
+      // 3. Eliminar token si existe
+      try {
+        const token = this.createTokenObject(userId);
+        await this.authService.deleteLinkToken(token.id);
+      } catch (tokenError) {
+        console.log('Token may not exist or already deleted:', tokenError);
+      }
+      
+      // 4. Limpiar contexto y store
+      this.appContext.setCurrentUser(null);
+      this.store.dispatch({ type: '[User] Clear User' });
+      
+      // 5. Limpiar variables locales
+      this.currentUserId = '';
+      this.selectedPlanId = '';
+      this.currentPaymentId = '';
+    } catch (cleanupError) {
+      console.error('Error during account cleanup:', cleanupError);
+      // No lanzar error aquí para no interrumpir el flujo principal
+    }
   }
 
   onPaymentProcessingGoBack(): void {

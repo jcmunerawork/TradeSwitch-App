@@ -10,77 +10,90 @@
     </div>
     
     <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Account number</label>
-        <input 
-          type="number" 
-          class="form-input" 
-          [(ngModel)]="newAccount.accountNumber"
-          placeholder="Enter the account number you have in the trade, normally it's 1"
-          min="1"
-        >
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label">Account name*</label>
-        <input 
-          type="text" 
-          class="form-input" 
-          [(ngModel)]="newAccount.accountName"
-          placeholder="Account name"
-        >
-      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Account number</label>
+          <input 
+            type="number" 
+            class="form-input" 
+            [(ngModel)]="newAccount.accountNumber"
+            placeholder="Enter the account number you have in the trade, normally it's 1"
+            min="1"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Account name*</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            [(ngModel)]="newAccount.accountName"
+            placeholder="Account name"
+          >
+        </div>
 
-      <div class="form-group">
-        <label class="form-label">Account ID*</label>
-        <input 
-          type="text" 
-          class="form-input" 
-          [(ngModel)]="newAccount.accountID"
-          placeholder="Account ID"
-        >
-      </div>
+        <div class="form-group">
+          <label class="form-label">Account ID*</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            [(ngModel)]="newAccount.accountID"
+            placeholder="Account ID"
+          >
+        </div>
 
-      <div class="form-group">
-        <label class="form-label">Email trading account*</label>
-        <input 
-          type="text" 
-          class="form-input" 
-          [(ngModel)]="newAccount.emailTradingAccount"
-          placeholder="Email trading account"
-        >
-      </div>
+        <div class="form-group">
+          <label class="form-label">Email trading account*</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            [(ngModel)]="newAccount.emailTradingAccount"
+            placeholder="Email trading account"
+          >
+        </div>
 
-      <div class="form-group">
-        <label class="form-label">Password*</label>
-        <input 
-          type="text" 
-          class="form-input" 
-          [(ngModel)]="newAccount.brokerPassword"
-          placeholder="Password"
-        >
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label">Broker*</label>
-        <input
-          type="text"
-          class="form-input"
-          [(ngModel)]="newAccount.broker"
-          placeholder="Enter broker name (e.g., TradeLocker)"
-        />
-      </div>
+        <div class="form-group">
+          <label class="form-label">Password*</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            [(ngModel)]="newAccount.brokerPassword"
+            placeholder="Password"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Broker*</label>
+          <input
+            type="text"
+            class="form-input"
+            [(ngModel)]="newAccount.broker"
+            placeholder="Enter broker name (e.g., TradeLocker)"
+          />
+        </div>
 
-      <div class="form-group">
-        <label class="form-label">Server*</label>
-        <input 
-          type="text" 
-          class="form-input" 
-          [(ngModel)]="newAccount.server"
-          placeholder="Server"
-        >
-      </div>
+        <div class="form-group">
+          <label class="form-label">Server*</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            [(ngModel)]="newAccount.server"
+            placeholder="Server"
+          >
+        </div>
 
+        <div class="form-group">
+          <label class="form-label">{{ editMode ? 'Initial Balance' : 'Initial Balance*' }}</label>
+          <input 
+            type="number" 
+            class="form-input" 
+            [class.readonly]="editMode"
+            [(ngModel)]="newAccount.initialBalance"
+            placeholder="Balance"
+            [readonly]="editMode"
+          >
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="cancel-btn" (click)="onCancel()">

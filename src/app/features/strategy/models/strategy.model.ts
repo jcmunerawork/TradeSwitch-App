@@ -37,8 +37,10 @@ export interface RiskRewardConfig {
 }
 export interface RiskPerTradeConfig {
   isActive: boolean;
-  maxRiskPerTrade: number;
-  maxRiskPercentage: number;
+  review_type: "MAX" | "FIXED";
+  number_type: "PERCENTAGE" | "MONEY";
+  percentage_type: "INITIAL_B" | "ACTUAL_B" | "NULL";
+  risk_ammount: number;
   balance: number;
   type: RuleType;
 }
