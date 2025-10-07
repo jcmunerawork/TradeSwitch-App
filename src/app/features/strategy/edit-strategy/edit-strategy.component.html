@@ -5,16 +5,24 @@
       <p>Design a strategy that supports your consistency with TradeSwitch.</p>
       
       <!-- Plugin Active Warning Message -->
-      <div *ngIf="isPluginActive" class="plugin-warning-message mb-20 p-15 bg-red-100 border-radius-8 border-left-4-red">
-        <div class="d-flex align-items-center gap-10">
-          <span class="material-symbols-outlined color-red-500" style="font-size: 20px;">warning</span>
-          <p class="color-red-500 inputText mb-0">
+      <div *ngIf="isPluginActive" class="plugin-warning-message border-left-4-red">
+        <div class="d-flex align-items-center gap-10 w-min">
+          <span class="material-symbols-outlined color-red-500" style="font-size: 18px;">warning</span>
+          <p class="color-red-500 inputText mb-0 ml-10">
             <strong>Active plugin detected:</strong> You must deactivate the plugin to save strategy rules.
           </p>
         </div>
       </div>
     </div>
     <div class="action-buttons d-flex gap-16">
+      <button 
+        class="reset-btn p-10 bg-red-500 color-white inputText"
+        (click)="resetStrategy()"
+        [disabled]="loading || isPluginActive"
+        [class.disabled]="isPluginActive"
+      >
+        Reset Strategy
+      </button>
       <button 
         class="discard-btn p-10 color-primary-400 inputText"
         (click)="discardChanges()"

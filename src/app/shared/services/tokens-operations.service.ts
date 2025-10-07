@@ -1,5 +1,5 @@
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { isPlatformBrowser } from '@angular/common';
 
 export interface LinkToken {
@@ -28,6 +28,18 @@ export class TokensOperationsService {
   async createLinkToken(token: LinkToken): Promise<void> {
     if (this.db) {
       await setDoc(doc(this.db, 'tokens', token.id), token);
+    } else {
+      console.warn('Firestore not available in SSR');
+      return;
+    }
+  }
+
+  /**
+   * Eliminar token de enlace
+   */
+  async deleteLinkToken(tokenId: string): Promise<void> {
+    if (this.db) {
+      await deleteDoc(doc(this.db, 'tokens', tokenId));
     } else {
       console.warn('Firestore not available in SSR');
       return;

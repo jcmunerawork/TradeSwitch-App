@@ -9,10 +9,11 @@ import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, delete
 import { AccountDeletionService } from '../../../../shared/services/account-deletion.service';
 import { Router } from '@angular/router';
 import { AppContextService } from '../../../../shared/context';
+import { PasswordInputComponent } from '../../../../shared/components/password-input/password-input.component';
 
 @Component({
   selector: 'app-profile-details',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, PasswordInputComponent],
   templateUrl: './profile-details.component.html',
   styleUrl: './profile-details.component.scss',
   standalone: true,
@@ -46,7 +47,7 @@ export class ProfileDetailsComponent implements OnInit {
 
     this.passwordForm = this.fb.group({
       currentPassword: ['', [Validators.required]],
-      newPassword: ['', [Validators.required, Validators.minLength(6)]],
+      newPassword: ['', [Validators.required]], // Las validaciones específicas las maneja el componente
       confirmPassword: ['', [Validators.required]],
     }, { validators: this.passwordMatchValidator });
   }

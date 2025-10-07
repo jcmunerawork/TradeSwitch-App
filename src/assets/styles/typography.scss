@@ -30,13 +30,14 @@ $weight-medium: 500; // Medium
 $weight-regular: 400; // Regular
 
 .logoTitle {
-  overflow: hidden;
   text-overflow: ellipsis;
   font-family: $font-interface;
   font-size: clamp(1.1rem, 2vw, 1.4rem);
   font-style: normal;
   font-weight: $weight-bold;
-  line-height: 22.264px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
   letter-spacing: 0.02em;
 }
 

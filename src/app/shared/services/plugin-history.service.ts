@@ -16,6 +16,8 @@ export interface PluginHistory {
     isActive: boolean;
     updatedOn: string;
     tokenNeeded: boolean;
+    dateActive: string[];
+    dateInactive: string[];
 }
 
 @Injectable({
@@ -42,11 +44,13 @@ export class PluginHistoryService {
         }
 
         try {
+            // NUEVA LÓGICA: Buscar por document ID = plugin_{userId}
+            const pluginDocId = `plugin_${userId}`;
             const ref = collection(this.db, 'plugin_history');
-            const q = await getDocs(query(ref, where('id', '==', userId)));
+            const q = await getDocs(query(ref, where('__name__', '==', pluginDocId)));
 
             if (q.empty) {
-                console.log('⚠️ No se encontraron planes en la colección "plugin_history"');
+                console.log('⚠️ No se encontró plugin para el usuario:', userId);
                 return [];
             }
 
@@ -65,6 +69,45 @@ export class PluginHistoryService {
     }
 
     /**
+     * MÉTODO NUEVO: Determinar si el plugin está activo basándose en las fechas
+     * LÓGICA:
+     * - Si dateActive tiene más elementos que dateInactive: está activo
+     * - Si tienen la misma cantidad: comparar la última fecha de cada array
+     * - Si la última fecha de dateActive > última fecha de dateInactive: está activo
+     * - Si la última fecha de dateInactive > última fecha de dateActive: está inactivo
+     */
+    isPluginActiveByDates(pluginHistory: PluginHistory): boolean {
+        if (!pluginHistory.dateActive || !pluginHistory.dateInactive) {
+            // Fallback al campo isActive si no hay fechas
+            return pluginHistory.isActive;
+        }
+
+        const activeDates = pluginHistory.dateActive;
+        const inactiveDates = pluginHistory.dateInactive;
+
+        // Si dateActive tiene más elementos que dateInactive, está activo
+        if (activeDates.length > inactiveDates.length) {
+            return true;
+        }
+
+        // Si tienen la misma cantidad, comparar las últimas fechas
+        if (activeDates.length === inactiveDates.length) {
+            if (activeDates.length === 0) {
+                return false; // No hay fechas, asumir inactivo
+            }
+
+            const lastActiveDate = new Date(activeDates[activeDates.length - 1]);
+            const lastInactiveDate = new Date(inactiveDates[inactiveDates.length - 1]);
+
+            // Si la última fecha de active es mayor que la de inactive, está activo
+            return lastActiveDate > lastInactiveDate;
+        }
+
+        // Si dateInactive tiene más elementos que dateActive, está inactivo
+        return false;
+    }
+
+    /**
      * MÉTODO NUEVO: Listener en tiempo real para plugin history
      * FLUJO DINÁMICO:
      * - Retorna un Observable que emite cambios en tiempo real
@@ -79,8 +122,10 @@ export class PluginHistoryService {
         }
 
         return new Observable<PluginHistory[]>(subscriber => {
+            // NUEVA LÓGICA: Buscar por document ID = plugin_{userId}
+            const pluginDocId = `plugin_${userId}`;
             const pluginHistoryRef = collection(this.db!, 'plugin_history');
-            const q = query(pluginHistoryRef, where('id', '==', userId));
+            const q = query(pluginHistoryRef, where('__name__', '==', pluginDocId));
             
             const unsubscribe = onSnapshot(q, 
                 (snapshot) => {

@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { NgIf } from '@angular/common';
 import {
   FormBuilder,
   FormGroup,
@@ -9,13 +10,14 @@ import {
 } from '@angular/forms';
 import { PasswordInputComponent } from '../../../shared/components/password-input/password-input.component';
 import { TextInputComponent } from '../../../shared/components';
-import { AuthService } from '../service/authService';
+import { AuthService } from '../../../shared/services/auth.service';
 import { Router, RouterLink } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { setUserData } from '../store/user.actions';
 import { User } from '../../overview/models/overview';
 import { UserCredentials } from '../models/userModel';
 import { AppContextService } from '../../../shared/context';
+import { ForgotPasswordPopupComponent } from '../../../shared/pop-ups/forgot-password/forgot-password.component';
 
 @Component({
   selector: 'app-login',
@@ -25,6 +27,7 @@ import { AppContextService } from '../../../shared/context';
     PasswordInputComponent,
     TextInputComponent,
     RouterLink,
+    ForgotPasswordPopupComponent,
   ],
   templateUrl: './login.html',
   styleUrl: './login.scss',
@@ -32,6 +35,7 @@ import { AppContextService } from '../../../shared/context';
 export class Login {
   loginForm: FormGroup;
   showPassword = false;
+  forgotVisible = false;
 
   constructor(
     private fb: FormBuilder,
@@ -45,6 +49,7 @@ export class Login {
       password: ['', [Validators.required]],
       rememberMe: [false],
     });
+
   }
 
   onSubmit(): void {
@@ -92,6 +97,14 @@ export class Login {
           this.handleLoginError(error);
         });
     }
+  }
+
+  openForgot(): void {
+    this.forgotVisible = true;
+  }
+
+  closeForgot(): void {
+    this.forgotVisible = false;
   }
 
   private createUserCredentialsObject(): UserCredentials {

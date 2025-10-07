@@ -4,6 +4,8 @@
   justify-content: space-around;
   gap: 8px;
   width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .input-label {
@@ -20,6 +22,8 @@
   display: flex;
   gap: 0px;
   align-items: stretch;
+  width: 100%;
+  flex-wrap: nowrap;
 }
 
 .country-selector {
@@ -34,7 +38,8 @@
   color: white;
   padding: 12px 16px;
   cursor: pointer;
-  min-width: 140px;
+  min-width: 120px;
+  flex: 0 0 auto;
   transition: border-color 0.2s ease;
 
   &:hover {
@@ -150,7 +155,7 @@
 }
 
 .phone-number-input {
-  flex: 1;
+  flex: 1 1 160px;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-top-right-radius: 8px;
@@ -176,5 +181,24 @@
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+}
+
+/* Responsiveness */
+@media (max-width: 540px) {
+  .phone-input-wrapper {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .country-selector {
+    width: 100%;
+    border-radius: 8px;
+  }
+  .phone-number-input {
+    width: 100%;
+    height: 48px;
+    max-height: 48px;
+    border-radius: 8px;
   }
 }

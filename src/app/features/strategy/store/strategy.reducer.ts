@@ -23,15 +23,17 @@ export const initialStrategyState: StrategyState = {
   },
   riskPerTrade: {
     isActive: false,
-    maxRiskPerTrade: 300,
-    maxRiskPercentage: 3,
+    review_type: 'MAX',
+    number_type: 'PERCENTAGE',
+    percentage_type: 'NULL',
+    risk_ammount: 0,
+    balance: 1,
     type: RuleType.MAX_RISK_PER_TRADE,
-    balance: 0,
   },
   daysAllowed: {
     isActive: false,
     type: RuleType.DAYS_ALLOWED,
-    tradingDays: [Days.MONDAY, Days.TUESDAY],
+    tradingDays: [],
   },
   hoursAllowed: {
     isActive: false,
@@ -43,7 +45,7 @@ export const initialStrategyState: StrategyState = {
   assetsAllowed: {
     isActive: false,
     type: RuleType.ASSETS_ALLOWED,
-    assetsAllowed: ['XMRUSD', 'BTCUSD'],
+    assetsAllowed: [],
   },
 };
 

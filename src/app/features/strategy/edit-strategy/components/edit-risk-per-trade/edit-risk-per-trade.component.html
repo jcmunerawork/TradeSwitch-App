@@ -1,9 +1,10 @@
 <div class="config-row d-flex flex-col py-12 justify-between">
-  <div class="d-flex items-center mb-8">
+  <!-- Toggle para activar/desactivar -->
+  <div class="d-flex items-center mb-0">
     <label class="custom-checkbox m-6">
       <input
         type="checkbox"
-        id="toggle-max-daily-trades"
+        id="toggle-risk-per-trade"
         [checked]="config.isActive"
         (change)="onToggleActive($event)"
       />
@@ -12,42 +13,145 @@
 
     <div class="label-container">
       <label
-        for="toggle-max-daily-trades"
+        for="toggle-risk-per-trade"
         [ngClass]="{ deactivated: !config.isActive }"
       >
-        Limit my Risk per Trade:
-        <span class="ml-2 mr-26">${{ initialRiskTrade }}</span>
+        Limit my Risk per Trade
       </label>
-      <p class="balance-info">
-        {{ "(" }}Actual Balance: <em>{{ config.balance | currency }}</em
-        >{{ ")" }}
-      </p>
     </div>
   </div>
-  <div class="risk-per-trade-container flex-row d-flex items-center inputText">
+
+  <!-- Contenido que se muestra solo cuando está activo -->
+  <div *ngIf="config.isActive" class="risk-config-content">
+    
+    <!-- Opciones de tipo de tamaño -->
+    <div class="option-group mb-12">
+      <h4 class="option-title mb-8">Size Type</h4>
+      <div class="button-group">
+        <button 
+          class="option-button"
+          [class.active]="selectedSizeType === 'max-size'"
+          (click)="selectSizeType('max-size')"
+        >
+          max-size
+        </button>
+        <button 
+          class="option-button"
+          [class.active]="selectedSizeType === 'fixed'"
+          (click)="selectSizeType('fixed')"
+        >
+          fixed
+        </button>
+      </div>
+      <div class="option-description" *ngIf="selectedSizeType">
+        <p *ngIf="selectedSizeType === 'max-size'">You can trade up to the entered price.</p>
+        <p *ngIf="selectedSizeType === 'fixed'">The trade must be exactly at this price.</p>
+      </div>
+    </div>
+
+    <!-- Opciones de tipo de cálculo - Solo se muestra si se seleccionó un tipo de tamaño -->
+    <div *ngIf="selectedSizeType" class="option-group mb-16">
+      <h4 class="option-title mb-8">Calculation Type</h4>
+      <div class="button-group">
+        <button 
+          class="option-button"
+          [class.active]="selectedCalculationType === 'by percentage'"
+          (click)="selectCalculationType('by percentage')"
+        >
+          by percentage
+        </button>
+        <button 
+          class="option-button"
+          [class.active]="selectedCalculationType === 'by price'"
+          (click)="selectCalculationType('by price')"
+        >
+          by price
+        </button>
+      </div>
+    </div>
+
+    <!-- Configuración por porcentaje - Solo se muestra si se seleccionó "by percentage" -->
+    <div *ngIf="selectedCalculationType === 'by percentage'" class="percentage-config">
+      <!-- Selector de tipo de balance -->
+      <div class="option-group mb-16">
+        <h4 class="option-title mb-8">Balance Type</h4>
+        <div class="button-group">
+          <button 
+            class="option-button"
+            [class.active]="selectedBalanceType === 'by actual balance'"
+            (click)="selectBalanceType('by actual balance')"
+          >
+            by actual balance
+          </button>
+          <button 
+            class="option-button"
+            [class.active]="selectedBalanceType === 'by initial balance'"
+            (click)="selectBalanceType('by initial balance')"
+          >
+            by initial balance
+          </button>
+        </div>
+      </div>
+
+      <!-- Selector de cuenta - aparece después de elegir tipo de balance -->
+      <div *ngIf="selectedBalanceType" class="account-select mb-12">
+        <label for="account-select" class="input-label">Account</label>
+        <select id="account-select" class="custom-input account-dropdown" (change)="onSelectAccount($event)">
+          <option value="" selected disabled>Select an account</option>
+          <option *ngFor="let acc of userAccounts" [value]="acc.accountID">
+            {{ acc.accountID }} • {{ ((acc.accountName && acc.accountName.length > 22) ? (acc.accountName | slice:0:22) + '…' : (acc.accountName || 'Unnamed')) }}  —  $
+            {{ (selectedBalanceType === 'by actual balance' ? accountActualBalances[acc.accountID] : acc.initialBalance) | number:'1.2-2' }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Información del balance y cálculo - Solo se muestra si se seleccionó cuenta -->
+      <div *ngIf="selectedBalanceType && selectedAccount" class="balance-info mb-12">
+        <p class="balance-text">
+          {{ selectedBalanceType === 'by actual balance' ? 'Actual Balance' : 'Initial Balance' }}: 
+          <strong>${{ getCurrentBalance() | number:'1.2-2' }}</strong>
+        </p>
+        <p class="calculation-text">
+          {{ percentageValue }}% = <strong>${{ getCalculatedAmount() | number:'1.2-2' }}</strong>
+        </p>
+      </div>
+
+      <!-- Input de porcentaje - Solo se muestra si se seleccionó cuenta -->
+      <div *ngIf="selectedBalanceType && selectedAccount" class="input-group">
+        <label for="percentage-input" class="input-label">Percentage</label>
     <div class="input-with-suffix">
       <input
         type="number"
-        min="1"
-        id="risk-percentage-input"
-        [value]="config.maxRiskPercentage"
-        [disabled]="!config.isActive"
-        (change)="onChangePercentage($event)"
-        class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
+        id="percentage-input"
+        [value]="percentageValue"
+        (input)="onPercentageChange($event)"
+            [disabled]="!selectedAccount"
+        class="custom-input"
+        min="0.01"
+        max="100"
+        step="0.01"
       />
       <span class="suffix">%</span>
+        </div>
+      </div>
     </div>
+
+    <!-- Configuración por precio - Solo se muestra si se seleccionó "by price" -->
+    <div *ngIf="selectedCalculationType === 'by price'" class="price-config">
+      <div class="input-group">
+        <label for="price-input" class="input-label">Price</label>
     <div class="input-with-prefix">
       <span class="prefix">$</span>
       <input
-        type="number"
-        min="1"
-        id="risk-price-input"
-        [value]="config.maxRiskPerTrade"
-        [disabled]="!config.isActive"
-        (change)="onChangeAmount($event)"
-        class="inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
-      />
+        type="text"
+            id="price-input"
+            [value]="displayPriceValue"
+            (input)="formatCurrency($event)"
+            (blur)="onBlur()"
+            class="custom-input"
+          />
+        </div>
+      </div>
     </div>
   </div>
 </div>

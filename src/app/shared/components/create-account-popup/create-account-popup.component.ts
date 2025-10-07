@@ -49,7 +49,7 @@ export class CreateAccountPopupComponent implements OnChanges {
     broker: '',
     server: '',
     accountID: '',
-    balance: 0,
+    initialBalance: 0,
     accountNumber: 0,
   };
 
@@ -141,7 +141,7 @@ export class CreateAccountPopupComponent implements OnChanges {
       brokerPassword: this.newAccount.brokerPassword,
       accountID: this.newAccount.accountID,
       accountNumber: this.newAccount.accountNumber,
-      balance: this.newAccount.balance,
+      initialBalance: this.newAccount.initialBalance,
     };
     
     // Update in Firebase
@@ -168,7 +168,7 @@ export class CreateAccountPopupComponent implements OnChanges {
       brokerPassword: '',
       accountID: '',
       accountNumber: 1, // Default to 1 as suggested
-      balance: 0,
+      initialBalance: 0,
     };
   }
 
@@ -182,7 +182,7 @@ export class CreateAccountPopupComponent implements OnChanges {
         brokerPassword: this.accountToEdit.brokerPassword || '',
         accountID: this.accountToEdit.accountID || '',
         accountNumber: this.accountToEdit.accountNumber || 1,
-        balance: this.accountToEdit.balance || 0,
+        initialBalance: this.accountToEdit.initialBalance || 0,
       };
     }
   }
@@ -202,7 +202,7 @@ export class CreateAccountPopupComponent implements OnChanges {
       accountName: this.newAccount.accountName,
       accountID: this.newAccount.accountID,
       accountNumber: this.newAccount.accountNumber,
-      balance: this.newAccount.balance,
+      initialBalance: this.newAccount.initialBalance,
       createdAt: Timestamp.now(),
     };
   }
@@ -225,23 +225,20 @@ export class CreateAccountPopupComponent implements OnChanges {
   }
 
   /**
-   * Validates that both email and account ID are unique across all accounts
+   * Validates that broker + server + accountId combination is unique across all accounts
    * Returns validation result with appropriate message
    */
   private async validateAccountUniqueness(): Promise<{isValid: boolean, message: string}> {
     try {
-      // Check if email is already used by another user
-      const emailExists = await this.authService.checkEmailExists(this.newAccount.emailTradingAccount, this.userId);
-      if (emailExists) {
-        return {
-          isValid: false,
-          message: 'This account is already registered. Try with another account or delete the existing trade account it is linked to.'
-        };
-      }
-
-      // Check if account ID is already used by another user
-      const accountIdExists = await this.authService.checkAccountIdExists(this.newAccount.accountID, this.userId);
-      if (accountIdExists) {
+      // Check if broker + server + accountId combination already exists
+      const accountExists = await this.authService.checkAccountExists(
+        this.newAccount.broker,
+        this.newAccount.server,
+        this.newAccount.accountID,
+        this.userId
+      );
+      
+      if (accountExists) {
         return {
           isValid: false,
           message: 'This account is already registered. Try with another account or delete the existing trade account it is linked to.'

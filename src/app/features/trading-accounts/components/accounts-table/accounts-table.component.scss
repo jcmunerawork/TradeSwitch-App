@@ -358,10 +358,11 @@ table {
 // Column widths for better layout
 th:nth-child(1), td:nth-child(1) { width: 200px; } // Account Name
 th:nth-child(2), td:nth-child(2) { width: 150px; } // Broker
-th:nth-child(3), td:nth-child(3) { width: 100px; } // Balance
-th:nth-child(4), td:nth-child(4) { width: 120px; } // Profit calculation
-th:nth-child(5), td:nth-child(5) { width: 150px; } // Last update
-th:nth-child(6), td:nth-child(6) { width: 100px; } // File upload
+th:nth-child(3), td:nth-child(3) { width: 100px; } // Server
+th:nth-child(4), td:nth-child(4) { width: 100px; } // Balance
+th:nth-child(5), td:nth-child(5) { width: 120px; } // Profit calculation
+th:nth-child(6), td:nth-child(6) { width: 150px; } // Last update
+th:nth-child(7), td:nth-child(7) { width: 100px; } // File upload
 th:nth-child(7), td:nth-child(7) { width: 100px; } // Clear trades
 th:nth-child(8), td:nth-child(8) { width: 100px; } // Delete account
 th:nth-child(9), td:nth-child(9) { width: 80px; }  // Actions

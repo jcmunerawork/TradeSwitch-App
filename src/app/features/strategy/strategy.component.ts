@@ -311,21 +311,17 @@ export class Strategy implements OnInit, OnDestroy {
             riskPerTrade: riskPerTradeBalance
           };
 
-          this.store.dispatch(
-            resetConfig({
-              config: completeConfig,
-            })
-          );
+          // NO USAR STORE - Solo cargar datos para mostrar
+          this.config = completeConfig;
         } else {
-          this.store.dispatch(resetConfig({ config: initialStrategyState }));
+          this.config = initialStrategyState;
         }
         this.loading = false;
         await this.checkPlanLimitations();
       })
       .catch(async (err) => {
-        this.store.dispatch(resetConfig({ config: initialStrategyState }));
+        this.config = initialStrategyState;
         this.loading = false;
-        console.error('Error to get the config', err);
         await this.checkPlanLimitations();
       });
   }
@@ -333,7 +329,7 @@ export class Strategy implements OnInit, OnDestroy {
   // Cargar configuración de la estrategia activa
   async loadActiveStrategyConfig(balance: number) {
     if (!this.activeStrategy || !this.user?.id) {
-      this.store.dispatch(resetConfig({ config: initialStrategyState }));
+      this.config = initialStrategyState;
       this.loading = false;
       this.checkPlanLimitations();
       return;
@@ -355,17 +351,13 @@ export class Strategy implements OnInit, OnDestroy {
           riskPerTrade: riskPerTradeBalance
         };
 
-        this.store.dispatch(
-          resetConfig({
-            config: completeConfig,
-          })
-        );
+        // NO USAR STORE - Solo cargar datos para mostrar
+        this.config = completeConfig;
       } else {
-        this.store.dispatch(resetConfig({ config: initialStrategyState }));
+        this.config = initialStrategyState;
       }
     } catch (error) {
-      console.error('Error loading active strategy config:', error);
-      this.store.dispatch(resetConfig({ config: initialStrategyState }));
+      this.config = initialStrategyState;
     }
     
     this.loading = false;
@@ -373,13 +365,8 @@ export class Strategy implements OnInit, OnDestroy {
   }
 
   listenConfigurations() {
-    this.store
-      .select(allRules)
-      .pipe()
-      .subscribe((config) => {
-        this.config = { ...config };
-        this.updateStrategyCard(); // Update card when config changes
-      });
+    // NO USAR STORE - Los datos se cargan directamente desde Firebase
+    // Este método se mantiene para compatibilidad pero no hace nada
   }
 
   openEditPopup() {
@@ -659,7 +646,6 @@ export class Strategy implements OnInit, OnDestroy {
         const cardData = await this.getStrategyCardData(strategy);
         this.strategyCardsData.push(cardData);
       } catch (error) {
-        console.error('Error loading card data for strategy:', strategy.name, error);
         // Agregar datos básicos en caso de error
         this.strategyCardsData.push({
           id: (strategy as any).id,
@@ -679,6 +665,54 @@ export class Strategy implements OnInit, OnDestroy {
     }
   }
 
+  // Generar nombre único para estrategia
+  private generateUniqueStrategyName(baseName: string): string {
+    // Obtener todas las estrategias existentes (activas e inactivas)
+    const allStrategies = [
+      ...(this.activeStrategy ? [this.activeStrategy] : []),
+      ...this.userStrategies
+    ];
+    
+    // Extraer solo los nombres
+    const existingNames = allStrategies.map(strategy => strategy.name);
+    
+    // Si el nombre base no existe, usarlo tal como está
+    if (!existingNames.includes(baseName)) {
+      return baseName;
+    }
+    
+    // Si el nombre base termina con "copy", agregar número secuencial
+    if (baseName.toLowerCase().endsWith('copy')) {
+      let counter = 1;
+      let newName = `${baseName} ${counter}`;
+      
+      while (existingNames.includes(newName)) {
+        counter++;
+        newName = `${baseName} ${counter}`;
+      }
+      
+      return newName;
+    }
+    
+    // Si el nombre base no termina con "copy", agregar "copy" primero
+    let copyName = `${baseName} copy`;
+    
+    if (!existingNames.includes(copyName)) {
+      return copyName;
+    }
+    
+    // Si "copy" ya existe, agregar número secuencial
+    let counter = 1;
+    let newName = `${baseName} copy ${counter}`;
+    
+    while (existingNames.includes(newName)) {
+      counter++;
+      newName = `${baseName} copy ${counter}`;
+    }
+    
+    return newName;
+  }
+
   // Crear nueva estrategia
   async onCreateNewStrategy() {
     if (!this.newStrategyName.trim()) {
@@ -692,10 +726,13 @@ export class Strategy implements OnInit, OnDestroy {
       // 1. Primero recargar las strategies para tener el estado actualizado
       await this.loadUserStrategies();
       
-      // 2. Verificar si ya hay una estrategia activa
+      // 2. Generar nombre único para la estrategia
+      const uniqueStrategyName = this.generateUniqueStrategyName(this.newStrategyName.trim());
+      
+      // 3. Verificar si ya hay una estrategia activa
       const hasActiveStrategy = this.activeStrategy !== null;
       
-      // 3. Crear configuración vacía con reglas por defecto (todas inactivas)
+      // 4. Crear configuración vacía con reglas por defecto (todas inactivas)
       const emptyStrategyConfig: StrategyState = {
         maxDailyTrades: {
           isActive: false,
@@ -709,8 +746,10 @@ export class Strategy implements OnInit, OnDestroy {
         },
         riskPerTrade: {
           isActive: false,
-          maxRiskPerTrade: 300,
-          maxRiskPercentage: 3,
+          review_type: 'MAX',
+          number_type: 'PERCENTAGE',
+          percentage_type: 'NULL',
+          risk_ammount: 0,
           type: 'MAX RISK PER TRADE' as any,
           balance: 0,
         },
@@ -733,19 +772,19 @@ export class Strategy implements OnInit, OnDestroy {
         },
       };
 
-      // 4. Crear la nueva estrategia con el status correcto
+      // 5. Crear la nueva estrategia con el status correcto
       const strategyId = await this.strategySvc.createStrategyView(
         this.user.id,
-        this.newStrategyName.trim(),
+        uniqueStrategyName,
         emptyStrategyConfig,
         !hasActiveStrategy // Activa solo si no hay otra activa
       );
 
-      // 5. Cerrar el componente de crear strategy ANTES de recargar
+      // 6. Cerrar el componente de crear strategy ANTES de recargar
       this.newStrategyName = '';
       this.showStrategySelector = false;
 
-      // 6. Recargar estrategias para mostrar la nueva
+      // 7. Recargar estrategias para mostrar la nueva
       await this.loadUserStrategies();
     } catch (error) {
       console.error('Error creating strategy:', error);
@@ -788,7 +827,6 @@ export class Strategy implements OnInit, OnDestroy {
       const balance = currentConfig?.riskPerTrade?.balance || 0;
       this.loadConfig(balance);
     } catch (error) {
-      console.error('Error activating strategy:', error);
       alert('Error activating strategy. Please try again.');
     }
   }
@@ -810,11 +848,10 @@ export class Strategy implements OnInit, OnDestroy {
         if (this.userStrategies.length > 0) {
           await this.activateStrategy((this.userStrategies[0] as any).id);
         } else {
-          this.store.dispatch(resetConfig({ config: initialStrategyState }));
+          this.config = initialStrategyState;
         }
       }
     } catch (error) {
-      console.error('Error deleting strategy:', error);
       alert('Error deleting strategy. Please try again.');
     }
   }
@@ -832,7 +869,6 @@ export class Strategy implements OnInit, OnDestroy {
       // Recargar estrategias (una sola llamada)
       await this.loadUserStrategies();
     } catch (error) {
-      console.error('Error updating strategy name:', error);
       alert('Error updating strategy name. Please try again.');
     }
   }
@@ -874,7 +910,7 @@ export class Strategy implements OnInit, OnDestroy {
         configurationId: strategyData.overview.configurationId
       };
     } catch (error) {
-      console.error('Error updating strategy card with active strategy:', error);
+      // Error silencioso
     }
   }
 
@@ -954,7 +990,6 @@ export class Strategy implements OnInit, OnDestroy {
 
       return cardData;
     } catch (error) {
-      console.error('Error getting strategy card data:', error);
       // Retornar datos básicos en caso de error
       return {
         id: (strategy as any).id,
@@ -978,13 +1013,23 @@ export class Strategy implements OnInit, OnDestroy {
     if (!this.user?.id) return;
 
     try {
-      const strategy = this.userStrategies.find(s => (s as any).id === strategyId);
+      // Buscar en estrategias inactivas primero
+      let strategy = this.userStrategies.find(s => (s as any).id === strategyId);
+      
+      // Si no se encuentra en inactivas, buscar en la estrategia activa
+      if (!strategy && this.activeStrategy && (this.activeStrategy as any).id === strategyId) {
+        strategy = this.activeStrategy;
+      }
+      
       if (!strategy) {
         console.error('Strategy not found');
         return;
       }
 
-      const newName = `${strategy.name} (Copy)`;
+      // Determinar el nombre de la copia usando la lógica de nombres únicos
+      const isActiveStrategy = this.activeStrategy && (this.activeStrategy as any).id === strategyId;
+      const baseName = strategy.name;
+      const newName = this.generateUniqueStrategyName(baseName);
       
       // Obtener la estrategia completa (configuration-overview + configurations)
       const strategyData = await this.strategySvc.getStrategyView((strategy as any).id);
@@ -998,17 +1043,18 @@ export class Strategy implements OnInit, OnDestroy {
         ...strategyData.configuration
       };
 
+      // Si es la estrategia activa, crear la copia como inactiva
       const newStrategyId = await this.strategySvc.createStrategyView(
         this.user.id,
         newName,
-        strategyConfig
+        strategyConfig,
+        isActiveStrategy ? false : undefined // false = inactiva, undefined = mantener estado original
       );
 
       // Recargar estrategias (una sola llamada)
       await this.loadUserStrategies();
       
     } catch (error) {
-      console.error('Error copying strategy:', error);
       alert('Error copying strategy. Please try again.');
     }
   }

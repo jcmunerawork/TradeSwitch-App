@@ -1,11 +1,12 @@
 .payment-processing-container {
   min-height: 100vh;
   background: #0a0a0a;
-  padding: 2rem;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  font-family: 'SF Pro Display', sans-serif;
 }
 
 .header-section {
@@ -36,6 +37,7 @@
   text-align: center;
   max-width: 600px;
   width: 100%;
+  font-family: 'SF Pro Display', sans-serif;
 }
 
 // Loading Spinner
@@ -79,6 +81,7 @@
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
+  font-family: 'SF Pro Display', sans-serif;
 }
 
 // Títulos
@@ -107,6 +110,7 @@
   flex-direction: column;
   gap: 1rem;
   align-items: center;
+  font-family: 'SF Pro Display', sans-serif;
 }
 
 .info-text {
@@ -133,6 +137,7 @@
   font-size: 0.875rem;
   margin: 0;
   max-width: 400px;
+  font-family: 'SF Pro Display', sans-serif;
 }
 
 // Estados de éxito y error
@@ -163,6 +168,7 @@
   font-size: 1.125rem;
   margin: 0;
   max-width: 400px;
+  font-family: 'SF Pro Display', sans-serif;
 }
 
 // Botones de error
@@ -170,6 +176,7 @@
   display: flex;
   gap: 1rem;
   margin-top: 1rem;
+  font-family: 'SF Pro Display', sans-serif;
 }
 
 .retry-button,
@@ -180,6 +187,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   border: none;
+  font-family: 'SF Pro Display', sans-serif;
 }
 
 .retry-button {
@@ -211,10 +219,12 @@
   
   .main-title {
     font-size: 1.5rem;
+    font-family: 'SF Pro Display', sans-serif;
   }
   
   .header-section {
     top: 1rem;
     right: 1rem;
+    font-family: 'SF Pro Display', sans-serif;
   }
 }

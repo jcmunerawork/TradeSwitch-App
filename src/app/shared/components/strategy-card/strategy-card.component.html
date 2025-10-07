@@ -73,8 +73,18 @@
     </div>
   </div>
 
-  <!-- Customize Button -->
-  <button class="customize-btn" (click)="onCustomize()" *ngIf="showCustomizeButton">
+  <!-- Action Buttons -->
+  <div class="action-buttons" *ngIf="!strategy.status">
+    <button class="edit-strategy-btn" (click)="onEdit()">
+      Edit strategy
+    </button>
+    <button class="customize-btn" (click)="onCustomize()" *ngIf="showCustomizeButton">
+      {{ customizeButtonText }}
+    </button>
+  </div>
+  
+  <!-- Customize Button for Active Strategy -->
+  <button class="customize-btn" (click)="onCustomize()" *ngIf="showCustomizeButton && strategy.status">
     {{ customizeButtonText }}
   </button>
 </div>

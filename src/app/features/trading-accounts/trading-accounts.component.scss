@@ -224,11 +224,6 @@ app-accounts-table {
 
 .mobile-add-btn {
   display: none;
-
-  @media (max-width: 1024px) {
-    display: flex;
-  }
-
   margin-top: 16px;
   background: #9bf526;
   color: #1a1a1a;
@@ -241,6 +236,10 @@ app-accounts-table {
   transition: all 0.2s ease;
   align-items: center;
   gap: 8px;
+
+  @media (max-width: 1024px) {
+    display: flex;
+  }
 
   &:hover {
     background: #8ae01a;

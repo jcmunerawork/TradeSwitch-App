@@ -36,6 +36,7 @@
 /* ❌ Hide arrows in Firefox */
 #risk-price-input[type="number"] {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 #risk-percentage-input {
@@ -63,53 +64,284 @@
   }
 }
 
+
+// Estilos para el nuevo diseño
+.risk-config-content {
+  margin-top: 16px;
+}
+
+.option-group {
+  margin-bottom: 24px;
+}
+
+.option-title {
+  color: #b8b8b8;
+  font-size: 14px;
+  font-weight: 400;
+  margin: 0 0 8px 0;
+}
+
+.button-group {
+  display: flex;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #e4e4e7;
+}
+
+.option-button {
+  background: transparent;
+  border: none;
+  color: #cececf;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: capitalize;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+  position: relative;
+  
+  &:first-child {
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+  }
+  
+  &:last-child {
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+  }
+  
+  &:not(:last-child) {
+    border-right: 1px solid #8e8e93;
+  }
+  
+  &:hover {
+    background: #3a3a3c;
+    color: rgba(255, 255, 255, 0.8);
+  }
+  
+  &.active {
+    background: #007AFF;
+    color: #1d274e;
+    border-color: #007AFF;
+    
+    &:not(:last-child) {
+      border-right-color: #007AFF;
+    }
+  }
+}
+
+.option-description {
+  p {
+    color: #8e8e93;
+    font-size: 12px;
+    margin: 0;
+    font-style: italic;
+  }
+}
+
+.balance-info {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  
+  .balance-text, .calculation-text {
+    color: #b8b8b8;
+    font-size: 14px;
+    margin: 0 0 4px 0;
+    
+    strong {
+      color: #007AFF;
+      font-weight: 400;
+    }
+  }
+}
+
+.input-group {
+  margin-bottom: 16px;
+}
+
+.input-label {
+  display: block;
+  color: #b8b8b8;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.custom-input {
+  width: 100%;
+  background: transparent;
+  border: 1px solid #8e8e93;
+  color: #b8b8b8;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: #007AFF;
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+  }
+  
+  &:hover:not(:focus) {
+    border-color: rgba(255, 255, 255, 0.8);
+  }
+}
+
+// Dropdown estilizado para cuentas
+.account-dropdown {
+  background-color: #111;
+  color: #eee;
+  border-color: #2b2b2b;
+}
+
+// Estilo de las opciones del dropdown (limitado por soporte del navegador)
+.account-dropdown option {
+  background-color: #111;
+  color: #eee;
+}
+
+// Para separar ID/Nombre del balance visualmente en opciones
+.account-dropdown option {
+  display: flex;
+  justify-content: space-between;
+}
+
+// Estilos para inputs con sufijo y prefijo
+  .input-with-suffix {
+    position: relative;
+    display: block;
+    
+    .suffix {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: #8e8e93;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .custom-input {
+      padding-right: 30px;
+    }
+  }
+
+  // Estilos para el input de balance inicial con iconos
+  .initial-balance-input {
+    .input-with-icons {
+      position: relative;
+      display: flex;
+      align-items: center;
+      
+      .custom-input {
+        flex: 1;
+        padding-right: 120px; // Espacio para los iconos
+      }
+      
+      .input-icons {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        gap: 4px;
+        
+        .icon-button {
+          background: transparent;
+          border: none;
+          color: #8e8e93;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 4px;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          
+          &:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+          }
+          
+          &:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+          }
+          
+          .material-symbols-outlined {
+            font-size: 16px;
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+          }
+          
+          // Icono de basura - rojo
+          &:first-child {
+            color: #ff3b30;
+            
+            &:hover:not(:disabled) {
+              color: #ff6b60;
+            }
+          }
+          
+          // Icono de editar - gris (mantener)
+          &:nth-child(2) {
+            color: #8e8e93;
+            
+            &:hover:not(:disabled) {
+              color: #ffffff;
+            }
+          }
+          
+          // Icono de confirmar - azul
+          &:last-child {
+            color: #007AFF;
+            
+            &:hover:not(:disabled) {
+              color: #4da6ff;
+            }
+          }
+        }
+      }
+    }
+  }
+
 .input-with-prefix {
   position: relative;
-  display: inline-block;
-  width: 100%;
-  border-radius: 0 0.375rem 0.375rem 0;
-  border-top: 1px solid #8e8e93;
-  border-bottom: 1px solid #8e8e93 !important;
-  border-left: 0 !important;
-  border-right: 1px solid #8e8e93 !important;
-  outline: none;
-  height: 2rem;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-
-  // Estados de focus y hover
-  &:focus-within {
-    border-width: 1px;
-    border-color: white !important;
-  }
-
-  &:hover:not(:focus-within) {
-    border-width: 1px;
-    border-color: rgba(255, 255, 255, 0.8) !important;
-  }
-
+  display: block;
+  
   .prefix {
     position: absolute;
-    left: 6px;
+    left: 12px;
     top: 50%;
     transform: translateY(-50%);
     pointer-events: none;
-    color: #666;
+    color: #8e8e93;
     font-size: 14px;
-    z-index: 1;
-  }
-
-  #risk-price-input {
-    width: 95%;
     font-weight: 500;
-    background-color: transparent;
-    border: none;
-    outline: none;
-    margin-left: 12px;
-    height: 100%;
-  }
-
-  input {
-    padding-left: 80px; 
   }
   
+  .custom-input {
+    padding-left: 30px;
+  }
+}
+
+// Ocultar flechas de input number
+.custom-input::-webkit-inner-spin-button,
+.custom-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.custom-input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }

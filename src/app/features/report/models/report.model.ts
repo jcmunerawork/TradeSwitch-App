@@ -228,4 +228,6 @@ export interface PluginHistoryRecord {
   updatedOn: string;
   id: string;
   tokenNeeded?: boolean;
+  dateActive: string[];
+  dateInactive: string[];
 }

@@ -3,6 +3,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { FormsModule } from '@angular/forms';
+import { NgIf } from '@angular/common';
 import { allRules } from '../store/strategy.selectors';
 import { StrategyState, RuleType } from '../models/strategy.model';
 import { resetConfig } from '../store/strategy.actions';
@@ -33,6 +34,7 @@ import { Instrument } from '../../report/models/report.model';
   selector: 'app-edit-strategy',
   imports: [
     FormsModule,
+    NgIf,
     EditMaxDailyTradesComponent,
     EditRiskRewardComponent,
     EditRiskPerTradeComponent,
@@ -147,11 +149,12 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     const emptyState: StrategyState = {
       maxDailyTrades: { isActive: false, type: RuleType.MAX_DAILY_TRADES, maxDailyTrades: 0 },
       riskReward: { isActive: false, type: RuleType.RISK_REWARD_RATIO, riskRewardRatio: '1:1' },
-      riskPerTrade: { isActive: false, type: RuleType.MAX_RISK_PER_TRADE, maxRiskPerTrade: 0, maxRiskPercentage: 0, balance: 0 },
+      riskPerTrade: { isActive: false, type: RuleType.MAX_RISK_PER_TRADE, review_type: 'MAX', number_type: 'PERCENTAGE', percentage_type: 'NULL', risk_ammount: 0, balance: 1 },
       daysAllowed: { isActive: false, type: RuleType.DAYS_ALLOWED, tradingDays: [] },
       assetsAllowed: { isActive: false, type: RuleType.ASSETS_ALLOWED, assetsAllowed: [] },
       hoursAllowed: { isActive: false, type: RuleType.TRADING_HOURS, tradingOpenTime: '09:00', tradingCloseTime: '17:00', timezone: 'UTC' }
     };
+    
     this.store.dispatch(resetConfig({ config: emptyState }));
   }
 
@@ -202,40 +205,101 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
     // My Choices: Solo reglas activas (isActive = true)
     this.myChoices = {
-      maxDailyTrades: { isActive: configurationData.maxDailyTrades.isActive, type: configurationData.maxDailyTrades.type, maxDailyTrades: configurationData.maxDailyTrades.maxDailyTrades },
-      riskReward: { isActive: configurationData.riskReward.isActive, type: configurationData.riskReward.type, riskRewardRatio: configurationData.riskReward.riskRewardRatio },
-      riskPerTrade: { isActive: configurationData.riskPerTrade.isActive, type: configurationData.riskPerTrade.type, maxRiskPerTrade: configurationData.riskPerTrade.maxRiskPerTrade, maxRiskPercentage: configurationData.riskPerTrade.maxRiskPercentage, balance: configurationData.riskPerTrade.balance },
-      daysAllowed: { isActive: configurationData.daysAllowed.isActive, type: configurationData.daysAllowed.type, tradingDays: configurationData.daysAllowed.tradingDays },
-      assetsAllowed: { isActive: configurationData.assetsAllowed.isActive, type: configurationData.assetsAllowed.type, assetsAllowed: configurationData.assetsAllowed.assetsAllowed },
-      hoursAllowed: { isActive: configurationData.hoursAllowed.isActive, type: configurationData.hoursAllowed.type, tradingOpenTime: configurationData.hoursAllowed.tradingOpenTime, tradingCloseTime: configurationData.hoursAllowed.tradingCloseTime, timezone: configurationData.hoursAllowed.timezone }
+      maxDailyTrades: { 
+        isActive: configurationData.maxDailyTrades.isActive, 
+        type: configurationData.maxDailyTrades.type, 
+        maxDailyTrades: configurationData.maxDailyTrades.maxDailyTrades 
+      },
+      riskReward: { 
+        isActive: configurationData.riskReward.isActive, 
+        type: configurationData.riskReward.type, 
+        riskRewardRatio: configurationData.riskReward.riskRewardRatio 
+      },
+      riskPerTrade: { 
+        isActive: configurationData.riskPerTrade.isActive, 
+        type: configurationData.riskPerTrade.type, 
+        review_type: configurationData.riskPerTrade.review_type, 
+        number_type: configurationData.riskPerTrade.number_type, 
+        percentage_type: configurationData.riskPerTrade.percentage_type, 
+        risk_ammount: configurationData.riskPerTrade.risk_ammount, 
+        balance: configurationData.riskPerTrade.balance 
+      },
+      daysAllowed: { 
+        isActive: configurationData.daysAllowed.isActive, 
+        type: configurationData.daysAllowed.type, 
+        tradingDays: configurationData.daysAllowed.tradingDays 
+      },
+      assetsAllowed: { 
+        isActive: configurationData.assetsAllowed.isActive, 
+        type: configurationData.assetsAllowed.type, 
+        assetsAllowed: configurationData.assetsAllowed.assetsAllowed 
+      },
+      hoursAllowed: { 
+        isActive: configurationData.hoursAllowed.isActive, 
+        type: configurationData.hoursAllowed.type, 
+        tradingOpenTime: configurationData.hoursAllowed.tradingOpenTime, 
+        tradingCloseTime: configurationData.hoursAllowed.tradingCloseTime, 
+        timezone: configurationData.hoursAllowed.timezone 
+      }
     };
 
     // Available Rules: Solo reglas NO activas (isActive = false)
     this.config = {
-      maxDailyTrades: { isActive: !configurationData.maxDailyTrades.isActive, type: configurationData.maxDailyTrades.type, maxDailyTrades: configurationData.maxDailyTrades.maxDailyTrades },
-      riskReward: { isActive: !configurationData.riskReward.isActive, type: configurationData.riskReward.type, riskRewardRatio: configurationData.riskReward.riskRewardRatio },
-      riskPerTrade: { isActive: !configurationData.riskPerTrade.isActive, type: configurationData.riskPerTrade.type, maxRiskPerTrade: configurationData.riskPerTrade.maxRiskPerTrade, maxRiskPercentage: configurationData.riskPerTrade.maxRiskPercentage, balance: configurationData.riskPerTrade.balance },
-      daysAllowed: { isActive: !configurationData.daysAllowed.isActive, type: configurationData.daysAllowed.type, tradingDays: configurationData.daysAllowed.tradingDays },
-      assetsAllowed: { isActive: !configurationData.assetsAllowed.isActive, type: configurationData.assetsAllowed.type, assetsAllowed: configurationData.assetsAllowed.assetsAllowed },
-      hoursAllowed: { isActive: !configurationData.hoursAllowed.isActive, type: configurationData.hoursAllowed.type, tradingOpenTime: configurationData.hoursAllowed.tradingOpenTime, tradingCloseTime: configurationData.hoursAllowed.tradingCloseTime, timezone: configurationData.hoursAllowed.timezone }
+      maxDailyTrades: { 
+        isActive: !configurationData.maxDailyTrades.isActive, 
+        type: configurationData.maxDailyTrades.type, 
+        maxDailyTrades: configurationData.maxDailyTrades.maxDailyTrades 
+      },
+      riskReward: { 
+        isActive: !configurationData.riskReward.isActive, 
+        type: configurationData.riskReward.type, 
+        riskRewardRatio: configurationData.riskReward.riskRewardRatio 
+      },
+      riskPerTrade: { 
+        isActive: !configurationData.riskPerTrade.isActive, 
+        type: configurationData.riskPerTrade.type, 
+        review_type: configurationData.riskPerTrade.review_type, 
+        number_type: configurationData.riskPerTrade.number_type, 
+        percentage_type: configurationData.riskPerTrade.percentage_type, 
+        risk_ammount: configurationData.riskPerTrade.risk_ammount, 
+        balance: configurationData.riskPerTrade.balance 
+      },
+      daysAllowed: { 
+        isActive: !configurationData.daysAllowed.isActive, 
+        type: configurationData.daysAllowed.type, 
+        tradingDays: configurationData.daysAllowed.tradingDays 
+      },
+      assetsAllowed: { 
+        isActive: !configurationData.assetsAllowed.isActive, 
+        type: configurationData.assetsAllowed.type, 
+        assetsAllowed: configurationData.assetsAllowed.assetsAllowed 
+      },
+      hoursAllowed: { 
+        isActive: !configurationData.hoursAllowed.isActive, 
+        type: configurationData.hoursAllowed.type, 
+        tradingOpenTime: configurationData.hoursAllowed.tradingOpenTime, 
+        tradingCloseTime: configurationData.hoursAllowed.tradingCloseTime, 
+        timezone: configurationData.hoursAllowed.timezone 
+      }
     };
   }
 
   /**
-   * MÉTODO 2: Cargar configuración de estrategia
-   * NUEVA LÓGICA SIMPLIFICADA:
+   * MÉTODO 2: Cargar configuración de estrategia desde Firebase
+   * NUEVA LÓGICA: Carga directa desde Firebase usando configurationId
    * 1. Obtener configuration-overview (metadatos)
-   * 2. Obtener configurations (reglas)
-   * 3. Analizar reglas: si todas están en false = tratar como nueva, si hay alguna en true = distribuir
+   * 2. Usar configurationId para obtener configurations específicas
+   * 3. Cargar balance actual si es necesario
+   * 4. Analizar reglas y distribuir según su estado
    */
   async loadStrategyConfiguration() {
     if (!this.strategyId) return;
     
     try {
-      // PASO 1: Obtener metadatos de la estrategia
+      // PASO 1: Obtener metadatos de la estrategia (configuration-overview)
       const overviewData = await this.strategySvc.getConfigurationOverview(this.strategyId);
       if (!overviewData) {
-        console.error('No se encontró la estrategia');
+        this.initializeAsNewStrategy();
         return;
       }
       
@@ -244,27 +308,80 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       this.lastModifiedText = this.formatDate(overviewData.updated_at.toDate());
       this.isFavorited = false;
       
-      // PASO 2: Obtener reglas de la estrategia
-      if (overviewData.configurationId) {
-        const configurationData = await this.strategySvc.getConfigurationById(overviewData.configurationId);
-        if (configurationData) {
-          // PASO 3: Analizar reglas y distribuir según su estado
-          this.analyzeAndDistributeRules(configurationData);
-        } else {
-          console.error('No se encontró la configuración de la estrategia');
-          // Si no hay configuración, tratar como nueva estrategia
-          this.initializeAsNewStrategy();
-        }
-      } else {
-        console.error('La estrategia no tiene configurationId');
-        // Si no hay configurationId, tratar como nueva estrategia
+      // PASO 2: Obtener configuración específica usando configurationId
+      if (!overviewData.configurationId) {
         this.initializeAsNewStrategy();
+        return;
       }
+      
+      // Cargar configuración específica desde Firebase
+      const configurationData = await this.strategySvc.getConfigurationById(overviewData.configurationId);
+      if (!configurationData) {
+        this.initializeAsNewStrategy();
+        return;
+      }
+      
+      // PASO 3: Cargar balance actual si es necesario para riskPerTrade
+      if (configurationData.riskPerTrade?.isActive) {
+        await this.loadBalanceForRiskPerTrade();
+      }
+      
+      // PASO 4: Analizar reglas y distribuir según su estado
+      this.analyzeAndDistributeRules(configurationData);
+      
     } catch (error) {
-      console.error('Error loading strategy configuration:', error);
       // En caso de error, tratar como nueva estrategia
       this.initializeAsNewStrategy();
     }
+  }
+
+  /**
+   * Cargar balance actual para riskPerTrade si es necesario
+   */
+  async loadBalanceForRiskPerTrade() {
+    try {
+      if (!this.user?.id || this.accountsData.length === 0) {
+        return;
+      }
+
+      // Obtener userKey
+      const userKey = await this.getUserKey();
+      if (!userKey) {
+        return;
+      }
+
+      // Usar la primera cuenta para obtener el balance
+      const firstAccount = this.accountsData[0];
+      const balanceData = await this.reportSvc.getBalanceData(
+        firstAccount.accountID,
+        userKey,
+        firstAccount.accountNumber
+      ).toPromise();
+
+      if (balanceData && balanceData.balance) {
+        // El balance se usará cuando se distribuya la configuración
+      }
+    } catch (error) {
+      // Error silencioso
+    }
+  }
+
+  /**
+   * Obtener userKey de forma síncrona
+   */
+  async getUserKey(): Promise<string | null> {
+    return new Promise((resolve) => {
+      this.store.select(selectUserKey).subscribe({
+        next: (userKey) => {
+          if (userKey && userKey !== '') {
+            resolve(userKey);
+          } else {
+            resolve(null);
+          }
+        },
+        error: () => resolve(null)
+      });
+    });
   }
 
   fetchUserAccounts() {
@@ -294,10 +411,9 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
             this.store.dispatch(setUserKey({ userKey: '' }));
           },
         });
-    } else {
-      console.warn('No user email or accounts available for fetching user key');
-      this.store.dispatch(setUserKey({ userKey: '' }));
-    }
+        } else {
+          this.store.dispatch(setUserKey({ userKey: '' }));
+        }
   }
 
   loadInstruments(userKey: string, account: AccountData) {
@@ -338,10 +454,9 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
                   console.error('Error fetching balance data', err);
                 },
               });
-            } else {
-              console.warn('No accounts available for fetching balance');
-              this.loadConfig(0);
-            }
+        } else {
+          this.loadConfig(0);
+        }
           }
         },
       });
@@ -393,10 +508,9 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
                   this.loadConfigWithBalance(0);
                 },
               });
-            } else {
-              console.warn('No accounts available for fetching balance');
-              this.loadConfigWithBalance(0);
-            }
+        } else {
+          this.loadConfigWithBalance(0);
+        }
           }
         },
       });
@@ -443,7 +557,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           // INICIALIZAR PANELES PARA NUEVA ESTRATEGIA
           this.initializePanelsForNewStrategy(initialConfigWithBalance);
           this.loading = false;
-          console.warn('No config - using initial state');
         }
       })
       .catch((err) => {
@@ -475,7 +588,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     this.myChoices = {
       maxDailyTrades: { isActive: false, type: configurationData.maxDailyTrades.type, maxDailyTrades: configurationData.maxDailyTrades.maxDailyTrades },
       riskReward: { isActive: false, type: configurationData.riskReward.type, riskRewardRatio: configurationData.riskReward.riskRewardRatio },
-      riskPerTrade: { isActive: false, type: configurationData.riskPerTrade.type, maxRiskPerTrade: configurationData.riskPerTrade.maxRiskPerTrade, maxRiskPercentage: configurationData.riskPerTrade.maxRiskPercentage, balance: configurationData.riskPerTrade.balance },
+      riskPerTrade: { isActive: false, type: configurationData.riskPerTrade.type, review_type: configurationData.riskPerTrade.review_type, number_type: configurationData.riskPerTrade.number_type, percentage_type: configurationData.riskPerTrade.percentage_type, risk_ammount: configurationData.riskPerTrade.risk_ammount, balance: configurationData.riskPerTrade.balance },
       daysAllowed: { isActive: false, type: configurationData.daysAllowed.type, tradingDays: configurationData.daysAllowed.tradingDays },
       assetsAllowed: { isActive: false, type: configurationData.assetsAllowed.type, assetsAllowed: configurationData.assetsAllowed.assetsAllowed },
       hoursAllowed: { isActive: false, type: configurationData.hoursAllowed.type, tradingOpenTime: configurationData.hoursAllowed.tradingOpenTime, tradingCloseTime: configurationData.hoursAllowed.tradingCloseTime, timezone: configurationData.hoursAllowed.timezone }
@@ -485,7 +598,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     this.config = {
       maxDailyTrades: { isActive: true, type: configurationData.maxDailyTrades.type, maxDailyTrades: configurationData.maxDailyTrades.maxDailyTrades },
       riskReward: { isActive: true, type: configurationData.riskReward.type, riskRewardRatio: configurationData.riskReward.riskRewardRatio },
-      riskPerTrade: { isActive: true, type: configurationData.riskPerTrade.type, maxRiskPerTrade: configurationData.riskPerTrade.maxRiskPerTrade, maxRiskPercentage: configurationData.riskPerTrade.maxRiskPercentage, balance: configurationData.riskPerTrade.balance },
+      riskPerTrade: { isActive: true, type: configurationData.riskPerTrade.type, review_type: configurationData.riskPerTrade.review_type, number_type: configurationData.riskPerTrade.number_type, percentage_type: configurationData.riskPerTrade.percentage_type, risk_ammount: configurationData.riskPerTrade.risk_ammount, balance: configurationData.riskPerTrade.balance },
       daysAllowed: { isActive: true, type: configurationData.daysAllowed.type, tradingDays: configurationData.daysAllowed.tradingDays },
       assetsAllowed: { isActive: true, type: configurationData.assetsAllowed.type, assetsAllowed: configurationData.assetsAllowed.assetsAllowed },
       hoursAllowed: { isActive: true, type: configurationData.hoursAllowed.type, tradingOpenTime: configurationData.hoursAllowed.tradingOpenTime, tradingCloseTime: configurationData.hoursAllowed.tradingCloseTime, timezone: configurationData.hoursAllowed.timezone }
@@ -548,7 +661,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       this.myChoices = {
         maxDailyTrades: { isActive: this.config.maxDailyTrades.isActive, type: this.config.maxDailyTrades.type, maxDailyTrades: this.config.maxDailyTrades.maxDailyTrades },
         riskReward: { isActive: this.config.riskReward.isActive, type: this.config.riskReward.type, riskRewardRatio: this.config.riskReward.riskRewardRatio },
-        riskPerTrade: { isActive: this.config.riskPerTrade.isActive, type: this.config.riskPerTrade.type, maxRiskPerTrade: this.config.riskPerTrade.maxRiskPerTrade, maxRiskPercentage: this.config.riskPerTrade.maxRiskPercentage, balance: this.config.riskPerTrade.balance },
+        riskPerTrade: { isActive: this.config.riskPerTrade.isActive, type: this.config.riskPerTrade.type, review_type: this.config.riskPerTrade.review_type, number_type: this.config.riskPerTrade.number_type, percentage_type: this.config.riskPerTrade.percentage_type, risk_ammount: this.config.riskPerTrade.risk_ammount, balance: this.config.riskPerTrade.balance },
         daysAllowed: { isActive: this.config.daysAllowed.isActive, type: this.config.daysAllowed.type, tradingDays: this.config.daysAllowed.tradingDays },
         assetsAllowed: { isActive: this.config.assetsAllowed.isActive, type: this.config.assetsAllowed.type, assetsAllowed: this.config.assetsAllowed.assetsAllowed },
         hoursAllowed: { isActive: this.config.hoursAllowed.isActive, type: this.config.hoursAllowed.type, tradingOpenTime: this.config.hoursAllowed.tradingOpenTime, tradingCloseTime: this.config.hoursAllowed.tradingCloseTime, timezone: this.config.hoursAllowed.timezone }
@@ -588,7 +701,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     this.myChoices = {
       maxDailyTrades: { isActive: newConfig.maxDailyTrades.isActive, type: newConfig.maxDailyTrades.type, maxDailyTrades: newConfig.maxDailyTrades.maxDailyTrades },
       riskReward: { isActive: newConfig.riskReward.isActive, type: newConfig.riskReward.type, riskRewardRatio: newConfig.riskReward.riskRewardRatio },
-      riskPerTrade: { isActive: newConfig.riskPerTrade.isActive, type: newConfig.riskPerTrade.type, maxRiskPerTrade: newConfig.riskPerTrade.maxRiskPerTrade, maxRiskPercentage: newConfig.riskPerTrade.maxRiskPercentage, balance: newConfig.riskPerTrade.balance },
+      riskPerTrade: { isActive: newConfig.riskPerTrade.isActive, type: newConfig.riskPerTrade.type, review_type: newConfig.riskPerTrade.review_type, number_type: newConfig.riskPerTrade.number_type, percentage_type: newConfig.riskPerTrade.percentage_type, risk_ammount: newConfig.riskPerTrade.risk_ammount, balance: newConfig.riskPerTrade.balance },
       daysAllowed: { isActive: newConfig.daysAllowed.isActive, type: newConfig.daysAllowed.type, tradingDays: newConfig.daysAllowed.tradingDays },
       assetsAllowed: { isActive: newConfig.assetsAllowed.isActive, type: newConfig.assetsAllowed.type, assetsAllowed: newConfig.assetsAllowed.assetsAllowed },
       hoursAllowed: { isActive: newConfig.hoursAllowed.isActive, type: newConfig.hoursAllowed.type, tradingOpenTime: newConfig.hoursAllowed.tradingOpenTime, tradingCloseTime: newConfig.hoursAllowed.tradingCloseTime, timezone: newConfig.hoursAllowed.timezone }
@@ -598,7 +711,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     this.config = {
       maxDailyTrades: { isActive: !newConfig.maxDailyTrades.isActive, type: newConfig.maxDailyTrades.type, maxDailyTrades: newConfig.maxDailyTrades.maxDailyTrades },
       riskReward: { isActive: !newConfig.riskReward.isActive, type: newConfig.riskReward.type, riskRewardRatio: newConfig.riskReward.riskRewardRatio },
-      riskPerTrade: { isActive: !newConfig.riskPerTrade.isActive, type: newConfig.riskPerTrade.type, maxRiskPerTrade: newConfig.riskPerTrade.maxRiskPerTrade, maxRiskPercentage: newConfig.riskPerTrade.maxRiskPercentage, balance: newConfig.riskPerTrade.balance },
+      riskPerTrade: { isActive: !newConfig.riskPerTrade.isActive, type: newConfig.riskPerTrade.type, review_type: newConfig.riskPerTrade.review_type, number_type: newConfig.riskPerTrade.number_type, percentage_type: newConfig.riskPerTrade.percentage_type, risk_ammount: newConfig.riskPerTrade.risk_ammount, balance: newConfig.riskPerTrade.balance },
       daysAllowed: { isActive: !newConfig.daysAllowed.isActive, type: newConfig.daysAllowed.type, tradingDays: newConfig.daysAllowed.tradingDays },
       assetsAllowed: { isActive: !newConfig.assetsAllowed.isActive, type: newConfig.assetsAllowed.type, assetsAllowed: newConfig.assetsAllowed.assetsAllowed },
       hoursAllowed: { isActive: !newConfig.hoursAllowed.isActive, type: newConfig.hoursAllowed.type, tradingOpenTime: newConfig.hoursAllowed.tradingOpenTime, tradingCloseTime: newConfig.hoursAllowed.tradingCloseTime, timezone: newConfig.hoursAllowed.timezone }
@@ -606,12 +719,17 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   }
 
   saveStrategy() {
+    console.log('💾 saveStrategy() called');
+    console.log('- isPluginActive:', this.isPluginActive);
+    
     // Verificar si se puede guardar (plugin no activo)
     if (!this.canSaveStrategy()) {
+      console.log('❌ Save blocked: Plugin is active');
       alert('Cannot save strategy while plugin is active. Please deactivate the plugin first.');
       return;
     }
     
+    console.log('✅ Save allowed: Plugin is not active');
     this.confirmPopupVisible = true;
   }
 
@@ -631,7 +749,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       const newConfig: StrategyState = {
         maxDailyTrades: { isActive: this.myChoices.maxDailyTrades.isActive, type: this.myChoices.maxDailyTrades.type, maxDailyTrades: this.myChoices.maxDailyTrades.maxDailyTrades },
         riskReward: { isActive: this.myChoices.riskReward.isActive, type: this.myChoices.riskReward.type, riskRewardRatio: this.myChoices.riskReward.riskRewardRatio },
-        riskPerTrade: { isActive: this.myChoices.riskPerTrade.isActive, type: this.myChoices.riskPerTrade.type, maxRiskPerTrade: this.myChoices.riskPerTrade.maxRiskPerTrade, maxRiskPercentage: this.myChoices.riskPerTrade.maxRiskPercentage, balance: this.myChoices.riskPerTrade.balance },
+        riskPerTrade: { isActive: this.myChoices.riskPerTrade.isActive, type: this.myChoices.riskPerTrade.type, review_type: this.myChoices.riskPerTrade.review_type, number_type: this.myChoices.riskPerTrade.number_type, percentage_type: this.myChoices.riskPerTrade.percentage_type, risk_ammount: this.myChoices.riskPerTrade.risk_ammount, balance: this.myChoices.riskPerTrade.balance },
         daysAllowed: { isActive: this.myChoices.daysAllowed.isActive, type: this.myChoices.daysAllowed.type, tradingDays: this.myChoices.daysAllowed.tradingDays },
         assetsAllowed: { isActive: this.myChoices.assetsAllowed.isActive, type: this.myChoices.assetsAllowed.type, assetsAllowed: this.myChoices.assetsAllowed.assetsAllowed },
         hoursAllowed: { isActive: this.myChoices.hoursAllowed.isActive, type: this.myChoices.hoursAllowed.type, tradingOpenTime: this.myChoices.hoursAllowed.tradingOpenTime, tradingCloseTime: this.myChoices.hoursAllowed.tradingCloseTime, timezone: this.myChoices.hoursAllowed.timezone }
@@ -764,6 +882,23 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     this.router.navigate(['/strategy']);
   }
 
+  resetStrategy() {
+    // Verificar si se puede resetear (plugin no activo)
+    if (!this.canSaveStrategy()) {
+      alert('Cannot reset strategy while plugin is active. Please deactivate the plugin first.');
+      return;
+    }
+
+    // Confirmar la acción
+    const confirmed = confirm('Are you sure you want to reset the strategy? This will move all rules back to Available Rules and cannot be undone.');
+    
+    if (confirmed) {
+      // Resetear a configuración inicial (todas las reglas en Available Rules)
+      this.initializePanelsForNewStrategy(initialStrategyState);
+      console.log('Strategy reset to initial state');
+    }
+  }
+
   /**
    * MÉTODO 8: Cargar plugin history y verificar si está activo
    * FLUJO DE VERIFICACIÓN:
@@ -785,9 +920,10 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         next: (pluginHistory: PluginHistory[]) => {
           this.pluginHistory = pluginHistory;
           
-          // Verificar si el plugin está activo (solo hay uno por usuario)
+          // Verificar si el plugin está activo usando la nueva lógica de fechas
           if (pluginHistory.length > 0) {
-            this.isPluginActive = pluginHistory[0].isActive === true;
+            const plugin = pluginHistory[0];
+            this.isPluginActive = this.pluginHistoryService.isPluginActiveByDates(plugin);
           } else {
             // No hay plugin para este usuario
             this.isPluginActive = false;
@@ -814,7 +950,11 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
    * - Si el plugin no está activo, se puede guardar normalmente
    */
   canSaveStrategy(): boolean {
-    return !this.isPluginActive;
+    const canSave = !this.isPluginActive;
+    console.log('🔒 canSaveStrategy() called:');
+    console.log('- isPluginActive:', this.isPluginActive);
+    console.log('- canSave:', canSave);
+    return canSave;
   }
 
   /**
