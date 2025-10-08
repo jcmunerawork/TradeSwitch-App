@@ -1,7 +1,15 @@
 name: 🚀 Deploy Angular to GitHub Pages
+name: 🚀 Deploy Angular to GitHub Pages
 
 on:
   push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
     branches: [master]
   workflow_dispatch:
 
@@ -13,6 +21,9 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
 
     environment:
       name: github-pages
