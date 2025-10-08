@@ -2,6 +2,34 @@
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.1.4.
 
+## Prerequisites
+
+- **Node.js**: Version 22.20.0 or higher
+- **npm**: Version 11.6.0 or higher
+
+### Installing Node.js
+
+If you don't have the correct Node.js version, you can:
+
+1. **Download directly**: Visit [nodejs.org](https://nodejs.org/) and download the latest LTS version
+2. **Using NVM (recommended)**: 
+   ```bash
+   # Install NVM first, then:
+   nvm install 22.20.0
+   nvm use 22.20.0
+   ```
+3. **Using Chocolatey (Windows)**:
+   ```bash
+   choco install nodejs --version=22.20.0
+   ```
+
+### Verifying Installation
+
+```bash
+node --version  # Should show v22.20.0 or higher
+npm --version   # Should show 11.6.0 or higher
+```
+
 ## Development server
 
 To start a local development server, run:
