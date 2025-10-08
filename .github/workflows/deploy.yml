@@ -5,30 +5,25 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
-  workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-
-    - name: Set up Node.js
+      
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20.19'
         cache: 'npm'
-
+        
     - name: Install dependencies
       run: npm ci
-
-    # Paso para inyectar las variables de entorno de Firebase
-    - name: Setup Firebase environment variables
+      
+    - name: Setup environment variables
       run: |
         echo "FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}" >> .env
         echo "FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }}" >> .env
@@ -37,22 +32,16 @@ jobs:
         echo "FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" >> .env
         echo "FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}" >> .env
         echo "FIREBASE_MEASUREMENT_ID=${{ secrets.FIREBASE_MEASUREMENT_ID }}" >> .env
-
-    # Si tienes un script para preparar el entorno, inclúyelo aquí (opcional)
+        
     - name: Setup environment
       run: npm run setup-env
-
-    # Build de Angular con base-href para GitHub Pages
-    - name: Build Angular App
-      run: npx ng build --configuration production --base-href "/tradeManager-web/"
-
-    # Agrega .nojekyll para evitar problemas con archivos _
-    - name: Add .nojekyll file
-      run: echo "" > dist/trade-manager/.nojekyll
-
-    # Despliega usando peaceiris/actions-gh-pages
+      
+    - name: Build
+      run: npm run build
+      
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
+      if: github.ref == 'refs/heads/master'
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./dist/trade-manager
