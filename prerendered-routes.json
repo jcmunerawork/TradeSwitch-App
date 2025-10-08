@@ -1,0 +1,17 @@
+{
+  "routes": {
+    "/tradeManager-web": {},
+    "/tradeManager-web/account": {},
+    "/tradeManager-web/add-account": {},
+    "/tradeManager-web/admin-signup": {},
+    "/tradeManager-web/edit-strategy": {},
+    "/tradeManager-web/login": {},
+    "/tradeManager-web/overview": {},
+    "/tradeManager-web/report": {},
+    "/tradeManager-web/revenue": {},
+    "/tradeManager-web/signup": {},
+    "/tradeManager-web/strategy": {},
+    "/tradeManager-web/trading-accounts": {},
+    "/tradeManager-web/users": {}
+  }
+}
