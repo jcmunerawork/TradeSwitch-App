@@ -1,6 +1,6 @@
 
 export default {
-  basePath: '/tradeManager-web',
+  basePath: '/',
   supportedLocales: {
   "en-US": ""
 },
