@@ -45,14 +45,12 @@
           [userName]="signupForm.get('firstName')?.value || ''"
         ></app-password-input>
   
-        <div>
-          <app-phone-input
-            label="Phone number"
-            placeholder="Your phone number here"
-            formControlName="phoneNumber"
-            class="form-input"
-          ></app-phone-input>
-        </div>
+        <app-phone-input
+          label="Phone number"
+          placeholder="Your phone number here"
+          formControlName="phoneNumber"
+          class="form-input"
+        ></app-phone-input>
   
         <app-birthday-input
           label="Birthday"

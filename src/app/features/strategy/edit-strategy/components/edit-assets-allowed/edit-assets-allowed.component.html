@@ -41,7 +41,7 @@
       }
     </div>
   </div>
-  <div class="symbols-container d-flex justify-start items-start">
+  <div class="symbols-container d-flex justify-start items-start flex-wrap gap-8">
     @for (symbol of symbols; track $index) {
     <button
       (click)="removeSymbol(symbol)"

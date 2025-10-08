@@ -37,11 +37,16 @@
 }
 
 .symbols-container {
-  gap: 4px;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  flex-wrap: wrap;
   button {
     border-radius: 4px;
     background: #5186e4;
     border: none;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
   .delete-span {

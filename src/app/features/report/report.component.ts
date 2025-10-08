@@ -932,7 +932,8 @@ export class ReportComponent implements OnInit {
     try {
       const accessCheck = await this.planLimitationsGuard.checkReportAccessWithModal(this.user.id);
       
-      if (!accessCheck.canAccess && accessCheck.modalData) {
+      // Only show blocking modal if user has trading accounts (not first-time user with plan)
+      if (!accessCheck.canAccess && accessCheck.modalData && this.accountsData.length > 0) {
         this.planLimitationModal = accessCheck.modalData;
       }
     } catch (error) {

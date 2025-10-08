@@ -292,8 +292,15 @@ export class SignupComponent implements OnInit {
       this.appContext.setLoading('user', true);
       this.appContext.setError('user', null);
       
-      // Crear el usuario primero
+      // Verificar que el email no esté ya registrado
       const userCredentials = this.createUserCredentialsObject();
+      const existingUser = await this.authService.getUserByEmail(userCredentials.email);
+      
+      if (existingUser) {
+        throw new Error('This email is already registered. Please use a different email or try logging in.');
+      }
+      
+      // Crear el usuario primero
       const userResponse = await this.authService.register(userCredentials);
       const userId = userResponse.user.uid;
       
@@ -455,7 +462,7 @@ export class SignupComponent implements OnInit {
     this.showPaymentProcessing = false;
     this.showPlanSelection = true;
     const message = errorMessage || 'Error processing the subscription. Please try again.';
-    alert(message);
+    //alert(message);
   }
 
   async onPaymentProcessingSuccess(): Promise<void> {
@@ -474,7 +481,7 @@ export class SignupComponent implements OnInit {
   onPaymentProcessingError(): void {
     this.showPaymentProcessing = false;
     this.showPlanSelection = true;
-    alert('Error processing the subscription. Please try again.');
+    //alert('Error processing the subscription. Please try again.');
   }
 
   // Método para limpiar la cuenta si el payment falla

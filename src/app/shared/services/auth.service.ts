@@ -140,6 +140,16 @@ export class AuthService {
   async checkAccountExists(broker: string, server: string, accountID: string, currentUserId: string): Promise<boolean> { return this.accountsOperationsService.checkAccountExists(broker, server, accountID, currentUserId); }
   async updateAccount(accountId: string, accountData: AccountData): Promise<void> { return this.accountsOperationsService.updateAccount(accountId, accountData); }
   async deleteAccount(accountId: string): Promise<void> { return this.accountsOperationsService.deleteAccount(accountId); }
+
+  // Verificar si un email de usuario ya está registrado
+  async getUserByEmail(email: string): Promise<User | null> {
+    try {
+      return await this.usersOperationsService.getUserByEmail(email);
+    } catch (error) {
+      console.error('Error checking if email exists:', error);
+      return null;
+    }
+  }
 }
 
 

@@ -69,6 +69,31 @@ export class UsersOperationsService {
   }
 
   /**
+   * Buscar un usuario por su email
+   */
+  async getUserByEmail(email: string): Promise<User | null> {
+    try {
+      if (!this.isBrowser || !this.db) {
+        return null;
+      }
+
+      const usersSnapshot = await getDocs(collection(this.db, 'users'));
+      
+      for (const doc of usersSnapshot.docs) {
+        const userData = doc.data() as User;
+        if (userData.email === email) {
+          return { ...userData, id: doc.id } as User;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error buscando usuario por email:', error);
+      return null;
+    }
+  }
+
+  /**
    * Actualizar un usuario existente
    */
   async updateUser(userId: string, userData: Partial<User>): Promise<void> {

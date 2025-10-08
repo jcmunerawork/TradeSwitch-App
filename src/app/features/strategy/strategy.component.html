@@ -226,3 +226,12 @@
   </div>
   }
 }
+
+<!-- Strategy Guide Modal -->
+@if (showStrategyGuide) {
+<app-strategy-guide-modal
+  (closeModal)="onCloseStrategyGuide()"
+  (dontShowAgain)="onDontShowStrategyGuideAgain()"
+  (editStrategy)="onEditStrategyFromGuide()"
+></app-strategy-guide-modal>
+}

@@ -1,0 +1,48 @@
+<div class="modal-overlay" (click)="onClose()">
+  <div class="strategy-guide-modal" (click)="$event.stopPropagation()">
+    <!-- Modal content -->
+    <div class="modal-content">
+      <!-- Header with title and close button -->
+      <div class="modal-header">
+        <h2 class="modal-title">{{ getCurrentStep().title }}</h2>
+        <button class="close-btn" (click)="onClose()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Step image -->
+      <div class="step-image-container">
+        <img [src]="getCurrentStep().image" [alt]="getCurrentStep().title" class="step-image">
+      </div>
+
+      <!-- Step indicators -->
+      <div class="step-indicators">
+        @for (step of steps; track $index) {
+          <div class="step-dot" [class.active]="$index === currentStep"></div>
+        }
+      </div>
+
+      <!-- Step content -->
+      <div class="step-content">
+        <p class="step-description">{{ getCurrentStep().description }}</p>
+      </div>
+
+      <!-- Footer with button and don't show again -->
+      <div class="modal-footer">
+        <div class="footer-content">
+          <!-- Don't show again button -->
+          <button class="dont-show-again-btn" (click)="onDontShowAgain()">
+            Don't show again
+          </button>
+
+          <!-- Main action button -->
+          <button class="btn-primary" (click)="onNext()">
+            {{ getButtonText() }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

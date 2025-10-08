@@ -6,7 +6,7 @@ import { User } from '../overview/models/overview';
 import { selectUser } from '../auth/store/user.selectios';
 import { SettingsService } from './service/strategy.service';
 import { ConfigurationOverview } from './models/strategy.model';
-import { TextInputComponent, StrategyCardComponent, StrategyCardData } from '../../shared/components';
+import { TextInputComponent, StrategyCardComponent, StrategyCardData, StrategyGuideModalComponent } from '../../shared/components';
 import { Store } from '@ngrx/store';
 import { ReportService } from '../report/service/report.service';
 import { AuthService } from '../auth/service/authService';
@@ -32,6 +32,7 @@ import { AppContextService } from '../../shared/context';
     FormsModule,
     TextInputComponent,
     StrategyCardComponent,
+    StrategyGuideModalComponent,
   ],
   templateUrl: './strategy.component.html',
   styleUrl: './strategy.component.scss',
@@ -52,6 +53,9 @@ export class Strategy implements OnInit, OnDestroy {
 
   // Button state
   isAddStrategyDisabled = false;
+  
+  // Strategy guide modal
+  showStrategyGuide = false;
   
   // Report data for strategy card
   tradeWin: number = 0;
@@ -119,6 +123,7 @@ export class Strategy implements OnInit, OnDestroy {
       console.error('Error during initialization:', error);
     } finally {
       this.initialLoading = false;
+      // Strategy guide will only show when edit-strategy button is pressed
     }
   }
 
@@ -411,7 +416,21 @@ export class Strategy implements OnInit, OnDestroy {
 
   // Strategy Card Event Handlers
   onStrategyEdit(strategyId: string) {
-    this.router.navigate(['/edit-strategy'], { queryParams: { strategyId: strategyId } });
+    // Verificar si el usuario no ha marcado "don't show again"
+    const dontShowAgain = localStorage.getItem('strategy-guide-dont-show');
+    
+    // Si no ha marcado "don't show again", mostrar el modal de guía
+    if (!dontShowAgain) {
+      this.showStrategyGuide = true;
+      return;
+    }
+    
+    // Si ya marcó "don't show again", navegar directamente a edit-strategy
+    if (strategyId) {
+      this.router.navigate(['/edit-strategy'], { queryParams: { strategyId: strategyId } });
+    } else {
+      alert('No strategy found. Please create a strategy first.');
+    }
   }
 
   onStrategyFavorite(strategyId: string) {
@@ -535,9 +554,12 @@ export class Strategy implements OnInit, OnDestroy {
 
       // If user needs subscription or is banned/cancelled
       if (limitations.needsSubscription || limitations.isBanned || limitations.isCancelled) {
-        this.showPlanBanner = true;
-        this.planBannerMessage = this.getBlockedMessage(limitations);
-        this.planBannerType = 'warning';
+        // Only show banner if user has trading accounts (not first-time user with plan)
+        if (this.accountsData.length > 0) {
+          this.showPlanBanner = true;
+          this.planBannerMessage = this.getBlockedMessage(limitations);
+          this.planBannerType = 'warning';
+        }
         return;
       }
 
@@ -1062,5 +1084,37 @@ export class Strategy implements OnInit, OnDestroy {
   // Navegar a trading accounts
   navigateToTradingAccounts() {
     this.router.navigate(['/trading-accounts']);
+  }
+
+  // Strategy guide modal methods
+  private checkShowStrategyGuide(): void {
+    const dontShowAgain = localStorage.getItem('strategy-guide-dont-show');
+    if (!dontShowAgain) {
+      this.showStrategyGuide = true;
+    }
+  }
+
+  onCloseStrategyGuide(): void {
+    this.showStrategyGuide = false;
+  }
+
+  onDontShowStrategyGuideAgain(): void {
+    localStorage.setItem('strategy-guide-dont-show', 'true');
+    this.showStrategyGuide = false;
+  }
+
+  onEditStrategyFromGuide(): void {
+    // Cerrar el modal de guía
+    this.showStrategyGuide = false;
+    
+    // Navegar a edit-strategy de la estrategia activa
+    if (this.activeStrategy && (this.activeStrategy as any).id) {
+      this.router.navigate(['/edit-strategy'], { 
+        queryParams: { strategyId: (this.activeStrategy as any).id } 
+      });
+    } else {
+      // Si no hay estrategia activa, mostrar error
+      alert('No strategy found. Please create a strategy first.');
+    }
   }
 }
