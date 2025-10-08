@@ -1,15 +1,6 @@
 name: 🚀 Deploy Angular to GitHub Pages
-name: 🚀 Deploy Angular to GitHub Pages
-
 on:
   push:
-    branches: [master]
-  workflow_dispatch:
-
-permissions:
-  contents: write
-  pages: write
-  id-token: write
     branches: [master]
   workflow_dispatch:
 
@@ -25,8 +16,6 @@ jobs:
     environment:
       name: github-pages
 
-    environment:
-      name: github-pages
     steps:
       - name: 🧾 Checkout repository
         uses: actions/checkout@v4
