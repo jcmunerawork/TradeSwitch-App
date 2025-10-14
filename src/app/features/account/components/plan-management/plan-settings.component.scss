@@ -117,9 +117,11 @@
   border: none;
   width: fit-content;
   padding: 0.625rem;
+  font-weight: 600;
 }
 
 .manage-subscription-btn:hover {
+  cursor: pointer;
   background: #4a7717;
 }
 
@@ -571,10 +573,6 @@
   height: fit-content;
   min-width: 200px; // Ancho mínimo para cada card
 
-  &:last-child {
-    border-right: none;
-  }
-
   &.current-plan {
     background: rgba(81, 134, 228, 0.05);
   }
@@ -810,10 +808,6 @@
   .plan-card {
     border-right: 1px solid #4a4a4a;
     border-bottom: none;
-
-    &:last-child {
-      border-right: none;
-    }
   }
 }
 

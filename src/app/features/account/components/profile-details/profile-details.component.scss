@@ -70,6 +70,21 @@
     color: #a0a0a0;
     cursor: not-allowed;
   }
+
+  // Estilos para el input de fecha
+  &[type="date"] {
+    // Cambiar el color del icono de calendario a blanco
+    &::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      cursor: pointer;
+    }
+    
+    // Para Firefox
+    &::-moz-calendar-picker-indicator {
+      filter: invert(1);
+      cursor: pointer;
+    }
+  }
 }
 
 .form-note {
@@ -110,7 +125,7 @@
 
   &:disabled {
     opacity: 0.6;
-    cursor: not-allowed;
+    cursor: default;
   }
 }
 
@@ -131,8 +146,8 @@
   }
 
   &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+    //opacity: 0.6;
+    cursor: default;
   }
 }
 
