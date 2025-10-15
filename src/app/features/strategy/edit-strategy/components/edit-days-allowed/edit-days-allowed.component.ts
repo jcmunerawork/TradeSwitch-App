@@ -41,16 +41,31 @@ export class EditDaysAllowedComponent implements OnInit {
     { day: Days.SUNDAY, isActive: false },
   ];
 
+  // Estado de validación
+  isValid: boolean = true;
+  errorMessage: string = '';
+
   constructor(private store: Store, private settingsService: SettingsService) {}
 
   ngOnInit(): void {
     this.listenRuleConfiguration();
   }
   onToggleActive(event: Event) {
+    const isActive = (event.target as HTMLInputElement).checked;
     const newConfig = {
       ...this.config,
-      isActive: (event.target as HTMLInputElement).checked,
+      isActive: isActive,
+      // Reiniciar días cuando se desactiva
+      tradingDays: isActive ? this.config.tradingDays : [],
     };
+    
+    // Reiniciar botones de días
+    if (!isActive) {
+      this.daysButtons.forEach(day => {
+        day.isActive = false;
+      });
+    }
+    
     this.updateConfig(newConfig);
   }
 
@@ -94,10 +109,40 @@ export class EditDaysAllowedComponent implements OnInit {
             dayOption.isActive = true;
           }
         });
+        
+        // Validar la configuración después de actualizarla
+        this.validateConfig(this.config);
       });
   }
 
   private updateConfig(config: DaysAllowedConfig) {
     this.store.dispatch(setDaysAllowedConfig({ config }));
+    this.validateConfig(config);
+  }
+
+  private validateConfig(config: DaysAllowedConfig) {
+    if (!config.isActive) {
+      this.isValid = true;
+      this.errorMessage = '';
+      return;
+    }
+
+    if (!config.tradingDays || config.tradingDays.length === 0) {
+      this.isValid = false;
+      this.errorMessage = 'You must select at least one day';
+    } else {
+      this.isValid = true;
+      this.errorMessage = '';
+    }
+  }
+
+  // Método público para verificar si la regla es válida
+  public isRuleValid(): boolean {
+    return this.isValid;
+  }
+
+  // Método público para obtener el mensaje de error
+  public getErrorMessage(): string {
+    return this.errorMessage;
   }
 }

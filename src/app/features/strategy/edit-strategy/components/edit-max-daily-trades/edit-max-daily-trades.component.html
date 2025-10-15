@@ -1,28 +1,63 @@
-<div class="config-row d-flex py-12 justify-between">
-  <div class="d-flex items-center">
-    <label class="custom-checkbox m-6">
-      <input
-        type="checkbox"
-        id="toggle-max-daily-trades"
-        [checked]="config.isActive"
-        (change)="onToggleActive($event)"
-      />
-      <span class="checkmark"></span>
-    </label>
-
-    <label
-      for="toggle-max-daily-trades"
-      [ngClass]="{ deactivated: !config.isActive }"
-      >Max Daily Trades</label
-    >
+<div class="config-row d-flex flex-col py-12 justify-between">
+  <!-- Mensaje de error de validación -->
+  @if (!isValid && config.isActive) {
+  <div class="validation-error mb-3">
+    <span class="error-message">{{ errorMessage }}</span>
   </div>
-  <input
-    type="number"
-    id="daily-trade-input"
-    min="1"
-    [value]="config.maxDailyTrades"
-    [disabled]="!config.isActive"
-    (change)="onChangeValue($event)"
-    class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
-  />
+  }
+  
+  <div class="d-flex justify-between items-center">
+    <div class="d-flex items-center">
+      <label class="custom-checkbox m-6">
+        <input
+          type="checkbox"
+          id="toggle-max-daily-trades"
+          [checked]="config.isActive"
+          (change)="onToggleActive($event)"
+        />
+        <span class="checkmark"></span>
+      </label>
+
+      <span
+        [ngClass]="{ deactivated: !config.isActive }"
+        class="rule-label"
+        >Max Daily Trades</span
+      >
+    </div>
+    
+    <!-- Spinner personalizado -->
+    <div class="spinner-container" [ngClass]="{ disabled: !config.isActive }">
+      <button 
+        type="button" 
+        class="spinner-btn decrement"
+        [disabled]="!config.isActive || config.maxDailyTrades <= 0"
+        (click)="decrementValue()"
+      >
+        −
+      </button>
+      <input
+        type="text"
+        id="daily-trade-input"
+        [value]="config.maxDailyTrades"
+        [disabled]="!config.isActive"
+        readonly
+        onkeydown="return false"
+        onkeyup="return false"
+        onkeypress="return false"
+        onpaste="return false"
+        oncontextmenu="return false"
+        oninput="return false"
+        onchange="return false"
+        class="spinner-input"
+      />
+      <button 
+        type="button" 
+        class="spinner-btn increment"
+        [disabled]="!config.isActive"
+        (click)="incrementValue()"
+      >
+        +
+      </button>
+    </div>
+  </div>
 </div>

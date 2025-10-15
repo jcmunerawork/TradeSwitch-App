@@ -34,6 +34,7 @@ export class RiskPerTradeComponent implements OnInit {
     risk_ammount: 0,
     type: RuleType.MAX_RISK_PER_TRADE,
     balance: 1,
+    actualBalance: 0,
   };
 
   actualBalance: number = 0;
@@ -103,16 +104,20 @@ export class RiskPerTradeComponent implements OnInit {
     const newConfig: RiskPerTradeConfig = {
       ...this.config,
       risk_ammount: percentage,
-      balance: this.actualBalance,
+      balance: -1,
+      actualBalance: this.actualBalance,
     };
     this.updateConfig(newConfig);
   }
 
   async getCurrentBalance(): Promise<number> {
     if (this.config.percentage_type === 'ACTUAL_B') {
-      // Si no tenemos el balance cargado, hacer la petición
-      if (this.actualBalance === 0) {
+      // Usar el actualBalance guardado si está disponible, sino cargar
+      if (this.config.actualBalance && this.config.actualBalance > 0) {
+        return this.config.actualBalance;
+      } else if (this.actualBalance === 0) {
         await this.loadActualBalance();
+        return this.actualBalance;
       }
       return this.actualBalance;
     } else if (this.config.percentage_type === 'INITIAL_B') {
@@ -178,7 +183,8 @@ export class RiskPerTradeComponent implements OnInit {
     const newConfig: RiskPerTradeConfig = {
       ...this.config,
       risk_ammount: moneyRisk,
-      balance: this.actualBalance,
+      balance: 0,
+      actualBalance: 0,
     };
     this.updateConfig(newConfig);
   }
@@ -191,6 +197,17 @@ export class RiskPerTradeComponent implements OnInit {
         this.config = config;
         if (!this.initialRiskTrade) {
           this.initialRiskTrade = config.risk_ammount;
+        }
+        
+        // Si la regla está inactiva, resetear todos los valores
+        if (!config.isActive) {
+          this.actualBalance = 0;
+          this.calculatedAmount = 0;
+        } else {
+          // Si está activa, cargar actualBalance si está disponible
+          if (config.actualBalance && config.actualBalance > 0) {
+            this.actualBalance = config.actualBalance;
+          }
         }
       });
   }

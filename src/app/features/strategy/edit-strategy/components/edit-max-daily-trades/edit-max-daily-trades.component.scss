@@ -8,3 +8,118 @@
       rgba(128, 128, 128, 0.55)
     );
 }
+
+.rule-label {
+  cursor: default;
+  user-select: none;
+}
+
+.custom-checkbox {
+  cursor: pointer;
+  
+  &:hover input[type="checkbox"] + .checkmark {
+    border-color: #4CAF50;
+  }
+  
+  &:hover input[type="checkbox"]:checked + .checkmark {
+    background-color: #45a049;
+  }
+}
+
+.spinner-container {
+  display: flex;
+  align-items: center;
+  border: 1px solid #8e8e93;
+  border-radius: 8px;
+  background: #18181b;
+  color: #e3e3e3;
+  
+  &.disabled {
+    opacity: 0.5;
+    background: #0f0f0f;
+  }
+}
+
+.spinner-btn {
+  background: transparent;
+  border: none;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  color: #e3e3e3;
+  transition: background-color 0.2s;
+  
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  &:disabled {
+    cursor: not-allowed;
+    color: #666;
+  }
+  
+  &.decrement {
+    border-right: 1px solid #8e8e93;
+  }
+  
+  &.increment {
+    border-left: 1px solid #8e8e93;
+  }
+}
+
+.spinner-input {
+  border: none;
+  outline: none;
+  text-align: center;
+  width: 60px;
+  padding: 8px;
+  font-size: 14px;
+  background: transparent;
+  color: #e3e3e3;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  pointer-events: none;
+  cursor: default;
+  
+  &:focus {
+    outline: none;
+  }
+  
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  &[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+}
+
+/* Estilos para mensajes de validación */
+.validation-error {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: rgba(244, 67, 54, 0.1);
+  border: 1px solid #f44336;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.error-message {
+  color: #f44336;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  
+  &::before {
+    content: "⚠";
+    margin-right: 6px;
+    font-size: 1rem;
+  }
+}

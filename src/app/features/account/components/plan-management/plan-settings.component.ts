@@ -15,10 +15,11 @@ import { selectUser } from '../../../auth/store/user.selectios';
 import { SubscriptionProcessingComponent } from '../../../../shared/components/subscription-processing/subscription-processing.component';
 import { OrderSummaryComponent } from '../../../../shared/components/order-summary/order-summary.component';
 import { UserStatus } from '../../../overview/models/overview';
+import { AppContextService } from '../../../../shared/context/context';
 
 @Component({
   selector: 'app-plan-settings',
-  imports: [CommonModule, SubscriptionProcessingComponent, OrderSummaryComponent],
+  imports: [CommonModule /*SubscriptionProcessingComponent OrderSummaryComponent*/],
   templateUrl: './plan-settings.component.html',
   styleUrl: './plan-settings.component.scss',
   standalone: true,
@@ -30,6 +31,7 @@ export class PlanSettingsComponent implements OnInit {
   userPlan: Plan | undefined = undefined;
   renewalDate: string = '';
   remainingDays: number = 0;
+  
 
   user: User | null = null;
   selectedIndex: number = 0;
@@ -47,6 +49,18 @@ export class PlanSettingsComponent implements OnInit {
   
   // Estados para cancelar plan
   showCancelPlanProcessing = false;
+  
+  // Estados para validación de downgrade
+  showDowngradeValidation = false;
+  downgradeValidationData: {
+    targetPlan: string;
+    currentAccounts: number;
+    maxAccounts: number;
+    currentStrategies: number;
+    maxStrategies: number;
+    accountsToDelete: number;
+    strategiesToDelete: number;
+  } | null = null;
   
   // Configuraciones para componentes compartidos
   subscriptionProcessingConfig = {
@@ -66,6 +80,7 @@ export class PlanSettingsComponent implements OnInit {
   private subscriptionService = inject(SubscriptionService);
   private planService = inject(PlanService);
   private authService = inject(AuthService);
+  private appContext = inject(AppContextService);
 
   constructor(
     private store: Store,
@@ -74,7 +89,21 @@ export class PlanSettingsComponent implements OnInit {
   ) {}
 
   async ngOnInit(): Promise<void> {
-    this.plansData = PLANS;
+    // Suscribirse a cambios en los planes globales
+    this.appContext.subscribeToGlobalPlansChanges().subscribe(plans => {
+      if (plans.length > 0) {
+        this.buildPlansData();
+      }
+    });
+    
+    // También intentar construir inmediatamente por si ya están cargados
+    this.buildPlansData();
+    
+    // Si no hay planes, intentar cargarlos manualmente
+    if (this.appContext.globalPlans().length === 0) {
+      await this.loadPlansManually();
+    }
+    
     this.loadUserPlan();
   }
 
@@ -88,10 +117,10 @@ export class PlanSettingsComponent implements OnInit {
       }
       
       // Obtener los pagos del usuario
-      const subscriptions = await this.subscriptionService.getAllSubscriptionsByUserId(this.user.id);
-      if (subscriptions && subscriptions.length > 0) {
+      const subscriptions = await this.subscriptionService.getUserLatestSubscription(this.user.id);
+      if (subscriptions) {
         // Obtener el último pago (más reciente)
-        const latestPayment = subscriptions[0];
+        const latestPayment = subscriptions;
         
         // Buscar el plan por ID
         const plan: Plan | undefined = await this.planService.getPlanById(latestPayment.planId);
@@ -113,6 +142,44 @@ export class PlanSettingsComponent implements OnInit {
     }
   }
 
+
+  private buildPlansData(): void {
+    // Usar planes del contexto global
+    const orderedPlans = this.appContext.orderedPlans();
+    
+    if (orderedPlans.length === 0) {
+      return;
+    }
+    
+    // Construir plansData desde los planes ordenados del contexto
+    this.plansData = orderedPlans.map((plan, index) => ({
+      name: plan.name,
+      price: parseInt(plan.price) || 0,
+      period: '/month',
+      mostPopular: index === 1, // Marcar el segundo plan como más popular (Starter)
+      icon: index === 0 ? 'triangle' : index === 1 ? 'circle' : 'square',
+      color: index === 0 ? '#4b7ee8' : index === 1 ? '#4b7ee8' : '#d1ff81',
+      features: [
+        { label: 'Trading Accounts', value: plan.tradingAccounts.toString() },
+        { label: 'Strategies', value: plan.strategies.toString() },
+        { label: 'Consistency Rules', value: 'YES' },
+        { label: 'Trading Journal', value: 'YES' },
+        { label: 'Live Statistics', value: 'YES' }
+      ],
+      cta: `Get ${plan.name} Now`
+    }));
+  }
+
+  private async loadPlansManually(): Promise<void> {
+    try {
+      const plans = await this.planService.getAllPlans();
+      this.appContext.setGlobalPlans(plans);
+      this.buildPlansData();
+    } catch (error) {
+      console.error('❌ Error cargando planes manualmente:', error);
+    }
+  }
+
   private getUserData() {
     this.store.select(selectUser).subscribe({
       next: (user) => {
@@ -125,15 +192,23 @@ export class PlanSettingsComponent implements OnInit {
   }
 
   private setDefaultFreePlan(): void {
-    this.userPlan = {
-      id: 'free',
-      name: 'Free',
-      price: '0',
-      strategies: 1,
-      tradingAccounts: 1,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
+    // Buscar el plan Free en los planes del contexto global
+    const freePlan = this.appContext.getPlanByName('Free');
+    
+    if (freePlan) {
+      this.userPlan = freePlan;
+    } else {
+      // Fallback si no se encuentra el plan Free en el contexto
+      this.userPlan = {
+        id: 'free',
+        name: 'Free',
+        price: '0',
+        strategies: 1,
+        tradingAccounts: 1,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+    }
     this.calculateRenewalDate(new Date());
   }
 
@@ -175,26 +250,19 @@ export class PlanSettingsComponent implements OnInit {
   // Métodos para el nuevo diseño de comparación de planes
   isCurrentPlan(planName: string): boolean {
     if (!this.userPlan) return false;
-    return this.userPlan.name.toLowerCase().includes(planName.toLowerCase()) || 
-           (planName === 'Free' && this.userPlan.name.toLowerCase().includes('free'));
+    return this.userPlan.name.toLowerCase() === planName.toLowerCase();
   }
 
   getTradingAccounts(planName: string): string {
-    const planMap: { [key: string]: string } = {
-      'Free': '1',
-      'Starter': '2', 
-      'Pro': '6'
-    };
-    return planMap[planName] || '1';
+    // Usar datos del contexto global
+    const limits = this.appContext.getPlanLimits(planName);
+    return limits ? limits.tradingAccounts.toString() : '1';
   }
 
   getStrategies(planName: string): string {
-    const planMap: { [key: string]: string } = {
-      'Free': '1',
-      'Starter': '3',
-      'Pro': '8'
-    };
-    return planMap[planName] || '1';
+    // Usar datos del contexto global
+    const limits = this.appContext.getPlanLimits(planName);
+    return limits ? limits.strategies.toString() : '1';
   }
 
   getButtonText(planName: string): string {
@@ -206,8 +274,21 @@ export class PlanSettingsComponent implements OnInit {
 
   // Métodos para cambio de plan
   async onPlanChange(plan: PlanCard): Promise<void> {
+    
     if (this.isCurrentPlan(plan.name)) {
       return; // No hacer nada si es el plan actual
+    }
+
+    // Validar si es un downgrade y si el usuario tiene recursos que exceden el plan de destino
+    const isDowngrade = this.isDowngrade(plan.name);
+    
+    if (isDowngrade) {
+      const validationResult = await this.validateDowngrade(plan.name);
+      
+      if (!validationResult.canDowngrade) {
+        this.showDowngradeValidationModal(validationResult);
+        return;
+      }
     }
 
     try {
@@ -300,17 +381,16 @@ export class PlanSettingsComponent implements OnInit {
 
   async confirmCancelPlan(): Promise<void> {
     if (!this.user) {
-      console.error('❌ User not found');
       return;
     }
 
     try {
       // Obtener la suscripción actual del usuario
-      const subscriptions = await this.subscriptionService.getAllSubscriptionsByUserId(this.user.id);
+      const subscriptions = await this.subscriptionService.getUserLatestSubscription(this.user.id);
       
-      if (subscriptions && subscriptions.length > 0) {
+      if (subscriptions) {
         // Obtener la suscripción más reciente
-        const latestSubscription = subscriptions[0];
+        const latestSubscription = subscriptions;
         
         // Actualizar la suscripción con status CANCELLED y planId vacío
         await this.subscriptionService.updateSubscription(this.user.id, latestSubscription.id!, {
@@ -328,7 +408,6 @@ export class PlanSettingsComponent implements OnInit {
       }
       
     } catch (error) {
-      console.error('❌ Error cancelando plan:', error);
       alert('Error cancelling plan. Please try again.');
     } finally {
       this.showCancelPlanProcessing = false;
@@ -337,6 +416,86 @@ export class PlanSettingsComponent implements OnInit {
 
   cancelCancelPlan(): void {
     this.showCancelPlanProcessing = false;
+  }
+
+  // Métodos para validación de downgrade
+  private isDowngrade(targetPlanName: string): boolean {
+    if (!this.userPlan) return false;
+    
+    const currentPlanLevel = this.getPlanLevel(this.userPlan.name);
+    const targetPlanLevel = this.getPlanLevel(targetPlanName);
+    
+    return targetPlanLevel < currentPlanLevel;
+  }
+
+  private getPlanLevel(planName: string): number {
+    const planLevels: { [key: string]: number } = {
+      'free': 1,
+      'starter': 2,
+      'pro': 3
+    };
+    return planLevels[planName.toLowerCase()] || 1;
+  }
+
+  private async validateDowngrade(targetPlanName: string): Promise<{
+    canDowngrade: boolean;
+    targetPlan: string;
+    currentAccounts: number;
+    maxAccounts: number;
+    currentStrategies: number;
+    maxStrategies: number;
+    accountsToDelete: number;
+    strategiesToDelete: number;
+  }> {
+    if (!this.user?.id) {
+      throw new Error('User ID not available');
+    }
+
+    // Obtener límites del plan de destino usando la lógica existente
+    const targetMaxAccountsStr = this.getTradingAccounts(targetPlanName);
+    const targetMaxStrategiesStr = this.getStrategies(targetPlanName);
+    
+    const targetMaxAccounts = parseInt(targetMaxAccountsStr);
+    const targetMaxStrategies = parseInt(targetMaxStrategiesStr);
+    
+    // Cargar datos actuales del usuario directamente desde Firebase
+    const userData = await this.authService.getUserDataForValidation(this.user.id);
+    const currentAccounts = userData.accounts.length;
+    const currentStrategies = userData.strategies.length;
+    
+    const accountsToDelete = Math.max(0, currentAccounts - targetMaxAccounts);
+    const strategiesToDelete = Math.max(0, currentStrategies - targetMaxStrategies);
+    
+    const canDowngrade = accountsToDelete === 0 && strategiesToDelete === 0;
+    
+    return {
+      canDowngrade,
+      targetPlan: targetPlanName,
+      currentAccounts,
+      maxAccounts: targetMaxAccounts,
+      currentStrategies,
+      maxStrategies: targetMaxStrategies,
+      accountsToDelete,
+      strategiesToDelete
+    };
+  }
+
+  private showDowngradeValidationModal(validationData: any): void {
+    this.downgradeValidationData = validationData;
+    this.showDowngradeValidation = true;
+  }
+
+  closeDowngradeValidation(): void {
+    this.showDowngradeValidation = false;
+    this.downgradeValidationData = null;
+  }
+
+  goToManageResources(): void {
+    this.showDowngradeValidation = false;
+    this.downgradeValidationData = null;
+    
+    // Navegar a las páginas de gestión de recursos
+    alert('Please delete excess resources before downgrading your plan.');
   }
 
   private async createNewSubscription(): Promise<void> {

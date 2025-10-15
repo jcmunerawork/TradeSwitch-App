@@ -11,8 +11,12 @@ import {
 } from 'firebase/auth';
 import { BehaviorSubject, filter, Observable } from 'rxjs';
 import { AppContextService } from '../context';
+import { PlanService, Plan } from './planService';
+import { SubscriptionService, Subscription } from './subscription-service';
+import { UserStatus } from '../../features/overview/models/overview';
 import { UsersOperationsService } from './users-operations.service';
 import { AccountsOperationsService } from './accounts-operations.service';
+import { StrategyOperationsService } from './strategy-operations.service';
 import { TokensOperationsService, LinkToken } from './tokens-operations.service';
 import { User } from '../../features/overview/models/overview';
 import { AccountData, UserCredentials } from '../../features/auth/models/userModel';
@@ -27,17 +31,129 @@ export class AuthService {
     @Inject(PLATFORM_ID) private platformId: Object,
     private usersOperationsService: UsersOperationsService,
     private accountsOperationsService: AccountsOperationsService,
+    private strategyOperationsService: StrategyOperationsService,
     private tokensOperationsService: TokensOperationsService,
-    private appContext: AppContextService
+    private appContext: AppContextService,
+    private planService: PlanService,
+    private subscriptionService: SubscriptionService
   ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
 
     if (this.isBrowser) {
-      onAuthStateChanged(getAuth(), (user) => {
+      onAuthStateChanged(getAuth(), async (user) => {
         this.authStateSubject.next(user !== null);
+        if (user?.uid) {
+          await this.startUserPlanListener(user.uid);
+        } else {
+          this.stopUserPlanListener();
+          this.appContext.setUserPlan(null);
+        }
       });
     } else {
       this.authStateSubject.next(false);
+    }
+  }
+
+  private subscriptionUnsubscribe: (() => void) | null = null;
+
+  private async startUserPlanListener(userId: string): Promise<void> {
+    this.stopUserPlanListener();
+    
+    // Cargar planes globales si no están cargados
+    await this.loadGlobalPlansIfNeeded();
+    
+    this.subscriptionUnsubscribe = this.subscriptionService.listenToUserLatestSubscription(
+      userId,
+      async (subscription) => {
+        await this.updateUserPlanFromSubscription(subscription);
+      }
+    );
+  }
+
+  private stopUserPlanListener(): void {
+    if (this.subscriptionUnsubscribe) {
+      this.subscriptionUnsubscribe();
+      this.subscriptionUnsubscribe = null;
+    }
+  }
+
+  private async loadGlobalPlansIfNeeded(): Promise<void> {
+    // Verificar si los planes globales ya están cargados
+    const currentPlans = this.appContext.globalPlans();
+    if (currentPlans.length > 0) {
+      return;
+    }
+
+    try {
+      const plans = await this.planService.getAllPlans();
+      this.appContext.setGlobalPlans(plans);
+    } catch (error) {
+      console.error('❌ Error cargando planes globales:', error);
+    }
+  }
+
+  private async updateUserPlanFromSubscription(subscription: Subscription | null): Promise<void> {
+    try {
+      if (!subscription) {
+        this.appContext.setUserPlan(null);
+        return;
+      }
+
+      const status = subscription.status;
+
+      // Estado baneado: bloquear uso
+      if (status === UserStatus.BANNED) {
+        this.appContext.setUserPlan({
+          planId: subscription.planId,
+          planName: 'Banned',
+          maxAccounts: 0,
+          maxStrategies: 0,
+          features: [],
+          isActive: false,
+          expiresAt: subscription.periodEnd ? (subscription.periodEnd as any).toMillis?.() ?? undefined : undefined,
+          // extensiones opcionales
+          status: UserStatus.BANNED,
+          price: '0'
+        } as any);
+        return;
+      }
+
+      // Estado cancelado: plan Free
+      if (status === UserStatus.CANCELLED) {
+        this.appContext.setUserPlan({
+          planId: 'free',
+          planName: 'Free',
+          maxAccounts: 1,
+          maxStrategies: 1,
+          features: [],
+          isActive: true,
+          status: UserStatus.CANCELLED,
+          price: '0'
+        } as any);
+        return;
+      }
+
+      // Activo: cargar plan y mapear límites
+      const plan: Plan | undefined = await this.planService.getPlanById(subscription.planId);
+      if (!plan) {
+        // Si el plan no existe, tratar como sin plan
+        this.appContext.setUserPlan(null);
+        return;
+      }
+
+      this.appContext.setUserPlan({
+        planId: plan.id,
+        planName: plan.name,
+        maxAccounts: plan.tradingAccounts ?? 1,
+        maxStrategies: plan.strategies ?? 1,
+        features: [],
+        isActive: true,
+        status,
+        price: plan.price
+      } as any);
+    } catch (error) {
+      console.error('Error actualizando user plan desde subscription:', error);
+      this.appContext.setUserPlan(null);
     }
   }
 
@@ -148,6 +264,30 @@ export class AuthService {
     } catch (error) {
       console.error('Error checking if email exists:', error);
       return null;
+    }
+  }
+
+  // Método para obtener datos del usuario para validaciones (cuentas y estrategias)
+  async getUserDataForValidation(userId: string): Promise<{
+    accounts: AccountData[];
+    strategies: any[];
+  }> {
+    try {
+      const [accounts, strategies] = await Promise.all([
+        this.accountsOperationsService.getUserAccounts(userId),
+        this.strategyOperationsService.getUserStrategyViews(userId)
+      ]);
+
+      return {
+        accounts: accounts || [],
+        strategies: strategies || []
+      };
+    } catch (error) {
+      console.error('Error getting user data for validation:', error);
+      return {
+        accounts: [],
+        strategies: []
+      };
     }
   }
 }

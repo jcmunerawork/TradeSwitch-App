@@ -162,4 +162,81 @@ export class NumberFormatterService {
       maximumFractionDigits: 0
     }).format(rounded);
   }
+
+  /**
+   * Formats input value during typing (removes non-numeric characters except decimal point)
+   * @param input - The input string to clean
+   * @returns Cleaned numeric string
+   */
+  cleanNumericInput(input: string): string {
+    return input.replace(/[^0-9.]/g, '');
+  }
+
+  /**
+   * Formats a number for input display with proper separators during typing
+   * @param input - The input string
+   * @returns Formatted string with separators
+   */
+  formatInputValue(input: string): string {
+    if (input === '') {
+      return '';
+    }
+
+    // Clean the input
+    let cleaned = this.cleanNumericInput(input);
+
+    // Avoid more than one decimal point
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      cleaned = parts[0] + '.' + parts[1];
+    }
+
+    // Convert to number
+    const value = parseFloat(cleaned);
+    if (isNaN(value)) {
+      return '';
+    }
+
+    // Format with separators and preserve decimal places
+    return value.toLocaleString('en-US', {
+      minimumFractionDigits: parts[1] ? parts[1].length : 0,
+      maximumFractionDigits: parts[1] ? parts[1].length : 2
+    });
+  }
+
+  /**
+   * Formats a number as currency for display (on blur)
+   * @param value - The number to format
+   * @returns Formatted currency string with $ symbol
+   */
+  formatCurrencyDisplay(value: number | string | null | undefined): string {
+    if (value === null || value === undefined || value === '') {
+      return '';
+    }
+
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    
+    if (isNaN(numValue) || numValue <= 0) {
+      return '';
+    }
+
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(numValue);
+  }
+
+  /**
+   * Parses a formatted currency string back to a number
+   * @param formattedValue - The formatted currency string
+   * @returns The numeric value
+   */
+  parseCurrencyValue(formattedValue: string): number {
+    if (!formattedValue) return 0;
+    
+    const numericValue = parseFloat(formattedValue.replace(/[^0-9.-]/g, ''));
+    return isNaN(numericValue) ? 0 : numericValue;
+  }
 }

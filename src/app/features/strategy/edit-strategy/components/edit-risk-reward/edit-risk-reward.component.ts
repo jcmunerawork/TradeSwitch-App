@@ -36,9 +36,12 @@ export class EditRiskRewardComponent implements OnInit {
     this.listenRuleConfiguration();
   }
   onToggleActive(event: Event) {
+    const isActive = (event.target as HTMLInputElement).checked;
     const newConfig = {
       ...this.config,
-      isActive: (event.target as HTMLInputElement).checked,
+      isActive: isActive,
+      // Reiniciar a 1:2 cuando se desactiva
+      riskRewardRatio: isActive ? this.config.riskRewardRatio : '1:2',
     };
     this.updateConfig(newConfig);
   }
@@ -60,6 +63,41 @@ export class EditRiskRewardComponent implements OnInit {
       riskRewardRatio: numberArray.join(':'),
     };
     this.updateConfig(newConfig);
+  }
+
+  // Métodos para spinner (solo para el segundo número)
+  incrementSecondValue() {
+    if (this.config.isActive) {
+      const numberArray = this.config.riskRewardRatio
+        .split(':')
+        .map((number) => parseInt(number, 10));
+      
+      numberArray[1] = numberArray[1] + 1;
+      
+      const newConfig: RiskRewardConfig = {
+        ...this.config,
+        riskRewardRatio: numberArray.join(':'),
+      };
+      this.updateConfig(newConfig);
+    }
+  }
+
+  decrementSecondValue() {
+    if (this.config.isActive) {
+      const numberArray = this.config.riskRewardRatio
+        .split(':')
+        .map((number) => parseInt(number, 10));
+      
+      if (numberArray[1] > 2) {
+        numberArray[1] = numberArray[1] - 1;
+        
+        const newConfig: RiskRewardConfig = {
+          ...this.config,
+          riskRewardRatio: numberArray.join(':'),
+        };
+        this.updateConfig(newConfig);
+      }
+    }
   }
 
   listenRuleConfiguration() {

@@ -5,3 +5,4 @@ export { PasswordInputComponent } from './password-input/password-input.componen
 export { StrategyCardComponent } from './strategy-card/strategy-card.component';
 export type { StrategyCardData } from './strategy-card/strategy-card.interface';
 export { StrategyGuideModalComponent } from './strategy-guide-modal/strategy-guide-modal.component';
+export { LoadingSpinnerComponent } from './loading-spinner/loading-spinner.component';

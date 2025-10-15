@@ -1,170 +1,166 @@
 @if (!showSubscriptionProcessing && !showOrderSummary) {
-<div class="main-titles color-background d-flex flex-col mb-24">
-  <h1 class="subtitle mb-8">Membership details</h1>
-  <h3 class="regularText">
-    Here you can view the details of your current membership.
-  </h3>
-</div>
-
-<!-- Membership Details Section -->
-<div class="membership-details-section">
-  <div class="membership-info">
-    <div class="info-column">
-      <div class="info-item">
-        <span class="info-label">Current Plan</span>
-        <span class="info-value">{{ userPlan?.name || 'Free Plan' }}</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Renewal date</span>
-        <span class="info-value">{{ renewalDate }}</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Remaining until renewal</span>
-        <span class="info-value">{{ remainingDays }} days</span>
-      </div>
-    </div>
-    <div class="info-column">
-      <div class="info-item">
-        <span class="info-label">Price</span>
-        <span class="info-value">${{ userPlan?.price || '0.00' }}</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Activation Fee</span>
-        <span class="info-value">N/A</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Billing cycle</span>
-        <span class="info-value">Monthly</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="main-titles color-background d-flex flex-col mb-24">
-  <h1 class="subtitle mb-8">Plan benefits</h1>
-  <h3 class="regularText">
-    Here's a quick look at what's included in your current plan.
-  </h3>
-</div>
-
-<!-- Plan Benefits Section -->
-<div class="plan-benefits-section">
-  <div class="benefits-list">
-    <div class="benefit-item">
-      <div class="benefit-checkbox checked"></div>
-      <span class="benefit-text">Trading accounts: {{ userPlan?.tradingAccounts || 1 }}</span>
-    </div>
-    <div class="benefit-item">
-      <div class="benefit-checkbox checked"></div>
-      <span class="benefit-text">Consistency rules</span>
-    </div>
-    <div class="benefit-item">
-      <div class="benefit-checkbox checked"></div>
-      <span class="benefit-text">Strategies: {{ userPlan?.strategies || 1 }}</span>
-    </div>
-    <div class="benefit-item">
-      <div class="benefit-checkbox checked"></div>
-      <span class="benefit-text">Trading journal</span>
-    </div>
-    <div class="benefit-item">
-      <div class="benefit-checkbox checked"></div>
-      <span class="benefit-text">Live Statistics</span>
-    </div>
-  </div>
-</div>
-
-<div class="main-titles color-background mb-30">
-  <div class="d-flex flex-col">
-    <h1 class="subtitle mb-12">Compare plans</h1>
-    <h3 class="regularText">Choose a membership that's right for you</h3>
-  </div>
-
-  <button class="manage-subscription-btn regularText signUp" (click)="onManageSubscription()">Manage Subscription</button>
-</div>
-
-<!-- Plan Comparison Table -->
-<div class="plan-comparison-section">
-  <div class="comparison-table">
-    <!-- Benefits Column -->
-    <div class="benefits-column">
-      <div class="benefits-header">
-        <h3 class="benefits-title">Benefits</h3>
-      </div>
-      <div class="benefits-text-list">
-        <div class="benefit-item">Trading Accounts</div>
-        <div class="benefit-item">Strategies</div>
-        <div class="benefit-item">Consistency Rules</div>
-        <div class="benefit-item">Trading Journal</div>
-        <div class="benefit-item">Live Statistics</div>
-      </div>
-    </div>
-
-    <!-- Plan Cards -->
-    <div class="plans-container">
-      @for (item of plansData; track $index) {
-      <div class="plan-card" [class.current-plan]="isCurrentPlan(item.name)">
-        @if (isCurrentPlan(item.name)) {
-        <div class="current-plan-badge">
-          <span>Your Current Plan</span>
-        </div>
-        }
-        
-        <div class="plan-header">
-          <h3 class="plan-name">{{ item.name }}</h3>
-          <div class="plan-price">
-            <span class="price">${{ item.price }}</span>
-            <span class="period">/month</span>
-          </div>
-        </div>
-
-        <div class="plan-features">
-          <div class="feature-row">
-            <span class="feature-value">{{ getTradingAccounts(item.name) }}</span>
-          </div>
-          <div class="feature-row">
-            <span class="feature-value">{{ getStrategies(item.name) }}</span>
-          </div>
-          <div class="feature-row">
-            <span class="feature-check">✓</span>
-          </div>
-          <div class="feature-row">
-            <span class="feature-check">✓</span>
-          </div>
-          <div class="feature-row">
-            <span class="feature-check">✓</span>
-          </div>
-        </div>
-
-        <div class="plan-footer">
-          <button 
-            class="plan-button" 
-            [class.current-plan-button]="isCurrentPlan(item.name)"
-            [disabled]="isCurrentPlan(item.name)"
-            (click)="onPlanChange(item)"
-          >
-            {{ getButtonText(item.name) }}
-          </button>
-        </div>
-      </div>
-      }
-    </div>
-  </div>
-</div>
-
-<!--
   <div class="main-titles color-background d-flex flex-col mb-24">
-    <h1 class="subtitle mb-8">Cancel Plan</h1>
+    <h1 class="subtitle mb-8">Membership details</h1>
     <h3 class="regularText">
-      You can cancel your current plan at any time from here.
+      Here you can view the details of your current membership.
     </h3>
   </div>
   
-  <div class="access-buttons d-flex items-center">
-    <button class="access-btn regularText login">Change my Plan</button>
-    <button class="access-btn regularText signUp" (click)="onCancelPlan()">Cancel my Membership</button>
+  <!-- Membership Details Section -->
+  <div class="membership-details-section">
+    <div class="membership-info">
+      <div class="info-column">
+        <div class="info-item">
+          <span class="info-label">Current Plan</span>
+          <span class="info-value">{{ userPlan?.name || 'Free Plan' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Renewal date</span>
+          <span class="info-value">{{ renewalDate }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Remaining until renewal</span>
+          <span class="info-value">{{ remainingDays }} days</span>
+        </div>
+      </div>
+      <div class="info-column">
+        <div class="info-item">
+          <span class="info-label">Price</span>
+          <span class="info-value">${{ userPlan?.price || '0.00' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Billing cycle</span>
+          <span class="info-value">Monthly</span>
+        </div>
+      </div>
+    </div>
   </div>
--->
-
+  
+  <div class="main-titles color-background d-flex flex-col mb-24">
+    <h1 class="subtitle mb-8">Plan benefits</h1>
+    <h3 class="regularText">
+      Here's a quick look at what's included in your current plan.
+    </h3>
+  </div>
+  
+  <!-- Plan Benefits Section -->
+  <div class="plan-benefits-section">
+    <div class="benefits-list">
+      <div class="benefit-item">
+        <div class="benefit-checkbox checked"></div>
+        <span class="benefit-text">Trading accounts: {{ userPlan?.tradingAccounts || 1 }}</span>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-checkbox checked"></div>
+        <span class="benefit-text">Consistency rules</span>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-checkbox checked"></div>
+        <span class="benefit-text">Strategies: {{ userPlan?.strategies || 1 }}</span>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-checkbox checked"></div>
+        <span class="benefit-text">Trading journal</span>
+      </div>
+      <div class="benefit-item">
+        <div class="benefit-checkbox checked"></div>
+        <span class="benefit-text">Live Statistics</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="main-titles color-background mb-30">
+    <div class="d-flex flex-col">
+      <h1 class="subtitle mb-12">Compare plans</h1>
+      <h3 class="regularText">Choose a membership that's right for you</h3>
+    </div>
+  
+    <button class="manage-subscription-btn regularText signUp" (click)="onManageSubscription()">Manage Subscription</button>
+  </div>
+  
+  <!-- Plan Comparison Table -->
+  <div class="plan-comparison-section">
+    <div class="comparison-table">
+      <!-- Benefits Column -->
+      <div class="benefits-column">
+        <div class="benefits-header">
+          <h3 class="benefits-title">Benefits</h3>
+        </div>
+        <div class="benefits-text-list">
+          <div class="benefit-item">Trading Accounts</div>
+          <div class="benefit-item">Strategies</div>
+          <div class="benefit-item">Consistency Rules</div>
+          <div class="benefit-item">Trading Journal</div>
+          <div class="benefit-item">Live Statistics</div>
+        </div>
+      </div>
+  
+      <!-- Plan Cards -->
+      <div class="plans-container">
+        @for (item of plansData; track $index) {
+        <div class="plan-card" [class.current-plan]="isCurrentPlan(item.name)">
+          @if (isCurrentPlan(item.name)) {
+          <div class="current-plan-badge">
+            <span>Your Current Plan</span>
+          </div>
+          }
+          
+          <div class="plan-header">
+            <h3 class="plan-name">{{ item.name }}</h3>
+            <div class="plan-price">
+              <span class="price">${{ item.price }}</span>
+              <span class="period">/month</span>
+            </div>
+          </div>
+  
+          <div class="plan-features">
+            <div class="feature-row">
+              <span class="feature-value">{{ getTradingAccounts(item.name) }}</span>
+            </div>
+            <div class="feature-row">
+              <span class="feature-value">{{ getStrategies(item.name) }}</span>
+            </div>
+            <div class="feature-row">
+              <span class="feature-check">✓</span>
+            </div>
+            <div class="feature-row">
+              <span class="feature-check">✓</span>
+            </div>
+            <div class="feature-row">
+              <span class="feature-check">✓</span>
+            </div>
+          </div>
+  
+          <div class="plan-footer">
+            <button 
+              class="plan-button" 
+              [class.current-plan-button]="isCurrentPlan(item.name)"
+              [disabled]="isCurrentPlan(item.name)"
+              (click)="onPlanChange(item)"
+            >
+              {{ getButtonText(item.name) }}
+            </button>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+  
+  <!--
+    <div class="main-titles color-background d-flex flex-col mb-24">
+      <h1 class="subtitle mb-8">Cancel Plan</h1>
+      <h3 class="regularText">
+        You can cancel your current plan at any time from here.
+      </h3>
+    </div>
+    
+    <div class="access-buttons d-flex items-center">
+      <button class="access-btn regularText login">Change my Plan</button>
+      <button class="access-btn regularText signUp" (click)="onCancelPlan()">Cancel my Membership</button>
+    </div>
+  -->
+  
 @if (showCancelPlanProcessing) {
 <!-- Cancel plan confirmation popup -->
 <div class="cancel-plan-popup">
@@ -205,21 +201,81 @@
   </div>
 </div>
 }
-}
 
-<!-- Componentes de procesamiento de pago y resumen -->
-@if (showSubscriptionProcessing) {
-<app-subscription-processing
-  [config]="subscriptionProcessingConfig"
-  (paymentSuccess)="onPaymentProcessingSuccess()"
-  (paymentError)="onPaymentProcessingError()"
-  (goBack)="onPaymentProcessingGoBack()"
-></app-subscription-processing>
+@if (showDowngradeValidation && downgradeValidationData) {
+<!-- Downgrade validation popup -->
+<div class="cancel-plan-popup">
+  <div class="popup-overlay" (click)="closeDowngradeValidation()"></div>
+  <div class="popup-content">
+    <div class="popup-header">
+      <h3 class="popup-title">Cannot Downgrade Plan</h3>
+      <button class="close-btn" (click)="closeDowngradeValidation()">×</button>
+    </div>
+    
+    <div class="popup-body">
+      <div class="warning-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      
+      <h4 class="warning-title">You have too many resources for the {{ downgradeValidationData.targetPlan }} plan</h4>
+      <p class="warning-text">
+        To downgrade to the {{ downgradeValidationData.targetPlan }} plan, you need to reduce your resources first.
+      </p>
+      
+      <div class="resource-limits-info">
+        <div class="resource-item">
+          <p class="resource-label">Trading Accounts:</p>
+          <p class="resource-details">
+            You have {{ downgradeValidationData.currentAccounts }}, but {{ downgradeValidationData.targetPlan }} plan allows only {{ downgradeValidationData.maxAccounts }}.
+            @if (downgradeValidationData.accountsToDelete > 0) {
+              <span class="excess-text">Please delete {{ downgradeValidationData.accountsToDelete }} account(s).</span>
+            }
+          </p>
+        </div>
+        
+        <div class="resource-item">
+          <p class="resource-label">Strategies:</p>
+          <p class="resource-details">
+            You have {{ downgradeValidationData.currentStrategies }}, but {{ downgradeValidationData.targetPlan }} plan allows only {{ downgradeValidationData.maxStrategies }}.
+            @if (downgradeValidationData.strategiesToDelete > 0) {
+              <span class="excess-text">Please delete {{ downgradeValidationData.strategiesToDelete }} strategie(s).</span>
+            }
+          </p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="popup-footer">
+      <button class="btn-cancel" (click)="closeDowngradeValidation()">
+        Cancel
+      </button>
+      <button class="btn-confirm" (click)="goToManageResources()">
+        Manage Resources
+      </button>
+    </div>
+  </div>
+</div>
 }
-
-@if (showOrderSummary) {
-<app-order-summary
-  [config]="orderSummaryConfig"
-  (continue)="onOrderSummaryContinue()"
-></app-order-summary>
-}
+  }
+  
+  <!-- Componentes de procesamiento de pago y resumen
+  @if (showSubscriptionProcessing) {
+  <app-subscription-processing
+    [config]="subscriptionProcessingConfig"
+    (paymentSuccess)="onPaymentProcessingSuccess()"
+    (paymentError)="onPaymentProcessingError()"
+    (goBack)="onPaymentProcessingGoBack()"
+  ></app-subscription-processing>
+  }
+  -->
+  
+  <!--
+    @if (showOrderSummary) {
+    <app-order-summary
+      [config]="orderSummaryConfig"
+      (continue)="onOrderSummaryContinue()"
+    ></app-order-summary>
+    }
+  -->

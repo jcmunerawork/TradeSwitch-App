@@ -7,6 +7,7 @@ import { PlanService } from '../shared/services/planService';
 import { UserStatus } from '../features/overview/models/overview';
 import { Observable, of, switchMap, catchError } from 'rxjs';
 import { Subscription } from '../shared/services/subscription-service';
+import { AppContextService } from '../shared/context';
 
 export interface PlanLimitations {
   maxAccounts: number;
@@ -46,6 +47,7 @@ export class PlanLimitationsGuard implements CanActivate {
   private planService = inject(PlanService);
   private store = inject(Store);
   private router = inject(Router);
+  private appContext = inject(AppContextService);
 
   canActivate(): Observable<boolean> {
     return this.store.select(selectUser).pipe(
@@ -66,12 +68,26 @@ export class PlanLimitationsGuard implements CanActivate {
    */
   async checkUserLimitations(userId: string): Promise<PlanLimitations> {
     try {
-      // Get user's latest subscription
-      const subscriptions: Subscription[] = await this.subscriptionService.getAllSubscriptionsByUserId(userId);
-  
-      
-      if (!subscriptions || subscriptions.length === 0) {
-        // No subscription found - user needs to purchase a plan
+      // Usar primero el contexto global
+      const ctxPlan = this.appContext.userPlan();
+      if (ctxPlan) {
+        const isBanned = (ctxPlan as any).status === UserStatus.BANNED || ctxPlan.isActive === false;
+        const isCancelled = (ctxPlan as any).status === UserStatus.CANCELLED && ctxPlan.planName === 'Free';
+        const isActive = ctxPlan.isActive && !isBanned;
+        return {
+          maxAccounts: ctxPlan.maxAccounts,
+          maxStrategies: ctxPlan.maxStrategies,
+          planName: ctxPlan.planName,
+          isActive,
+          isBanned,
+          isCancelled,
+          needsSubscription: !isActive && !isCancelled && !isBanned
+        };
+      }
+
+      // Fallback: obtener la última suscripción y plan (no debería ocurrir si el contexto está activo)
+      const latestSubscription: Subscription | null = await this.subscriptionService.getUserLatestSubscription(userId);
+      if (!latestSubscription) {
         return {
           maxAccounts: 0,
           maxStrategies: 0,
@@ -83,15 +99,12 @@ export class PlanLimitationsGuard implements CanActivate {
         };
       }
 
-      const latestSubscription: Subscription = subscriptions[0];
-      
-      // Check subscription status
       const isBanned = latestSubscription.status === UserStatus.BANNED;
       const isCancelled = latestSubscription.status === UserStatus.CANCELLED;
-      const isActive = latestSubscription.status === UserStatus.PURCHASED || 
-                      latestSubscription.status === UserStatus.CREATED || 
-                      latestSubscription.status === UserStatus.PROCESSING || 
-                      latestSubscription.status === UserStatus.ACTIVE;
+      const isActive = latestSubscription.status === UserStatus.PURCHASED ||
+                       latestSubscription.status === UserStatus.CREATED ||
+                       latestSubscription.status === UserStatus.PROCESSING ||
+                       latestSubscription.status === UserStatus.ACTIVE;
       
       if (isBanned || isCancelled || !isActive) {
         return {
@@ -107,7 +120,7 @@ export class PlanLimitationsGuard implements CanActivate {
 
       // Get plan details from Firebase
       const plan = await this.planService.getPlanById(latestSubscription.planId);
-      
+
       if (!plan) {
         return {
           maxAccounts: 0,

@@ -3,18 +3,18 @@
     <label class="custom-checkbox m-6">
       <input
         type="checkbox"
-        id="toggle-max-daily-trades"
+        id="toggle-risk-reward"
         [checked]="config.isActive"
         (change)="onToggleActive($event)"
       />
       <span class="checkmark"></span>
     </label>
 
-    <label
-      for="toggle-max-daily-trades"
+    <span
       [ngClass]="{ deactivated: !config.isActive }"
+      class="rule-label"
     >
-      Risk Reward</label
+      {{ inputFirstRatioValue }}:{{ inputSecondRatioValue }} Risk Reward</span
     >
   </div>
   <div class="flex-row d-flex items-center">
@@ -22,25 +22,46 @@
     <div
       class="risk-reward-container d-flex justify-between items-center flex-row"
     >
+      <!-- Primer número fijo (1) -->
       <input
         type="number"
         min="1"
         id="first-ratio-input"
         [value]="inputFirstRatioValue"
         [disabled]="!config.isActive"
-        (change)="onChangeValue($event, true)"
-        class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
+        readonly
+        class="fixed-number-input"
       />
       <span>:</span>
-      <input
-        type="number"
-        min="1"
-        id="second-ratio-input"
-        [value]="inputSecondRatioValue"
-        [disabled]="!config.isActive"
-        (change)="onChangeValue($event, false)"
-        class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
-      />
+      
+      <!-- Segundo número con spinner -->
+      <div class="spinner-container" [ngClass]="{ disabled: !config.isActive }">
+        <button 
+          type="button" 
+          class="spinner-btn decrement"
+          [disabled]="!config.isActive || inputSecondRatioValue <= 2"
+          (click)="decrementSecondValue()"
+        >
+          −
+        </button>
+        <input
+          type="number"
+          min="2"
+          id="second-ratio-input"
+          [value]="inputSecondRatioValue"
+          [disabled]="!config.isActive"
+          readonly
+          class="spinner-input"
+        />
+        <button 
+          type="button" 
+          class="spinner-btn increment"
+          [disabled]="!config.isActive"
+          (click)="incrementSecondValue()"
+        >
+          +
+        </button>
+      </div>
     </div>
   </div>
 </div>

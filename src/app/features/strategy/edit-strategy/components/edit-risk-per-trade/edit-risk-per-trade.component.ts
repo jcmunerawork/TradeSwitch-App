@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { take } from 'rxjs/operators';
 import {
   MaxDailyTradesConfig,
   RiskPerTradeConfig,
@@ -18,6 +19,7 @@ import { ReportService } from '../../../../report/service/report.service';
 import { AppContextService } from '../../../../../shared/context/context';
 import { AuthService } from '../../../../auth/service/authService';
 import { AccountData } from '../../../../auth/models/userModel';
+import { NumberFormatterService } from '../../../../../shared/utils/number-formatter.service';
 
 @Component({
   selector: 'app-edit-risk-per-trade',
@@ -35,6 +37,7 @@ export class EditRiskPerTradeComponent implements OnInit {
     risk_ammount: 0,
     type: RuleType.MAX_RISK_PER_TRADE,
     balance: 0,
+    actualBalance: 0,
   };
 
   // Nuevas propiedades para la lógica del componente
@@ -57,11 +60,14 @@ export class EditRiskPerTradeComponent implements OnInit {
   isInitialBalanceConfirmed: boolean = false;
   
   // Valores de entrada
-  percentageValue: number = 2;
+  percentageValue: number = 0;
   priceValue: number = 0;
   
   // Valor mostrado en el input de precio (con formato)
   displayPriceValue: string = '';
+  
+  // Valor del input de precio sin formato (para edición)
+  priceInputValue: string = '';
   
   // Propiedad para el precio formateado
   price: string = '';
@@ -73,12 +79,23 @@ export class EditRiskPerTradeComponent implements OnInit {
   dropdownOpen = false;
   currencies = currencies;
 
+  // Estado de validación
+  isValid: boolean = true;
+  errorMessage: string = '';
+
+  // Rastrear el estado inicial de Firebase
+  private initialFirebaseState: boolean | null = null;
+
+  // Referencia al dropdown de cuenta
+  @ViewChild('accountSelect') accountSelect?: ElementRef<HTMLSelectElement>;
+
   constructor(
     private store: Store, 
     private settingsService: SettingsService,
     private reportService: ReportService,
     private appContext: AppContextService,
-    private authService: AuthService
+    private authService: AuthService,
+    private numberFormatter: NumberFormatterService
   ) {}
 
   closeDropdown() {
@@ -86,7 +103,20 @@ export class EditRiskPerTradeComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Capturar el estado inicial ANTES de suscribirse al observable
+    this.captureInitialFirebaseState();
     this.listenRuleConfiguration();
+  }
+
+  /**
+   * Capturar el estado inicial de Firebase desde el store actual
+   * Esto evita que se capture múltiples veces durante las emisiones del observable
+   */
+  private captureInitialFirebaseState(): void {
+    // Usar take(1) para obtener solo el primer valor y luego desuscribirse automáticamente
+    this.store.select(riskPerTrade).pipe(take(1)).subscribe(config => {
+      this.initialFirebaseState = config.isActive;
+    });
   }
 
   toggleDropdown() {
@@ -103,11 +133,29 @@ export class EditRiskPerTradeComponent implements OnInit {
   }
 
   onToggleActive(event: Event) {
-    const newConfig = {
-      ...this.config,
-      isActive: (event.target as HTMLInputElement).checked,
-    };
-    this.updateConfig(newConfig);
+    const isActive = (event.target as HTMLInputElement).checked;
+    
+    if (!isActive) {
+      // Si se desactiva, resetear todos los valores a 0
+      const newConfig = {
+        ...this.config,
+        isActive: false,
+        balance: 0,
+        actualBalance: 0,
+        risk_ammount: 0,
+        review_type: 'MAX' as const,
+        number_type: 'PERCENTAGE' as const,
+        percentage_type: 'NULL' as const,
+      };
+      this.updateConfig(newConfig);
+    } else {
+      // Si se activa, mantener la configuración actual
+      const newConfig = {
+        ...this.config,
+        isActive: true,
+      };
+      this.updateConfig(newConfig);
+    }
   }
 
   // Nuevos métodos para manejar las opciones
@@ -120,12 +168,51 @@ export class EditRiskPerTradeComponent implements OnInit {
 
   selectCalculationType(type: 'by percentage' | 'by price') {
     this.selectedCalculationType = type;
+    
+    // Resetear todos los campos relacionados cuando se cambia el tipo de cálculo
     this.selectedBalanceType = null;
+    this.selectedAccount = null;
+    this.percentageValue = 0;
+    this.priceValue = 0;
+    this.displayPriceValue = '';
+    this.priceInputValue = '';
+    this.initialBalance = 0;
+    this.initialBalanceValue = 0;
+    this.displayInitialBalanceValue = '';
+    this.isInitialBalanceConfirmed = false;
+    this.isInitialBalanceEditing = true;
+    
+    // Resetear el dropdown para mostrar el placeholder
+    setTimeout(() => {
+      if (this.accountSelect) {
+        this.accountSelect.nativeElement.selectedIndex = 0; // Seleccionar la primera opción (placeholder)
+      }
+    }, 0);
+    
     this.saveConfiguration();
   }
 
   selectBalanceType(type: 'by actual balance' | 'by initial balance') {
     this.selectedBalanceType = type;
+    
+    // Resetear cuenta seleccionada y valores cuando se cambia el tipo de balance
+    this.selectedAccount = null;
+    this.percentageValue = 0;
+    this.priceValue = 0;
+    this.displayPriceValue = '';
+    this.priceInputValue = '';
+    this.initialBalance = 0;
+    this.initialBalanceValue = 0;
+    this.displayInitialBalanceValue = '';
+    this.isInitialBalanceConfirmed = false;
+    this.isInitialBalanceEditing = true;
+    
+    // Resetear el dropdown para mostrar el placeholder
+    setTimeout(() => {
+      if (this.accountSelect) {
+        this.accountSelect.nativeElement.selectedIndex = 0; // Seleccionar la primera opción (placeholder)
+      }
+    }, 0);
     
     // Solo cargar el balance actual cuando el usuario seleccione "by actual balance"
     if (type === 'by actual balance') {
@@ -188,6 +275,9 @@ export class EditRiskPerTradeComponent implements OnInit {
     // Ajustar balances visibles según selección
     if (this.selectedBalanceType === 'by initial balance') {
       this.initialBalance = this.selectedAccount?.initialBalance || 0;
+      // Mostrar inmediatamente el balance inicial seleccionado en los resúmenes
+      this.isInitialBalanceConfirmed = true;
+      this.isInitialBalanceEditing = false;
     } else if (this.selectedBalanceType === 'by actual balance' && this.selectedAccount) {
       this.actualBalance = this.accountActualBalances[this.selectedAccount.accountID] || 0;
     }
@@ -200,23 +290,18 @@ export class EditRiskPerTradeComponent implements OnInit {
   }
 
   formatCurrency(event: any) {
-    let input = event.target.value.replace(/[^0-9.]/g, '');
-
-    if (input === '') {
+    const input = event.target.value;
+    const formatted = this.numberFormatter.formatInputValue(input);
+    
+    if (formatted === '') {
       this.price = '';
       this.priceValue = 0;
       this.displayPriceValue = '';
       return;
     }
 
-    // Evitar más de un punto decimal
-    const parts = input.split('.');
-    if (parts.length > 2) {
-      input = parts[0] + '.' + parts[1];
-    }
-
     // Convertir a número
-    const value = parseFloat(input);
+    const value = parseFloat(this.numberFormatter.cleanNumericInput(input));
     if (isNaN(value)) {
       this.price = '';
       this.priceValue = 0;
@@ -225,50 +310,63 @@ export class EditRiskPerTradeComponent implements OnInit {
     }
 
     this.priceValue = value;
-
-    // Formatear con separadores de miles y decimales
-    const formatted = value.toLocaleString('en-US', {
-      minimumFractionDigits: parts[1] ? parts[1].length : 0,
-      maximumFractionDigits: parts[1] ? parts[1].length : 2
-    });
-
     this.price = formatted;
     this.displayPriceValue = this.price;
     this.saveConfiguration();
   }
 
-  onBlur() {
-    if (!this.price) return;
+  onPriceInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    this.priceInputValue = target.value;
+  }
 
-    const num = parseFloat(this.price.replace(/[^0-9.]/g, ''));
-    if (!isNaN(num)) {
-      this.priceValue = num;
-      this.price = num.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      });
-      this.displayPriceValue = this.price;
+  onPriceFocus() {
+    // Cuando el usuario hace focus, mostrar solo el número sin formato para edición
+    if (this.priceValue > 0) {
+      this.priceInputValue = this.priceValue.toString();
     }
+  }
+
+  onPriceBlur() {
+    // Convertir el valor a número usando el servicio centralizado
+    const numericValue = this.numberFormatter.parseCurrencyValue(this.priceInputValue);
+    if (!isNaN(numericValue) && numericValue > 0) {
+      // Guardar el valor sin formato
+      this.priceValue = numericValue;
+      
+      // Mostrar formato visual (solo para display)
+      this.displayPriceValue = this.numberFormatter.formatCurrencyDisplay(numericValue);
+      
+      // Actualizar el input para mostrar el formato visual
+      this.priceInputValue = this.displayPriceValue;
+      
+      this.saveConfiguration();
+    } else {
+      // Si no es un número válido, limpiar
+      this.priceInputValue = '';
+      this.displayPriceValue = '';
+      this.priceValue = 0;
+    }
+  }
+
+  onBlur() {
+    // Método legacy - mantener para compatibilidad
+    this.onPriceBlur();
   }
 
   // Métodos para el balance inicial
   formatInitialBalance(event: any) {
-    let input = event.target.value.replace(/[^0-9.]/g, '');
-
-    if (input === '') {
+    const input = event.target.value;
+    const formatted = this.numberFormatter.formatInputValue(input);
+    
+    if (formatted === '') {
       this.initialBalanceValue = 0;
       this.displayInitialBalanceValue = '';
       return;
     }
 
-    // Evitar más de un punto decimal
-    const parts = input.split('.');
-    if (parts.length > 2) {
-      input = parts[0] + '.' + parts[1];
-    }
-
     // Convertir a número
-    const value = parseFloat(input);
+    const value = parseFloat(this.numberFormatter.cleanNumericInput(input));
     if (isNaN(value)) {
       this.initialBalanceValue = 0;
       this.displayInitialBalanceValue = '';
@@ -276,26 +374,16 @@ export class EditRiskPerTradeComponent implements OnInit {
     }
 
     this.initialBalanceValue = value;
-
-    // Formatear con separadores de miles y decimales
-    const formatted = value.toLocaleString('en-US', {
-      minimumFractionDigits: parts[1] ? parts[1].length : 0,
-      maximumFractionDigits: parts[1] ? parts[1].length : 2
-    });
-
     this.displayInitialBalanceValue = formatted;
   }
 
   onInitialBalanceBlur() {
     if (!this.displayInitialBalanceValue) return;
 
-    const num = parseFloat(this.displayInitialBalanceValue.replace(/[^0-9.]/g, ''));
+    const num = this.numberFormatter.parseCurrencyValue(this.displayInitialBalanceValue);
     if (!isNaN(num)) {
       this.initialBalanceValue = num;
-      this.displayInitialBalanceValue = num.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      });
+      this.displayInitialBalanceValue = this.numberFormatter.formatNumber(num, 2);
     }
   }
 
@@ -325,7 +413,6 @@ export class EditRiskPerTradeComponent implements OnInit {
       // Obtener el usuario actual de Firebase directamente
       const currentUser = this.authService.getAuth().currentUser;
       if (!currentUser) {
-        console.warn('No hay usuario autenticado en Firebase');
         this.actualBalance = 0;
         return;
       }
@@ -336,7 +423,6 @@ export class EditRiskPerTradeComponent implements OnInit {
       // Obtener las cuentas del usuario desde el contexto
       const userAccounts = this.appContext.userAccounts();
       if (!userAccounts || userAccounts.length === 0) {
-        console.warn('No hay cuentas disponibles');
         this.actualBalance = 0;
         return;
       }
@@ -385,16 +471,20 @@ export class EditRiskPerTradeComponent implements OnInit {
 
     // Usar la misma lógica que saveConfiguration para determinar el balance
     let balanceToSave: number;
+    let actualBalanceToSave: number | undefined;
     if (this.selectedCalculationType === 'by percentage' && this.selectedBalanceType === 'by initial balance') {
-      balanceToSave = this.getCurrentBalance();
+      balanceToSave = this.selectedAccount?.initialBalance || 0;
+      actualBalanceToSave = 0;
     } else {
       balanceToSave = -1;
+      actualBalanceToSave = this.actualBalance;
     }
 
     const newConfig: RiskPerTradeConfig = {
       ...this.config,
       risk_ammount: percentage,
       balance: balanceToSave,
+      actualBalance: actualBalanceToSave,
     };
     this.updateConfig(newConfig);
   }
@@ -405,11 +495,12 @@ export class EditRiskPerTradeComponent implements OnInit {
       ((moneyRisk / this.getCurrentBalance()) * 100).toFixed(2)
     );
 
-    // Cuando es money, siempre guardar -1
+    // Cuando es money, siempre guardar 0 en ambos
     const newConfig: RiskPerTradeConfig = {
       ...this.config,
       risk_ammount: moneyRisk,
-      balance: -1,
+      balance: 0,
+      actualBalance: 0,
     };
     this.updateConfig(newConfig);
   }
@@ -421,65 +512,225 @@ export class EditRiskPerTradeComponent implements OnInit {
       .subscribe((config) => {
         this.config = config;
         
-        // SOLO cargar datos si la regla está activa Y tiene datos guardados
-        if (config.isActive && config.review_type && config.number_type && config.percentage_type) {
-          // Cargar datos existentes solo si están completos
-          this.selectedSizeType = config.review_type === 'MAX' ? 'max-size' : 'fixed';
-          this.selectedCalculationType = config.number_type === 'PERCENTAGE' ? 'by percentage' : 'by price';
-          
-          // Manejar el percentage_type correctamente
-          if (config.percentage_type === 'NULL') {
-            // Cuando es money, no hay balance type específico
+        // El estado inicial ya fue capturado en ngOnInit, solo procesar la lógica
+        
+        if (config.isActive) {
+          // Usar el estado inicial de Firebase para determinar el comportamiento
+          if (this.initialFirebaseState === false) {
+            // Regla vino inactiva de Firebase: SIEMPRE empezar desde cero, ignorar valores de config
+            this.selectedSizeType = null;
+            this.selectedCalculationType = null;
             this.selectedBalanceType = null;
+            this.percentageValue = 0;
+            this.priceValue = 0;
+            this.displayPriceValue = '';
+            this.priceInputValue = '';
+            this.initialBalance = 0;
+            this.initialBalanceValue = 0;
+            this.displayInitialBalanceValue = '';
+            this.isInitialBalanceConfirmed = false;
+            this.isInitialBalanceEditing = true;
+            this.selectedAccount = null;
+            this.actualBalance = 0;
           } else {
-            this.selectedBalanceType = config.percentage_type === 'ACTUAL_B' ? 'by actual balance' : 'by initial balance';
-          }
-          
-          if (config.risk_ammount) {
-            if (config.number_type === 'PERCENTAGE') {
-              this.percentageValue = config.risk_ammount;
+            // Regla vino activa de Firebase: cargar valores desde config
+            this.selectedSizeType = config.review_type === 'MAX' ? 'max-size' : 'fixed';
+            this.selectedCalculationType = config.number_type === 'PERCENTAGE' ? 'by percentage' : 'by price';
+            
+            // Manejar el percentage_type correctamente
+            if (config.percentage_type === 'NULL') {
+              // Cuando es money, no hay balance type específico
+              this.selectedBalanceType = null;
             } else {
-              this.priceValue = config.risk_ammount;
-              this.price = config.risk_ammount.toLocaleString('en-US', {
-                style: 'currency',
-                currency: 'USD',
+              this.selectedBalanceType = config.percentage_type === 'ACTUAL_B' ? 'by actual balance' : 'by initial balance';
+            }
+            
+            // Cargar el valor de riesgo
+            if (config.risk_ammount) {
+              if (config.number_type === 'PERCENTAGE') {
+                this.percentageValue = config.risk_ammount;
+              } else {
+                this.priceValue = config.risk_ammount;
+                this.price = config.risk_ammount.toLocaleString('en-US', {
+                  style: 'currency',
+                  currency: 'USD',
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                });
+                this.displayPriceValue = this.price;
+                this.priceInputValue = this.displayPriceValue;
+              }
+            }
+            
+            // Cargar balance y seleccionar cuenta según el tipo
+            if (config.percentage_type === 'INITIAL_B' && config.balance && config.balance > 0) {
+              // Cargar balance inicial y seleccionar la cuenta correspondiente
+              this.initialBalance = config.balance;
+              this.initialBalanceValue = config.balance;
+              this.displayInitialBalanceValue = config.balance.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
               });
-              this.displayPriceValue = this.price;
+              this.isInitialBalanceConfirmed = true;
+              this.isInitialBalanceEditing = false;
+              
+              // Cargar cuentas y seleccionar la que coincida con el balance
+              this.loadUserAccounts().then(() => {
+                this.selectedAccount = this.userAccounts.find(account => 
+                  account.initialBalance === config.balance
+                ) || null;
+                
+                // Seleccionar automáticamente en el dropdown
+                if (this.selectedAccount && this.accountSelect) {
+                  setTimeout(() => {
+                    const selectElement = this.accountSelect!.nativeElement;
+                    const optionIndex = this.userAccounts.findIndex(account => 
+                      account.accountID === this.selectedAccount!.accountID
+                    );
+                    if (optionIndex !== -1) {
+                      selectElement.selectedIndex = optionIndex + 1; // +1 porque el primer option es el placeholder
+                    }
+                    // Validar después de seleccionar automáticamente
+                    this.validateConfig(this.config);
+                  }, 100);
+                } else {
+                  // Si no hay cuenta seleccionada, validar inmediatamente
+                  this.validateConfig(this.config);
+                }
+              });
+              
+            } else if (config.percentage_type === 'ACTUAL_B' && config.actualBalance && config.actualBalance > 0) {
+              // Cargar balance actual y seleccionar la cuenta correspondiente
+              this.actualBalance = config.actualBalance;
+              
+              // Cargar cuentas y balances actuales, luego seleccionar la cuenta correcta
+              this.loadUserAccounts().then(() => {
+                this.loadActualBalancesForAccounts().then(() => {
+                  // Buscar la cuenta que tenga el balance actual que coincida
+                  this.selectedAccount = this.userAccounts.find(account => {
+                    const accountBalance = this.accountActualBalances[account.accountID];
+                    return Math.abs(accountBalance - config.actualBalance!) < 0.01; // Tolerancia para decimales
+                  }) || null;
+                  
+                  // Seleccionar automáticamente en el dropdown
+                  if (this.selectedAccount && this.accountSelect) {
+                    setTimeout(() => {
+                      const selectElement = this.accountSelect!.nativeElement;
+                      const optionIndex = this.userAccounts.findIndex(account => 
+                        account.accountID === this.selectedAccount!.accountID
+                      );
+                      if (optionIndex !== -1) {
+                        selectElement.selectedIndex = optionIndex + 1; // +1 porque el primer option es el placeholder
+                      }
+                      // Validar después de seleccionar automáticamente
+                      this.validateConfig(this.config);
+                    }, 100);
+                  } else {
+                    // Si no hay cuenta seleccionada, validar inmediatamente
+                    this.validateConfig(this.config);
+                  }
+                });
+              });
             }
           }
           
-          // Solo cargar balance inicial si está configurado y es INITIAL_B
-          if (config.balance && config.balance > 0 && config.percentage_type === 'INITIAL_B') {
-            this.initialBalance = config.balance;
-            this.initialBalanceValue = config.balance;
-            this.displayInitialBalanceValue = config.balance.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            });
-            this.isInitialBalanceConfirmed = true;
-            this.isInitialBalanceEditing = false;
-          }
         } else {
-          // Si no hay datos guardados, resetear a estado inicial
+          // Si la regla está desactivada, resetear UI a null
           this.selectedSizeType = null;
           this.selectedCalculationType = null;
           this.selectedBalanceType = null;
-          this.percentageValue = 2;
+          this.percentageValue = 0;
           this.priceValue = 0;
           this.displayPriceValue = '';
+          this.priceInputValue = '';
           this.initialBalance = 0;
           this.initialBalanceValue = 0;
           this.displayInitialBalanceValue = '';
           this.isInitialBalanceConfirmed = false;
           this.isInitialBalanceEditing = true;
+          this.selectedAccount = null;
+          this.actualBalance = 0;
+        }
+        
+        // Validar la configuración después de actualizarla (solo si no hay selección automática pendiente)
+        // La validación para casos con selección automática se maneja dentro de los setTimeout
+        if (!config.isActive || 
+            (config.percentage_type !== 'INITIAL_B' && config.percentage_type !== 'ACTUAL_B')) {
+          this.validateConfig(this.config);
         }
       });
   }
 
   private updateConfig(config: RiskPerTradeConfig) {
     this.store.dispatch(setRiskPerTradeConfig({ config }));
+    this.validateConfig(config);
+  }
+
+  private validateConfig(config: RiskPerTradeConfig) {
+    if (!config.isActive) {
+      this.isValid = true;
+      this.errorMessage = '';
+      return;
+    }
+
+    // Validar que se haya seleccionado un tipo de tamaño
+    if (!this.selectedSizeType) {
+      this.isValid = false;
+      this.errorMessage = 'You must select a size type';
+      return;
+    }
+
+    // Validar que se haya seleccionado un tipo de cálculo
+    if (!this.selectedCalculationType) {
+      this.isValid = false;
+      this.errorMessage = 'You must select a calculation type';
+      return;
+    }
+
+    // Validar según el tipo de cálculo seleccionado
+    if (this.selectedCalculationType === 'by percentage') {
+      // Validar que se haya seleccionado un tipo de balance
+      if (!this.selectedBalanceType) {
+        this.isValid = false;
+        this.errorMessage = 'You must select a balance type';
+        return;
+      }
+
+      // Validar que se haya seleccionado una cuenta
+      if (!this.selectedAccount) {
+        this.isValid = false;
+        this.errorMessage = 'You must select an account';
+        return;
+      }
+
+      // Validar que se haya ingresado un porcentaje válido
+      if (!this.percentageValue || this.percentageValue <= 0) {
+        this.isValid = false;
+        this.errorMessage = 'You must enter a valid percentage value';
+        return;
+      }
+    } else if (this.selectedCalculationType === 'by price') {
+      // Validar que se haya ingresado un precio válido
+      if (!this.priceValue || this.priceValue <= 0) {
+        this.isValid = false;
+        this.errorMessage = 'You must enter a valid price value';
+        return;
+      }
+    }
+
+    // Si llegamos aquí, la validación pasó
+    this.isValid = true;
+    this.errorMessage = '';
+  }
+
+  // Método público para verificar si la regla es válida
+  public isRuleValid(): boolean {
+    return this.isValid;
+  }
+
+  // Método público para obtener el mensaje de error
+  public getErrorMessage(): string {
+    return this.errorMessage;
   }
 
   // Método para guardar la configuración con la nueva estructura
@@ -495,22 +746,26 @@ export class EditRiskPerTradeComponent implements OnInit {
 
     // Determinar el balance a guardar según la lógica especificada
     let balanceToSave: number;
+    let actualBalanceToSave: number | undefined;
     let percentageType: "INITIAL_B" | "ACTUAL_B" | "NULL";
 
     if (this.selectedCalculationType === 'by percentage') {
       // Cuando es percentage
       if (this.selectedBalanceType === 'by initial balance') {
-        // percentage + initialBalance: guardar el balance real
-        balanceToSave = this.getCurrentBalance();
+        // percentage + initialBalance: guardar el balance en balance, actualBalance = 0
+        balanceToSave = this.selectedAccount?.initialBalance || 0;
+        actualBalanceToSave = 0;
         percentageType = 'INITIAL_B';
       } else {
-        // percentage + actualBalance: guardar -1
+        // percentage + actualBalance: guardar -1 en balance, valor en actualBalance
         balanceToSave = -1;
+        actualBalanceToSave = this.actualBalance;
         percentageType = 'ACTUAL_B';
       }
     } else {
-      // Cuando es money: guardar -1 y percentage_type como 'NULL'
-      balanceToSave = -1;
+      // Cuando es money: guardar 0 en ambos
+      balanceToSave = 0;
+      actualBalanceToSave = 0;
       percentageType = 'NULL';
     }
 
@@ -520,7 +775,8 @@ export class EditRiskPerTradeComponent implements OnInit {
       number_type: this.selectedCalculationType === 'by percentage' ? 'PERCENTAGE' : 'MONEY',
       percentage_type: percentageType,
       risk_ammount: this.selectedCalculationType === 'by percentage' ? this.percentageValue : this.priceValue,
-      balance: balanceToSave
+      balance: balanceToSave,
+      actualBalance: actualBalanceToSave
     };
 
     this.updateConfig(newConfig);

@@ -37,6 +37,7 @@ export class AssetsAllowedComponent implements OnInit {
   symbols: string[] = [];
   availableSymbolsOptions: string[] = [];
   selectedInstrument: string | undefined = undefined;
+  searchTerm: string = '';
 
   dropdownOpen = false;
 
@@ -54,11 +55,39 @@ export class AssetsAllowedComponent implements OnInit {
     }
   }
 
+  onSearchInput(event: Event) {
+    this.searchTerm = (event.target as HTMLInputElement).value;
+    this.dropdownOpen = true;
+  }
+
+  onSearchFocus() {
+    if (this.config.isActive) {
+      this.dropdownOpen = true;
+    }
+  }
+
+  onSearchBlur() {
+    // Delay para permitir click en dropdown
+    setTimeout(() => {
+      this.dropdownOpen = false;
+    }, 200);
+  }
+
   selectInstrument(intrument: string) {
     this.selectedInstrument = intrument;
     this.addSymbol(intrument);
     this.dropdownOpen = false;
     this.selectedInstrument = undefined;
+    this.searchTerm = ''; // Limpiar búsqueda
+  }
+
+  getFilteredSymbols(): string[] {
+    if (!this.searchTerm) {
+      return this.availableSymbolsOptions;
+    }
+    return this.availableSymbolsOptions.filter(symbol => 
+      symbol.toLowerCase().includes(this.searchTerm.toLowerCase())
+    );
   }
 
   ngOnInit(): void {
@@ -86,10 +115,19 @@ export class AssetsAllowedComponent implements OnInit {
   }
 
   onToggleActive(event: Event) {
+    const isActive = (event.target as HTMLInputElement).checked;
     const newConfig = {
       ...this.config,
-      isActive: (event.target as HTMLInputElement).checked,
+      isActive: isActive,
+      // Reiniciar assets cuando se desactiva
+      assetsAllowed: isActive ? this.config.assetsAllowed : [],
     };
+    
+    // Reiniciar símbolos seleccionados
+    if (!isActive) {
+      this.symbols = [];
+    }
+    
     this.updateConfig(newConfig);
   }
 

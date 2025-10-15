@@ -1,36 +1,50 @@
 <div class="config-row d-flex flex-col py-12 justify-between">
-  <div class="d-flex items-center mb-12">
-    <label class="custom-checkbox m-6">
-      <input
-        type="checkbox"
-        id="toggle-hours-allowed"
-        [checked]="config.isActive"
-        (change)="onToggleActive($event)"
-      />
-      <span class="checkmark"></span>
-    </label>
+  <!-- Mensaje de error de validación -->
+  <div *ngIf="!isValid && config.isActive" class="validation-error mb-3">
+    <span class="error-message">{{ errorMessage }}</span>
+  </div>
+  
+  <div class="d-flex justify-between mb-4">
+    <div class="d-flex items-center">
+      <label class="custom-checkbox m-6">
+        <input
+          type="checkbox"
+          id="toggle-hours-allowed"
+          [checked]="config.isActive"
+          (change)="onToggleActive($event)"
+        />
+        <span class="checkmark"></span>
+      </label>
 
-    <div class="label-container">
-      <label
-        for="toggle-hours-allowed"
+      <span
         [ngClass]="{ deactivated: !config.isActive }"
-        >Only allow trades between:</label
+        class="rule-label"
+        >Only allow trades between:</span
       >
-      <div class="timezone-container">
-        <select
-          id="timezone"
-          [ngModel]="config.timezone"
-          [disabled]="!config.isActive"
-          (ngModelChange)="onTimezoneChange($event)"
-          class="timezone-select inputText color-light-gray"
-        >
-          @for (tz of timezones; track $index) {
-          <option [value]="tz.value">
-            {{ tz.label }}
-          </option>
-          }
-        </select>
-      </div>
+    </div>
+    <div class="timezone-select-container">
+      <select
+        id="timezone"
+        [ngModel]="config.timezone || ''"
+        [disabled]="!config.isActive"
+        (ngModelChange)="onTimezoneChange($event)"
+        class="timezone-select inputText color-light-gray"
+        [class.placeholder-active]="!config.timezone"
+      >
+        <option value="" disabled hidden></option>
+        @for (tz of timezones; track $index) {
+        <option [value]="tz.value">
+          {{ getTimezoneWithCountry(tz.value) }}
+        </option>
+        }
+      </select>
+      <span 
+        *ngIf="!config.timezone" 
+        class="timezone-placeholder"
+        [class.disabled]="!config.isActive"
+      >
+        {{ timezonePlaceholder }}
+      </span>
     </div>
   </div>
 
@@ -42,6 +56,7 @@
         [disabled]="!config.isActive"
         [ngModel]="config.tradingOpenTime"
         (ngModelChange)="onTimeChange('tradingOpenTime', $event)"
+        [placeholder]="config.isActive ? 'Select start time' : 'Enter a date'"
         class="inputText time-input color-light-gray"
         id="openTradingTime"
       />
@@ -55,6 +70,7 @@
         [disabled]="!config.isActive"
         [ngModel]="config.tradingCloseTime"
         (ngModelChange)="onTimeChange('tradingCloseTime', $event)"
+        [placeholder]="config.isActive ? 'Select end time' : 'Enter a date'"
         class="timepicker-input inputText time-input color-light-gray"
         id="closeTradingTime"
       />

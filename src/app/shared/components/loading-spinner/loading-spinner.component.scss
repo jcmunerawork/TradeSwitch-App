@@ -1,0 +1,42 @@
+// Loading Styles
+.loading-container {
+  min-height: 400px;
+  width: 100%;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner {
+  margin-bottom: 20px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #4a4a4a;
+  border-top: 3px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #e3e3e3;
+  margin-bottom: 8px;
+}
+
+.loading-description {
+  font-size: 14px;
+  color: #8e8e93;
+  text-align: center;
+  max-width: 300px;
+}

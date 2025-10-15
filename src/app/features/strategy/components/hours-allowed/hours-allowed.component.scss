@@ -9,6 +9,23 @@
     );
 }
 
+.rule-label {
+  cursor: default;
+  user-select: none;
+}
+
+.custom-checkbox {
+  cursor: pointer;
+  
+  &:hover input[type="checkbox"] + .checkmark {
+    border-color: #4CAF50;
+  }
+  
+  &:hover input[type="checkbox"]:checked + .checkmark {
+    background-color: #45a049;
+  }
+}
+
 .timezone-select {
   width: 12rem;
   padding: 8px 16px;
@@ -26,6 +43,15 @@
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 22px 22px;
+  
+  &:focus {
+    border-color: #4CAF50;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .timezone-select option {
@@ -48,6 +74,20 @@
   font-size: 1rem;
   outline: none;
   transition: border 0.2s;
+  
+  &:focus {
+    border-color: #4CAF50;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  &::placeholder {
+    color: #999;
+    opacity: 1;
+  }
 }
 
 #openTradingTime {

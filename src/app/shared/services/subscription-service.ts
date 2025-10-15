@@ -10,7 +10,9 @@ import {
   deleteDoc, 
   query, 
   orderBy,
-  Timestamp 
+  Timestamp,
+  onSnapshot,
+  limit
 } from 'firebase/firestore';
 import { db } from '../../firebase/firebase.init';
 import { UserStatus } from '../../features/overview/models/overview';
@@ -35,35 +37,52 @@ export class SubscriptionService {
   constructor() {}
 
   /**
-   * Obtiene todos los pagos de un usuario específico
+   * Obtiene la última suscripción de un usuario (único documento esperado)
    * @param userId ID del usuario
-   * @returns Promise con array de pagos
+   * @returns Promise con la suscripción o null si no existe
    */
-  async getAllSubscriptionsByUserId(userId: string): Promise<Subscription[]> {
+  async getUserLatestSubscription(userId: string): Promise<Subscription | null> {
     try {
       const paymentsRef = collection(db, 'users', userId, 'subscription');
-      const q = query(paymentsRef, orderBy('created_at', 'desc'));
+      const q = query(paymentsRef, orderBy('created_at', 'desc'), limit(1));
       const querySnapshot = await getDocs(q);
-      
+
       if (querySnapshot.empty) {
-        console.log('⚠️ No se encontraron pagos para el usuario:', userId);
-        return [];
+        return null;
       }
-      
-      const payments = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data
-        } as Subscription;
-      });
-      
-      return payments;
+
+      const latestDoc = querySnapshot.docs[0];
+      const data = latestDoc.data();
+      return data as unknown as Subscription;
     } catch (error) {
-      console.error('❌ Error al obtener pagos:', error);
-      console.error('Error details:', error);
+      console.error('❌ Error al obtener suscripción del usuario:', error);
       throw error;
     }
+  }
+
+  /**
+   * Escucha cambios en la última suscripción del usuario (único documento esperado)
+   * Devuelve una función para desuscribirse
+   */
+  listenToUserLatestSubscription(
+    userId: string,
+    handler: (subscription: Subscription | null) => void
+  ): () => void {
+    const paymentsRef = collection(db, 'users', userId, 'subscription');
+    const q = query(paymentsRef, orderBy('created_at', 'desc'), limit(1));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (snapshot.empty) {
+        handler(null);
+        return;
+      }
+      const latestDoc = snapshot.docs[0];
+      const data = latestDoc.data();
+      handler({ id: latestDoc.id, ...data } as Subscription);
+    }, (error) => {
+      console.error('❌ Error en listener de suscripción:', error);
+      handler(null);
+    });
+    return unsubscribe;
   }
 
   // TODO: IMPLEMENTAR ENDPOINT DE VERIFICACIÓN DE PAGO - Reemplazar Firebase con API real
@@ -75,7 +94,7 @@ export class SubscriptionService {
    */
   async getSubscriptionById(userId: string, paymentId: string): Promise<Subscription | null> {
     try {
-      const paymentRef = doc(db, 'users', userId, 'subscriptions', paymentId);
+      const paymentRef = doc(db, 'users', userId, 'subscription', paymentId);
       const paymentSnap = await getDoc(paymentRef);
       
       if (paymentSnap.exists()) {

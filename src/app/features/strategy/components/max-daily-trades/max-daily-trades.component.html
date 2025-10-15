@@ -10,19 +10,45 @@
       <span class="checkmark"></span>
     </label>
 
-    <label
-      for="toggle-max-daily-trades"
+    <span
       [ngClass]="{ deactivated: !config.isActive }"
-      >Max Daily Trades</label
+      class="rule-label"
+      >Max Daily Trades</span
     >
   </div>
-  <input
-    type="number"
-    id="daily-trade-input"
-    min="1"
-    [value]="config.maxDailyTrades"
-    [disabled]="!config.isActive"
-    (change)="onChangeValue($event)"
-    class="custom-number-input inputText d-flex items-center justify-between py-8 px-4 color-light-gray"
-  />
+  
+  <!-- Spinner personalizado -->
+  <div class="spinner-container" [ngClass]="{ disabled: !config.isActive }">
+    <button 
+      type="button" 
+      class="spinner-btn decrement"
+      [disabled]="!config.isActive || config.maxDailyTrades <= 1"
+      (click)="decrementValue()"
+    >
+      −
+    </button>
+    <input
+      type="text"
+      id="daily-trade-input"
+      [value]="config.maxDailyTrades"
+      [disabled]="!config.isActive"
+      readonly
+      onkeydown="return false"
+      onkeyup="return false"
+      onkeypress="return false"
+      onpaste="return false"
+      oncontextmenu="return false"
+      oninput="return false"
+      onchange="return false"
+      class="spinner-input"
+    />
+    <button 
+      type="button" 
+      class="spinner-btn increment"
+      [disabled]="!config.isActive"
+      (click)="incrementValue()"
+    >
+      +
+    </button>
+  </div>
 </div>

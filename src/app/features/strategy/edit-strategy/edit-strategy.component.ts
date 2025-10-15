@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
@@ -29,6 +29,8 @@ import { AuthService } from '../../auth/service/authService';
 import { AccountData } from '../../auth/models/userModel';
 import { PluginHistoryService, PluginHistory } from '../../../shared/services/plugin-history.service';
 import { Instrument } from '../../report/models/report.model';
+import { StrategyCacheService } from '../services/strategy-cache.service';
+import { BalanceCacheService } from '../services/balance-cache.service';
 
 @Component({
   selector: 'app-edit-strategy',
@@ -54,6 +56,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   config: StrategyState | null = null;
   myChoices: StrategyState | null = null;
   loading = false;
+  initialLoading = true; // Loading global para evitar tambaleo
   user: User | null = null;
   editPopupVisible = false;
   confirmPopupVisible = false;
@@ -74,6 +77,13 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   isPluginActive: boolean = false;
   private pluginSubscription: any = null;
 
+  // Referencias a componentes de reglas para validación
+  @ViewChild('hoursAllowedRef') hoursAllowedRef?: EditHoursAllowedComponent;
+  @ViewChild('daysAllowedRef') daysAllowedRef?: EditDaysAllowedComponent;
+  @ViewChild('assetsAllowedRef') assetsAllowedRef?: EditAssetsAllowedComponent;
+  @ViewChild('maxDailyTradesRef') maxDailyTradesRef?: EditMaxDailyTradesComponent;
+  @ViewChild('riskPerTradeRef') riskPerTradeRef?: EditRiskPerTradeComponent;
+
   constructor(
     private store: Store,
     private router: Router,
@@ -81,53 +91,58 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     private strategySvc: SettingsService,
     private reportSvc: ReportService,
     private authService: AuthService,
-    private pluginHistoryService: PluginHistoryService
+    private pluginHistoryService: PluginHistoryService,
+    private strategyCacheService: StrategyCacheService,
+    private balanceCacheService: BalanceCacheService
   ) {
     this.config$ = this.store.select(allRules);
   }
 
-  ngOnInit() {
-    // 0. LIMPIAR ESTADO INICIAL para evitar datos residuales
-    this.clearState();
+  async ngOnInit() {
+    this.initialLoading = true;
     
-    // FLUJO SIMPLIFICADO:
-    // 1. Obtener datos del usuario autenticado
-    this.getUserData();
-    
-    // 2. Cargar cuentas del usuario para obtener credenciales
-    this.fetchUserAccounts();
-    
-    // 3. Escuchar cambios en el store de reglas (SIEMPRE)
-    this.listenConfigurations();
-    
-    // 4. Obtener ID de estrategia desde la URL (si existe)
-    this.getStrategyId();
-    
-    // 5. Configurar listener en tiempo real para plugin history (después de obtener user)
-    // Se ejecutará en getUserData() cuando el usuario esté disponible
+    try {
+      // FLUJO SIMPLIFICADO: Cargar todo antes de mostrar la UI
+      await this.initializeEverything();
+    } catch (error) {
+      console.error('Error during initialization:', error);
+    } finally {
+      this.initialLoading = false;
+    }
   }
 
   /**
-   * MÉTODO 1: Obtener ID de estrategia desde la URL
-   * - Escucha cambios en los parámetros de la URL
-   * - Si hay strategyId, carga la configuración de esa estrategia específica
-   * - Si no hay strategyId, se trata de una nueva estrategia
+   * Inicializar todo antes de mostrar la UI
+   */
+  private async initializeEverything(): Promise<void> {
+    // 1. Obtener datos del usuario
+    await this.getUserDataAsync();
+    
+    // 2. Configurar listeners
+    this.listenConfigurations();
+    
+    // 3. Obtener ID de estrategia y cargar configuración
+    this.getStrategyId();
+  }
+
+  /**
+   * MÉTODO SIMPLIFICADO: Obtener ID de estrategia desde la URL
+   * - Si hay strategyId: Cargar desde cache
+   * - Si no hay strategyId: Nueva estrategia
    */
   getStrategyId() {
     this.route.queryParams.subscribe(params => {
       const newStrategyId = params['strategyId'] || null;
       
-      // Si cambió la estrategia, limpiar el estado para evitar datos mezclados
+      // Si cambió la estrategia, limpiar el estado
       if (this.strategyId !== newStrategyId) {
         this.clearState();
       }
       
       this.strategyId = newStrategyId;
       
-      // FLUJO SIMPLIFICADO: SIEMPRE cargar desde Firebase si hay strategyId
-      if (this.strategyId) {
-        this.loadStrategyConfiguration();
-      }
+      // Cargar configuración usando el cache
+      this.loadStrategyFromCache();
     });
   }
 
@@ -148,42 +163,161 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     // Usar un estado inicial vacío en lugar de null
     const emptyState: StrategyState = {
       maxDailyTrades: { isActive: false, type: RuleType.MAX_DAILY_TRADES, maxDailyTrades: 0 },
-      riskReward: { isActive: false, type: RuleType.RISK_REWARD_RATIO, riskRewardRatio: '1:1' },
-      riskPerTrade: { isActive: false, type: RuleType.MAX_RISK_PER_TRADE, review_type: 'MAX', number_type: 'PERCENTAGE', percentage_type: 'NULL', risk_ammount: 0, balance: 1 },
+      riskReward: { isActive: false, type: RuleType.RISK_REWARD_RATIO, riskRewardRatio: '1:2' },
+      riskPerTrade: { isActive: false, type: RuleType.MAX_RISK_PER_TRADE, review_type: 'MAX', number_type: 'PERCENTAGE', percentage_type: 'NULL', risk_ammount: 0, balance: 0, actualBalance: 0 },
       daysAllowed: { isActive: false, type: RuleType.DAYS_ALLOWED, tradingDays: [] },
       assetsAllowed: { isActive: false, type: RuleType.ASSETS_ALLOWED, assetsAllowed: [] },
-      hoursAllowed: { isActive: false, type: RuleType.TRADING_HOURS, tradingOpenTime: '09:00', tradingCloseTime: '17:00', timezone: 'UTC' }
+      hoursAllowed: { isActive: false, type: RuleType.TRADING_HOURS, tradingOpenTime: '', tradingCloseTime: '', timezone: '' }
     };
     
     this.store.dispatch(resetConfig({ config: emptyState }));
   }
 
   /**
-   * MÉTODO NUEVO: Analizar reglas y distribuir según su estado
-   * LÓGICA PRINCIPAL:
-   * - Si TODAS las reglas están en false = tratar como nueva estrategia
-   * - Si hay AL MENOS UNA regla en true = distribuir entre paneles
+   * MÉTODO PRINCIPAL: Cargar estrategia desde cache
+   * FLUJO SIMPLIFICADO:
+   * - Si hay strategyId: Cargar desde cache del componente Strategy
+   * - Si no hay strategyId: Inicializar como nueva estrategia
    */
-  analyzeAndDistributeRules(configurationData: StrategyState) {
-    // Verificar si todas las reglas están en false
-    const allRulesInactive = !configurationData.maxDailyTrades.isActive &&
-                            !configurationData.riskReward.isActive &&
-                            !configurationData.riskPerTrade.isActive &&
-                            !configurationData.daysAllowed.isActive &&
-                            !configurationData.assetsAllowed.isActive &&
-                            !configurationData.hoursAllowed.isActive;
-
-    if (allRulesInactive) {
-      // TODAS LAS REGLAS EN FALSE = Tratar como nueva estrategia
-      this.initializeAsNewStrategy();
+  loadStrategyFromCache() {
+    if (this.strategyId) {
+      // Cargar estrategia existente desde cache
+      this.loadExistingStrategyFromCache();
     } else {
-      // HAY REGLAS ACTIVAS = Distribuir entre paneles
-      this.distributeActiveRules(configurationData);
+      // Inicializar como nueva estrategia
+      this.initializeAsNewStrategy();
     }
   }
 
   /**
-   * MÉTODO NUEVO: Inicializar como nueva estrategia
+   * Cargar estrategia existente desde cache o Firebase
+   */
+  loadExistingStrategyFromCache() {
+    if (!this.strategyId) return;
+    
+    // Verificar si el cache está disponible
+    if (!this.strategyCacheService.isCacheLoaded()) {
+      // Si el cache no está disponible, cargar directamente desde Firebase
+      this.loadStrategyFromFirebase();
+      return;
+    }
+
+    // Obtener estrategia del cache
+    const cachedStrategy = this.strategyCacheService.getStrategy(this.strategyId);
+    
+    if (!cachedStrategy) {
+      // Si no está en cache, cargar desde Firebase
+      this.loadStrategyFromFirebase();
+      return;
+    }
+
+    // Actualizar mini card
+    this.currentStrategyName = cachedStrategy.overview.name;
+    this.lastModifiedText = this.formatDate(cachedStrategy.overview.updated_at.toDate());
+    this.isFavorited = false;
+
+    // Cargar balance si es necesario
+    this.loadBalanceAndInitializeWithConfig(cachedStrategy.configuration);
+  }
+
+  /**
+   * Cargar estrategia directamente desde Firebase (fallback cuando cache no está disponible)
+   */
+  async loadStrategyFromFirebase() {
+    if (!this.strategyId || !this.user?.id) {
+      this.initializeAsNewStrategy();
+      return;
+    }
+
+    try {
+      // Cargar estrategia directamente desde Firebase
+      const strategyData = await this.strategySvc.getStrategyView(this.strategyId);
+      
+      if (!strategyData || !strategyData.configuration) {
+        this.initializeAsNewStrategy();
+        return;
+      }
+
+      // Actualizar mini card
+      this.currentStrategyName = strategyData.overview.name;
+      this.lastModifiedText = this.formatDate(strategyData.overview.updated_at.toDate());
+      this.isFavorited = false;
+
+      // Cargar balance y inicializar con configuración
+      this.loadBalanceAndInitializeWithConfig(strategyData.configuration);
+      
+    } catch (error) {
+      console.error('Error loading strategy from Firebase:', error);
+      this.initializeAsNewStrategy();
+    }
+  }
+
+  /**
+   * Cargar balance e inicializar con configuración específica
+   */
+  loadBalanceAndInitializeWithConfig(configuration: StrategyState) {
+    // Obtener balance desde cache primero
+    let balance = 0;
+    if (this.accountsData.length > 0) {
+      const firstAccount = this.accountsData[0];
+      balance = this.balanceCacheService.getBalance(firstAccount.accountID);
+    }
+
+    // Inicializar con balance del cache
+    this.initializeWithConfigAndBalance(configuration, balance);
+
+    // Si necesita actualización, hacer petición en background
+    if (this.accountsData.length > 0) {
+      const firstAccount = this.accountsData[0];
+      if (this.balanceCacheService.needsUpdate(firstAccount.accountID)) {
+        this.updateBalanceInBackground(firstAccount);
+      }
+    }
+  }
+
+  /**
+   * Actualizar balance en background sin bloquear la UI
+   */
+  private updateBalanceInBackground(account: AccountData) {
+    this.store.select(selectUserKey).pipe().subscribe({
+      next: (userKey) => {
+        if (userKey && userKey !== '') {
+          this.reportSvc.getBalanceData(account.accountID as string, userKey, account.accountNumber as number).subscribe({
+            next: (balance) => {
+              // Actualizar cache con nuevo balance
+              this.balanceCacheService.setBalance(account.accountID, balance);
+            },
+            error: (err) => {
+              console.error('Error fetching balance data in background:', err);
+            },
+          });
+        }
+      },
+    });
+  }
+
+  /**
+   * Inicializar con configuración y balance específicos
+   */
+  initializeWithConfigAndBalance(configuration: StrategyState, balance: number) {
+    // Actualizar balance en riskPerTrade
+    const configWithBalance = {
+      ...configuration,
+      riskPerTrade: {
+        ...configuration.riskPerTrade,
+        balance: balance
+      }
+    };
+
+    // Cargar en el store
+    this.store.dispatch(resetConfig({ config: configWithBalance }));
+
+    // Distribuir reglas entre paneles
+    this.distributeRulesBetweenPanels(configWithBalance);
+  }
+
+  /**
+   * MÉTODO SIMPLIFICADO: Inicializar como nueva estrategia
    * FLUJO PARA NUEVA ESTRATEGIA:
    * - Available Rules: Todas las reglas (isActive = true para mostrar)
    * - My Choices: Vacío (isActive = false)
@@ -194,15 +328,12 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * MÉTODO NUEVO: Distribuir reglas activas entre paneles
-   * FLUJO PARA ESTRATEGIA CON REGLAS ACTIVAS:
-   * - My Choices: Solo reglas con isActive = true
-   * - Available Rules: Solo reglas con isActive = false
+   * MÉTODO SIMPLIFICADO: Distribuir reglas entre paneles
+   * LÓGICA UNIFICADA:
+   * - My Choices: Reglas con isActive = true
+   * - Available Rules: Reglas con isActive = false
    */
-  distributeActiveRules(configurationData: StrategyState) {
-    // Cargar configuración en el store
-    this.store.dispatch(resetConfig({ config: configurationData }));
-
+  distributeRulesBetweenPanels(configurationData: StrategyState) {
     // My Choices: Solo reglas activas (isActive = true)
     this.myChoices = {
       maxDailyTrades: { 
@@ -222,7 +353,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         number_type: configurationData.riskPerTrade.number_type, 
         percentage_type: configurationData.riskPerTrade.percentage_type, 
         risk_ammount: configurationData.riskPerTrade.risk_ammount, 
-        balance: configurationData.riskPerTrade.balance 
+        balance: configurationData.riskPerTrade.balance,
+        actualBalance: configurationData.riskPerTrade.actualBalance 
       },
       daysAllowed: { 
         isActive: configurationData.daysAllowed.isActive, 
@@ -262,7 +394,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         number_type: configurationData.riskPerTrade.number_type, 
         percentage_type: configurationData.riskPerTrade.percentage_type, 
         risk_ammount: configurationData.riskPerTrade.risk_ammount, 
-        balance: configurationData.riskPerTrade.balance 
+        balance: configurationData.riskPerTrade.balance,
+        actualBalance: configurationData.riskPerTrade.actualBalance 
       },
       daysAllowed: { 
         isActive: !configurationData.daysAllowed.isActive, 
@@ -285,103 +418,20 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * MÉTODO 2: Cargar configuración de estrategia desde Firebase
-   * NUEVA LÓGICA: Carga directa desde Firebase usando configurationId
-   * 1. Obtener configuration-overview (metadatos)
-   * 2. Usar configurationId para obtener configurations específicas
-   * 3. Cargar balance actual si es necesario
-   * 4. Analizar reglas y distribuir según su estado
+   * Cargar cuentas de forma asíncrona
    */
-  async loadStrategyConfiguration() {
-    if (!this.strategyId) return;
-    
-    try {
-      // PASO 1: Obtener metadatos de la estrategia (configuration-overview)
-      const overviewData = await this.strategySvc.getConfigurationOverview(this.strategyId);
-      if (!overviewData) {
-        this.initializeAsNewStrategy();
-        return;
+  private async fetchUserAccountsAsync(): Promise<void> {
+    if (this.user?.id) {
+      try {
+        const accounts = await this.authService.getUserAccounts(this.user.id);
+        this.accountsData = accounts || [];
+        // After loading accounts, try to fetch user key
+        await this.fetchUserKeyAsync();
+      } catch (error) {
+        console.error('Error loading accounts:', error);
+        this.accountsData = [];
       }
-      
-      // Actualizar mini card
-      this.currentStrategyName = overviewData.name;
-      this.lastModifiedText = this.formatDate(overviewData.updated_at.toDate());
-      this.isFavorited = false;
-      
-      // PASO 2: Obtener configuración específica usando configurationId
-      if (!overviewData.configurationId) {
-        this.initializeAsNewStrategy();
-        return;
-      }
-      
-      // Cargar configuración específica desde Firebase
-      const configurationData = await this.strategySvc.getConfigurationById(overviewData.configurationId);
-      if (!configurationData) {
-        this.initializeAsNewStrategy();
-        return;
-      }
-      
-      // PASO 3: Cargar balance actual si es necesario para riskPerTrade
-      if (configurationData.riskPerTrade?.isActive) {
-        await this.loadBalanceForRiskPerTrade();
-      }
-      
-      // PASO 4: Analizar reglas y distribuir según su estado
-      this.analyzeAndDistributeRules(configurationData);
-      
-    } catch (error) {
-      // En caso de error, tratar como nueva estrategia
-      this.initializeAsNewStrategy();
     }
-  }
-
-  /**
-   * Cargar balance actual para riskPerTrade si es necesario
-   */
-  async loadBalanceForRiskPerTrade() {
-    try {
-      if (!this.user?.id || this.accountsData.length === 0) {
-        return;
-      }
-
-      // Obtener userKey
-      const userKey = await this.getUserKey();
-      if (!userKey) {
-        return;
-      }
-
-      // Usar la primera cuenta para obtener el balance
-      const firstAccount = this.accountsData[0];
-      const balanceData = await this.reportSvc.getBalanceData(
-        firstAccount.accountID,
-        userKey,
-        firstAccount.accountNumber
-      ).toPromise();
-
-      if (balanceData && balanceData.balance) {
-        // El balance se usará cuando se distribuya la configuración
-      }
-    } catch (error) {
-      // Error silencioso
-    }
-  }
-
-  /**
-   * Obtener userKey de forma síncrona
-   */
-  async getUserKey(): Promise<string | null> {
-    return new Promise((resolve) => {
-      this.store.select(selectUserKey).subscribe({
-        next: (userKey) => {
-          if (userKey && userKey !== '') {
-            resolve(userKey);
-          } else {
-            resolve(null);
-          }
-        },
-        error: () => resolve(null)
-      });
-    });
   }
 
   fetchUserAccounts() {
@@ -391,6 +441,33 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         // After loading accounts, try to fetch user key
         this.fetchUserKey();
       });
+    }
+  }
+
+  /**
+   * Obtener userKey de forma asíncrona
+   */
+  private async fetchUserKeyAsync(): Promise<void> {
+    if (this.user?.email && this.accountsData.length > 0) {
+      // Use the first account's credentials
+      const firstAccount = this.accountsData[0];
+      
+      try {
+        const key = await this.reportSvc.getUserKey(
+          firstAccount.emailTradingAccount, 
+          firstAccount.brokerPassword, 
+          firstAccount.server
+        ).toPromise();
+        
+        this.store.dispatch(setUserKey({ userKey: key || '' }));
+        // After getting userKey, load instruments
+        this.loadInstruments(key || '', firstAccount);
+      } catch (err) {
+        console.error('Error fetching user key:', err);
+        this.store.dispatch(setUserKey({ userKey: '' }));
+      }
+    } else {
+      this.store.dispatch(setUserKey({ userKey: '' }));
     }
   }
 
@@ -448,18 +525,45 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
               // El servicio ya actualiza el contexto automáticamente
               this.reportSvc.getBalanceData(firstAccount.accountID as string, userKey, firstAccount.accountNumber as number).subscribe({
                 next: (balance) => {
-                  this.loadConfig(balance);
+                  this.initializeWithConfigAndBalance(initialStrategyState, balance);
                 },
                 error: (err) => {
                   console.error('Error fetching balance data', err);
+                  this.initializeWithConfigAndBalance(initialStrategyState, 0);
                 },
               });
-        } else {
-          this.loadConfig(0);
-        }
+            } else {
+              this.initializeWithConfigAndBalance(initialStrategyState, 0);
+            }
           }
         },
       });
+  }
+
+  /**
+   * Obtener datos del usuario de forma asíncrona
+   */
+  private async getUserDataAsync(): Promise<void> {
+    return new Promise((resolve) => {
+      this.store.select(selectUser).subscribe({
+        next: async (user) => {
+          this.user = user.user;
+          
+          // Cargar cuentas y configurar plugin history cuando el usuario esté disponible
+          if (this.user?.id) {
+            await this.fetchUserAccountsAsync();
+            this.setupPluginHistoryListener();
+          } else {
+            console.warn('User ID not available yet');
+          }
+          resolve();
+        },
+        error: (err) => {
+          console.error('Error fetching user data', err);
+          resolve();
+        },
+      });
+    });
   }
 
   getUserData() {
@@ -467,8 +571,9 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       next: (user) => {
         this.user = user.user;
         
-        // Configurar listener de plugin history cuando el usuario esté disponible
+        // Cargar cuentas y configurar plugin history cuando el usuario esté disponible
         if (this.user?.id) {
+          this.fetchUserAccounts();
           this.setupPluginHistoryListener();
         } else {
           console.warn('User ID not available yet');
@@ -481,255 +586,76 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * MÉTODO NUEVO: Cargar balance e inicializar como nueva estrategia
-   * FLUJO PARA NUEVA ESTRATEGIA:
-   * 1. Obtener balance de la cuenta
-   * 2. Cargar configuración por defecto con balance
-   * 3. Inicializar paneles (Available = todas, My Choices = vacío)
+   * MÉTODO SIMPLIFICADO: Cargar balance e inicializar como nueva estrategia
    */
   loadBalanceAndInitialize() {
-    this.store
-      .select(selectUserKey)
-      .pipe()
-      .subscribe({
-        next: (userKey) => {
-          if (userKey === '') {
-            this.fetchUserKey();
-          } else {
-            // Usar datos de la primera cuenta para obtener balance
-            if (this.accountsData.length > 0) {
-              const firstAccount = this.accountsData[0];
-              this.reportSvc.getBalanceData(firstAccount.accountID as string, userKey, firstAccount.accountNumber as number).subscribe({
-                next: (balance) => {
-                  this.loadConfigWithBalance(balance);
-                },
-                error: (err) => {
-                  console.error('Error fetching balance data', err);
-                  this.loadConfigWithBalance(0);
-                },
-              });
-        } else {
-          this.loadConfigWithBalance(0);
-        }
-          }
-        },
-      });
+    // Obtener balance desde cache primero
+    let balance = 0;
+    if (this.accountsData.length > 0) {
+      const firstAccount = this.accountsData[0];
+      balance = this.balanceCacheService.getBalance(firstAccount.accountID);
+    }
+
+    // Inicializar con balance del cache
+    this.initializeWithConfigAndBalance(initialStrategyState, balance);
+
+    // Si necesita actualización, hacer petición en background
+    if (this.accountsData.length > 0) {
+      const firstAccount = this.accountsData[0];
+      if (this.balanceCacheService.needsUpdate(firstAccount.accountID)) {
+        this.updateBalanceInBackground(firstAccount);
+      }
+    }
   }
 
   /**
-   * MÉTODO NUEVO: Cargar configuración con balance
-   * FLUJO ESPECÍFICO PARA NUEVA ESTRATEGIA:
-   * 1. Cargar configuración por defecto con balance
-   * 2. Inicializar paneles correctamente
-   */
-  loadConfigWithBalance(balance: number) {
-    this.loading = true;
-    this.strategySvc
-      .getConfiguration(this.user?.id || '')
-      .then((data) => {
-        if (data) {
-          const riskPerTradeBalance = {
-            ...data.riskPerTrade,
-            balance: balance,
-          };
-
-          // Cargar configuración por defecto con balance
-          this.store.dispatch(
-            resetConfig({
-              config: { ...data, riskPerTrade: riskPerTradeBalance },
-            })
-          );
-          
-          // INICIALIZAR PANELES PARA NUEVA ESTRATEGIA
-          this.initializePanelsForNewStrategy({ ...data, riskPerTrade: riskPerTradeBalance });
-          this.loading = false;
-        } else {
-          // Usar configuración inicial con balance
-          const initialConfigWithBalance = {
-            ...initialStrategyState,
-            riskPerTrade: {
-              ...initialStrategyState.riskPerTrade,
-              balance: balance
-            }
-          };
-          this.store.dispatch(resetConfig({ config: initialConfigWithBalance }));
-          
-          // INICIALIZAR PANELES PARA NUEVA ESTRATEGIA
-          this.initializePanelsForNewStrategy(initialConfigWithBalance);
-          this.loading = false;
-        }
-      })
-      .catch((err) => {
-        // Usar configuración inicial con balance en caso de error
-        const initialConfigWithBalance = {
-          ...initialStrategyState,
-          riskPerTrade: {
-            ...initialStrategyState.riskPerTrade,
-            balance: balance
-          }
-        };
-        this.store.dispatch(resetConfig({ config: initialConfigWithBalance }));
-        
-        // INICIALIZAR PANELES PARA NUEVA ESTRATEGIA
-        this.initializePanelsForNewStrategy(initialConfigWithBalance);
-        this.loading = false;
-        console.error('Error to get the config', err);
-      });
-  }
-
-  /**
-   * MÉTODO NUEVO: Inicializar paneles para nueva estrategia
-   * FLUJO PARA NUEVA ESTRATEGIA:
-   * - Available Rules: Todas las reglas (isActive = true para mostrar)
-   * - My Choices: Vacío (isActive = false)
-   */
-  initializePanelsForNewStrategy(configurationData: StrategyState) {
-    // My Choices: Vacío (todas las reglas con isActive = false)
-    this.myChoices = {
-      maxDailyTrades: { isActive: false, type: configurationData.maxDailyTrades.type, maxDailyTrades: configurationData.maxDailyTrades.maxDailyTrades },
-      riskReward: { isActive: false, type: configurationData.riskReward.type, riskRewardRatio: configurationData.riskReward.riskRewardRatio },
-      riskPerTrade: { isActive: false, type: configurationData.riskPerTrade.type, review_type: configurationData.riskPerTrade.review_type, number_type: configurationData.riskPerTrade.number_type, percentage_type: configurationData.riskPerTrade.percentage_type, risk_ammount: configurationData.riskPerTrade.risk_ammount, balance: configurationData.riskPerTrade.balance },
-      daysAllowed: { isActive: false, type: configurationData.daysAllowed.type, tradingDays: configurationData.daysAllowed.tradingDays },
-      assetsAllowed: { isActive: false, type: configurationData.assetsAllowed.type, assetsAllowed: configurationData.assetsAllowed.assetsAllowed },
-      hoursAllowed: { isActive: false, type: configurationData.hoursAllowed.type, tradingOpenTime: configurationData.hoursAllowed.tradingOpenTime, tradingCloseTime: configurationData.hoursAllowed.tradingCloseTime, timezone: configurationData.hoursAllowed.timezone }
-    };
-
-    // Available Rules: Todas las reglas (isActive = true para mostrar)
-    this.config = {
-      maxDailyTrades: { isActive: true, type: configurationData.maxDailyTrades.type, maxDailyTrades: configurationData.maxDailyTrades.maxDailyTrades },
-      riskReward: { isActive: true, type: configurationData.riskReward.type, riskRewardRatio: configurationData.riskReward.riskRewardRatio },
-      riskPerTrade: { isActive: true, type: configurationData.riskPerTrade.type, review_type: configurationData.riskPerTrade.review_type, number_type: configurationData.riskPerTrade.number_type, percentage_type: configurationData.riskPerTrade.percentage_type, risk_ammount: configurationData.riskPerTrade.risk_ammount, balance: configurationData.riskPerTrade.balance },
-      daysAllowed: { isActive: true, type: configurationData.daysAllowed.type, tradingDays: configurationData.daysAllowed.tradingDays },
-      assetsAllowed: { isActive: true, type: configurationData.assetsAllowed.type, assetsAllowed: configurationData.assetsAllowed.assetsAllowed },
-      hoursAllowed: { isActive: true, type: configurationData.hoursAllowed.type, tradingOpenTime: configurationData.hoursAllowed.tradingOpenTime, tradingCloseTime: configurationData.hoursAllowed.tradingCloseTime, timezone: configurationData.hoursAllowed.timezone }
-    };
-
-  }
-
-  /**
-   * MÉTODO LEGACY: Cargar configuración (mantener para compatibilidad)
-   * NOTA: Este método se mantiene pero ya no se usa en el flujo principal
-   */
-  loadConfig(balance: number) {
-    this.loading = true;
-    this.strategySvc
-      .getConfiguration(this.user?.id || '')
-      .then((data) => {
-        if (data) {
-          const riskPerTradeBalance = {
-            ...data.riskPerTrade,
-            balance: balance,
-          };
-
-          this.store.dispatch(
-            resetConfig({
-              config: { ...data, riskPerTrade: riskPerTradeBalance },
-            })
-          );
-          this.loading = false;
-        } else {
-          this.store.dispatch(resetConfig({ config: initialStrategyState }));
-          this.loading = false;
-          console.warn('No config');
-        }
-      })
-      .catch((err) => {
-        this.store.dispatch(resetConfig({ config: initialStrategyState }));
-        this.loading = false;
-        console.error('Error to get the config', err);
-      });
-  }
-
-  /**
-   * MÉTODO 3: Escuchar cambios en el store de reglas
-   * FLUJO SIMPLIFICADO:
-   * - Solo escuchar cambios para actualizar la UI en tiempo real
-   * - NO inicializar aquí, eso se hace en loadStrategyConfiguration
+   * MÉTODO SIMPLIFICADO: Escuchar cambios en el store de reglas
    */
   listenConfigurations() {
     this.store
       .select(allRules)
       .pipe()
       .subscribe((config) => {
-        // SOLO escuchar cambios para actualizar la UI en tiempo real
+        // Actualizar UI en tiempo real
         this.listenToStoreChanges();
       });
   }
 
-  initializeMyChoices() {
-    if (this.config) {
-      this.myChoices = {
-        maxDailyTrades: { isActive: this.config.maxDailyTrades.isActive, type: this.config.maxDailyTrades.type, maxDailyTrades: this.config.maxDailyTrades.maxDailyTrades },
-        riskReward: { isActive: this.config.riskReward.isActive, type: this.config.riskReward.type, riskRewardRatio: this.config.riskReward.riskRewardRatio },
-        riskPerTrade: { isActive: this.config.riskPerTrade.isActive, type: this.config.riskPerTrade.type, review_type: this.config.riskPerTrade.review_type, number_type: this.config.riskPerTrade.number_type, percentage_type: this.config.riskPerTrade.percentage_type, risk_ammount: this.config.riskPerTrade.risk_ammount, balance: this.config.riskPerTrade.balance },
-        daysAllowed: { isActive: this.config.daysAllowed.isActive, type: this.config.daysAllowed.type, tradingDays: this.config.daysAllowed.tradingDays },
-        assetsAllowed: { isActive: this.config.assetsAllowed.isActive, type: this.config.assetsAllowed.type, assetsAllowed: this.config.assetsAllowed.assetsAllowed },
-        hoursAllowed: { isActive: this.config.hoursAllowed.isActive, type: this.config.hoursAllowed.type, tradingOpenTime: this.config.hoursAllowed.tradingOpenTime, tradingCloseTime: this.config.hoursAllowed.tradingCloseTime, timezone: this.config.hoursAllowed.timezone }
-      };
-    }
-  }
 
   /**
-   * MÉTODO 5: Escuchar cambios en tiempo real
-   * FLUJO DE ACTUALIZACIÓN EN TIEMPO REAL:
-   * - Cuando el usuario interactúa con las reglas, el store se actualiza
-   * - Este método detecta esos cambios y actualiza la UI
-   * - Las reglas se mueven automáticamente entre Available y My Choices
+   * MÉTODO SIMPLIFICADO: Escuchar cambios en tiempo real
    */
   listenToStoreChanges() {
     this.config$.subscribe(config => {
       if (this.config && this.myChoices) {
-        // Detectar cambios en las reglas y actualizar la UI
+        // Actualizar UI en tiempo real
         this.updateMyChoicesFromConfig(config);
       }
     });
   }
 
   /**
-   * MÉTODO 6: Actualizar UI en tiempo real
-   * FLUJO DE ACTUALIZACIÓN DE UI:
-   * - Cuando el usuario selecciona/deselecciona reglas, el store se actualiza
-   * - Este método recrea los paneles basándose en el estado actual del store
-   * - Las reglas se mueven automáticamente entre Available y My Choices
-   * @param newConfig - Nueva configuración desde el store
+   * MÉTODO SIMPLIFICADO: Actualizar UI en tiempo real
    */
   updateMyChoicesFromConfig(newConfig: StrategyState) {
     if (!this.myChoices || !this.config) return;
 
-    // ACTUALIZACIÓN EN TIEMPO REAL: Recrear paneles basándose en el store
-    // My Choices: Solo las reglas que están activas en newConfig
-    this.myChoices = {
-      maxDailyTrades: { isActive: newConfig.maxDailyTrades.isActive, type: newConfig.maxDailyTrades.type, maxDailyTrades: newConfig.maxDailyTrades.maxDailyTrades },
-      riskReward: { isActive: newConfig.riskReward.isActive, type: newConfig.riskReward.type, riskRewardRatio: newConfig.riskReward.riskRewardRatio },
-      riskPerTrade: { isActive: newConfig.riskPerTrade.isActive, type: newConfig.riskPerTrade.type, review_type: newConfig.riskPerTrade.review_type, number_type: newConfig.riskPerTrade.number_type, percentage_type: newConfig.riskPerTrade.percentage_type, risk_ammount: newConfig.riskPerTrade.risk_ammount, balance: newConfig.riskPerTrade.balance },
-      daysAllowed: { isActive: newConfig.daysAllowed.isActive, type: newConfig.daysAllowed.type, tradingDays: newConfig.daysAllowed.tradingDays },
-      assetsAllowed: { isActive: newConfig.assetsAllowed.isActive, type: newConfig.assetsAllowed.type, assetsAllowed: newConfig.assetsAllowed.assetsAllowed },
-      hoursAllowed: { isActive: newConfig.hoursAllowed.isActive, type: newConfig.hoursAllowed.type, tradingOpenTime: newConfig.hoursAllowed.tradingOpenTime, tradingCloseTime: newConfig.hoursAllowed.tradingCloseTime, timezone: newConfig.hoursAllowed.timezone }
-    };
-
-    // Available Rules: Solo las reglas que NO están activas en newConfig
-    this.config = {
-      maxDailyTrades: { isActive: !newConfig.maxDailyTrades.isActive, type: newConfig.maxDailyTrades.type, maxDailyTrades: newConfig.maxDailyTrades.maxDailyTrades },
-      riskReward: { isActive: !newConfig.riskReward.isActive, type: newConfig.riskReward.type, riskRewardRatio: newConfig.riskReward.riskRewardRatio },
-      riskPerTrade: { isActive: !newConfig.riskPerTrade.isActive, type: newConfig.riskPerTrade.type, review_type: newConfig.riskPerTrade.review_type, number_type: newConfig.riskPerTrade.number_type, percentage_type: newConfig.riskPerTrade.percentage_type, risk_ammount: newConfig.riskPerTrade.risk_ammount, balance: newConfig.riskPerTrade.balance },
-      daysAllowed: { isActive: !newConfig.daysAllowed.isActive, type: newConfig.daysAllowed.type, tradingDays: newConfig.daysAllowed.tradingDays },
-      assetsAllowed: { isActive: !newConfig.assetsAllowed.isActive, type: newConfig.assetsAllowed.type, assetsAllowed: newConfig.assetsAllowed.assetsAllowed },
-      hoursAllowed: { isActive: !newConfig.hoursAllowed.isActive, type: newConfig.hoursAllowed.type, tradingOpenTime: newConfig.hoursAllowed.tradingOpenTime, tradingCloseTime: newConfig.hoursAllowed.tradingCloseTime, timezone: newConfig.hoursAllowed.timezone }
-    };
+    // Usar el método unificado para distribuir reglas
+    this.distributeRulesBetweenPanels(newConfig);
   }
 
   saveStrategy() {
-    console.log('💾 saveStrategy() called');
-    console.log('- isPluginActive:', this.isPluginActive);
-    
     // Verificar si se puede guardar (plugin no activo)
     if (!this.canSaveStrategy()) {
-      console.log('❌ Save blocked: Plugin is active');
       alert('Cannot save strategy while plugin is active. Please deactivate the plugin first.');
       return;
     }
+
+    // Validar todas las reglas activas
+    if (!this.validateActiveRules()) {
+      return;
+    }
     
-    console.log('✅ Save allowed: Plugin is not active');
     this.confirmPopupVisible = true;
   }
 
@@ -749,7 +675,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       const newConfig: StrategyState = {
         maxDailyTrades: { isActive: this.myChoices.maxDailyTrades.isActive, type: this.myChoices.maxDailyTrades.type, maxDailyTrades: this.myChoices.maxDailyTrades.maxDailyTrades },
         riskReward: { isActive: this.myChoices.riskReward.isActive, type: this.myChoices.riskReward.type, riskRewardRatio: this.myChoices.riskReward.riskRewardRatio },
-        riskPerTrade: { isActive: this.myChoices.riskPerTrade.isActive, type: this.myChoices.riskPerTrade.type, review_type: this.myChoices.riskPerTrade.review_type, number_type: this.myChoices.riskPerTrade.number_type, percentage_type: this.myChoices.riskPerTrade.percentage_type, risk_ammount: this.myChoices.riskPerTrade.risk_ammount, balance: this.myChoices.riskPerTrade.balance },
+        riskPerTrade: { isActive: this.myChoices.riskPerTrade.isActive, type: this.myChoices.riskPerTrade.type, review_type: this.myChoices.riskPerTrade.review_type, number_type: this.myChoices.riskPerTrade.number_type, percentage_type: this.myChoices.riskPerTrade.percentage_type, risk_ammount: this.myChoices.riskPerTrade.risk_ammount, balance: this.myChoices.riskPerTrade.balance, actualBalance: this.myChoices.riskPerTrade.actualBalance },
         daysAllowed: { isActive: this.myChoices.daysAllowed.isActive, type: this.myChoices.daysAllowed.type, tradingDays: this.myChoices.daysAllowed.tradingDays },
         assetsAllowed: { isActive: this.myChoices.assetsAllowed.isActive, type: this.myChoices.assetsAllowed.type, assetsAllowed: this.myChoices.assetsAllowed.assetsAllowed },
         hoursAllowed: { isActive: this.myChoices.hoursAllowed.isActive, type: this.myChoices.hoursAllowed.type, tradingOpenTime: this.myChoices.hoursAllowed.tradingOpenTime, tradingCloseTime: this.myChoices.hoursAllowed.tradingCloseTime, timezone: this.myChoices.hoursAllowed.timezone }
@@ -764,9 +690,13 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           .updateStrategyView(this.strategyId, {
             configuration: newConfig
           })
-          .then(() => {
+          .then(async () => {
             // Actualizar fecha de modificación en la mini card
             this.lastModifiedText = this.formatDate(new Date());
+            
+            // Limpiar cache para forzar recarga
+            this.strategyCacheService.clearCache();
+            
             alert('Strategy Updated');
             this.router.navigate(['/strategy']);
           })
@@ -782,7 +712,10 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         // CASO B: Nueva estrategia - Crear en Firebase
         this.strategySvc
           .createStrategyView(this.user.id, this.currentStrategyName, newConfig)
-          .then((strategyId) => {
+          .then(async (strategyId) => {
+            // Limpiar cache para forzar recarga
+            this.strategyCacheService.clearCache();
+            
             alert('Strategy Created');
             this.router.navigate(['/strategy']);
           })
@@ -809,6 +742,75 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   closeConfirmModal = () => {
     this.confirmPopupVisible = false;
   };
+
+  /**
+   * Método que se ejecuta cuando se confirma el guardado
+   * Hace la validación final antes de proceder con el guardado
+   */
+  confirmSave = () => {
+    // Validar todas las reglas activas una vez más
+    if (!this.validateActiveRules()) {
+      return; // No proceder con el guardado
+    }
+    
+    this.save();
+  };
+
+  /**
+   * Valida todas las reglas activas antes de permitir guardar
+   */
+  private validateActiveRules(): boolean {
+    if (!this.myChoices) {
+      return true; // Si no hay reglas activas, permitir guardar
+    }
+
+    const validationErrors: string[] = [];
+
+    // Validar regla de horas permitidas
+    if (this.myChoices.hoursAllowed.isActive && this.hoursAllowedRef) {
+      if (!this.hoursAllowedRef.isRuleValid()) {
+        validationErrors.push(`Hours Allowed: ${this.hoursAllowedRef.getErrorMessage()}`);
+      }
+    }
+
+    // Validar regla de días permitidos
+    if (this.myChoices.daysAllowed.isActive && this.daysAllowedRef) {
+      if (!this.daysAllowedRef.isRuleValid()) {
+        validationErrors.push(`Days Allowed: ${this.daysAllowedRef.getErrorMessage()}`);
+      }
+    }
+
+    // Validar regla de assets permitidos
+    if (this.myChoices.assetsAllowed.isActive && this.assetsAllowedRef) {
+      if (!this.assetsAllowedRef.isRuleValid()) {
+        validationErrors.push(`Assets Allowed: ${this.assetsAllowedRef.getErrorMessage()}`);
+      }
+    }
+
+    // Validar regla de máximo de trades diarios
+    if (this.myChoices.maxDailyTrades.isActive && this.maxDailyTradesRef) {
+      if (!this.maxDailyTradesRef.isRuleValid()) {
+        validationErrors.push(`Max Daily Trades: ${this.maxDailyTradesRef.getErrorMessage()}`);
+      }
+    }
+
+    // Validar regla de riesgo por trade
+    if (this.myChoices.riskPerTrade.isActive && this.riskPerTradeRef) {
+      if (!this.riskPerTradeRef.isRuleValid()) {
+        validationErrors.push(`Risk Per Trade: ${this.riskPerTradeRef.getErrorMessage()}`);
+      }
+    }
+
+    if (validationErrors.length > 0) {
+      const errorMessage = 'Cannot save strategy. Please complete the following rules:\n\n' + 
+                          validationErrors.join('\n') + 
+                          '\n\nAll required fields must be filled before saving.';
+      alert(errorMessage);
+      return false;
+    }
+
+    return true;
+  }
 
   // Mini card methods
   startEditName() {
@@ -894,8 +896,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     
     if (confirmed) {
       // Resetear a configuración inicial (todas las reglas en Available Rules)
-      this.initializePanelsForNewStrategy(initialStrategyState);
-      console.log('Strategy reset to initial state');
+      this.initializeWithConfigAndBalance(initialStrategyState, 0);
     }
   }
 
@@ -909,7 +910,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   setupPluginHistoryListener() {
     
     if (!this.user?.id) {
-      console.warn('No user ID available for plugin history listener');
       return;
     }
 
@@ -951,9 +951,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
    */
   canSaveStrategy(): boolean {
     const canSave = !this.isPluginActive;
-    console.log('🔒 canSaveStrategy() called:');
-    console.log('- isPluginActive:', this.isPluginActive);
-    console.log('- canSave:', canSave);
     return canSave;
   }
 

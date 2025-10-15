@@ -8,4 +8,149 @@
 
 .risk-reward-container {
   width: 10rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.rule-label {
+  cursor: default;
+  user-select: none;
+}
+
+.custom-checkbox {
+  cursor: pointer;
+  
+  &:hover input[type="checkbox"] + .checkmark {
+    border-color: #4CAF50;
+  }
+  
+  &:hover input[type="checkbox"]:checked + .checkmark {
+    background-color: #45a049;
+  }
+}
+
+.fixed-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 40px;
+  background: #18181b;
+  border: 1px solid #8e8e93;
+  border-radius: 8px;
+  font-weight: bold;
+  color: #e3e3e3;
+}
+
+.fixed-number-input {
+  padding: 8px 10px;
+  width: min-content;
+  max-width: 60px;
+  opacity: 0.5;
+  background: #0f0f0f;
+  border: 1px solid #8e8e93;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: not-allowed;
+  color: #dbdbdb;
+  text-align: center;
+  font-size: 14px;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  pointer-events: none;
+  cursor: default;
+  
+  &:focus {
+    outline: none;
+  }
+  
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  &[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+}
+
+.spinner-container {
+  display: flex;
+  align-items: center;
+  border: 1px solid #8e8e93;
+  border-radius: 8px;
+  background: #18181b;
+  color: #e3e3e3;
+  
+  &.disabled {
+    opacity: 0.5;
+    background: #0f0f0f;
+  }
+}
+
+.spinner-btn {
+  background: transparent;
+  border: none;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  color: #e3e3e3;
+  transition: background-color 0.2s;
+  
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  &:disabled {
+    cursor: not-allowed;
+    color: #666;
+  }
+  
+  &.decrement {
+    border-right: 1px solid #8e8e93;
+  }
+  
+  &.increment {
+    border-left: 1px solid #8e8e93;
+  }
+}
+
+.spinner-input {
+  border: none;
+  outline: none;
+  text-align: center;
+  width: 60px;
+  padding: 8px;
+  font-size: 14px;
+  background: transparent;
+  color: #e3e3e3;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  pointer-events: none;
+  cursor: default;
+  
+  &:focus {
+    outline: none;
+  }
+  
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  &[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }

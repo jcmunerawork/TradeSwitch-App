@@ -1,13 +1,10 @@
 <div class="regularText color-background">
-  @if (initialLoading) {
+  @if (initialLoading || isProcessingStrategy) {
   <!-- Loading State -->
-  <div class="loading-container d-flex flex-col align-items-center justify-center">
-    <div class="loading-spinner">
-      <div class="spinner"></div>
-    </div>
-    <h3 class="loading-title">Loading your strategies...</h3>
-    <p class="loading-description">Please wait while we load your data.</p>
-  </div>
+  <app-loading-spinner 
+    title="Loading your strategies..." 
+    description="Please wait while we load your strategies.">
+  </app-loading-spinner>
   } @else {
   <!-- Main Content -->
   <div class="mb-20 d-flex justify-between">
@@ -42,26 +39,13 @@
       class="add-strategy-btn d-flex align-items-center gap-8" 
       [class.disabled]="isAddStrategyDisabled"
       [disabled]="isAddStrategyDisabled"
-      (click)="isAddStrategyDisabled ? null : toggleStrategySelector()"
+      (click)="isAddStrategyDisabled ? null : onNewStrategy()"
     >
       <span class="material-symbols-outlined" style="font-size: 20px;">add</span>
       <span>Add Strategy</span>
     </button>
   </div>
 
-  @if (showStrategySelector) {
-    <div class="new-strategy-form d-flex align-items-center gap-12 mb-16">
-      <input 
-        type="text" 
-        class="strategy-name-input" 
-        placeholder="Enter strategy name"
-        [(ngModel)]="newStrategyName"
-        (keyup.enter)="onCreateNewStrategy()"
-      >
-      <button class="create-btn" (click)="onCreateNewStrategy()">Create</button>
-      <button class="cancel-btn" (click)="onCancelNewStrategy()">Cancel</button>
-    </div>
-    }
 
   <!-- Plan Banner -->
   @if (showPlanBanner) {
@@ -90,7 +74,7 @@
     </div>
     <h3 class="empty-title">No strategies found</h3>
     <p class="empty-description">Create your first strategy to start trading with TradeSwitch.</p>
-    <button class="create-first-btn" (click)="toggleStrategySelector()">
+    <button class="create-first-btn" (click)="onNewStrategy()">
       Create First Strategy
     </button>
   </div>
@@ -234,4 +218,14 @@
   (dontShowAgain)="onDontShowStrategyGuideAgain()"
   (editStrategy)="onEditStrategyFromGuide()"
 ></app-strategy-guide-modal>
+}
+
+<!-- Loading overlay for strategy creation -->
+@if (isCreatingStrategy) {
+<div class="strategy-creation-loading-overlay">
+  <div class="loading-content">
+    <div class="loading-spinner"></div>
+    <p class="loading-text">Creating strategy...</p>
+  </div>
+</div>
 }

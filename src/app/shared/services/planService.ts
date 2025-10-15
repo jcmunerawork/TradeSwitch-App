@@ -116,6 +116,38 @@ export class PlanService {
   }
 
   /**
+   * LEER: Obtener un plan por nombre exacto
+   * @param name Nombre exacto del plan
+   * @returns Promise con el plan específico o undefined si no se encuentra
+   */
+  async getPlanByName(name: string): Promise<Plan | undefined> {
+    try {
+      const plansRef = collection(db, 'plan');
+      const querySnapshot = await getDocs(plansRef);
+      
+      if (querySnapshot.empty) {
+        return undefined;
+      }
+      
+      // Buscar plan con nombre exacto
+      const matchingDoc = querySnapshot.docs.find(doc => {
+        const data = doc.data();
+        return data['name'] === name;
+      });
+      
+      if (matchingDoc) {
+        const data = matchingDoc.data();
+        return { id: matchingDoc.id, ...data } as Plan;
+      }
+      
+      return undefined;
+    } catch (error) {
+      console.error('❌ Error al obtener plan por nombre:', error);
+      return undefined;
+    }
+  }
+
+  /**
    * LEER: Buscar planes por nombre
    * @param name Nombre o parte del nombre a buscar
    * @returns Promise con planes que coinciden con la búsqueda

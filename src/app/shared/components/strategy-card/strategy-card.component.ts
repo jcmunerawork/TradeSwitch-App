@@ -1,10 +1,11 @@
 import { Component, Input, Output, EventEmitter, HostListener, OnInit, OnDestroy, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { StrategyCardData } from './strategy-card.interface';
 import { NumberFormatterService } from '../../utils/number-formatter.service';
 import { StrategyDaysUpdaterService } from '../../services/strategy-days-updater.service';
 import { interval, Subscription } from 'rxjs';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { firebaseApp } from '../../../firebase/firebase.init';
 import { isPlatformBrowser } from '@angular/common';
 import { PLATFORM_ID } from '@angular/core';
@@ -12,7 +13,7 @@ import { PLATFORM_ID } from '@angular/core';
 @Component({
   selector: 'app-strategy-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './strategy-card.component.html',
   styleUrls: ['./strategy-card.component.scss']
 })
@@ -43,8 +44,12 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
   @Output() customize = new EventEmitter<string>();
   @Output() duplicate = new EventEmitter<string>();
   @Output() delete = new EventEmitter<string>();
+  @Output() nameChanged = new EventEmitter<{id: string, newName: string}>();
 
   showOptionsMenu = false;
+  isEditingName = false;
+  editingStrategyName = '';
+  isSavingName = false;
 
   private numberFormatter = new NumberFormatterService();
   private updateSubscription?: Subscription;
@@ -87,12 +92,63 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
       // Actualizar en Firebase
       await this.daysUpdaterService.updateStrategyDaysActive(this.strategy.id, this.strategy.userId);
     } catch (error) {
-      console.error('Error al actualizar días activos:', error);
+      console.error('Error updating days active:', error);
     }
   }
 
   onEdit() {
-    this.edit.emit(this.strategy.id);
+    this.startEditName();
+  }
+
+  startEditName() {
+    this.isEditingName = true;
+    this.editingStrategyName = this.strategy.name;
+    // Focus en el input después de que se renderice
+    setTimeout(() => {
+      const input = document.querySelector('.strategy-name-input') as HTMLInputElement;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 0);
+  }
+
+  async saveStrategyName() {
+    if (this.editingStrategyName.trim() && this.editingStrategyName.trim() !== this.strategy.name) {
+      const newName = this.editingStrategyName.trim();
+      this.isSavingName = true;
+      
+      try {
+        // Actualizar en Firebase
+        await this.updateStrategyNameInFirebase(newName);
+        
+        // Actualizar el nombre localmente
+        this.strategy.name = newName;
+        
+        // Emitir evento para notificar al componente padre
+        this.nameChanged.emit({
+          id: this.strategy.id,
+          newName: newName
+        });
+        
+        // Mostrar mensaje de éxito
+        alert(`✅ Name of strategy updated successfully: "${newName}"`);
+      } catch (error) {
+        // Mostrar mensaje de error al usuario
+        alert(`❌ Error updating the name of the strategy: ${error}`);
+        // No actualizamos el nombre local si falla en Firebase
+      } finally {
+        this.isSavingName = false;
+      }
+    }
+    
+    this.isEditingName = false;
+    this.editingStrategyName = '';
+  }
+
+  cancelEditName() {
+    this.isEditingName = false;
+    this.editingStrategyName = '';
   }
 
   onFavorite() {
@@ -153,6 +209,37 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Actualiza el nombre de la estrategia en Firebase
+   */
+  private async updateStrategyNameInFirebase(newName: string): Promise<void> {
+    if (!this.db || !this.strategy.id) {
+      throw new Error('Cannot update: missing database information or strategy ID');
+    }
+
+    try {
+      // Intentar actualizar en la colección 'strategies'
+      const strategyRef = doc(this.db, 'configuration-overview', this.strategy.id);
+      const strategyDoc = await getDoc(strategyRef);
+      
+      if (strategyDoc.exists()) {
+        // Si existe, actualizar el documento
+        await updateDoc(strategyRef, {
+          name: newName,
+          updated_at: new Date()
+        });
+      } else {
+        // Si no existe, mostrar error específico
+        const errorMsg = `The strategy with ID "${this.strategy.id}" does not exist in Firebase`;
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+    } catch (error) {
+      console.error('Error updating the name in Firebase:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Calcula las reglas activas desde la colección configurations
    */
   private async calculateActiveRules(): Promise<void> {
@@ -178,7 +265,7 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
         this.strategy.rules = activeRulesCount;
       }
     } catch (error) {
-      console.error('Error al calcular reglas activas:', error);
+      console.error('Error calculating active rules:', error);
     }
   }
 }
