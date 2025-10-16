@@ -69,15 +69,29 @@ export class HoursAllowedComponent implements OnInit {
   }
 
   onToggleActive(event: Event) {
+    const isActive = (event.target as HTMLInputElement).checked;
     const newConfig = {
       ...this.config,
-      isActive: (event.target as HTMLInputElement).checked,
+      isActive: isActive,
+      // Reiniciar valores cuando se desactiva
+      tradingOpenTime: isActive ? this.config.tradingOpenTime : '09:30',
+      tradingCloseTime: isActive ? this.config.tradingCloseTime : '17:00',
+      timezone: isActive ? this.config.timezone : 'UTC',
     };
     this.updateConfig(newConfig);
   }
   onTimezoneChange(newTz: string) {
-    const newConfig = { ...this.config, timezone: newTz };
-    this.updateConfig(newConfig);
+    // Validar que la timezone sea válida
+    if (this.isValidTimezone(newTz)) {
+      const newConfig = { ...this.config, timezone: newTz };
+      this.updateConfig(newConfig);
+    } else {
+      console.warn('Invalid timezone selected:', newTz);
+    }
+  }
+
+  isValidTimezone(timezone: string): boolean {
+    return this.timezones.some(tz => tz.value === timezone);
   }
 
   onTimeChange(field: 'tradingOpenTime' | 'tradingCloseTime', value: string) {

@@ -10,10 +10,10 @@
       <span class="checkmark"></span>
     </label>
 
-    <label
-      for="toggle-days-allowed"
+    <span
       [ngClass]="{ deactivated: !config.isActive }"
-      >Only allow trades on</label
+      class="rule-label"
+      >Only allow trades on</span
     >
   </div>
   <div class="days-container d-flex items-start">
@@ -21,6 +21,7 @@
     <button
       class="inputText"
       [ngClass]="{ btnActive: dayOption.isActive }"
+      [disabled]="!config.isActive"
       (click)="onChangeValue(dayOption)"
     >
       {{ dayOption.day.substring(0, 3) }}

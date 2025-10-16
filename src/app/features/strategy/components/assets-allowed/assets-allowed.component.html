@@ -3,17 +3,17 @@
     <label class="custom-checkbox m-6">
       <input
         type="checkbox"
-        id="toggle-days-allowed"
+        id="toggle-assets-allowed"
         [checked]="config.isActive"
         (change)="onToggleActive($event)"
       />
       <span class="checkmark"></span>
     </label>
 
-    <label
-      for="toggle-days-allowed"
+    <span
       [ngClass]="{ deactivated: !config.isActive }"
-      >Only allow trades on the following assets</label
+      class="rule-label"
+      >Only allow trades on the following assets</span
     >
   </div>
 
@@ -21,16 +21,19 @@
     class="currency-dropdown regularText mb-6"
     (click)="$event.stopPropagation()"
   >
-    <button
-      class="dropdown-toggle d-flex items-center justify-between py-0 px-4 color-light-gray"
-      (click)="toggleDropdown()"
-    >
-      <span class="inputText">{{ selectedInstrument || "Add Symbols" }}</span>
-      <span class="icon-chevron color-light-gray"></span>
-    </button>
+    <input
+      type="text"
+      class="dropdown-input"
+      placeholder="Add Symbols"
+      [value]="searchTerm"
+      [disabled]="!config.isActive"
+      (input)="onSearchInput($event)"
+      (focus)="onSearchFocus()"
+      (blur)="onSearchBlur()"
+    />
 
     <div class="dropdown-menu bg-bg-black inputText" *ngIf="dropdownOpen">
-      @for (symbol of availableSymbolsOptions; track $index) {
+      @for (symbol of getFilteredSymbols(); track $index) {
       <div
         class="dropdown-item color-light-gray"
         (click)="selectInstrument(symbol)"
@@ -45,6 +48,7 @@
     @for (symbol of symbols; track $index) {
     <button
       (click)="removeSymbol(symbol)"
+      [disabled]="!config.isActive"
       class="d-flex px-6 py-4 bg-secondary-500 color-secondary-900 items-center inputText"
     >
       <span>{{ symbol }}</span>

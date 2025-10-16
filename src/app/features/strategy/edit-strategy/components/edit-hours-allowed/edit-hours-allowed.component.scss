@@ -9,31 +9,26 @@
     );
 }
 
-.label-container {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  gap: 8px;
+.rule-label {
+  cursor: default;
+  user-select: none;
+}
+
+.custom-checkbox {
+  cursor: pointer;
   
-  @media (max-width: 472px) {
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    margin-left: 8px;
-    gap: 10px;
+  &:hover input[type="checkbox"] + .checkmark {
+    border-color: #4CAF50;
+  }
+  
+  &:hover input[type="checkbox"]:checked + .checkmark {
+    background-color: #45a049;
   }
 }
 
-.timezone-container {
-  @media (max-width: 400px) {
-    .timezone-select {
-      width: 100%;
-      font-size: 14px;
-      padding: 6px 12px;
-    }
-  }
+.timezone-select-container {
+  position: relative;
+  display: inline-block;
 }
 
 .timezone-select {
@@ -53,6 +48,44 @@
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 22px 22px;
+  
+  &:focus {
+    border-color: #4CAF50;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  &.placeholder-active {
+    color: transparent;
+    text-shadow: none;
+  }
+  
+  option:first-child {
+    color: #999;
+    font-style: italic;
+  }
+}
+
+.timezone-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  transform: translateY(-50%);
+  color: #999;
+  font-size: 1rem;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 40px); // Dejar espacio para la flecha del dropdown
+  
+  &.disabled {
+    opacity: 0.5;
+  }
 }
 
 .timezone-select option {
@@ -75,6 +108,20 @@
   font-size: 1rem;
   outline: none;
   transition: border 0.2s;
+  
+  &:focus {
+    border-color: #4CAF50;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  &::placeholder {
+    color: #999;
+    opacity: 1;
+  }
 }
 
 #openTradingTime {
@@ -89,24 +136,153 @@ label {
   font-size: 0.96rem;
 }
 
+/* ===== ESTILO DEL RELOJ - EDITA AQUÍ ===== */
+
+/* Variables CSS para ngx-material-timepicker */
 ::ng-deep ngx-material-timepicker-content {
-  .timepicker__main {
-    background: #18181b !important;
-    color: #e3e3e3 !important;
-  }
-
-  .timepicker__header {
-    background-color: #24242a !important;
-    color: #e3e3e3 !important;
-  }
+  --body-background-color: #18181b !important;
+  --primary-font-family: 'SF Pro Display', sans-serif !important;
+  --button-color: #ffffff !important;
+  --dial-active-color: #ffffff !important;
+  --dial-inactive-color: rgba(255, 255, 255, 0.5) !important;
+  --dial-background-color: #6e6d6d !important;
+  --clock-face-time-active-color: #ffffff !important;
+  --clock-face-time-inactive-color: #ffffff !important;
+  --clock-face-background-color: #414141 !important;
+  --clock-hand-color: #4CAF50 !important;
+  --clock-face-time-disabled-color: #666666 !important;
+  --header-background-color: #24242a !important;
+  --header-color: #ffffff !important; 
 }
 
-::ng-deep ngx-material-timepicker-button {
-  .timepicker-button {
-    color: #18181b !important;
-  }
+/* Contenedor principal */
+::ng-deep ngx-material-timepicker-content {
+  background: #18181b !important;
+  color: #ffffff !important;
 }
 
-::ng-deep ngx-material-timepicker-face {
-  --clock-hand-color: #24242a;
+/* Header del timepicker */
+::ng-deep ngx-material-timepicker-content .timepicker__header {
+  background-color: #24242a !important;
+  color: #ffffff !important;
+}
+
+/* Hora mostrada en el header */
+::ng-deep ngx-material-timepicker-content .timepicker__display {
+  color: #ffffff !important;
+}
+
+/* Selector AM/PM */
+::ng-deep ngx-material-timepicker-content .timepicker__period {
+  color: #ffffff !important;
+}
+
+::ng-deep ngx-material-timepicker-content .timepicker__period--selected {
+  color: #ffffff !important;
+}
+
+::ng-deep ngx-material-timepicker-content .timepicker__period--unselected {
+  color: #666666 !important;
+}
+
+/* Cara del reloj */
+::ng-deep ngx-material-timepicker-content .timepicker__face {
+  background: #1a1a1a !important;
+}
+
+/* Números del reloj */
+::ng-deep ngx-material-timepicker-content .timepicker__number {
+  color: #ffffff !important;
+}
+
+/* Número seleccionado */
+::ng-deep ngx-material-timepicker-content .timepicker__number--selected {
+  background: #4CAF50 !important;
+  color: #ffffff !important;
+}
+
+/* Manecilla del reloj */
+::ng-deep ngx-material-timepicker-content .timepicker__hand {
+  background: #4CAF50 !important;
+}
+
+/* Punto central del reloj */
+::ng-deep ngx-material-timepicker-content .timepicker__center {
+  background: #4CAF50 !important;
+}
+
+/* Botones del timepicker */
+::ng-deep ngx-material-timepicker-content .timepicker__button {
+  background: #24242a !important;
+  border: none !important;
+}
+
+/* Botón OK/Confirmar */
+::ng-deep ngx-material-timepicker-content .timepicker__button--primary,
+::ng-deep ngx-material-timepicker-content .timepicker-button--confirm {
+  background: #4CAF50 !important;
+  color: #000000 !important;
+  border: none !important;
+  font-weight: 600 !important;
+}
+
+/* Botón Cancel */
+::ng-deep ngx-material-timepicker-content .timepicker__button--secondary,
+::ng-deep ngx-material-timepicker-content .timepicker-button--cancel {
+  background: #1a3d1a !important;
+  color: #4CAF50 !important;
+  border: 1px solid #4CAF50 !important;
+  font-weight: 600 !important;
+}
+
+/* Selectores alternativos más específicos */
+::ng-deep .ngx-material-timepicker {
+  --body-background-color: #18181b !important;
+  --header-background-color: #24242a !important;
+  --header-color: #ffffff !important;
+  --clock-hand-color: #4CAF50 !important;
+  --clock-face-background-color: #1a1a1a !important;
+  --clock-face-time-active-color: #ffffff !important;
+  --clock-face-time-inactive-color: #ffffff !important;
+  --dial-active-color: #ffffff !important;
+  --dial-inactive-color: rgba(255, 255, 255, 0.5) !important;
+  --button-color: #ffffff !important;
+}
+
+/* Estilos adicionales para asegurar que se apliquen */
+::ng-deep .ngx-material-timepicker-content .timepicker-dial__control {
+  color: #ffffff !important;
+}
+
+::ng-deep .ngx-material-timepicker-content .clock-face__number > span.active {
+  background-color: #4CAF50 !important;
+  color: #ffffff !important;
+}
+
+::ng-deep .ngx-material-timepicker-content .clock-face__number {
+  color: #ffffff !important;
+}
+
+/* Estilos para mensajes de validación */
+.validation-error {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: rgba(244, 67, 54, 0.1);
+  border: 1px solid #f44336;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.error-message {
+  color: #f44336;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  
+  &::before {
+    content: "⚠";
+    margin-right: 6px;
+    font-size: 1rem;
+  }
 }

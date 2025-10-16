@@ -10,6 +10,7 @@ import { SubscriptionHistoryComponent } from './components/subscription-history/
 import { PlanDetails } from './models/account-settings';
 import { MOCK_PLAN_DETAILS } from './mocks/account-mocks';
 import { AppContextService } from '../../shared/context';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-account',
@@ -32,11 +33,19 @@ export class AccountComponent implements OnInit {
     private store: Store,
     private strategySvc: SettingsService,
     private reportSvc: ReportService,
-    private appContext: AppContextService
+    private appContext: AppContextService,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
     this.selectedPlanDetails = MOCK_PLAN_DETAILS;
+    
+    // Verificar query parameters para seleccionar la pestaña correcta
+    this.route.queryParams.subscribe(params => {
+      if (params['tab'] === 'plan') {
+        this.selectedIndex = 1; // Plan Management tab
+      }
+    });
     
     // Suscribirse a los datos del usuario desde el contexto
     this.appContext.currentUser$.subscribe(user => {

@@ -5,6 +5,7 @@ import { TradeLockerApiService } from '../../services/tradelocker-api.service';
 import { AuthService } from '../../../features/auth/service/authService';
 import { AccountData } from '../../../features/auth/models/userModel';
 import { Timestamp } from 'firebase/firestore';
+import { NumberFormatterService } from '../../utils/number-formatter.service';
 
 @Component({
   selector: 'app-create-account-popup',
@@ -26,7 +27,8 @@ export class CreateAccountPopupComponent implements OnChanges {
 
   constructor(
     private authService: AuthService,
-    private tradeLockerApiService: TradeLockerApiService
+    private tradeLockerApiService: TradeLockerApiService,
+    private numberFormatter: NumberFormatterService
   ) {}
 
   ngOnChanges(changes: SimpleChanges) {
@@ -52,6 +54,10 @@ export class CreateAccountPopupComponent implements OnChanges {
     initialBalance: 0,
     accountNumber: 0,
   };
+
+  // Properties for formatted balance input
+  initialBalanceInput: string = '';
+  initialBalanceDisplay: string = '';
 
   // Confirmation modals
   showCancelConfirm = false;
@@ -159,6 +165,41 @@ export class CreateAccountPopupComponent implements OnChanges {
     this.close.emit();
   }
 
+  // Balance input event handlers
+  onInitialBalanceInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    this.initialBalanceInput = target.value;
+  }
+
+  onInitialBalanceFocus() {
+    // When user focuses, show only the number without formatting for editing
+    if (this.newAccount.initialBalance > 0) {
+      this.initialBalanceInput = this.newAccount.initialBalance.toString();
+    } else {
+      this.initialBalanceInput = '';
+    }
+  }
+
+  onInitialBalanceBlur() {
+    // Convert the value to number
+    const numericValue = this.numberFormatter.parseCurrencyValue(this.initialBalanceInput);
+    if (!isNaN(numericValue) && numericValue >= 0) {
+      // Save the unformatted value
+      this.newAccount.initialBalance = numericValue;
+      
+      // Show visual format (only for display)
+      this.initialBalanceDisplay = this.numberFormatter.formatCurrencyDisplay(numericValue);
+      
+      // Update the input to show the visual format
+      this.initialBalanceInput = this.initialBalanceDisplay;
+    } else {
+      // If not a valid number, clear
+      this.initialBalanceInput = '';
+      this.initialBalanceDisplay = '';
+      this.newAccount.initialBalance = 0;
+    }
+  }
+
   resetForm() {
     this.newAccount = {
       accountName: '',
@@ -170,6 +211,10 @@ export class CreateAccountPopupComponent implements OnChanges {
       accountNumber: 1, // Default to 1 as suggested
       initialBalance: 0,
     };
+    
+    // Reset balance input properties
+    this.initialBalanceInput = '';
+    this.initialBalanceDisplay = '';
   }
 
   populateFormForEdit() {
@@ -184,6 +229,15 @@ export class CreateAccountPopupComponent implements OnChanges {
         accountNumber: this.accountToEdit.accountNumber || 1,
         initialBalance: this.accountToEdit.initialBalance || 0,
       };
+      
+      // Set balance input values for display with currency format
+      if (this.newAccount.initialBalance > 0) {
+        this.initialBalanceDisplay = this.numberFormatter.formatCurrencyDisplay(this.newAccount.initialBalance);
+        this.initialBalanceInput = this.initialBalanceDisplay; // Show formatted value initially
+      } else {
+        this.initialBalanceInput = '';
+        this.initialBalanceDisplay = '';
+      }
     }
   }
 

@@ -1,3 +1,19 @@
+@if (loading) {
+  <!-- Loading State - Reemplaza todo el contenido -->
+  <div class="loading-content d-flex flex-col align-items-center">
+    <app-loading-spinner 
+      title="Loading your trading data..." 
+      description="Please wait while we fetch your account information.">
+    </app-loading-spinner>
+    
+    @if (showReloadButton) {
+    <button class="reload-btn" (click)="reloadData()">
+      <span class="material-symbols-outlined" style="font-size: 18px;">refresh</span>
+      Reload Data
+    </button>
+    }
+  </div>
+} @else {
 <!-- Contenido principal -->
 <div class="main-titles color-background d-flex flex-col mb-50">
   <h1 class="titleText mb-20">My Reports</h1>
@@ -12,12 +28,6 @@
   <div class="account-info d-flex flex-col">
     <div class="account-title-row d-flex align-items-center">
       <h2 class="account-name color-background">{{ getCurrentAccountName() }}</h2>
-      @if (!loading) {
-      <button class="export-btn export-btn-title d-flex align-items-center gap-8" (click)="exportAllData()">
-        <span>Export Data</span>
-        <span class="material-symbols-outlined" style="font-size: 18px">call_made</span>
-      </button>
-      }
     </div>
     <div class="account-details d-flex align-items-center">
       <span class="account-server color-secondary-300">{{ getCurrentAccountServer() }}</span>
@@ -25,12 +35,7 @@
   </div>
   
   <div class="action-buttons d-flex gap-12">
-    @if (!loading) {
-    <button class="export-btn export-btn-desktop d-flex align-items-center gap-8" (click)="exportAllData()">
-      <span>Export Data</span>
-      <span class="material-symbols-outlined" style="font-size: 18px">call_made</span>
-    </button>
-    
+    @if (!loading) {    
     <button class="edit-strategy-btn d-flex align-items-center gap-8" (click)="goToEditStrategy()">
       <span>Edit Strategy</span>
       <span class="material-symbols-outlined" style="font-size: 18px">edit_square</span>
@@ -74,22 +79,6 @@
     <button class="create-first-btn" (click)="navigateToTradingAccounts()">
       Add Trading Account
     </button>
-  </div>
-} @else if (loading) {
-  <!-- Loading state - solo muestra el dropdown de cambio de cuenta -->
-  <div class="loading-content d-flex flex-col align-items-center">
-    <div class="loading-spinner-container">
-      <div class="loading-spinner"></div>
-    </div>
-    <h3 class="loading-title">Loading your trading data...</h3>
-    <p class="loading-message">Please wait while we fetch your account information.</p>
-    
-    @if (showReloadButton) {
-    <button class="reload-btn" (click)="reloadData()">
-      <span class="material-symbols-outlined" style="font-size: 18px;">refresh</span>
-      Reload Data
-    </button>
-    }
   </div>
 } @else {
 <div class="stats-card-container">
@@ -142,4 +131,5 @@
   [modalData]="planLimitationModal"
   (closeModal)="onClosePlanLimitationModal()"
 ></app-plan-limitation-modal>
+}
 }

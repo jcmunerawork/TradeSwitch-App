@@ -9,3 +9,88 @@
 .risk-reward-container {
   width: 10rem;
 }
+
+.rule-label {
+  cursor: default;
+  user-select: none;
+}
+
+.custom-checkbox {
+  cursor: pointer;
+  
+  &:hover input[type="checkbox"] + .checkmark {
+    border-color: #4CAF50;
+  }
+  
+  &:hover input[type="checkbox"]:checked + .checkmark {
+    background-color: #45a049;
+  }
+}
+
+.fixed-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 40px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-weight: bold;
+  color: #666;
+}
+
+.spinner-container {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  
+  &.disabled {
+    opacity: 0.5;
+    background: #f5f5f5;
+  }
+}
+
+.spinner-btn {
+  background: #f8f9fa;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  transition: background-color 0.2s;
+  
+  &:hover:not(:disabled) {
+    background: #e9ecef;
+  }
+  
+  &:disabled {
+    cursor: not-allowed;
+    color: #999;
+  }
+  
+  &.decrement {
+    border-right: 1px solid #ddd;
+  }
+  
+  &.increment {
+    border-left: 1px solid #ddd;
+  }
+}
+
+.spinner-input {
+  border: none;
+  outline: none;
+  text-align: center;
+  width: 60px;
+  padding: 8px;
+  font-size: 14px;
+  background: transparent;
+  
+  &:focus {
+    outline: none;
+  }
+}

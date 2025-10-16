@@ -44,7 +44,7 @@
           Sort by: Last Update
         </button>
 
-        <div class="filter-container">
+        <div class="filter-container" #filterContainer>
           <button
             class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
             (click)="openFilter()"
@@ -54,31 +54,37 @@
           @if (showFilter) {
           <div class="filter-modal py-20 px-24 d-flex flex-col">
             <label class="mt-10">Balance:</label>
-            <div
-              class="percentage-input d-flex items-center justify-between p-10"
-            >
-              <input
-                id="min-balance"
-                type="number"
-                [(ngModel)]="initialMinBalance"
-                placeholder="Min Balance"
-                class="search-box color-background smallText"
-              />
-              <label for="min-balance">min $</label>
-            </div>
+              <div
+                class="percentage-input d-flex items-center justify-between p-10"
+              >
+                <input
+                  id="min-balance"
+                  type="text"
+                  [(ngModel)]="minBalanceInput"
+                  placeholder="Min Balance"
+                  class="search-box color-background smallText"
+                  (input)="onMinBalanceInput($event)"
+                  (focus)="onMinBalanceFocus()"
+                  (blur)="onMinBalanceBlur()"
+                />
+                <label for="min-balance">min $</label>
+              </div>
 
-            <div
-              class="percentage-input d-flex items-center justify-between p-10"
-            >
-              <input
-                id="max-balance"
-                type="number"
-                [(ngModel)]="initialMaxBalance"
-                placeholder="Max Balance"
-                class="search-box color-background smallText"
-              />
-              <label for="max-balance">max $</label>
-            </div>
+              <div
+                class="percentage-input d-flex items-center justify-between p-10"
+              >
+                <input
+                  id="max-balance"
+                  type="text"
+                  [(ngModel)]="maxBalanceInput"
+                  placeholder="Max Balance"
+                  class="search-box color-background smallText"
+                  (input)="onMaxBalanceInput($event)"
+                  (focus)="onMaxBalanceFocus()"
+                  (blur)="onMaxBalanceBlur()"
+                />
+                <label for="max-balance">max $</label>
+              </div>
             <button
               class="filter-btn p-10 bg-primary-400 color-bg-black inputText"
               (click)="apply()"
@@ -134,7 +140,7 @@
             Sort by: Last Update
           </button>
 
-          <div class="filter-container">
+          <div class="filter-container" #filterContainer>
             <button
               class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
               (click)="openFilter()"
@@ -149,10 +155,13 @@
               >
                 <input
                   id="min-balance-mobile"
-                  type="number"
-                  [(ngModel)]="initialMinBalance"
+                  type="text"
+                  [(ngModel)]="minBalanceInput"
                   placeholder="Min Balance"
                   class="search-box color-background smallText"
+                  (input)="onMinBalanceInput($event)"
+                  (focus)="onMinBalanceFocus()"
+                  (blur)="onMinBalanceBlur()"
                 />
                 <label for="min-balance-mobile">min $</label>
               </div>
@@ -162,10 +171,13 @@
               >
                 <input
                   id="max-balance-mobile"
-                  type="number"
-                  [(ngModel)]="initialMaxBalance"
+                  type="text"
+                  [(ngModel)]="maxBalanceInput"
                   placeholder="Max Balance"
                   class="search-box color-background smallText"
+                  (input)="onMaxBalanceInput($event)"
+                  (focus)="onMaxBalanceFocus()"
+                  (blur)="onMaxBalanceBlur()"
                 />
                 <label for="max-balance-mobile">max $</label>
               </div>
@@ -188,12 +200,7 @@
       <table class="regularText">
         <thead>
           <tr>
-            <th class="regularText py-18">
-              <div class="d-flex items-center gap-8">
-                <span class="icon-check-box"></span>
-                <span>Account Name</span>
-              </div>
-            </th>
+            <th class="regularText py-18">Account Name</th>
             <th class="regularText py-18">Broker</th>
             <th class="regularText py-18">Server</th>
             <th class="regularText py-18">Balance</th>
@@ -208,30 +215,21 @@
           </tr>
         </thead>
         <tbody>
-          @for (account of paginatedAccounts; track $index) {
+          @for (account of filteredUsers; track $index) {
           <tr>
             <td class="smallText">
-              <div class="d-flex items-center">
-                <input type="checkbox" class="account-checkbox" />
-                <span class="icon-edit color-secondary-500 mr-12" style="font-size: 1rem" title="Edit account name"></span>
-                <p>
-                  {{ account.accountName }}
-                </p>
+              <div class="d-flex items-center gap-8">
+                <p>{{ account.accountName }}</p>
               </div>
             </td>
             <td class="smallText">
               <div class="d-flex items-center gap-8">
                 <p>{{ account.broker }}</p>
-                <span class="material-symbols-outlined color-secondary-500" style="font-size: 24px" title="Broker options">keyboard_arrow_down</span>
               </div>
             </td>
             <td class="smallText">
               <div class="d-flex items-center gap-8">
-                <div class="broker-icon">
-                  <span class="broker-letter">T</span>
-                </div>
                 <p>{{ account.server }}</p>
-                <span class="material-symbols-outlined color-secondary-500" style="font-size: 24px" title="Broker options">keyboard_arrow_down</span>
               </div>
             </td>
             <td class="smallText">
@@ -294,73 +292,6 @@
           }
         </tbody>
       </table>
-    </div>
-  </div>
-  <div
-    class="pagination-controls d-flex justify-between items-center mt-10 regularText"
-  >
-    <div class="page-controls d-flex justify-between items-center">
-      <div class="side-controls d-flex items-center">
-        <button
-          class="regularText"
-          (click)="prevPage()"
-          [disabled]="currentPage === 1"
-        >
-          &lt;
-        </button>
-        <button
-          class="regularText"
-          (click)="goToPage(1)"
-          [disabled]="currentPage === 1"
-        >
-          &lt;&lt;
-        </button>
-      </div>
-
-      <span>Page {{ currentPage }} of {{ totalPages }}</span>
-      <div class="side-controls d-flex items-center">
-        <button
-          class="regularText"
-          (click)="goToPage(totalPages)"
-          [disabled]="currentPage === totalPages"
-        >
-          &gt;&gt;
-        </button>
-        <button
-          class="regularText"
-          (click)="nextPage()"
-          [disabled]="currentPage === totalPages"
-        >
-          &gt;
-        </button>
-      </div>
-    </div>
-    <div class="d-flex items-center">
-      <div class="d-flex justify-between items-center mt-10">
-        <label for="page-input" class="regularText mr-10 pb-2"
-          >Go to page</label
-        >
-        <input
-          id="page-input"
-          class="page-input p-8 smallText color-background"
-          type="number"
-          [min]="1"
-          [max]="totalPages"
-          [(ngModel)]="currentPage"
-          (change)="goToPage(currentPage)"
-          style="width: 4rem"
-        />
-      </div>
-
-      <select
-        class="color-secondary-300 smallText mt-10 ml-20"
-        [(ngModel)]="itemsPerPage"
-        (change)="goToPage(1)"
-      >
-        <option [value]="5">5 items</option>
-        <option [value]="10">10 items</option>
-        <option [value]="25">25 items</option>
-      </select>
     </div>
   </div>
 </div>

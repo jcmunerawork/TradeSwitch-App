@@ -9,6 +9,23 @@
     );
 }
 
+.rule-label {
+  cursor: default;
+  user-select: none;
+}
+
+.custom-checkbox {
+  cursor: pointer;
+  
+  &:hover input[type="checkbox"] + .checkmark {
+    border-color: #4CAF50;
+  }
+  
+  &:hover input[type="checkbox"]:checked + .checkmark {
+    background-color: #45a049;
+  }
+}
+
 .btnActive {
   background: #5186e4 !important;
   border: none !important;
@@ -27,5 +44,16 @@
     border-radius: 0.25rem;
     border: none;
     box-shadow: inset 0 0 0 1px #eaf2f8;
+    cursor: pointer;
+    transition: all 0.2s;
+    
+    &:hover:not(:disabled) {
+      background-color: rgba(81, 134, 228, 0.1);
+    }
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   }
 }

@@ -4,6 +4,7 @@ import { User } from '../../features/overview/models/overview';
 import { AccountData } from '../../features/auth/models/userModel';
 import { ConfigurationOverview } from '../../features/strategy/models/strategy.model';
 import { BalanceData } from '../../features/report/models/report.model';
+import { Plan } from '../services/planService';
 
 // Interfaces para datos de API externa
 export interface TradeLockerAccountData {
@@ -42,6 +43,10 @@ export interface AppContextState {
   userPlan: UserPlanData | null;
   pluginHistory: PluginHistoryData[];
   
+  // Planes globales (cargados una vez al login)
+  globalPlans: Plan[];
+  planLimits: { [planName: string]: { tradingAccounts: number; strategies: number } };
+  
   // Datos de reportes
   reportData: {
     accountHistory: any[];
@@ -73,6 +78,7 @@ export interface AppContextState {
     tradeLocker: boolean;
     report: boolean;
     overview: boolean;
+    globalPlans: boolean;
   };
   
   // Estados de error
@@ -85,6 +91,7 @@ export interface AppContextState {
     tradeLocker: string | null;
     report: string | null;
     overview: string | null;
+    globalPlans: string | null;
   };
   
   // Configuración de caché
@@ -107,6 +114,8 @@ export class AppContextService {
     userStrategies: [],
     userPlan: null,
     pluginHistory: [],
+    globalPlans: [],
+    planLimits: {},
     reportData: {
       accountHistory: [],
       stats: null,
@@ -130,7 +139,8 @@ export class AppContextService {
       pluginHistory: false,
       tradeLocker: false,
       report: false,
-      overview: false
+      overview: false,
+      globalPlans: false
     },
     errors: {
       user: null,
@@ -140,7 +150,8 @@ export class AppContextService {
       pluginHistory: null,
       tradeLocker: null,
       report: null,
-      overview: null
+      overview: null,
+      globalPlans: null
     },
     cacheConfig: {
       tradeLockerTtl: 5 * 60 * 1000, // 5 minutos
@@ -160,6 +171,10 @@ export class AppContextService {
   public userStrategies = signal<ConfigurationOverview[]>([]);
   public userPlan = signal<UserPlanData | null>(null);
   public pluginHistory = signal<PluginHistoryData[]>([]);
+  
+  // Signals para planes globales
+  public globalPlans = signal<Plan[]>([]);
+  public planLimits = signal<{ [planName: string]: { tradingAccounts: number; strategies: number } }>({});
   
   // Signals para datos de reportes
   public reportData = signal<{
@@ -223,6 +238,23 @@ export class AppContextService {
     canCreateStrategy: this.canCreateStrategy()
   }));
 
+  // Computed signals para planes globales
+  public orderedPlans = computed(() => {
+    const plans = this.globalPlans();
+    
+    const orderedPlanNames = ['Free', 'Starter', 'Pro'];
+    const orderedPlans: Plan[] = [];
+    
+    orderedPlanNames.forEach(planName => {
+      const plan = plans.find(p => p.name.toLowerCase() === planName.toLowerCase());
+      if (plan) {
+        orderedPlans.push(plan);
+      }
+    });
+    
+    return orderedPlans;
+  });
+
   // Observables específicos para suscripciones
   public currentUser$ = this.state$.pipe(
     map(state => state.currentUser),
@@ -269,6 +301,16 @@ export class AppContextService {
     distinctUntilChanged()
   );
 
+  public globalPlans$ = this.state$.pipe(
+    map(state => state.globalPlans),
+    distinctUntilChanged()
+  );
+
+  public planLimits$ = this.state$.pipe(
+    map(state => state.planLimits),
+    distinctUntilChanged()
+  );
+
   constructor() {
     // Sincronizar signals con el estado principal
     effect(() => {
@@ -279,6 +321,8 @@ export class AppContextService {
         userStrategies: this.userStrategies(),
         userPlan: this.userPlan(),
         pluginHistory: this.pluginHistory(),
+        globalPlans: this.globalPlans(),
+        planLimits: this.planLimits(),
         reportData: this.reportData(),
         overviewData: this.overviewData()
       });
@@ -324,6 +368,7 @@ export class AppContextService {
     this.userStrategies.set([]);
     this.userPlan.set(null);
     this.pluginHistory.set([]);
+    // No limpiar globalPlans y planLimits ya que son globales
     
     this.updateState({
       currentUser: null,
@@ -406,6 +451,48 @@ export class AppContextService {
       const updatedPlan = { ...currentPlan, ...planUpdates };
       this.userPlan.set(updatedPlan);
     }
+  }
+
+  // ===== MÉTODOS DE PLANES GLOBALES =====
+
+  setGlobalPlans(plans: Plan[]): void {
+    this.globalPlans.set(plans);
+    
+    // Crear mapa de límites automáticamente
+    const limits: { [planName: string]: { tradingAccounts: number; strategies: number } } = {};
+    plans.forEach(plan => {
+      // Usar el nombre original del plan como clave
+      limits[plan.name] = {
+        tradingAccounts: plan.tradingAccounts,
+        strategies: plan.strategies
+      };
+    });
+    this.planLimits.set(limits);
+  }
+
+  getPlanByName(planName: string): Plan | undefined {
+    const plans = this.globalPlans();
+    return plans.find(plan => plan.name.toLowerCase() === planName.toLowerCase());
+  }
+
+  getPlanById(planId: string): Plan | undefined {
+    const plans = this.globalPlans();
+    return plans.find(plan => plan.id === planId);
+  }
+
+  getPlanLimits(planName: string): { tradingAccounts: number; strategies: number } | null {
+    const limits = this.planLimits();
+    // Buscar por nombre exacto primero
+    if (limits[planName]) {
+      return limits[planName];
+    }
+    
+    // Si no se encuentra, buscar case-insensitive
+    const planKey = Object.keys(limits).find(key => 
+      key.toLowerCase() === planName.toLowerCase()
+    );
+    
+    return planKey ? limits[planKey] : null;
   }
 
   // ===== MÉTODOS DE HISTORIAL DE PLUGINS =====
@@ -530,7 +617,8 @@ export class AppContextService {
         pluginHistory: null,
         tradeLocker: null,
         report: null,
-        overview: null
+        overview: null,
+        globalPlans: null
       }
     });
   }
@@ -549,6 +637,8 @@ export class AppContextService {
     this.userStrategies.set([]);
     this.userPlan.set(null);
     this.pluginHistory.set([]);
+    this.globalPlans.set([]);
+    this.planLimits.set({});
   }
 
   // ===== MÉTODOS DE VALIDACIÓN =====
@@ -579,6 +669,14 @@ export class AppContextService {
 
   subscribeToPluginHistoryChanges(): Observable<PluginHistoryData[]> {
     return this.pluginHistory$;
+  }
+
+  subscribeToGlobalPlansChanges(): Observable<Plan[]> {
+    return this.globalPlans$;
+  }
+
+  subscribeToPlanLimitsChanges(): Observable<{ [planName: string]: { tradingAccounts: number; strategies: number } }> {
+    return this.planLimits$;
   }
 
   // ===== MÉTODOS DE DATOS DE REPORTES =====

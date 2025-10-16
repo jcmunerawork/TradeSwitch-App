@@ -86,7 +86,8 @@ export class SubscriptionHistoryComponent implements OnInit {
     
     this.isLoading = true;
     try {
-      this.subscriptions = await this.subscriptionService.getAllSubscriptionsByUserId(this.user.id);
+      const latest = await this.subscriptionService.getUserLatestSubscription(this.user.id);
+      this.subscriptions = latest ? [latest] : [];
       this.filteredSubscriptions = [...this.subscriptions];
       this.calculatePagination();
     } catch (error) {

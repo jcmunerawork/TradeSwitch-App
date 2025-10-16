@@ -345,3 +345,77 @@
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
+/* Estilos para mensajes de validación */
+.validation-error {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: rgba(244, 67, 54, 0.1);
+  border: 1px solid #f44336;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.error-message {
+  color: #f44336;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  
+  &::before {
+    content: "⚠";
+    margin-right: 6px;
+    font-size: 1rem;
+  }
+}
+
+// Nuevos estilos para el diseño inline
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.option-title {
+  color: #b8b8b8;
+  font-size: 14px;
+  font-weight: 400;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.button-group-inline {
+  display: flex;
+  gap: 4px;
+  margin-left: 12px;
+}
+
+.option-button-small {
+  background: transparent;
+  border: 1px solid #8e8e93;
+  color: #cececf;
+  padding: 4px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  min-width: 50px;
+  white-space: nowrap;
+  
+  &:hover {
+    background: #3a3a3c;
+    color: rgba(255, 255, 255, 0.8);
+    border-color: #a0a0a0;
+  }
+  
+  &.active {
+    background: #007AFF;
+    color: #1d274e;
+    border-color: #007AFF;
+  }
+}

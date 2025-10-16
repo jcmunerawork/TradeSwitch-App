@@ -1,4 +1,11 @@
 <div class="config-row d-flex flex-col py-12 justify-between">
+  <!-- Mensaje de error de validación -->
+  @if (!isValid && config.isActive) {
+  <div class="validation-error mb-3">
+    <span class="error-message">{{ errorMessage }}</span>
+  </div>
+  }
+  
   <div class="d-flex items-center mb-12">
     <label class="custom-checkbox m-6">
       <input
@@ -10,10 +17,10 @@
       <span class="checkmark"></span>
     </label>
 
-    <label
-      for="toggle-days-allowed"
+    <span
       [ngClass]="{ deactivated: !config.isActive }"
-      >Only allow trades on</label
+      class="rule-label"
+      >Only allow trades on</span
     >
   </div>
   <div class="days-container d-flex items-start">
@@ -21,6 +28,7 @@
     <button
       class="inputText"
       [ngClass]="{ btnActive: dayOption.isActive }"
+      [disabled]="!config.isActive"
       (click)="onChangeValue(dayOption)"
     >
       {{ dayOption.day.substring(0, 3) }}

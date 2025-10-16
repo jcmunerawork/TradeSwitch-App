@@ -53,6 +53,7 @@ import { PlanLimitationsGuard } from '../../guards/plan-limitations.guard';
 import { PlanLimitationModalData } from '../../shared/interfaces/plan-limitation-modal.interface';
 import { PlanLimitationModalComponent } from '../../shared/components/plan-limitation-modal/plan-limitation-modal.component';
 import { StrategyCardData } from '../../shared/components/strategy-card/strategy-card.interface';
+import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-report',
@@ -68,6 +69,7 @@ import { StrategyCardData } from '../../shared/components/strategy-card/strategy
     CalendarComponent,
     WinLossChartComponent,
     PlanLimitationModalComponent,
+    LoadingSpinnerComponent,
   ],
 })
 export class ReportComponent implements OnInit {
@@ -95,6 +97,17 @@ export class ReportComponent implements OnInit {
   
   // Balance data from API
   balanceData: any = null;
+  
+  // Loading state tracking for complete data loading
+  private loadingStates = {
+    userData: false,
+    accounts: false,
+    strategies: false,
+    userKey: false,
+    historyData: false,
+    balanceData: false,
+    config: false
+  };
   
   // Local storage keys
   private readonly STORAGE_KEYS = {
@@ -140,13 +153,16 @@ export class ReportComponent implements OnInit {
   }
 
   ngOnInit() {
-    // Cargar datos guardados primero para mostrar inmediatamente
+    // Cargar datos de inicialización (usuario, cuentas) pero NO datos de reporte
     this.loadSavedData();
+    
+    // Iniciar loading inmediatamente
+    this.startLoading();
     
     // Suscribirse a los datos del contexto
     this.subscribeToContextData();
     
-    // Luego obtener datos frescos en background
+    // Obtener datos frescos (no mostrar datos guardados hasta que todo esté listo)
     this.getUserData();
     this.initializeStrategies();
     this.listenGroupedTrades();
@@ -193,6 +209,17 @@ export class ReportComponent implements OnInit {
   private startLoading() {
     this.loading = true;
     
+    // Reset all loading states
+    this.loadingStates = {
+      userData: false,
+      accounts: false,
+      strategies: false,
+      userKey: false,
+      historyData: false,
+      balanceData: false,
+      config: false
+    };
+    
     // Timeout de seguridad más agresivo para evitar loading infinito
     if (this.loadingTimeout) {
       clearTimeout(this.loadingTimeout);
@@ -201,7 +228,7 @@ export class ReportComponent implements OnInit {
     this.loadingTimeout = setTimeout(() => {
       this.loading = false;
       this.showReloadButton = true;
-    }, 10000); // 10 segundos máximo
+    }, 15000); // 15 segundos máximo
   }
 
   private stopLoading() {
@@ -213,43 +240,86 @@ export class ReportComponent implements OnInit {
     }
   }
 
+  private setLoadingState(key: keyof typeof this.loadingStates, value: boolean) {
+    this.loadingStates[key] = value;
+    this.checkIfAllDataLoaded();
+  }
+
+  private checkIfAllDataLoaded() {
+    // Verificar si todos los datos críticos están cargados
+    const criticalDataLoaded = 
+      this.loadingStates.userData &&
+      this.loadingStates.accounts &&
+      this.loadingStates.strategies &&
+      this.loadingStates.config;
+
+    // Si hay cuenta actual, también verificar que los datos de la cuenta estén cargados
+    const accountDataLoaded = !this.currentAccount || 
+      (this.loadingStates.userKey && 
+       this.loadingStates.historyData && 
+       this.loadingStates.balanceData);
+
+    if (criticalDataLoaded && accountDataLoaded) {
+      // Todos los datos están cargados, cargar datos guardados de reporte como fallback
+      this.loadSavedReportData();
+      
+      // Ocultar loading después de un pequeño delay
+      setTimeout(() => {
+        this.stopLoading();
+      }, 500); // Pequeño delay para evitar parpadeos
+    }
+  }
+
+  private loadSavedReportData() {
+    if (!isPlatformBrowser(this.platformId)) return;
+    
+    try {
+      // Solo cargar datos de reporte si no hay datos frescos
+      if (this.accountHistory.length === 0 || !this.stats) {
+        const savedReportData = localStorage.getItem(this.STORAGE_KEYS.REPORT_DATA);
+        if (savedReportData) {
+          const reportData = JSON.parse(savedReportData);
+          if (reportData.accountHistory && reportData.stats) {
+            this.accountHistory = reportData.accountHistory;
+            this.stats = reportData.stats;
+            // Convertir a GroupedTradeFinal si es necesario
+            const groupedTrades = Array.isArray(reportData.accountHistory) ? 
+              reportData.accountHistory.map((trade: any) => ({
+                ...trade,
+                pnl: trade.pnl ?? 0,
+                isWon: trade.isWon ?? false,
+                isOpen: trade.isOpen ?? false
+              })) : [];
+            this.store.dispatch(setGroupedTrades({ groupedTrades }));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando datos de reporte guardados:', error);
+    }
+  }
+
   // Métodos para persistencia local
   private loadSavedData() {
     if (!isPlatformBrowser(this.platformId)) return;
     
     try {
-      // Cargar datos de reporte
-      const savedReportData = localStorage.getItem(this.STORAGE_KEYS.REPORT_DATA);
-      if (savedReportData) {
-        const reportData = JSON.parse(savedReportData);
-        if (reportData.accountHistory && reportData.stats) {
-          this.accountHistory = reportData.accountHistory;
-          this.stats = reportData.stats;
-          // Convertir a GroupedTradeFinal si es necesario
-          const groupedTrades = Array.isArray(reportData.accountHistory) ? 
-            reportData.accountHistory.map((trade: any) => ({
-              ...trade,
-              pnl: trade.pnl ?? 0,
-              isWon: trade.isWon ?? false,
-              isOpen: trade.isOpen ?? false
-            })) : [];
-          this.store.dispatch(setGroupedTrades({ groupedTrades }));
-        }
-      }
-
-      // Cargar cuentas guardadas
+      // Solo cargar datos de usuario y cuentas para inicialización
+      // NO cargar datos de reporte hasta que todo esté listo
+      
+      // Cargar cuentas guardadas (solo para inicialización)
       const savedAccountsData = localStorage.getItem(this.STORAGE_KEYS.ACCOUNTS_DATA);
       if (savedAccountsData) {
         this.accountsData = JSON.parse(savedAccountsData);
       }
 
-      // Cargar cuenta actual
+      // Cargar cuenta actual (solo para inicialización)
       const savedCurrentAccount = localStorage.getItem(this.STORAGE_KEYS.CURRENT_ACCOUNT);
       if (savedCurrentAccount) {
         this.currentAccount = JSON.parse(savedCurrentAccount);
       }
 
-      // Cargar datos de usuario
+      // Cargar datos de usuario (solo para inicialización)
       const savedUserData = localStorage.getItem(this.STORAGE_KEYS.USER_DATA);
       if (savedUserData) {
         this.user = JSON.parse(savedUserData);
@@ -311,9 +381,16 @@ export class ReportComponent implements OnInit {
     if (this.user?.id) {
       try {
         this.strategies = await this.strategySvc.getUserStrategyViews(this.user.id);
+        // Marcar estrategias como cargadas
+        this.setLoadingState('strategies', true);
       } catch (error) {
         console.error('Error loading strategies:', error);
+        // Marcar estrategias como cargadas incluso en error
+        this.setLoadingState('strategies', true);
       }
+    } else {
+      // Si no hay usuario, marcar como cargado
+      this.setLoadingState('strategies', true);
     }
   }
 
@@ -329,6 +406,9 @@ export class ReportComponent implements OnInit {
       next: (user) => {
         this.user = user.user;
         if (this.user) {
+          // Marcar datos de usuario como cargados
+          this.setLoadingState('userData', true);
+          
           // Guardar datos de usuario en localStorage
           this.saveDataToStorage();
           
@@ -338,6 +418,7 @@ export class ReportComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error fetching user data', err);
+        this.setLoadingState('userData', true); // Marcar como cargado incluso en error
       },
     });
   }
@@ -347,7 +428,8 @@ export class ReportComponent implements OnInit {
       if (!accounts || accounts.length === 0) {
         this.accountsData = [];
         this.currentAccount = null;
-        this.stopLoading();
+        // Marcar cuentas como cargadas (aunque estén vacías)
+        this.setLoadingState('accounts', true);
       } else {
         this.accountsData = accounts;
         
@@ -366,9 +448,10 @@ export class ReportComponent implements OnInit {
         // Guardar cuentas en localStorage
         this.saveDataToStorage();
         
-        if (this.accountsData.length === 0) {
-          this.stopLoading();
-        } else {
+        // Marcar cuentas como cargadas
+        this.setLoadingState('accounts', true);
+        
+        if (this.accountsData.length > 0) {
           // Procesar la cuenta actual
           const accountToProcess = this.currentAccount || this.accountsData[0];
           setTimeout(() => {
@@ -380,7 +463,8 @@ export class ReportComponent implements OnInit {
       console.error('Error fetching user accounts:', error);
       this.accountsData = [];
       this.currentAccount = null;
-      this.stopLoading();
+      // Marcar cuentas como cargadas incluso en error
+      this.setLoadingState('accounts', true);
     });
   }
 
@@ -395,11 +479,14 @@ export class ReportComponent implements OnInit {
           this.store.dispatch(resetConfig({ config: initialStrategyState }));
           this.config = this.prepareConfigDisplayData(initialStrategyState);
         }
+        // Marcar configuración como cargada
+        this.setLoadingState('config', true);
       })
       .catch((err) => {
         this.store.dispatch(resetConfig({ config: initialStrategyState }));
         this.config = this.prepareConfigDisplayData(initialStrategyState);
-        this.stopLoading();
+        // Marcar configuración como cargada incluso en error
+        this.setLoadingState('config', true);
         console.error('Error to get the config', err);
       });
   }
@@ -597,6 +684,9 @@ export class ReportComponent implements OnInit {
       .subscribe({
         next: (key: string) => {
           this.userKey = key;
+          // Marcar userKey como cargado
+          this.setLoadingState('userKey', true);
+          
           const now = new Date();
           const currentYear = now.getUTCFullYear();
           this.fromDate = Date.UTC(currentYear, 0, 1, 0, 0, 0, 0).toString();
@@ -622,7 +712,8 @@ export class ReportComponent implements OnInit {
         error: (err) => {
           console.error('Error fetching user key:', err);
           this.store.dispatch(setUserKey({ userKey: '' }));
-          this.stopLoading();
+          // Marcar userKey como cargado incluso en error
+          this.setLoadingState('userKey', true);
         },
       });
   }
@@ -637,9 +728,13 @@ export class ReportComponent implements OnInit {
       next: (balanceData) => {
         // Store balance data for calculations
         this.balanceData = balanceData;
+        // Marcar balance data como cargado
+        this.setLoadingState('balanceData', true);
       },
       error: (err) => {
         console.error('Error fetching balance data:', err);
+        // Marcar balance data como cargado incluso en error
+        this.setLoadingState('balanceData', true);
       },
     });
 
@@ -657,13 +752,14 @@ export class ReportComponent implements OnInit {
           // Guardar datos en localStorage después de recibir respuesta exitosa
           this.saveDataToStorage();
 
-          // Siempre ocultar loading después de recibir respuesta
-          this.stopLoading();
+          // Marcar history data como cargado
+          this.setLoadingState('historyData', true);
         },
         error: (err) => {
           console.error('Error fetching history data:', err);
           this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
-          this.stopLoading();
+          // Marcar history data como cargado incluso en error
+          this.setLoadingState('historyData', true);
         },
       });
   }
@@ -764,6 +860,11 @@ export class ReportComponent implements OnInit {
     this.toDate = Date.UTC(Number($event), 11, 31, 23, 59, 59, 999).toString();
     this.requestYear = Number($event);
 
+    // Reset account-related loading states
+    this.setLoadingState('userKey', false);
+    this.setLoadingState('historyData', false);
+    this.setLoadingState('balanceData', false);
+
     if (this.user) {
       this.fetchUserAccounts();
     }
@@ -813,6 +914,11 @@ export class ReportComponent implements OnInit {
     this.saveDataToStorage();
     
     this.startLoading();
+    
+    // Reset account-related loading states
+    this.setLoadingState('userKey', false);
+    this.setLoadingState('historyData', false);
+    this.setLoadingState('balanceData', false);
     
     // Limpiar datos anteriores
     this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
@@ -909,6 +1015,15 @@ export class ReportComponent implements OnInit {
     this.accountHistory = [];
     this.stats = undefined;
     this.clearSavedData();
+    
+    // Reset all loading states
+    this.setLoadingState('userData', false);
+    this.setLoadingState('accounts', false);
+    this.setLoadingState('strategies', false);
+    this.setLoadingState('userKey', false);
+    this.setLoadingState('historyData', false);
+    this.setLoadingState('balanceData', false);
+    this.setLoadingState('config', false);
     
     // Reiniciar el proceso de carga
     if (this.user) {

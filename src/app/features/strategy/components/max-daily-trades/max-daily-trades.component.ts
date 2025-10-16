@@ -26,9 +26,11 @@ export class MaxDailyTradesComponent implements OnInit {
     this.listenRuleConfiguration();
   }
   onToggleActive(event: Event) {
+    const isActive = (event.target as HTMLInputElement).checked;
     const newConfig = {
       ...this.config,
-      isActive: (event.target as HTMLInputElement).checked,
+      isActive: isActive,
+      // Mantener el valor actual, no resetear
     };
     this.updateConfig(newConfig);
   }
@@ -40,6 +42,27 @@ export class MaxDailyTradesComponent implements OnInit {
       maxDailyTrades: numValue < 1 ? 1 : numValue,
     };
     this.updateConfig(newConfig);
+  }
+
+  // Métodos para spinner (solo incrementar/decrementar)
+  incrementValue() {
+    if (this.config.isActive) {
+      const newConfig: MaxDailyTradesConfig = {
+        ...this.config,
+        maxDailyTrades: this.config.maxDailyTrades + 1,
+      };
+      this.updateConfig(newConfig);
+    }
+  }
+
+  decrementValue() {
+    if (this.config.isActive && this.config.maxDailyTrades > 1) {
+      const newConfig: MaxDailyTradesConfig = {
+        ...this.config,
+        maxDailyTrades: this.config.maxDailyTrades - 1,
+      };
+      this.updateConfig(newConfig);
+    }
   }
 
   listenRuleConfiguration() {

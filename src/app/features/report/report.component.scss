@@ -24,56 +24,6 @@
   }
 }
 
-// Estilos para el contenido de loading
-.loading-content {
-  padding: 60px 20px;
-  text-align: center;
-  
-  @media (max-width: 768px) {
-    padding: 40px 16px;
-  }
-  
-  @media (max-width: 480px) {
-    padding: 30px 12px;
-  }
-}
-
-.loading-spinner-container {
-  margin-bottom: 24px;
-}
-
-.loading-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(255, 255, 255, 0.2);
-  border-top: 4px solid #9bf526;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-title {
-  color: #e3e3e3;
-  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0 0 8px 0;
-}
-
-.loading-message {
-  color: #8e8e93;
-  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 14px;
-  font-weight: 400;
-  margin: 0 0 24px 0;
-  line-height: 1.5;
-}
-
 .reload-btn {
   background: #9bf526;
   color: #1a1a1a;

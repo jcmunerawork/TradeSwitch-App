@@ -13,7 +13,7 @@ import { Days, RuleType, StrategyState } from '../models/strategy.model';
 export const initialStrategyState: StrategyState = {
   maxDailyTrades: {
     isActive: false,
-    maxDailyTrades: 1,
+    maxDailyTrades: 0,
     type: RuleType.MAX_DAILY_TRADES,
   },
   riskReward: {
@@ -27,7 +27,8 @@ export const initialStrategyState: StrategyState = {
     number_type: 'PERCENTAGE',
     percentage_type: 'NULL',
     risk_ammount: 0,
-    balance: 1,
+    balance: 0,
+    actualBalance: 0,
     type: RuleType.MAX_RISK_PER_TRADE,
   },
   daysAllowed: {
@@ -37,9 +38,9 @@ export const initialStrategyState: StrategyState = {
   },
   hoursAllowed: {
     isActive: false,
-    tradingOpenTime: '09:30',
-    tradingCloseTime: '17:00',
-    timezone: 'UTC',
+    tradingOpenTime: '',
+    tradingCloseTime: '',
+    timezone: '',
     type: RuleType.TRADING_HOURS,
   },
   assetsAllowed: {

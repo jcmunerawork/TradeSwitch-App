@@ -47,10 +47,21 @@ export class DaysAllowedComponent implements OnInit {
     this.listenRuleConfiguration();
   }
   onToggleActive(event: Event) {
+    const isActive = (event.target as HTMLInputElement).checked;
     const newConfig = {
       ...this.config,
-      isActive: (event.target as HTMLInputElement).checked,
+      isActive: isActive,
+      // Reiniciar días cuando se desactiva
+      tradingDays: isActive ? this.config.tradingDays : [],
     };
+    
+    // Reiniciar botones de días
+    if (!isActive) {
+      this.daysButtons.forEach(day => {
+        day.isActive = false;
+      });
+    }
+    
     this.updateConfig(newConfig);
   }
 

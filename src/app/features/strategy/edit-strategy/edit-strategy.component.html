@@ -16,21 +16,13 @@
     </div>
     <div class="action-buttons d-flex gap-16">
       <button 
-        class="reset-btn p-10 bg-red-500 color-white inputText"
-        (click)="resetStrategy()"
-        [disabled]="loading || isPluginActive"
-        [class.disabled]="isPluginActive"
-      >
-        Reset Strategy
-      </button>
-      <button 
-        class="discard-btn p-10 color-primary-400 inputText"
+        class="discard-btn p-10 inputText"
         (click)="discardChanges()"
       >
-        Discard
+        Discard changes
       </button>
       <button 
-        class="save-btn p-10 bg-primary-400 color-bg-black inputText"
+        class="save-btn p-10 inputText"
         (click)="saveStrategy()"
         [disabled]="loading || isPluginActive"
         [class.disabled]="isPluginActive"
@@ -52,18 +44,35 @@
         <!-- Strategy Name (Editable) -->
         <div class="strategy-name-container">
           @if (isEditingName) {
-            <input 
-              type="text" 
-              class="strategy-name-input bg-transparent color-white border-none outline-none"
-              [(ngModel)]="editingStrategyName"
-              (blur)="saveStrategyName()"
-              (keyup.enter)="saveStrategyName()"
-              (keyup.escape)="cancelEditName()"
-              #nameInput
-            />
+            <div class="strategy-name-input-container">
+              <input 
+                type="text" 
+                class="strategy-name-input bg-transparent color-white border-none outline-none"
+                [(ngModel)]="editingStrategyName"
+                (keyup.enter)="saveStrategyName()"
+                (keyup.escape)="cancelEditName()"
+                #nameInput
+              />
+              <div class="input-actions">
+                <span 
+                  class="material-symbols-outlined action-icon cancel-icon" 
+                  (click)="cancelEditName()"
+                  title="Cancel"
+                >
+                  close
+                </span>
+                <span 
+                  class="material-symbols-outlined action-icon confirm-icon" 
+                  (click)="saveStrategyName()"
+                  title="Save"
+                >
+                  check
+                </span>
+              </div>
+            </div>
           } @else {
             <h3 class="strategy-name color-white mb-0 mr-4">{{ currentStrategyName }}</h3>
-            <span class="material-symbols-outlined text-white hover:text-[#726d6d] mb-2" style="font-size: 20px; cursor: pointer;" (click)="startEditName()">edit</span>
+            <span class="material-symbols-outlined edit-icon" (click)="startEditName()">edit</span>
           }
         </div>
         
@@ -108,17 +117,17 @@
     <div class="rules-container my_choices d-flex flex-col justify-start">
       <h2 class="subtitle mb-20 desktop-title">My Choices</h2>
       @if (myChoices && myChoices.maxDailyTrades.isActive) {
-      <app-edit-max-daily-trades></app-edit-max-daily-trades>
+      <app-edit-max-daily-trades #maxDailyTradesRef></app-edit-max-daily-trades>
       } @if (myChoices && myChoices.riskReward.isActive) {
       <app-edit-risk-reward-ratio></app-edit-risk-reward-ratio>
       } @if (myChoices && myChoices.riskPerTrade.isActive) {
-      <app-edit-risk-per-trade></app-edit-risk-per-trade>
+      <app-edit-risk-per-trade #riskPerTradeRef></app-edit-risk-per-trade>
       } @if (myChoices && myChoices.daysAllowed.isActive) {
-      <app-edit-days-allowed></app-edit-days-allowed>
+      <app-edit-days-allowed #daysAllowedRef></app-edit-days-allowed>
       } @if (myChoices && myChoices.assetsAllowed.isActive) {
-      <app-edit-assets-allowed [availableSymbolsOptions]="availableInstruments"></app-edit-assets-allowed>
+      <app-edit-assets-allowed #assetsAllowedRef [availableSymbolsOptions]="availableInstruments"></app-edit-assets-allowed>
       } @if (myChoices && myChoices.hoursAllowed.isActive) {
-      <app-edit-hours-allowed></app-edit-hours-allowed>
+      <app-edit-hours-allowed #hoursAllowedRef></app-edit-hours-allowed>
       }
     </div>
   </div>
@@ -127,17 +136,17 @@
   <div class="mobile-rules-container">
     <h2 class="subtitle mb-20">Rules</h2>
     @if (config && config.maxDailyTrades.isActive || myChoices && myChoices.maxDailyTrades.isActive) {
-    <app-edit-max-daily-trades></app-edit-max-daily-trades>
+    <app-edit-max-daily-trades #maxDailyTradesRef></app-edit-max-daily-trades>
     } @if (config && config.riskReward.isActive || myChoices && myChoices.riskReward.isActive) {
     <app-edit-risk-reward-ratio></app-edit-risk-reward-ratio>
     } @if (config && config.riskPerTrade.isActive || myChoices && myChoices.riskPerTrade.isActive) {
-    <app-edit-risk-per-trade></app-edit-risk-per-trade>
+    <app-edit-risk-per-trade #riskPerTradeRef></app-edit-risk-per-trade>
     } @if (config && config.daysAllowed.isActive || myChoices && myChoices.daysAllowed.isActive) {
-    <app-edit-days-allowed></app-edit-days-allowed>
+    <app-edit-days-allowed #daysAllowedRef></app-edit-days-allowed>
     } @if (config && config.assetsAllowed.isActive || myChoices && myChoices.assetsAllowed.isActive) {
-    <app-edit-assets-allowed [availableSymbolsOptions]="availableInstruments"></app-edit-assets-allowed>
+    <app-edit-assets-allowed #assetsAllowedRef [availableSymbolsOptions]="availableInstruments"></app-edit-assets-allowed>
     } @if (config && config.hoursAllowed.isActive || myChoices && myChoices.hoursAllowed.isActive) {
-    <app-edit-hours-allowed></app-edit-hours-allowed>
+    <app-edit-hours-allowed #hoursAllowedRef></app-edit-hours-allowed>
     }
   </div>
 
@@ -149,7 +158,7 @@
   <app-confirm-popup
     [visible]="confirmPopupVisible"
     [cancel]="closeConfirmModal"
-    [close]="save"
+    [close]="confirmSave"
   ></app-confirm-popup>
 
   <app-loading-popup [visible]="loading"></app-loading-popup>

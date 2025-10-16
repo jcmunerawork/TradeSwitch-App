@@ -1,4 +1,11 @@
 <div class="config-row d-flex flex-col py-12 justify-between">
+  <!-- Mensaje de error de validación -->
+  @if (!isValid && config.isActive) {
+  <div class="validation-error mb-3">
+    <span class="error-message">{{ errorMessage }}</span>
+  </div>
+  }
+  
   <!-- Toggle para activar/desactivar -->
   <div class="d-flex items-center mb-0">
     <label class="custom-checkbox m-6">
@@ -22,26 +29,29 @@
   </div>
 
   <!-- Contenido que se muestra solo cuando está activo -->
-  <div *ngIf="config.isActive" class="risk-config-content">
+  @if (config.isActive) {
+  <div class="risk-config-content">
     
     <!-- Opciones de tipo de tamaño -->
     <div class="option-group mb-12">
-      <h4 class="option-title mb-8">Size Type</h4>
-      <div class="button-group">
-        <button 
-          class="option-button"
-          [class.active]="selectedSizeType === 'max-size'"
-          (click)="selectSizeType('max-size')"
-        >
-          max-size
-        </button>
-        <button 
-          class="option-button"
-          [class.active]="selectedSizeType === 'fixed'"
-          (click)="selectSizeType('fixed')"
-        >
-          fixed
-        </button>
+      <div class="option-row">
+        <h4 class="option-title">Size Type</h4>
+        <div class="button-group-inline">
+          <button 
+            class="option-button-small"
+            [class.active]="selectedSizeType === 'max-size'"
+            (click)="selectSizeType('max-size')"
+          >
+            Max
+          </button>
+          <button 
+            class="option-button-small"
+            [class.active]="selectedSizeType === 'fixed'"
+            (click)="selectSizeType('fixed')"
+          >
+            Fixed
+          </button>
+        </div>
       </div>
       <div class="option-description" *ngIf="selectedSizeType">
         <p *ngIf="selectedSizeType === 'max-size'">You can trade up to the entered price.</p>
@@ -51,22 +61,24 @@
 
     <!-- Opciones de tipo de cálculo - Solo se muestra si se seleccionó un tipo de tamaño -->
     <div *ngIf="selectedSizeType" class="option-group mb-16">
-      <h4 class="option-title mb-8">Calculation Type</h4>
-      <div class="button-group">
-        <button 
-          class="option-button"
-          [class.active]="selectedCalculationType === 'by percentage'"
-          (click)="selectCalculationType('by percentage')"
-        >
-          by percentage
-        </button>
-        <button 
-          class="option-button"
-          [class.active]="selectedCalculationType === 'by price'"
-          (click)="selectCalculationType('by price')"
-        >
-          by price
-        </button>
+      <div class="option-row">
+        <h4 class="option-title">Calculation Type</h4>
+        <div class="button-group-inline">
+          <button 
+            class="option-button-small"
+            [class.active]="selectedCalculationType === 'by percentage'"
+            (click)="selectCalculationType('by percentage')"
+          >
+            %
+          </button>
+          <button 
+            class="option-button-small"
+            [class.active]="selectedCalculationType === 'by price'"
+            (click)="selectCalculationType('by price')"
+          >
+            $
+          </button>
+        </div>
       </div>
     </div>
 
@@ -74,29 +86,31 @@
     <div *ngIf="selectedCalculationType === 'by percentage'" class="percentage-config">
       <!-- Selector de tipo de balance -->
       <div class="option-group mb-16">
-        <h4 class="option-title mb-8">Balance Type</h4>
-        <div class="button-group">
-          <button 
-            class="option-button"
-            [class.active]="selectedBalanceType === 'by actual balance'"
-            (click)="selectBalanceType('by actual balance')"
-          >
-            by actual balance
-          </button>
-          <button 
-            class="option-button"
-            [class.active]="selectedBalanceType === 'by initial balance'"
-            (click)="selectBalanceType('by initial balance')"
-          >
-            by initial balance
-          </button>
+        <div class="option-row">
+          <h4 class="option-title">Balance Type</h4>
+          <div class="button-group-inline">
+            <button 
+              class="option-button-small"
+              [class.active]="selectedBalanceType === 'by actual balance'"
+              (click)="selectBalanceType('by actual balance')"
+            >
+              Actual
+            </button>
+            <button 
+              class="option-button-small"
+              [class.active]="selectedBalanceType === 'by initial balance'"
+              (click)="selectBalanceType('by initial balance')"
+            >
+              Initial
+            </button>
+          </div>
         </div>
       </div>
 
       <!-- Selector de cuenta - aparece después de elegir tipo de balance -->
       <div *ngIf="selectedBalanceType" class="account-select mb-12">
         <label for="account-select" class="input-label">Account</label>
-        <select id="account-select" class="custom-input account-dropdown" (change)="onSelectAccount($event)">
+        <select id="account-select" #accountSelect class="custom-input account-dropdown" (change)="onSelectAccount($event)">
           <option value="" selected disabled>Select an account</option>
           <option *ngFor="let acc of userAccounts" [value]="acc.accountID">
             {{ acc.accountID }} • {{ ((acc.accountName && acc.accountName.length > 22) ? (acc.accountName | slice:0:22) + '…' : (acc.accountName || 'Unnamed')) }}  —  $
@@ -123,7 +137,8 @@
       <input
         type="number"
         id="percentage-input"
-        [value]="percentageValue"
+        [value]="percentageValue || ''"
+        [placeholder]="'Enter a percentage'"
         (input)="onPercentageChange($event)"
             [disabled]="!selectedAccount"
         class="custom-input"
@@ -140,18 +155,18 @@
     <div *ngIf="selectedCalculationType === 'by price'" class="price-config">
       <div class="input-group">
         <label for="price-input" class="input-label">Price</label>
-    <div class="input-with-prefix">
-      <span class="prefix">$</span>
-      <input
-        type="text"
-            id="price-input"
-            [value]="displayPriceValue"
-            (input)="formatCurrency($event)"
-            (blur)="onBlur()"
-            class="custom-input"
-          />
-        </div>
+        <input
+          type="text"
+              id="price-input"
+              [value]="priceInputValue"
+              [placeholder]="'Enter an amount'"
+              (input)="onPriceInput($event)"
+              (focus)="onPriceFocus()"
+              (blur)="onPriceBlur()"
+              class="custom-input"
+            />
       </div>
     </div>
   </div>
+  }
 </div>

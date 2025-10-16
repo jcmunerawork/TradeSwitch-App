@@ -1,4 +1,4 @@
-import { Component, Input, Output, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, OnInit, OnDestroy, OnChanges, SimpleChanges, HostListener, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { FormsModule } from '@angular/forms';
@@ -9,6 +9,7 @@ import { AccountData } from '../../../auth/models/userModel';
 import { ShowConfirmationComponent } from '../show-confirmation/show-confirmation.component';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
 @Component({
   selector: 'app-accounts-table',
@@ -25,18 +26,36 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   initialMinBalance = 0;
   initialMaxBalance = 1000000;
   showFilter = false;
-  currentPage: number = 1;
-  itemsPerPage: number = 10;
   sortField: 'createdAt' = 'createdAt';
   sortAsc: boolean = true;
   showConfirmation = false;
+
+  // Applied filter values (separate from input values)
+  appliedMinBalance = 0;
+  appliedMaxBalance = 1000000;
+
+  // Properties for formatted balance inputs
+  minBalanceDisplay: string = '';
+  maxBalanceDisplay: string = '';
+  minBalanceInput: string = '';
+  maxBalanceInput: string = '';
+
+  // Reference to filter container for click outside detection
+  @ViewChild('filterContainer') filterContainer?: ElementRef;
 
   // Balance properties (now handled by parent component)
   private subscriptions: Subscription[] = [];
 
   constructor(
-    private router: Router
-  ) {}
+    private router: Router,
+    private numberFormatter: NumberFormatterService
+  ) {
+    // Initialize inputs as empty to show placeholders
+    this.minBalanceInput = '';
+    this.maxBalanceInput = '';
+    this.minBalanceDisplay = '';
+    this.maxBalanceDisplay = '';
+  }
 
   private _searchTerm = '';
   accountToDelete!: AccountData;
@@ -45,7 +64,6 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   }
   set searchTerm(val: string) {
     this._searchTerm = val;
-    this.goToPage(1);
   }
 
   get filteredUsers(): AccountData[] {
@@ -56,17 +74,14 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
         .toLowerCase()
         .includes(lower);
 
-      let matchesMinBalance = (account.balance ?? 0) >= this.initialMinBalance;
-      let matchesMaxBalance = (account.balance ?? 0) <= this.initialMaxBalance;
+      let matchesMinBalance = (account.balance ?? 0) >= this.appliedMinBalance;
+      let matchesMaxBalance = (account.balance ?? 0) <= this.appliedMaxBalance;
 
       if (account.balance === undefined) {
         matchesMinBalance = true;
         matchesMaxBalance = true;
       }
 
-      if (this.showFilter) {
-        return matchesSearch;
-      }
       return matchesSearch && matchesMinBalance && matchesMaxBalance;
     });
 
@@ -88,15 +103,6 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
     return result;
   }
 
-  get paginatedAccounts(): AccountData[] {
-    const start = (this.currentPage - 1) * this.itemsPerPage;
-    const end = start + this.itemsPerPage;
-    return this.filteredUsers.slice(start, end);
-  }
-
-  get totalPages(): number {
-    return Math.ceil(this.filteredUsers.length / this.itemsPerPage);
-  }
 
   statusClass(status: string) {
     return status;
@@ -108,6 +114,29 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
 
   openFilter() {
     this.showFilter = !this.showFilter;
+    
+    if (this.showFilter) {
+      // Load current applied values into inputs
+      this.initialMinBalance = this.appliedMinBalance;
+      this.initialMaxBalance = this.appliedMaxBalance;
+      
+      // Set input values for display
+      if (this.initialMinBalance > 0) {
+        this.minBalanceInput = this.initialMinBalance.toString();
+        this.minBalanceDisplay = this.numberFormatter.formatCurrencyDisplay(this.initialMinBalance);
+      } else {
+        this.minBalanceInput = '';
+        this.minBalanceDisplay = '';
+      }
+      
+      if (this.initialMaxBalance > 0 && this.initialMaxBalance !== 1000000) {
+        this.maxBalanceInput = this.initialMaxBalance.toString();
+        this.maxBalanceDisplay = this.numberFormatter.formatCurrencyDisplay(this.initialMaxBalance);
+      } else {
+        this.maxBalanceInput = '';
+        this.maxBalanceDisplay = '';
+      }
+    }
   }
 
   closeFilter() {
@@ -115,27 +144,25 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   apply() {
-    this.showFilter = false;
-
     this.applyFilters();
   }
 
   applyFilters() {
-    this.goToPage(1);
+    // Apply the current input values to the filter
+    this.appliedMinBalance = this.initialMinBalance;
+    this.appliedMaxBalance = this.initialMaxBalance;
+    this.showFilter = false;
   }
 
-  goToPage(page: number) {
-    if (page < 1) page = 1;
-    if (page > this.totalPages) page = this.totalPages;
-    this.currentPage = page;
-  }
-
-  prevPage() {
-    this.goToPage(this.currentPage - 1);
-  }
-
-  nextPage() {
-    this.goToPage(this.currentPage + 1);
+  // Host listener to detect clicks outside the filter modal
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    if (this.showFilter && this.filterContainer) {
+      const clickedInside = this.filterContainer.nativeElement.contains(event.target as Node);
+      if (!clickedInside) {
+        this.showFilter = false;
+      }
+    }
   }
 
   toggleSort() {
@@ -192,6 +219,75 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   loadAccountBalances() {
     // Los balances se cargan desde el componente padre
     // Este método se mantiene para compatibilidad pero no hace nada
+  }
+
+  // Methods for balance input formatting
+  onMinBalanceInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    this.minBalanceInput = target.value;
+  }
+
+  onMaxBalanceInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    this.maxBalanceInput = target.value;
+  }
+
+  onMinBalanceFocus() {
+    // When user focuses, show only the number without formatting for editing
+    if (this.initialMinBalance > 0) {
+      this.minBalanceInput = this.initialMinBalance.toString();
+    } else {
+      this.minBalanceInput = '';
+    }
+  }
+
+  onMaxBalanceFocus() {
+    // When user focuses, show only the number without formatting for editing
+    if (this.initialMaxBalance > 0 && this.initialMaxBalance !== 1000000) {
+      this.maxBalanceInput = this.initialMaxBalance.toString();
+    } else {
+      this.maxBalanceInput = '';
+    }
+  }
+
+  onMinBalanceBlur() {
+    // Convert the value to number
+    const numericValue = this.numberFormatter.parseCurrencyValue(this.minBalanceInput);
+    if (!isNaN(numericValue) && numericValue >= 0) {
+      // Save the unformatted value
+      this.initialMinBalance = numericValue;
+      
+      // Show visual format (only for display)
+      this.minBalanceDisplay = this.numberFormatter.formatCurrencyDisplay(numericValue);
+      
+      // Update the input to show the visual format
+      this.minBalanceInput = this.minBalanceDisplay;
+    } else {
+      // If not a valid number, clear
+      this.minBalanceInput = '';
+      this.minBalanceDisplay = '';
+      this.initialMinBalance = 0;
+    }
+  }
+
+  onMaxBalanceBlur() {
+    // Convert the value to number
+    const numericValue = this.numberFormatter.parseCurrencyValue(this.maxBalanceInput);
+    if (!isNaN(numericValue) && numericValue >= 0) {
+      // Save the unformatted value
+      this.initialMaxBalance = numericValue;
+      
+      // Show visual format (only for display)
+      this.maxBalanceDisplay = this.numberFormatter.formatCurrencyDisplay(numericValue);
+      
+      // Update the input to show the visual format
+      this.maxBalanceInput = this.maxBalanceDisplay;
+    } else {
+      // If not a valid number, clear
+      this.maxBalanceInput = '';
+      this.maxBalanceDisplay = '';
+      this.initialMaxBalance = 0; // Reset to 0 instead of 1000000
+    }
   }
 
 

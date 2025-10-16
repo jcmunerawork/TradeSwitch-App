@@ -85,12 +85,13 @@
         <div class="form-group">
           <label class="form-label">{{ editMode ? 'Initial Balance' : 'Initial Balance*' }}</label>
           <input 
-            type="number" 
+            type="text" 
             class="form-input" 
-            [class.readonly]="editMode"
-            [(ngModel)]="newAccount.initialBalance"
+            [(ngModel)]="initialBalanceInput"
             placeholder="Balance"
-            [readonly]="editMode"
+            (input)="onInitialBalanceInput($event)"
+            (focus)="onInitialBalanceFocus()"
+            (blur)="onInitialBalanceBlur()"
           >
         </div>
       </div>

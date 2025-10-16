@@ -11,10 +11,10 @@
         <span class="checkmark"></span>
       </label>
 
-      <label
-        for="toggle-hours-allowed"
+      <span
         [ngClass]="{ deactivated: !config.isActive }"
-        >Only allow trades between:</label
+        class="rule-label"
+        >Only allow trades between:</span
       >
     </div>
     <div>
@@ -25,6 +25,7 @@
         (ngModelChange)="onTimezoneChange($event)"
         class="timezone-select inputText color-light-gray"
       >
+        <option value="" disabled>Select timezone</option>
         @for (tz of timezones; track $index) {
         <option [value]="tz.value">
           {{ tz.label }}
@@ -42,6 +43,7 @@
         [disabled]="!config.isActive"
         [ngModel]="config.tradingOpenTime"
         (ngModelChange)="onTimeChange('tradingOpenTime', $event)"
+        placeholder="Select start time"
         class="inputText time-input color-light-gray"
         id="openTradingTime"
       />
@@ -55,6 +57,7 @@
         [disabled]="!config.isActive"
         [ngModel]="config.tradingCloseTime"
         (ngModelChange)="onTimeChange('tradingCloseTime', $event)"
+        placeholder="Select end time"
         class="timepicker-input inputText time-input color-light-gray"
         id="closeTradingTime"
       />

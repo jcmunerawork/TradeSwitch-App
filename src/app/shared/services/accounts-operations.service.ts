@@ -118,6 +118,7 @@ export class AccountsOperationsService {
       accountID: accountData.accountID,
       accountNumber: accountData.accountNumber,
       balance: accountData.balance,
+      initialBalance: accountData.initialBalance,
     });
   }
 
