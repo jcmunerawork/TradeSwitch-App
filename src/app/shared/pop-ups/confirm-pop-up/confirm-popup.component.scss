@@ -40,3 +40,12 @@ p {
 .controls {
   gap: 1rem;
 }
+
+.dangerous {
+  background: #dc3545;
+  box-shadow: 0 6px 28px rgba(220, 53, 69, 0.25);
+  
+  &:hover {
+    background: #c82333;
+  }
+}

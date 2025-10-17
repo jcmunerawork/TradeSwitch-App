@@ -42,6 +42,7 @@ export class ProfileDetailsComponent implements OnInit {
       firstName: ['', [Validators.required, Validators.minLength(2)]],
       lastName: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
+      phoneNumber: [''],
       birthday: ['', [Validators.required]],
     });
 
@@ -77,6 +78,7 @@ export class ProfileDetailsComponent implements OnInit {
         firstName: this.user.firstName || '',
         lastName: this.user.lastName || '',
         email: this.user.email || '',
+        phoneNumber: this.user.phoneNumber || '',
         birthday: this.user.birthday || '',
       });
     }
@@ -98,20 +100,24 @@ export class ProfileDetailsComponent implements OnInit {
     if (this.profileForm.valid && this.user) {
       this.isLoading = true;
       try {
-        await this.authService.updateUser(this.user.id, {
+        const updatedData = {
           firstName: this.profileForm.value.firstName,
           lastName: this.profileForm.value.lastName,
           birthday: this.profileForm.value.birthday,
-        });
+        };
+
+        // 1. Actualizar en Firebase
+        await this.authService.updateUser(this.user.id, updatedData);
         
-        // Actualizar el usuario en el store
+        // 2. Actualizar el usuario en el contexto (fuente de verdad)
+        this.appContext.updateUserData(updatedData);
+        
+        // 3. Actualizar el usuario en el store
         this.store.dispatch({
           type: '[User] Update User',
           user: {
             ...this.user,
-            firstName: this.profileForm.value.firstName,
-            lastName: this.profileForm.value.lastName,
-            birthday: this.profileForm.value.birthday,
+            ...updatedData
           }
         });
         

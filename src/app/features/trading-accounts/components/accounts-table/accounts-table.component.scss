@@ -383,6 +383,10 @@ th:nth-child(9), td:nth-child(9) { width: 80px; }  // Actions
   }
 }
 
+.table-titles {
+  margin-bottom: 1rem;
+}
+
 // Responsive styles
 .accounts-header {
   @media (max-width: 1024px) {

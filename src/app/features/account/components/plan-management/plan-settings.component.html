@@ -1,4 +1,10 @@
-@if (!showSubscriptionProcessing && !showOrderSummary) {
+@if (initialLoading) {
+  <!-- Loading State -->
+  <app-loading-spinner 
+    title="Loading your plan details..." 
+    description="Please wait while we load your membership information.">
+  </app-loading-spinner>
+} @else {
   <div class="main-titles color-background d-flex flex-col mb-24">
     <h1 class="subtitle mb-8">Membership details</h1>
     <h3 class="regularText">
@@ -12,7 +18,7 @@
       <div class="info-column">
         <div class="info-item">
           <span class="info-label">Current Plan</span>
-          <span class="info-value">{{ userPlan?.name || 'Free Plan' }}</span>
+          <span class="info-value">{{ getCapitalizedPlanName() }}</span>
         </div>
         <div class="info-item">
           <span class="info-label">Renewal date</span>
@@ -20,17 +26,17 @@
         </div>
         <div class="info-item">
           <span class="info-label">Remaining until renewal</span>
-          <span class="info-value">{{ remainingDays }} days</span>
+          <span class="info-value">{{ isFreePlan ? 'N/A' : (remainingDays + ' days') }}</span>
         </div>
       </div>
       <div class="info-column">
         <div class="info-item">
           <span class="info-label">Price</span>
-          <span class="info-value">${{ userPlan?.price || '0.00' }}</span>
+          <span class="info-value">{{ isFreePlan ? 'N/A' : ('$' + (userPlan?.price || '0.00')) }}</span>
         </div>
         <div class="info-item">
           <span class="info-label">Billing cycle</span>
-          <span class="info-value">Monthly</span>
+          <span class="info-value">{{ isFreePlan ? 'N/A' : 'Monthly' }}</span>
         </div>
       </div>
     </div>
@@ -106,7 +112,7 @@
           }
           
           <div class="plan-header">
-            <h3 class="plan-name">{{ item.name }}</h3>
+            <h3 class="plan-name">{{ capitalizePlanName(item.name) }}</h3>
             <div class="plan-price">
               <span class="price">${{ item.price }}</span>
               <span class="period">/month</span>
@@ -134,8 +140,8 @@
           <div class="plan-footer">
             <button 
               class="plan-button" 
-              [class.current-plan-button]="isCurrentPlan(item.name)"
-              [disabled]="isCurrentPlan(item.name)"
+              [class.current-plan-button]="isButtonDisabled(item.name)"
+              [disabled]="isButtonDisabled(item.name)"
               (click)="onPlanChange(item)"
             >
               {{ getButtonText(item.name) }}
@@ -202,63 +208,7 @@
 </div>
 }
 
-@if (showDowngradeValidation && downgradeValidationData) {
-<!-- Downgrade validation popup -->
-<div class="cancel-plan-popup">
-  <div class="popup-overlay" (click)="closeDowngradeValidation()"></div>
-  <div class="popup-content">
-    <div class="popup-header">
-      <h3 class="popup-title">Cannot Downgrade Plan</h3>
-      <button class="close-btn" (click)="closeDowngradeValidation()">×</button>
-    </div>
-    
-    <div class="popup-body">
-      <div class="warning-icon">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      
-      <h4 class="warning-title">You have too many resources for the {{ downgradeValidationData.targetPlan }} plan</h4>
-      <p class="warning-text">
-        To downgrade to the {{ downgradeValidationData.targetPlan }} plan, you need to reduce your resources first.
-      </p>
-      
-      <div class="resource-limits-info">
-        <div class="resource-item">
-          <p class="resource-label">Trading Accounts:</p>
-          <p class="resource-details">
-            You have {{ downgradeValidationData.currentAccounts }}, but {{ downgradeValidationData.targetPlan }} plan allows only {{ downgradeValidationData.maxAccounts }}.
-            @if (downgradeValidationData.accountsToDelete > 0) {
-              <span class="excess-text">Please delete {{ downgradeValidationData.accountsToDelete }} account(s).</span>
-            }
-          </p>
-        </div>
-        
-        <div class="resource-item">
-          <p class="resource-label">Strategies:</p>
-          <p class="resource-details">
-            You have {{ downgradeValidationData.currentStrategies }}, but {{ downgradeValidationData.targetPlan }} plan allows only {{ downgradeValidationData.maxStrategies }}.
-            @if (downgradeValidationData.strategiesToDelete > 0) {
-              <span class="excess-text">Please delete {{ downgradeValidationData.strategiesToDelete }} strategie(s).</span>
-            }
-          </p>
-        </div>
-      </div>
-    </div>
-    
-    <div class="popup-footer">
-      <button class="btn-cancel" (click)="closeDowngradeValidation()">
-        Cancel
-      </button>
-      <button class="btn-confirm" (click)="goToManageResources()">
-        Manage Resources
-      </button>
-    </div>
-  </div>
-</div>
 }
-  }
   
   <!-- Componentes de procesamiento de pago y resumen
   @if (showSubscriptionProcessing) {

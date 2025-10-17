@@ -1,19 +1,20 @@
 @if (visible) {
 <div class="popup-overlay d-flex items-center justify-center">
   <div class="popup-content p-24 regularText bg-bg-black">
-    <h2 class="logoTitle mb-24">Confirm changes to your strategy?</h2>
+    <h2 class="logoTitle mb-24">{{ title }}</h2>
     <p class="mb-24 color-secondary-200">
-      These updates will modify how your trading rules are applied.
+      {{ message }}
     </p>
     <div class="d-flex controls">
       <button class="popup-button cancel regularText p-10" (click)="cancel()">
-        Cancel
+        {{ cancelButtonText }}
       </button>
       <button
-        class="popup-button regularText p-10 bg-primary-400"
+        class="popup-button regularText p-10"
+        [ngClass]="isDangerous ? 'dangerous' : 'bg-primary-400'"
         (click)="close()"
       >
-        Apply changes
+        {{ confirmButtonText }}
       </button>
     </div>
   </div>

@@ -30,6 +30,10 @@
     padding: 1rem 1rem 0 1rem;
   }
 
+  .sidebar-toggle .material-symbols-outlined {
+    cursor: pointer;
+  }
+
   .logo {
     width: 60%;
     margin: 0 auto 1.5rem auto;
@@ -176,6 +180,7 @@
     }
 
     .logout:hover {
+      cursor: pointer;
       color: #973f45
     }
   }

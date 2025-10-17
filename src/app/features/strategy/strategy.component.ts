@@ -7,6 +7,7 @@ import { selectUser } from '../auth/store/user.selectios';
 import { SettingsService } from './service/strategy.service';
 import { ConfigurationOverview } from './models/strategy.model';
 import { TextInputComponent, StrategyCardComponent, StrategyCardData, StrategyGuideModalComponent, LoadingSpinnerComponent, PlanBannerComponent } from '../../shared/components';
+import { ConfirmPopupComponent } from '../../shared/pop-ups/confirm-pop-up/confirm-popup.component';
 import { Store } from '@ngrx/store';
 import { ReportService } from '../report/service/report.service';
 import { AuthService } from '../auth/service/authService';
@@ -37,6 +38,7 @@ import { BalanceCacheService } from './services/balance-cache.service';
     StrategyGuideModalComponent,
     LoadingSpinnerComponent,
     PlanBannerComponent,
+    ConfirmPopupComponent,
   ],
   templateUrl: './strategy.component.html',
   styleUrl: './strategy.component.scss',
@@ -66,6 +68,10 @@ export class Strategy implements OnInit, OnDestroy {
   
   // Loading state for strategy operations (activate, delete, copy)
   isProcessingStrategy = false;
+  
+  // Delete strategy confirmation popup
+  showDeleteConfirmPopup = false;
+  strategyToDeleteId: string = '';
   
   // Report data for strategy card
   tradeWin: number = 0;
@@ -980,16 +986,21 @@ export class Strategy implements OnInit, OnDestroy {
   }
 
   // Eliminar estrategia
-  async deleteStrategy(strategyId: string) {
-    if (!confirm('Are you sure you want to delete this strategy? This action cannot be undone.')) {
-      return;
-    }
+  deleteStrategy(strategyId: string) {
+    // Guardar el ID de la estrategia a eliminar y mostrar el popup de confirmación
+    this.strategyToDeleteId = strategyId;
+    this.showDeleteConfirmPopup = true;
+  }
 
+  // Confirmar eliminación de estrategia
+  confirmDeleteStrategy = async () => {
+    this.showDeleteConfirmPopup = false;
+    
     try {
       // Mostrar loading completo durante la eliminación
       this.isProcessingStrategy = true;
       
-      await this.strategySvc.deleteStrategyView(strategyId);
+      await this.strategySvc.deleteStrategyView(this.strategyToDeleteId);
       
       // Invalidar cache y recargar estrategias
       await this.invalidateCacheAndReload();
@@ -1022,8 +1033,15 @@ export class Strategy implements OnInit, OnDestroy {
     } finally {
       // Ocultar loading al finalizar
       this.isProcessingStrategy = false;
+      this.strategyToDeleteId = '';
     }
-  }
+  };
+
+  // Cancelar eliminación de estrategia
+  cancelDeleteStrategy = () => {
+    this.showDeleteConfirmPopup = false;
+    this.strategyToDeleteId = '';
+  };
 
   // Actualizar nombre de estrategia
   async updateStrategyName(strategyId: string, newName: string) {
