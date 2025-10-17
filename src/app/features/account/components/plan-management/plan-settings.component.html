@@ -1,4 +1,10 @@
-@if (!showSubscriptionProcessing && !showOrderSummary) {
+@if (initialLoading) {
+  <!-- Loading State -->
+  <app-loading-spinner 
+    title="Loading your plan details..." 
+    description="Please wait while we load your membership information.">
+  </app-loading-spinner>
+} @else if (!showSubscriptionProcessing && !showOrderSummary) {
   <div class="main-titles color-background d-flex flex-col mb-24">
     <h1 class="subtitle mb-8">Membership details</h1>
     <h3 class="regularText">
@@ -12,7 +18,7 @@
       <div class="info-column">
         <div class="info-item">
           <span class="info-label">Current Plan</span>
-          <span class="info-value">{{ userPlan?.name || 'Free Plan' }}</span>
+          <span class="info-value">{{ getCapitalizedPlanName() }}</span>
         </div>
         <div class="info-item">
           <span class="info-label">Renewal date</span>
@@ -20,17 +26,17 @@
         </div>
         <div class="info-item">
           <span class="info-label">Remaining until renewal</span>
-          <span class="info-value">{{ remainingDays }} days</span>
+          <span class="info-value">{{ isFreePlan ? 'N/A' : (remainingDays + ' days') }}</span>
         </div>
       </div>
       <div class="info-column">
         <div class="info-item">
           <span class="info-label">Price</span>
-          <span class="info-value">${{ userPlan?.price || '0.00' }}</span>
+          <span class="info-value">{{ isFreePlan ? 'N/A' : ('$' + (userPlan?.price || '0.00')) }}</span>
         </div>
         <div class="info-item">
           <span class="info-label">Billing cycle</span>
-          <span class="info-value">Monthly</span>
+          <span class="info-value">{{ isFreePlan ? 'N/A' : 'Monthly' }}</span>
         </div>
       </div>
     </div>
@@ -258,7 +264,7 @@
   </div>
 </div>
 }
-  }
+}
   
   <!-- Componentes de procesamiento de pago y resumen
   @if (showSubscriptionProcessing) {

@@ -16,10 +16,11 @@ import { SubscriptionProcessingComponent } from '../../../../shared/components/s
 import { OrderSummaryComponent } from '../../../../shared/components/order-summary/order-summary.component';
 import { UserStatus } from '../../../overview/models/overview';
 import { AppContextService } from '../../../../shared/context/context';
+import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-plan-settings',
-  imports: [CommonModule /*SubscriptionProcessingComponent OrderSummaryComponent*/],
+  imports: [CommonModule, LoadingSpinnerComponent /*SubscriptionProcessingComponent OrderSummaryComponent*/],
   templateUrl: './plan-settings.component.html',
   styleUrl: './plan-settings.component.scss',
   standalone: true,
@@ -31,6 +32,10 @@ export class PlanSettingsComponent implements OnInit {
   userPlan: Plan | undefined = undefined;
   renewalDate: string = '';
   remainingDays: number = 0;
+  isFreePlan: boolean = false; // Para determinar si mostrar N/A
+  
+  // Estado de carga inicial
+  initialLoading: boolean = true;
   
 
   user: User | null = null;
@@ -89,22 +94,28 @@ export class PlanSettingsComponent implements OnInit {
   ) {}
 
   async ngOnInit(): Promise<void> {
-    // Suscribirse a cambios en los planes globales
-    this.appContext.subscribeToGlobalPlansChanges().subscribe(plans => {
-      if (plans.length > 0) {
-        this.buildPlansData();
+    this.initialLoading = true;
+    
+    try {
+      // Suscribirse a cambios en los planes globales
+      this.appContext.subscribeToGlobalPlansChanges().subscribe(plans => {
+        if (plans.length > 0) {
+          this.buildPlansData();
+        }
+      });
+      
+      // También intentar construir inmediatamente por si ya están cargados
+      this.buildPlansData();
+      
+      // Si no hay planes, intentar cargarlos manualmente
+      if (this.appContext.globalPlans().length === 0) {
+        await this.loadPlansManually();
       }
-    });
-    
-    // También intentar construir inmediatamente por si ya están cargados
-    this.buildPlansData();
-    
-    // Si no hay planes, intentar cargarlos manualmente
-    if (this.appContext.globalPlans().length === 0) {
-      await this.loadPlansManually();
+      
+      await this.loadUserPlan();
+    } finally {
+      this.initialLoading = false;
     }
-    
-    this.loadUserPlan();
   }
 
   private async loadUserPlan(): Promise<void> {
@@ -116,24 +127,28 @@ export class PlanSettingsComponent implements OnInit {
         return;
       }
       
-      // Obtener los pagos del usuario
-      const subscriptions = await this.subscriptionService.getUserLatestSubscription(this.user.id);
-      if (subscriptions) {
-        // Obtener el último pago (más reciente)
-        const latestPayment = subscriptions;
-        
+      // Obtener la suscripción del usuario
+      const subscription = await this.subscriptionService.getUserLatestSubscription(this.user.id);
+      if (subscription && subscription.planId) {
         // Buscar el plan por ID
-        const plan: Plan | undefined = await this.planService.getPlanById(latestPayment.planId);
+        const plan: Plan | undefined = await this.planService.getPlanById(subscription.planId);
         
         if (plan) {
           this.userPlan = plan;
-          this.calculateRenewalDate(latestPayment.created_at);
+          this.isFreePlan = plan.name.toLowerCase() === 'free';
+          
+          // Usar periodEnd si existe, sino usar created_at
+          if (subscription.periodEnd) {
+            this.calculateRenewalDate(subscription.periodEnd);
+          } else {
+            this.calculateRenewalDate(subscription.created_at);
+          }
         } else {
           // Si no se encuentra el plan, usar plan gratuito por defecto
           this.setDefaultFreePlan();
         }
       } else {
-        // Si no hay pagos, usar plan gratuito por defecto
+        // Si no hay suscripción, usar plan gratuito por defecto
         this.setDefaultFreePlan();
       }
     } catch (error) {
@@ -209,23 +224,30 @@ export class PlanSettingsComponent implements OnInit {
         updatedAt: new Date()
       };
     }
-    this.calculateRenewalDate(new Date());
+    this.isFreePlan = true;
+    this.renewalDate = 'N/A';
+    this.remainingDays = 0;
   }
 
-  private calculateRenewalDate(paymentCreatedAt?: any): void {
-    let baseDate: Date;
-    
-    if (paymentCreatedAt) {
-      // Si existe el payment, usar su fecha de creación
-      baseDate = paymentCreatedAt.toDate ? paymentCreatedAt.toDate() : new Date(paymentCreatedAt);
-    } else {
-      // Si no existe payment, usar fecha actual
-      baseDate = new Date();
+  private calculateRenewalDate(periodEnd?: any): void {
+    // Si es plan Free, no calcular nada
+    if (this.isFreePlan) {
+      this.renewalDate = 'N/A';
+      this.remainingDays = 0;
+      return;
     }
     
-    // Calcular fecha de renovación (30 días desde la fecha base)
-    const renewalDate = new Date(baseDate.getTime() + (30 * 24 * 60 * 60 * 1000));
+    let renewalDate: Date;
     
+    if (periodEnd) {
+      // Usar periodEnd de la subscription
+      renewalDate = periodEnd.toDate ? periodEnd.toDate() : new Date(periodEnd);
+    } else {
+      // Fallback: usar fecha actual
+      renewalDate = new Date();
+    }
+    
+    // Formatear fecha de renovación
     this.renewalDate = renewalDate.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -234,6 +256,9 @@ export class PlanSettingsComponent implements OnInit {
     
     // Calcular días restantes desde hoy hasta la fecha de renovación
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset horas para comparación precisa
+    renewalDate.setHours(0, 0, 0, 0);
+    
     const timeDiff = renewalDate.getTime() - today.getTime();
     this.remainingDays = Math.ceil(timeDiff / (1000 * 3600 * 24));
     
@@ -245,6 +270,13 @@ export class PlanSettingsComponent implements OnInit {
 
   selectTypeData(index: number): void {
     this.selectedIndex = index;
+  }
+
+  // Helper para capitalizar el nombre del plan
+  getCapitalizedPlanName(): string {
+    if (!this.userPlan?.name) return 'Free Plan';
+    const name = this.userPlan.name;
+    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
   }
 
   // Métodos para el nuevo diseño de comparación de planes
