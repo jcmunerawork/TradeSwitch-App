@@ -46,40 +46,8 @@ export class PlanSettingsComponent implements OnInit {
     { label: 'Billing Management' },
   ];
 
-  // Estados para cambio de plan
-  showSubscriptionProcessing = false;
-  showOrderSummary = false;
-  selectedPlanForChange: PlanCard | null = null;
-  currentPaymentId: string = '';
-  
   // Estados para cancelar plan
   showCancelPlanProcessing = false;
-  
-  // Estados para validación de downgrade
-  showDowngradeValidation = false;
-  downgradeValidationData: {
-    targetPlan: string;
-    currentAccounts: number;
-    maxAccounts: number;
-    currentStrategies: number;
-    maxStrategies: number;
-    accountsToDelete: number;
-    strategiesToDelete: number;
-  } | null = null;
-  
-  // Configuraciones para componentes compartidos
-  subscriptionProcessingConfig = {
-    paymentId: '',
-    userId: '',
-    context: 'plan-change' as const,
-    planName: ''
-  };
-  
-  orderSummaryConfig = {
-    context: 'plan-change' as const,
-    planName: '',
-    price: 0
-  };
 
   // Inyectar servicios
   private subscriptionService = inject(SubscriptionService);
@@ -279,6 +247,12 @@ export class PlanSettingsComponent implements OnInit {
     return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
   }
 
+  // Helper para capitalizar cualquier nombre de plan
+  capitalizePlanName(planName: string): string {
+    if (!planName) return '';
+    return planName.charAt(0).toUpperCase() + planName.slice(1).toLowerCase();
+  }
+
   // Métodos para el nuevo diseño de comparación de planes
   isCurrentPlan(planName: string): boolean {
     if (!this.userPlan) return false;
@@ -298,113 +272,128 @@ export class PlanSettingsComponent implements OnInit {
   }
 
   getButtonText(planName: string): string {
-    if (this.isCurrentPlan(planName)) {
-      return 'Current Plan';
+    const isCurrentPlanFree = this.userPlan?.name.toLowerCase() === 'free';
+    
+    // Si es el plan FREE y el usuario tiene plan FREE
+    if (isCurrentPlanFree && planName.toLowerCase() === 'free') {
+      return 'Current plan';
     }
-    return 'Change Plan';
+    
+    // Para todos los demás casos
+    return 'Change plan';
+  }
+
+  isButtonDisabled(planName: string): boolean {
+    const isCurrentPlanFree = this.userPlan?.name.toLowerCase() === 'free';
+    
+    // Solo deshabilitar el botón FREE cuando el usuario tiene plan FREE
+    if (isCurrentPlanFree && planName.toLowerCase() === 'free') {
+      return true;
+    }
+    
+    return false;
   }
 
   // Métodos para cambio de plan
   async onPlanChange(plan: PlanCard): Promise<void> {
-    
-    if (this.isCurrentPlan(plan.name)) {
-      return; // No hacer nada si es el plan actual
-    }
-
-    // Validar si es un downgrade y si el usuario tiene recursos que exceden el plan de destino
-    const isDowngrade = this.isDowngrade(plan.name);
-    
-    if (isDowngrade) {
-      const validationResult = await this.validateDowngrade(plan.name);
-      
-      if (!validationResult.canDowngrade) {
-        this.showDowngradeValidationModal(validationResult);
-        return;
-      }
-    }
-
     try {
-      this.selectedPlanForChange = plan;
+      // Verificar si el plan actual es FREE
+      const isCurrentPlanFree = this.userPlan?.name.toLowerCase() === 'free';
       
-      // Configurar componentes compartidos (sin crear suscripción aún)
-      this.subscriptionProcessingConfig = {
-        paymentId: '', // Se creará después del procesamiento exitoso
-        userId: this.user?.id || '',
-        context: 'plan-change',
-        planName: plan.name
-      };
+      if (isCurrentPlanFree) {
+        // Si el plan actual es FREE y hace click en FREE → no hace nada
+        if (plan.name.toLowerCase() === 'free') {
+          return;
+        }
+        
+        // Si el plan actual es FREE y hace click en otro plan → crear checkout session
+        await this.createCheckoutSession(plan.name);
+      } else {
+        // Si el plan actual NO es FREE → abrir portal de Stripe
+        await this.openStripePortal();
+      }
+    } catch (error) {
+      console.error('Error processing plan change:', error);
+      alert('Error processing your request. Please try again.');
+    }
+  }
+
+  private async createCheckoutSession(planName: string): Promise<void> {
+    try {
+      // Obtener el plan completo del contexto para obtener el priceId
+      const selectedPlan = this.appContext.getPlanByName(planName);
       
-      this.orderSummaryConfig = {
-        context: 'plan-change',
-        planName: plan.name,
-        price: plan.price
-      };
+      if (!selectedPlan || !selectedPlan.planPriceId) {
+        throw new Error('Plan price ID not found');
+      }
+
+      // Obtener el token de Firebase
+      const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
+
+      // Crear checkout session
+      const response = await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${bearerTokenFirebase}`
+        },
+        body: JSON.stringify({
+          priceId: selectedPlan.planPriceId,
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error creating checkout session: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const responseData = await response.json();
+      const checkoutUrl = responseData.body?.url || responseData.url;
       
-      // Mostrar procesamiento de pago
-      this.showSubscriptionProcessing = true;
-      
-      // Simular procesamiento de pago después de un pequeño delay
-      setTimeout(() => {
-        this.simulateSubscriptionProcessing();
-      }, 1000); // 1 segundo de delay para que se vea la ventana
+      if (!checkoutUrl) {
+        throw new Error('Checkout URL not found in response');
+      }
+
+      // Redirigir a la página de checkout
+      window.location.href = checkoutUrl;
       
     } catch (error) {
-      console.error('Error iniciando cambio de plan:', error);
-      alert('Error starting plan change. Please try again.');
+      console.error('Error creating checkout session:', error);
+      throw error;
     }
   }
 
-  // TODO: IMPLEMENTAR ENDPOINT DE PAGO - Reemplazar simulación con API real
-  private simulateSubscriptionProcessing(): void {
-    // Simular tiempo de procesamiento
-    setTimeout(async () => {
-      try {
-        // Simular éxito del pago (80% de probabilidad para cambios de plan)
-        const isSuccess = Math.random() > 0.2;
-        
-        if (isSuccess) {
-          // Crear nueva suscripción con el plan seleccionado
-          await this.createNewSubscription();
-          this.onPaymentSuccess();
-        } else {
-          this.onPaymentError();
-        }
-      } catch (error) {
-        console.error('Error creando nueva suscripción:', error);
-        this.onPaymentError();
+  private async openStripePortal(): Promise<void> {
+    try {
+      const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
+
+      const response = await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-portal-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${bearerTokenFirebase}`
+        },
+        body: JSON.stringify({
+          userId: this.user?.id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Error creating portal session');
       }
-    }, 5000); // 5 segundos de simulación para que se vea mejor
-  }
 
-  private onPaymentSuccess(): void {
-    this.showSubscriptionProcessing = false;
-    this.showOrderSummary = true;
-  }
+      const responseData = await response.json();
+      const portalSessionUrl = responseData.body?.url || responseData.url;
+      
+      if (!portalSessionUrl) {
+        throw new Error('Portal session URL not found in response');
+      }
 
-  private onPaymentError(): void {
-    this.showSubscriptionProcessing = false;
-    alert('Error processing plan change. Please try again.');
-  }
-
-  onPaymentProcessingSuccess(): void {
-    this.showSubscriptionProcessing = false;
-    this.showOrderSummary = true;
-  }
-
-  onPaymentProcessingError(): void {
-    this.showSubscriptionProcessing = false;
-    alert('Error processing plan change. Please try again.');
-  }
-
-  onPaymentProcessingGoBack(): void {
-    this.showSubscriptionProcessing = false;
-  }
-
-  onOrderSummaryContinue(): void {
-    this.showOrderSummary = false;
-    alert('Plan change completed successfully!');
-    // Recargar el plan del usuario
-    this.loadUserPlan();
+      window.open(portalSessionUrl, '_blank');
+    } catch (error) {
+      console.error('Error opening Stripe portal:', error);
+      throw error;
+    }
   }
 
   onCancelPlan(): void {
@@ -448,90 +437,6 @@ export class PlanSettingsComponent implements OnInit {
 
   cancelCancelPlan(): void {
     this.showCancelPlanProcessing = false;
-  }
-
-  // Métodos para validación de downgrade
-  private isDowngrade(targetPlanName: string): boolean {
-    if (!this.userPlan) return false;
-    
-    const currentPlanLevel = this.getPlanLevel(this.userPlan.name);
-    const targetPlanLevel = this.getPlanLevel(targetPlanName);
-    
-    return targetPlanLevel < currentPlanLevel;
-  }
-
-  private getPlanLevel(planName: string): number {
-    const planLevels: { [key: string]: number } = {
-      'free': 1,
-      'starter': 2,
-      'pro': 3
-    };
-    return planLevels[planName.toLowerCase()] || 1;
-  }
-
-  private async validateDowngrade(targetPlanName: string): Promise<{
-    canDowngrade: boolean;
-    targetPlan: string;
-    currentAccounts: number;
-    maxAccounts: number;
-    currentStrategies: number;
-    maxStrategies: number;
-    accountsToDelete: number;
-    strategiesToDelete: number;
-  }> {
-    if (!this.user?.id) {
-      throw new Error('User ID not available');
-    }
-
-    // Obtener límites del plan de destino usando la lógica existente
-    const targetMaxAccountsStr = this.getTradingAccounts(targetPlanName);
-    const targetMaxStrategiesStr = this.getStrategies(targetPlanName);
-    
-    const targetMaxAccounts = parseInt(targetMaxAccountsStr);
-    const targetMaxStrategies = parseInt(targetMaxStrategiesStr);
-    
-    // Cargar datos actuales del usuario directamente desde Firebase
-    const userData = await this.authService.getUserDataForValidation(this.user.id);
-    const currentAccounts = userData.accounts.length;
-    const currentStrategies = userData.strategies.length;
-    
-    const accountsToDelete = Math.max(0, currentAccounts - targetMaxAccounts);
-    const strategiesToDelete = Math.max(0, currentStrategies - targetMaxStrategies);
-    
-    const canDowngrade = accountsToDelete === 0 && strategiesToDelete === 0;
-    
-    return {
-      canDowngrade,
-      targetPlan: targetPlanName,
-      currentAccounts,
-      maxAccounts: targetMaxAccounts,
-      currentStrategies,
-      maxStrategies: targetMaxStrategies,
-      accountsToDelete,
-      strategiesToDelete
-    };
-  }
-
-  private showDowngradeValidationModal(validationData: any): void {
-    this.downgradeValidationData = validationData;
-    this.showDowngradeValidation = true;
-  }
-
-  closeDowngradeValidation(): void {
-    this.showDowngradeValidation = false;
-    this.downgradeValidationData = null;
-  }
-
-  goToManageResources(): void {
-    this.showDowngradeValidation = false;
-    this.downgradeValidationData = null;
-    
-    // Navegar a las páginas de gestión de recursos
-    alert('Please delete excess resources before downgrading your plan.');
-  }
-
-  private async createNewSubscription(): Promise<void> {
-    //TODO: IMPLEMENTAR ENDPOINT DE PAGO A NUEVA SUBSCRIPTION - Reemplazar simulación con API real
   }
 
   async onManageSubscription(): Promise<void> {
