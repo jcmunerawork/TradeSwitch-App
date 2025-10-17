@@ -3,8 +3,9 @@ import { BehaviorSubject, Observable, combineLatest, map, distinctUntilChanged }
 import { User } from '../../features/overview/models/overview';
 import { AccountData } from '../../features/auth/models/userModel';
 import { ConfigurationOverview } from '../../features/strategy/models/strategy.model';
-import { BalanceData } from '../../features/report/models/report.model';
+import { BalanceData, GroupedTradeFinal } from '../../features/report/models/report.model';
 import { Plan } from '../services/planService';
+import { TradeLockerApiService } from '../services/tradelocker-api.service';
 
 // Interfaces para datos de API externa
 export interface TradeLockerAccountData {
@@ -54,6 +55,14 @@ export interface AppContextState {
     balanceData: any;
     monthlyReports: any[];
   };
+  
+  // Trading history por cuenta (nuevo)
+  tradingHistoryByAccount: Map<string, {
+    accountHistory: GroupedTradeFinal[];
+    stats: any;
+    balanceData: any;
+    lastUpdated: number;
+  }>;
   
   // Datos de overview (para admins)
   overviewData: {
@@ -131,6 +140,7 @@ export class AppContextService {
     },
     tradeLockerData: new Map(),
     apiCache: new Map(),
+    tradingHistoryByAccount: new Map(),
     isLoading: {
       user: false,
       accounts: false,
@@ -311,7 +321,7 @@ export class AppContextService {
     distinctUntilChanged()
   );
 
-  constructor() {
+  constructor(private tradeLockerApi: TradeLockerApiService) {
     // Sincronizar signals con el estado principal
     effect(() => {
       this.updateState({
@@ -348,6 +358,9 @@ export class AppContextService {
         currentUser: user,
         isAuthenticated: true
       });
+      
+      // NO cargar trading history automáticamente para evitar peticiones repetidas
+      // this.loadTradingHistoryAfterLogin(user.id);
     } else {
       this.clearUserData();
     }
@@ -737,5 +750,286 @@ export class AppContextService {
   updateOverviewStrategies(allStrategies: ConfigurationOverview[]): void {
     const currentData = this.overviewData();
     this.overviewData.set({ ...currentData, allStrategies });
+  }
+
+  // ===== MÉTODOS DE TRADING HISTORY POR CUENTA =====
+
+  /**
+   * Cargar trading history de la primera cuenta después del login
+   */
+  private async loadTradingHistoryAfterLogin(userId: string): Promise<void> {
+    try {
+      // Esperar a que las cuentas estén cargadas
+      const accounts = this.userAccounts();
+      if (accounts.length === 0) {
+        // Si no hay cuentas, intentar cargarlas
+        await this.loadUserAccountsIfNeeded(userId);
+        return;
+      }
+
+      // Cargar trading history de la primera cuenta
+      const firstAccount = accounts[0];
+      await this.loadTradingHistoryForAccount(firstAccount);
+    } catch (error) {
+      console.error('Error loading trading history after login:', error);
+    }
+  }
+
+  /**
+   * Cargar cuentas del usuario si no están cargadas
+   */
+  private async loadUserAccountsIfNeeded(userId: string): Promise<void> {
+    // Este método se implementará cuando se integre con AuthService
+    // Por ahora, solo logueamos que necesitamos cargar las cuentas
+    console.log('Loading user accounts for userId:', userId);
+  }
+
+  /**
+   * Cargar trading history para una cuenta específica
+   */
+  async loadTradingHistoryForAccount(account: AccountData): Promise<void> {
+    try {
+      this.setLoading('tradeLocker', true);
+      this.setError('tradeLocker', null);
+
+      // Obtener userKey
+      const userKey = await this.tradeLockerApi.getUserKey(
+        account.emailTradingAccount,
+        account.brokerPassword,
+        account.server
+      ).toPromise();
+
+      if (!userKey) {
+        throw new Error('No se pudo obtener userKey');
+      }
+
+      // Obtener balance data
+      const balanceData = await this.tradeLockerApi.getAccountBalance(
+        account.accountID,
+        userKey,
+        1
+      ).toPromise();
+
+      // Obtener trading history
+      const tradingHistory = await this.tradeLockerApi.getTradingHistory(
+        userKey,
+        account.accountID,
+        1
+      ).toPromise();
+
+      // Calcular estadísticas
+      const stats = this.calculateStatsFromTrades(tradingHistory || []);
+
+      // Guardar datos por cuenta
+      const accountData = {
+        accountHistory: tradingHistory || [],
+        stats: stats,
+        balanceData: balanceData,
+        lastUpdated: Date.now()
+      };
+
+      this.setTradingHistoryForAccount(account.id, accountData);
+
+      // Guardar en localStorage
+      this.saveTradingHistoryToLocalStorage(account.id, accountData);
+
+      this.setLoading('tradeLocker', false);
+    } catch (error) {
+      console.error('Error loading trading history for account:', error);
+      this.setLoading('tradeLocker', false);
+      this.setError('tradeLocker', 'Error al cargar trading history');
+    }
+  }
+
+  /**
+   * Calcular estadísticas desde los trades
+   */
+  private calculateStatsFromTrades(trades: GroupedTradeFinal[]): any {
+    if (!trades || trades.length === 0) {
+      return {
+        netPnl: 0,
+        tradeWinPercent: 0,
+        profitFactor: 0,
+        avgWinLossTrades: 0,
+        totalTrades: 0,
+        activePositions: 0
+      };
+    }
+
+    const normalizedTrades = trades.map(trade => ({
+      ...trade,
+      pnl: trade.pnl ?? 0
+    }));
+
+    const totalGains = normalizedTrades
+      .filter(t => t.pnl > 0)
+      .reduce((sum, t) => sum + t.pnl, 0);
+    
+    const totalLosses = Math.abs(normalizedTrades
+      .filter(t => t.pnl < 0)
+      .reduce((sum, t) => sum + t.pnl, 0));
+
+    const winningTrades = normalizedTrades.filter(t => t.pnl > 0).length;
+    const totalTrades = normalizedTrades.length;
+    const winPercent = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;
+    const profitFactor = totalLosses > 0 ? totalGains / totalLosses : (totalGains > 0 ? 999.99 : 0);
+
+    return {
+      netPnl: Math.round((totalGains - totalLosses) * 100) / 100,
+      tradeWinPercent: Math.round(winPercent * 100) / 100,
+      profitFactor: Math.round(profitFactor * 100) / 100,
+      avgWinLossTrades: 0, // Se calculará si es necesario
+      totalTrades: totalTrades,
+      activePositions: trades.filter(trade => trade.isOpen === true).length
+    };
+  }
+
+  /**
+   * Establecer trading history para una cuenta específica
+   */
+  setTradingHistoryForAccount(accountId: string, data: {
+    accountHistory: GroupedTradeFinal[];
+    stats: any;
+    balanceData: any;
+    lastUpdated: number;
+  }): void {
+    const currentState = this.stateSubject.value;
+    const newTradingHistory = new Map(currentState.tradingHistoryByAccount);
+    newTradingHistory.set(accountId, data);
+    
+    this.updateState({
+      tradingHistoryByAccount: newTradingHistory
+    });
+  }
+
+  /**
+   * Obtener trading history para una cuenta específica
+   */
+  getTradingHistoryForAccount(accountId: string): {
+    accountHistory: GroupedTradeFinal[];
+    stats: any;
+    balanceData: any;
+    lastUpdated: number;
+  } | null {
+    const currentState = this.stateSubject.value;
+    return currentState.tradingHistoryByAccount.get(accountId) || null;
+  }
+
+  /**
+   * Guardar trading history en localStorage por cuenta
+   */
+  saveTradingHistoryToLocalStorage(accountId: string, data: {
+    accountHistory: GroupedTradeFinal[];
+    stats: any;
+    balanceData: any;
+    lastUpdated: number;
+  }): void {
+    try {
+      const key = `tradeSwitch_tradingHistory_${accountId}`;
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (error) {
+      console.error('Error saving trading history to localStorage:', error);
+    }
+  }
+
+  /**
+   * Cargar trading history desde localStorage por cuenta
+   */
+  loadTradingHistoryFromLocalStorage(accountId: string): {
+    accountHistory: GroupedTradeFinal[];
+    stats: any;
+    balanceData: any;
+    lastUpdated: number;
+  } | null {
+    try {
+      const key = `tradeSwitch_tradingHistory_${accountId}`;
+      const data = localStorage.getItem(key);
+      if (data) {
+        return JSON.parse(data);
+      }
+    } catch (error) {
+      console.error('Error loading trading history from localStorage:', error);
+    }
+    return null;
+  }
+
+  /**
+   * Limpiar trading history de una cuenta específica
+   */
+  clearTradingHistoryForAccount(accountId: string): void {
+    const currentState = this.stateSubject.value;
+    const newTradingHistory = new Map(currentState.tradingHistoryByAccount);
+    newTradingHistory.delete(accountId);
+    
+    this.updateState({
+      tradingHistoryByAccount: newTradingHistory
+    });
+
+    // Limpiar también del localStorage
+    try {
+      const key = `tradeSwitch_tradingHistory_${accountId}`;
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.error('Error clearing trading history from localStorage:', error);
+    }
+  }
+
+  /**
+   * Cargar datos de reporte desde localStorage por accountID
+   */
+  loadReportDataFromLocalStorage(accountID: string): {
+    tradingAccount: AccountData;
+    accountHistory: GroupedTradeFinal[];
+    stats: any;
+    balanceData: any;
+    lastUpdated: number;
+  } | null {
+    try {
+      const key = `tradeSwitch_reportData_${accountID}`;
+      const data = localStorage.getItem(key);
+      if (data) {
+        return JSON.parse(data);
+      }
+    } catch (error) {
+      console.error('Error loading report data from localStorage:', error);
+    }
+    return null;
+  }
+
+  /**
+   * Guardar datos de reporte en localStorage por accountID
+   */
+  saveReportDataToLocalStorage(accountID: string, tradingAccount: AccountData, reportData: {
+    accountHistory: GroupedTradeFinal[];
+    stats: any;
+    balanceData: any;
+    lastUpdated: number;
+  }): void {
+    try {
+      const dataToSave = {
+        tradingAccount: tradingAccount,
+        accountHistory: reportData.accountHistory,
+        stats: reportData.stats,
+        balanceData: reportData.balanceData,
+        lastUpdated: reportData.lastUpdated
+      };
+      
+      const key = `tradeSwitch_reportData_${accountID}`;
+      localStorage.setItem(key, JSON.stringify(dataToSave));
+    } catch (error) {
+      console.error('Error saving report data to localStorage:', error);
+    }
+  }
+
+  /**
+   * Limpiar datos de reporte de localStorage por accountID
+   */
+  clearReportDataFromLocalStorage(accountID: string): void {
+    try {
+      const key = `tradeSwitch_reportData_${accountID}`;
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.error('Error clearing report data from localStorage:', error);
+    }
   }
 }

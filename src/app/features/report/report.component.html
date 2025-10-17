@@ -35,7 +35,12 @@
   </div>
   
   <div class="action-buttons d-flex gap-12">
-    @if (!loading) {    
+    @if (!loading) {
+    <button class="refresh-data-btn d-flex align-items-center gap-8" (click)="refreshCurrentAccountData()">
+      <span>Refresh Trade Data</span>
+      <span class="material-symbols-outlined" style="font-size: 18px">refresh</span>
+    </button>
+
     <button class="edit-strategy-btn d-flex align-items-center gap-8" (click)="goToEditStrategy()">
       <span>Edit Strategy</span>
       <span class="material-symbols-outlined" style="font-size: 18px">edit_square</span>

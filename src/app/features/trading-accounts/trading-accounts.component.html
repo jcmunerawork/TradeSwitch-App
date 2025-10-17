@@ -1,8 +1,30 @@
-<div class="main-titles color-background d-flex flex-col mb-32">
-  <div class="d-flex justify-between align-items-center mb-12">
-    <h1 class="titleText">My Trading Accounts</h1>
+@if (loading) {
+  <!-- Loading State - Replaces entire window -->
+  <app-loading-spinner 
+    title="Loading your trading accounts..." 
+    description="Please wait while we fetch your account information and balances.">
+  </app-loading-spinner>
+} @else {
+  <!-- Main Content -->
+  <div class="main-titles color-background d-flex flex-col mb-32">
+    <div class="d-flex justify-between align-items-center mb-12">
+      <h1 class="titleText">My Trading Accounts</h1>
+      <button 
+        class="add-account-header-btn desktop-add-btn" 
+        [class.disabled]="isAddAccountDisabled"
+        [disabled]="isAddAccountDisabled"
+        (click)="isAddAccountDisabled ? null : onAddAccount()"
+      >
+        <span class="material-symbols-outlined" style="font-size: 20px;">add</span>
+        <span>Add Account</span>
+      </button>
+    </div>
+    <h3 class="regularText">
+      View and manage all your connected trading accounts in one place.
+    </h3>
+    <!-- Mobile Add Account Button -->
     <button 
-      class="add-account-header-btn desktop-add-btn" 
+      class="add-account-mobile-btn mobile-add-btn" 
       [class.disabled]="isAddAccountDisabled"
       [disabled]="isAddAccountDisabled"
       (click)="isAddAccountDisabled ? null : onAddAccount()"
@@ -11,62 +33,40 @@
       <span>Add Account</span>
     </button>
   </div>
-  <h3 class="regularText">
-    View and manage all your connected trading accounts in one place.
-  </h3>
-  <!-- Mobile Add Account Button -->
-  <button 
-    class="add-account-mobile-btn mobile-add-btn" 
-    [class.disabled]="isAddAccountDisabled"
-    [disabled]="isAddAccountDisabled"
-    (click)="isAddAccountDisabled ? null : onAddAccount()"
-  >
-    <span class="material-symbols-outlined" style="font-size: 20px;">add</span>
-    <span>Add Account</span>
-  </button>
-</div>
 
-@if (showPlanBanner) {
-<div class="plan-banner" [class]="'plan-banner-' + planBannerType">
-  <div class="banner-content">
-    <div class="banner-icon">
-      <span class="material-symbols-outlined" style="font-size: 20px;">info</span>
-    </div>
-    <div class="banner-message">
-      <span>{{ planBannerMessage }}</span>
-      <span class="upgrade-link" (click)="onUpgradePlan()">Upgrade anytime.</span>
-    </div>
-    <button class="banner-close" (click)="onCloseBanner()">
-      <span class="material-symbols-outlined" style="font-size: 20px;">close</span>
-    </button>
-  </div>
-</div>
-}
-
-<!-- Content Area -->
-<div class="middle-container justify-between d-flex mb-24">
-  @if(usersData && usersData.length > 0) {
-  <app-accounts-table
-    [accounts]="usersData"
-    (delete)="deleteAccount($event)"
-    (edit)="onEditAccount($event)"
-  ></app-accounts-table>
-  } @else if(!loading) {
-  <!-- Empty State -->
-  <div class="empty-strategies d-flex flex-col align-items-center">
-    <div class="empty-icon">
-      <span class="material-symbols-outlined" style="font-size: 28px;">group_add</span>
-    </div>
-    <h3 class="empty-title">No trading accounts found</h3>
-    <p class="empty-description">You need to add a trading account before creating strategies.</p>
-    <button class="create-first-btn" (click)="onAddAccount()">
-      Add Trading Account
-    </button>
-  </div>
+  @if (showPlanBanner) {
+  <app-plan-banner
+    [visible]="showPlanBanner"
+    [message]="planBannerMessage"
+    [type]="planBannerType"
+    (upgradePlan)="onUpgradePlan()"
+    (closeBanner)="onCloseBanner()"
+  ></app-plan-banner>
   }
-</div>
 
-<app-loading-popup [visible]="loading"></app-loading-popup>
+  <!-- Content Area -->
+  <div class="middle-container justify-between d-flex mb-24">
+    @if(usersData && usersData.length > 0) {
+    <app-accounts-table
+      [accounts]="usersData"
+      (delete)="deleteAccount($event)"
+      (edit)="onEditAccount($event)"
+    ></app-accounts-table>
+    } @else {
+    <!-- Empty State -->
+    <div class="empty-strategies d-flex flex-col align-items-center">
+      <div class="empty-icon">
+        <span class="material-symbols-outlined" style="font-size: 28px;">group_add</span>
+      </div>
+      <h3 class="empty-title">No trading accounts found</h3>
+      <p class="empty-description">You need to add a trading account before creating strategies.</p>
+      <button class="create-first-btn" (click)="onAddAccount()">
+        Add Trading Account
+      </button>
+    </div>
+    }
+  </div>
+}
 
 <!-- Create Account Popup -->
 <app-create-account-popup

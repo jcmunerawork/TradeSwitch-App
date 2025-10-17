@@ -1,0 +1,16 @@
+@if (visible) {
+<div class="plan-banner" [class]="'plan-banner-' + type">
+  <div class="banner-content">
+    <div class="banner-icon">
+      <span class="material-symbols-outlined" style="font-size: 20px;">info</span>
+    </div>
+    <div class="banner-message">
+      <span>{{ message }}</span>
+      <span class="upgrade-link" (click)="onUpgradePlan()">Upgrade anytime.</span>
+    </div>
+    <button class="banner-close" (click)="onCloseBanner()">
+      <span class="material-symbols-outlined" style="font-size: 20px;">close</span>
+    </button>
+  </div>
+</div>
+}

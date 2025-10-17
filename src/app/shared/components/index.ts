@@ -6,3 +6,4 @@ export { StrategyCardComponent } from './strategy-card/strategy-card.component';
 export type { StrategyCardData } from './strategy-card/strategy-card.interface';
 export { StrategyGuideModalComponent } from './strategy-guide-modal/strategy-guide-modal.component';
 export { LoadingSpinnerComponent } from './loading-spinner/loading-spinner.component';
+export { PlanBannerComponent } from './plan-banner/plan-banner.component';

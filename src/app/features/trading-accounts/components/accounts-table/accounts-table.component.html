@@ -28,75 +28,77 @@
           />
         </div>
 
-        <button
+        <!--
+          <button
           class="sort-Btn regularText color-secondary-300 p-10 mr-10"
           (click)="toggleSort()"
           style="cursor: pointer; transition: all 0.2s ease;"
-          onmouseover="this.style.backgroundColor='rgba(158, 196, 242, 0.2)'; this.style.transform='translateY(-1px)'"
-          onmouseout="this.style.backgroundColor=''; this.style.transform='translateY(0)'"
-        >
-          <span 
-            class="material-symbols-outlined" 
-            style="font-size: 18px; transition: all 0.2s ease;"
-            onmouseover="this.style.transform='rotate(180deg)'"
-            onmouseout="this.style.transform='rotate(0deg)'"
-          >swap_vert</span>
-          Sort by: Last Update
-        </button>
-
-        <div class="filter-container" #filterContainer>
-          <button
-            class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
-            (click)="openFilter()"
+            onmouseover="this.style.backgroundColor='rgba(158, 196, 242, 0.2)'; this.style.transform='translateY(-1px)'"
+            onmouseout="this.style.backgroundColor=''; this.style.transform='translateY(0)'"
           >
-            <span class="material-symbols-outlined color-secondary-300" style="font-size: 18px">filter_alt</span> Filter
+            <span 
+              class="material-symbols-outlined" 
+              style="font-size: 18px; transition: all 0.2s ease;"
+              onmouseover="this.style.transform='rotate(180deg)'"
+              onmouseout="this.style.transform='rotate(0deg)'"
+            >swap_vert</span>
+            Sort by: Last Update
           </button>
-          @if (showFilter) {
-          <div class="filter-modal py-20 px-24 d-flex flex-col">
-            <label class="mt-10">Balance:</label>
-              <div
-                class="percentage-input d-flex items-center justify-between p-10"
-              >
-                <input
-                  id="min-balance"
-                  type="text"
-                  [(ngModel)]="minBalanceInput"
-                  placeholder="Min Balance"
-                  class="search-box color-background smallText"
-                  (input)="onMinBalanceInput($event)"
-                  (focus)="onMinBalanceFocus()"
-                  (blur)="onMinBalanceBlur()"
-                />
-                <label for="min-balance">min $</label>
-              </div>
-
-              <div
-                class="percentage-input d-flex items-center justify-between p-10"
-              >
-                <input
-                  id="max-balance"
-                  type="text"
-                  [(ngModel)]="maxBalanceInput"
-                  placeholder="Max Balance"
-                  class="search-box color-background smallText"
-                  (input)="onMaxBalanceInput($event)"
-                  (focus)="onMaxBalanceFocus()"
-                  (blur)="onMaxBalanceBlur()"
-                />
-                <label for="max-balance">max $</label>
-              </div>
+  
+          <div class="filter-container" #filterContainer>
             <button
-              class="filter-btn p-10 bg-primary-400 color-bg-black inputText"
-              (click)="apply()"
-              style="cursor: pointer; transition: all 0.2s ease;"
-              onmouseover="this.style.backgroundColor='#8AE01A'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(155, 245, 38, 0.3)'"
-              onmouseout="this.style.backgroundColor=''; this.style.transform='translateY(0)'; this.style.boxShadow=''"
+              class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
+              (click)="openFilter()"
             >
-              Apply
+              <span class="material-symbols-outlined color-secondary-300" style="font-size: 18px">filter_alt</span> Filter
             </button>
+            @if (showFilter) {
+            <div class="filter-modal py-20 px-24 d-flex flex-col">
+              <label class="mt-10">Balance:</label>
+                <div
+                  class="percentage-input d-flex items-center justify-between p-10"
+                >
+                  <input
+                    id="min-balance"
+                    type="text"
+                    [(ngModel)]="minBalanceInput"
+                    placeholder="Min Balance"
+                    class="search-box color-background smallText"
+                    (input)="onMinBalanceInput($event)"
+                    (focus)="onMinBalanceFocus()"
+                    (blur)="onMinBalanceBlur()"
+                  />
+                  <label for="min-balance">min $</label>
+                </div>
+  
+                <div
+                  class="percentage-input d-flex items-center justify-between p-10"
+                >
+                  <input
+                    id="max-balance"
+                    type="text"
+                    [(ngModel)]="maxBalanceInput"
+                    placeholder="Max Balance"
+                    class="search-box color-background smallText"
+                    (input)="onMaxBalanceInput($event)"
+                    (focus)="onMaxBalanceFocus()"
+                    (blur)="onMaxBalanceBlur()"
+                  />
+                  <label for="max-balance">max $</label>
+                </div>
+              <button
+                class="filter-btn p-10 bg-primary-400 color-bg-black inputText"
+                (click)="apply()"
+                style="cursor: pointer; transition: all 0.2s ease;"
+                onmouseover="this.style.backgroundColor='#8AE01A'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(155, 245, 38, 0.3)'"
+                onmouseout="this.style.backgroundColor=''; this.style.transform='translateY(0)'; this.style.boxShadow=''"
+              >
+                Apply
+              </button>
+            </div>
+            }
           </div>
-          }
-        </div>
+        -->
 
       </div>
       
@@ -123,77 +125,79 @@
           />
         </div>
         
-        <div class="mobile-controls-row">
-          <button
-            class="sort-Btn regularText color-secondary-300 p-10"
-            (click)="toggleSort()"
-            style="cursor: pointer; transition: all 0.2s ease;"
-            onmouseover="this.style.backgroundColor='rgba(158, 196, 242, 0.2)'; this.style.transform='translateY(-1px)'"
-            onmouseout="this.style.backgroundColor=''; this.style.transform='translateY(0)'"
-          >
-            <span 
-              class="material-symbols-outlined" 
-              style="font-size: 18px; transition: all 0.2s ease;"
-              onmouseover="this.style.transform='rotate(180deg)'"
-              onmouseout="this.style.transform='rotate(0deg)'"
-            >swap_vert</span>
-            Sort by: Last Update
-          </button>
-
-          <div class="filter-container" #filterContainer>
+        <!--
+          <div class="mobile-controls-row">
             <button
-              class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
-              (click)="openFilter()"
+              class="sort-Btn regularText color-secondary-300 p-10"
+              (click)="toggleSort()"
+              style="cursor: pointer; transition: all 0.2s ease;"
+              onmouseover="this.style.backgroundColor='rgba(158, 196, 242, 0.2)'; this.style.transform='translateY(-1px)'"
+              onmouseout="this.style.backgroundColor=''; this.style.transform='translateY(0)'"
             >
-              <span class="material-symbols-outlined color-secondary-300" style="font-size: 18px">filter_alt</span> Filter
+              <span 
+                class="material-symbols-outlined" 
+                style="font-size: 18px; transition: all 0.2s ease;"
+                onmouseover="this.style.transform='rotate(180deg)'"
+                onmouseout="this.style.transform='rotate(0deg)'"
+              >swap_vert</span>
+              Sort by: Last Update
             </button>
-            @if (showFilter) {
-            <div class="filter-modal py-20 px-24 d-flex flex-col">
-              <label class="mt-10">Balance:</label>
-              <div
-                class="percentage-input d-flex items-center justify-between p-10"
-              >
-                <input
-                  id="min-balance-mobile"
-                  type="text"
-                  [(ngModel)]="minBalanceInput"
-                  placeholder="Min Balance"
-                  class="search-box color-background smallText"
-                  (input)="onMinBalanceInput($event)"
-                  (focus)="onMinBalanceFocus()"
-                  (blur)="onMinBalanceBlur()"
-                />
-                <label for="min-balance-mobile">min $</label>
-              </div>
-
-              <div
-                class="percentage-input d-flex items-center justify-between p-10"
-              >
-                <input
-                  id="max-balance-mobile"
-                  type="text"
-                  [(ngModel)]="maxBalanceInput"
-                  placeholder="Max Balance"
-                  class="search-box color-background smallText"
-                  (input)="onMaxBalanceInput($event)"
-                  (focus)="onMaxBalanceFocus()"
-                  (blur)="onMaxBalanceBlur()"
-                />
-                <label for="max-balance-mobile">max $</label>
-              </div>
+  
+            <div class="filter-container" #filterContainer>
               <button
-                class="filter-btn p-10 bg-primary-400 color-bg-black inputText"
-                (click)="apply()"
-                style="cursor: pointer; transition: all 0.2s ease;"
-                onmouseover="this.style.backgroundColor='#8AE01A'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(155, 245, 38, 0.3)'"
-                onmouseout="this.style.backgroundColor=''; this.style.transform='translateY(0)'; this.style.boxShadow=''"
+                class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
+                (click)="openFilter()"
               >
-                Apply
+                <span class="material-symbols-outlined color-secondary-300" style="font-size: 18px">filter_alt</span> Filter
               </button>
+              @if (showFilter) {
+              <div class="filter-modal py-20 px-24 d-flex flex-col">
+                <label class="mt-10">Balance:</label>
+                <div
+                  class="percentage-input d-flex items-center justify-between p-10"
+                >
+                  <input
+                    id="min-balance-mobile"
+                    type="text"
+                    [(ngModel)]="minBalanceInput"
+                    placeholder="Min Balance"
+                    class="search-box color-background smallText"
+                    (input)="onMinBalanceInput($event)"
+                    (focus)="onMinBalanceFocus()"
+                    (blur)="onMinBalanceBlur()"
+                  />
+                  <label for="min-balance-mobile">min $</label>
+                </div>
+  
+                <div
+                  class="percentage-input d-flex items-center justify-between p-10"
+                >
+                  <input
+                    id="max-balance-mobile"
+                    type="text"
+                    [(ngModel)]="maxBalanceInput"
+                    placeholder="Max Balance"
+                    class="search-box color-background smallText"
+                    (input)="onMaxBalanceInput($event)"
+                    (focus)="onMaxBalanceFocus()"
+                    (blur)="onMaxBalanceBlur()"
+                  />
+                  <label for="max-balance-mobile">max $</label>
+                </div>
+                <button
+                  class="filter-btn p-10 bg-primary-400 color-bg-black inputText"
+                  (click)="apply()"
+                  style="cursor: pointer; transition: all 0.2s ease;"
+                  onmouseover="this.style.backgroundColor='#8AE01A'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(155, 245, 38, 0.3)'"
+                  onmouseout="this.style.backgroundColor=''; this.style.transform='translateY(0)'; this.style.boxShadow=''"
+                >
+                  Apply
+                </button>
+              </div>
+              }
             </div>
-            }
           </div>
-        </div>
+        -->
       </div>
     </div>
     <div class="table-scroll-container">

@@ -295,23 +295,27 @@ a {
   display: flex;
   gap: 12px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap; // Cambiado de wrap a nowrap para mantener en la misma fila
   width: 100%;
   justify-content: flex-end;
   gap: 8px;
 
   @media (max-width: 1024px) {
-    flex-wrap: nowrap;
-    display: flex;
-    flex-direction: row;
     gap: 8px;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     width: 100%;
+    flex-wrap: nowrap; // Mantener en la misma fila en pantallas pequeñas
+  }
+  
+  @media (max-width: 480px) {
+    gap: 6px; // Reducir gap en pantallas muy pequeñas
+    flex-wrap: wrap; // Permitir wrap solo en pantallas muy pequeñas
   }
 }
 
 .export-btn,
+.refresh-data-btn,
 .edit-strategy-btn,
 .change-account-btn {
   display: flex;
@@ -341,14 +345,38 @@ a {
 }
 
 .edit-strategy-btn {
-  @media (max-width: 1024px) {
-    width: 100%;
+  @media (max-width: 768px) {
+    flex: 1; // Usar flex en lugar de width: 100% para mantener en la misma fila
+    min-width: 0; // Permitir que se encoja si es necesario
+  }
+  
+  @media (max-width: 480px) {
+    width: 100%; // En pantallas muy pequeñas, ocupar todo el ancho
+    flex: none;
   }
 }
 
 .change-account-btn {
-  @media (max-width: 1024px) {
-    width: 100%;
+  @media (max-width: 768px) {
+    flex: 1; // Usar flex en lugar de width: 100% para mantener en la misma fila
+    min-width: 0; // Permitir que se encoja si es necesario
+  }
+  
+  @media (max-width: 480px) {
+    width: 100%; // En pantallas muy pequeñas, ocupar todo el ancho
+    flex: none;
+  }
+}
+
+.refresh-data-btn {
+  @media (max-width: 768px) {
+    flex: 1; // Usar flex en lugar de width: 100% para mantener en la misma fila
+    min-width: 0; // Permitir que se encoja si es necesario
+  }
+  
+  @media (max-width: 480px) {
+    width: 100%; // En pantallas muy pequeñas, ocupar todo el ancho
+    flex: none;
   }
 }
 
@@ -388,6 +416,7 @@ a {
     background: rgba(155, 245, 38, 0.1);
     color: #9BF526;
     border: 1px solid #9BF526;
+    justify-content: space-between;
     
     &:hover {
       background: rgba(155, 245, 38, 0.2);
@@ -400,6 +429,7 @@ a {
   color: #1a1a1a;
   border: 1px solid #9BF526;
   position: relative;
+  width: 100%; // Asegurar que el botón ocupe todo el ancho del contenedor
   
   &:hover {
     background: #8ae01a;
@@ -407,32 +437,57 @@ a {
   }
 }
 
+.refresh-data-btn {
+  background: rgba(30, 50, 80, 0.8);
+  color: #B6C7DE;
+  border: 1px solid #4A6FA5;
+  
+  &:hover {
+    background: rgba(30, 50, 80, 0.9);
+    border-color: #4A6FA5;
+  }
+
+  @media (max-width: 768px) {
+    padding: 8px 12px;
+    font-size: 13px;
+    gap: 6px;
+    width: 100%;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 10px 16px;
+    font-size: 14px;
+    justify-content: center;
+  }
+}
+
 .change-account-dropdown {
   position: relative;
   
   @media (max-width: 1024px) {
-    width: 100%;
+    flex: 1; // Usar flex en lugar de width: 100% para mantener en la misma fila
+    min-width: 0; // Permitir que se encoja si es necesario
+  }
+  
+  @media (max-width: 480px) {
+    width: 100%; // En pantallas muy pequeñas, ocupar todo el ancho
+    flex: none;
   }
 }
 
 .account-dropdown {
   position: absolute;
   top: 100%;
-  right: 0;
+  left: 0; // Siempre alineado a la izquierda del botón
+  right: 0; // Mismo ancho que el botón padre
   background: #1a1a1a;
   border: 1px solid #333;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   z-index: 1000;
-  min-width: 200px;
   margin-top: 4px;
-  
-  @media (max-width: 480px) {
-    right: auto;
-    left: 0;
-    width: 100%;
-    min-width: unset;
-  }
+  width: 100%; // Mismo ancho que el contenedor padre
+  min-width: unset; // Remover min-width para que use el ancho del padre
 }
 
 .account-dropdown-header {
@@ -493,6 +548,7 @@ a {
 }
 
 .icon-refresh,
+.refresh-data-btn 
 .icon-edit,
 .icon-chevron {
   font-size: 12px;

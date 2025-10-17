@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnInit, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, OnInit, OnChanges, SimpleChanges, OnDestroy } from '@angular/core';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { GroupedTradeFinal } from '../../models/report.model';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
@@ -11,7 +11,7 @@ import { NumberFormatterService } from '../../../../shared/utils/number-formatte
   standalone: true,
   imports: [CommonModule, NgApexchartsModule],
 })
-export class WinLossChartComponent implements OnInit, OnChanges {
+export class WinLossChartComponent implements OnInit, OnChanges, OnDestroy {
   @Input() values!: GroupedTradeFinal[];
 
   public chartOptions: any;
@@ -27,6 +27,8 @@ export class WinLossChartComponent implements OnInit, OnChanges {
     winPercentage: 0,
     lossPercentage: 0,
   };
+
+  private resizeTimeout?: any;
 
   private getDonutSize(): string {
     if (typeof window !== 'undefined') {
@@ -51,18 +53,41 @@ export class WinLossChartComponent implements OnInit, OnChanges {
     this.winLossData = this.calculateWinLossData();
     this.chartOptions = this.getChartOptions();
     
-    // Listener para redimensionar el gráfico
+    // Listener para redimensionar el gráfico con debounce
     if (typeof window !== 'undefined') {
       window.addEventListener('resize', () => {
-        this.chartOptions = this.getChartOptions();
+        if (this.resizeTimeout) {
+          clearTimeout(this.resizeTimeout);
+        }
+        this.resizeTimeout = setTimeout(() => {
+          this.chartOptions = this.getChartOptions();
+        }, 150);
       });
     }
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['values'] && this.values) {
+    if (changes['values']) {
+      // Forzar recálculo y actualización del gráfico
       this.winLossData = this.calculateWinLossData();
       this.chartOptions = this.getChartOptions();
+      
+      // Forzar re-renderizado del gráfico después de un pequeño delay
+      // Esto es especialmente importante cuando se cargan datos desde localStorage
+      setTimeout(() => {
+        this.chartOptions = this.getChartOptions();
+      }, 100);
+      
+      // Segundo intento de actualización para asegurar que se renderice correctamente
+      setTimeout(() => {
+        this.chartOptions = this.getChartOptions();
+      }, 300);
+    }
+  }
+
+  ngOnDestroy() {
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout);
     }
   }
 

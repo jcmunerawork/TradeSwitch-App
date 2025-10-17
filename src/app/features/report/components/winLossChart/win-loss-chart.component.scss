@@ -2,22 +2,29 @@
   background: #1f1f20;
   border-radius: 8px;
   border: 1px solid #424242;
-  height: 500px;
+  height: 100%;
+  min-height: 400px;
+  max-height: 500px;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
   
   @media (max-width: 1024px) {
-    height: 450px;
+    min-height: 350px;
+    max-height: 450px;
     padding: 16px;
   }
   
   @media (max-width: 768px) {
-    height: 400px;
+    min-height: 300px;
+    max-height: 400px;
     padding: 12px;
   }
   
   @media (max-width: 480px) {
-    height: 350px;
+    min-height: 250px;
+    max-height: 350px;
     padding: 8px;
   }
 }

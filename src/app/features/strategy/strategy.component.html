@@ -49,20 +49,13 @@
 
   <!-- Plan Banner -->
   @if (showPlanBanner) {
-  <div class="plan-banner" [class]="'plan-banner-' + planBannerType">
-    <div class="banner-content">
-      <div class="banner-icon">
-        <span class="material-symbols-outlined" style="font-size: 20px;">info</span>
-      </div>
-      <div class="banner-message">
-        <span>{{ planBannerMessage }}</span>
-        <span class="upgrade-link" (click)="onUpgradePlan()">Upgrade anytime.</span>
-      </div>
-      <button class="banner-close" (click)="onCloseBanner()">
-        <span class="material-symbols-outlined" style="font-size: 20px;">close</span>
-      </button>
-    </div>
-  </div>
+  <app-plan-banner
+    [visible]="showPlanBanner"
+    [message]="planBannerMessage"
+    [type]="planBannerType"
+    (upgradePlan)="onUpgradePlan()"
+    (closeBanner)="onCloseBanner()"
+  ></app-plan-banner>
   }
 
   <!-- Primera validación: ¿Existe alguna estrategia en general? -->

@@ -6,7 +6,7 @@ import { User } from '../overview/models/overview';
 import { selectUser } from '../auth/store/user.selectios';
 import { SettingsService } from './service/strategy.service';
 import { ConfigurationOverview } from './models/strategy.model';
-import { TextInputComponent, StrategyCardComponent, StrategyCardData, StrategyGuideModalComponent, LoadingSpinnerComponent } from '../../shared/components';
+import { TextInputComponent, StrategyCardComponent, StrategyCardData, StrategyGuideModalComponent, LoadingSpinnerComponent, PlanBannerComponent } from '../../shared/components';
 import { Store } from '@ngrx/store';
 import { ReportService } from '../report/service/report.service';
 import { AuthService } from '../auth/service/authService';
@@ -36,6 +36,7 @@ import { BalanceCacheService } from './services/balance-cache.service';
     StrategyCardComponent,
     StrategyGuideModalComponent,
     LoadingSpinnerComponent,
+    PlanBannerComponent,
   ],
   templateUrl: './strategy.component.html',
   styleUrl: './strategy.component.scss',

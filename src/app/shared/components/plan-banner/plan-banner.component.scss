@@ -1,0 +1,99 @@
+.plan-banner {
+  width: 100%;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  border: 1px solid;
+  background: rgba(59, 113, 202, 0.1);
+  
+  &.plan-banner-info {
+    border-color: #3B71CA;
+    background: rgba(59, 113, 202, 0.1);
+    color: #e3e3e3;
+  }
+  
+  &.plan-banner-warning {
+    border-color: #ff9500;
+    background: rgba(255, 149, 0, 0.1);
+    color: #ffc107;
+  }
+  
+  &.plan-banner-success {
+    border-color: #34c759;
+    background: rgba(52, 199, 89, 0.1);
+    color: #34c759;
+  }
+  
+  .banner-content {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    gap: 12px;
+    
+    .banner-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #3B71CA;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+    }
+    
+    .banner-message {
+      flex: 1;
+      color: #e3e3e3;
+      font-size: 14px;
+      line-height: 1.4;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      
+      .upgrade-link {
+        color: #3B71CA;
+        text-decoration: underline;
+        cursor: pointer;
+        font-weight: 500;
+        
+        &:hover {
+          opacity: 0.8;
+        }
+      }
+    }
+    
+    .banner-close {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      color: #8e8e93;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #e3e3e3;
+      }
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .banner-content {
+      padding: 12px 16px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      
+      .banner-message {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+    }
+  }
+}

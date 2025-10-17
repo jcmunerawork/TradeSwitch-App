@@ -1,7 +1,7 @@
 import { Store } from '@ngrx/store';
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
-import { LoadingPopupComponent } from '../../shared/pop-ups/loading-pop-up/loading-popup.component';
+import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { FormsModule } from '@angular/forms';
 import { OverviewService } from '../overview/services/overview.service';
 import { AccountsTableComponent } from './components/accounts-table/accounts-table.component';
@@ -18,17 +18,19 @@ import { Router } from '@angular/router';
 import { PlanLimitationsGuard } from '../../guards/plan-limitations.guard';
 import { PlanLimitationModalData } from '../../shared/interfaces/plan-limitation-modal.interface';
 import { PlanLimitationModalComponent } from '../../shared/components/plan-limitation-modal/plan-limitation-modal.component';
+import { PlanBannerComponent } from '../../shared/components/plan-banner/plan-banner.component';
 import { AppContextService } from '../../shared/context';
 
 @Component({
   selector: 'app-trading-accounts',
   imports: [
     CommonModule,
-    LoadingPopupComponent,
+    LoadingSpinnerComponent,
     FormsModule,
     AccountsTableComponent,
     CreateAccountPopupComponent,
     PlanLimitationModalComponent,
+    PlanBannerComponent,
   ],
   templateUrl: './trading-accounts.component.html',
   styleUrl: './trading-accounts.component.scss',
@@ -119,11 +121,11 @@ export class TradingAccountsComponent {
         
         if (docSnap && docSnap.length > 0) {
           this.usersData = docSnap;
-          this.loading = false;
+          // Don't set loading = false here, wait for balances to load
           this.getBalanceForAccounts();
         } else {
           this.usersData = [];
-          this.loading = false;
+          this.loading = false; // No accounts, no balances to load
         }
         
         // Verificar limitaciones después de cargar las cuentas
@@ -136,13 +138,13 @@ export class TradingAccountsComponent {
   }
 
   getBalanceForAccounts() {
-    this.loading = true;
+    // Loading is already active from getUserAccounts, don't set it again
     from(this.usersData)
       .pipe(concatMap((account) => this.fetchUserKey(account)))
       .subscribe({
         next: () => {},
         complete: () => {
-          this.loading = false;
+          this.loading = false; // Only set to false when balances are loaded
         },
         error: (err) => {
           this.loading = false;
@@ -186,7 +188,7 @@ export class TradingAccountsComponent {
     this.userSvc
       .deleteAccount(account.id)
       .then(async () => {
-        this.loading = false;
+        // Reload everything after deletion
         this.loadConfig();
         await this.checkPlanLimitations(); // Check plan limitations after deleting account
         this.usersData = [...this.usersData];
@@ -199,16 +201,28 @@ export class TradingAccountsComponent {
 
   // Add account functionality
   async onAddAccount() {
-    if (!this.user?.id || this.isAddAccountDisabled) return;
+    if (!this.user?.id) return;
 
     const currentAccountCount = this.usersData.length;
     const accessCheck = await this.planLimitationsGuard.checkAccountCreationWithModal(this.user.id, currentAccountCount);
     
     if (!accessCheck.canCreate) {
-      if (accessCheck.modalData) {
-        this.planLimitationModal = accessCheck.modalData;
+      // Check if user has Pro plan with maximum accounts (should disable button)
+      const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
+      const isProPlanWithMaxAccounts = limitations.planName.toLowerCase().includes('pro') && 
+                                      limitations.maxAccounts === 10 && 
+                                      currentAccountCount >= 10;
+      
+      if (isProPlanWithMaxAccounts) {
+        // Pro plan with maximum accounts: button should be disabled (do nothing)
+        return;
+      } else {
+        // Other plans: redirect to account/plan-management
+        this.router.navigate(['/account'], { 
+          queryParams: { tab: 'plan' } 
+        });
+        return;
       }
-      return;
     }
     
     // If within limits, show add account modal
@@ -245,26 +259,26 @@ export class TradingAccountsComponent {
   // Check account limitations and update button state
   async checkAccountLimitations() {
     if (!this.user?.id) {
-      this.isAddAccountDisabled = true;
+      this.isAddAccountDisabled = false; // Always active, will redirect if needed
       return;
     }
 
     try {
       const currentAccountCount = this.usersData.length;
-      const accessCheck = await this.planLimitationsGuard.checkAccountCreationWithModal(this.user.id, currentAccountCount);
+      const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
       
-      this.isAddAccountDisabled = !accessCheck.canCreate;
+      // Only disable button for Pro plan with maximum accounts (10 accounts)
+      const isProPlanWithMaxAccounts = limitations.planName.toLowerCase().includes('pro') && 
+                                      limitations.maxAccounts === 10 && 
+                                      currentAccountCount >= 10;
       
-      // Update plan banner based on the check
-      if (accessCheck.modalData) {
-        this.planLimitationModal = accessCheck.modalData;
-      }
+      this.isAddAccountDisabled = isProPlanWithMaxAccounts;
       
       // Show banner based on limitations
       await this.checkPlanLimitations();
     } catch (error) {
       console.error('Error checking account limitations:', error);
-      this.isAddAccountDisabled = true;
+      this.isAddAccountDisabled = false; // Default to active
     }
   }
 
@@ -337,14 +351,16 @@ export class TradingAccountsComponent {
   // Popup event handlers
   async onAccountCreated(accountData: any) {
     // Account is already created in Firebase by the popup component
-    // Just reload the accounts and check plan limitations
+    // Show loading and reload everything
+    this.loading = true;
     this.loadConfig(); // Reload accounts
     await this.checkPlanLimitations();
   }
 
   async onAccountUpdated(accountData: any) {
     // Account is already updated in Firebase by the popup component
-    // Just reload the accounts and check plan limitations
+    // Show loading and reload everything
+    this.loading = true;
     this.loadConfig(); // Reload accounts
     await this.checkPlanLimitations();
   }
