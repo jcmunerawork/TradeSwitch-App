@@ -229,3 +229,15 @@
   </div>
 </div>
 }
+
+<!-- Delete strategy confirmation popup -->
+<app-confirm-popup
+  [visible]="showDeleteConfirmPopup"
+  [close]="confirmDeleteStrategy"
+  [cancel]="cancelDeleteStrategy"
+  [title]="'Delete strategy?'"
+  [message]="'Are you sure you want to delete this strategy? This action cannot be undone.'"
+  [confirmButtonText]="'Delete'"
+  [cancelButtonText]="'Cancel'"
+  [isDangerous]="true"
+></app-confirm-popup>

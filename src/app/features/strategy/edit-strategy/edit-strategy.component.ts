@@ -697,7 +697,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
             // Limpiar cache para forzar recarga
             this.strategyCacheService.clearCache();
             
-            alert('Strategy Updated');
             this.router.navigate(['/strategy']);
           })
           .catch((err) => {
@@ -716,7 +715,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
             // Limpiar cache para forzar recarga
             this.strategyCacheService.clearCache();
             
-            alert('Strategy Created');
             this.router.navigate(['/strategy']);
           })
           .catch((err) => {
