@@ -184,6 +184,11 @@ export class ReportComponent implements OnInit {
 
     // Suscribirse a las cuentas del usuario - SIEMPRE cargar la primera
     this.appContext.userAccounts$.subscribe(accounts => {
+      // Evitar bucles infinitos - solo procesar si hay cambios reales
+      if (JSON.stringify(this.accountsData) === JSON.stringify(accounts)) {
+        return;
+      }
+      
       this.accountsData = accounts;
       if (accounts.length > 0) {
         this.currentAccount = accounts[0];
@@ -248,7 +253,7 @@ export class ReportComponent implements OnInit {
     // Limpiar datos temporales para evitar mostrar valores 0
     this.accountHistory = [];
     this.stats = undefined;
-    this.balanceData = null;
+    // NO limpiar balanceData aquí - se mantendrá del localStorage
     
     // Limpiar el store para evitar mostrar datos anteriores
     this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
@@ -330,13 +335,11 @@ export class ReportComponent implements OnInit {
     const dataInLocalStorage = !this.currentAccount || this.isDataInLocalStorage();
 
     if (criticalDataLoaded && accountDataLoaded && uiDataReady && noPendingRequests && statsReady && chartsReady && dataInLocalStorage) {
-      // Todos los datos están cargados y listos para mostrar
-      this.loadSavedReportData(this.currentAccount?.accountID || '');
-      
-      // Ocultar loading interno después de un delay
-      setTimeout(() => {
-        this.stopInternalLoading();
-      }, 500); // Delay para evitar parpadeos en las cards
+      // Evitar bucles infinitos - solo procesar si no está ya procesado
+      if (!this.statsProcessed || !this.chartsRendered) {
+        // Todos los datos están cargados y listos para mostrar
+        this.loadSavedReportData(this.currentAccount?.accountID || '');
+      }
     }
   }
 
@@ -428,10 +431,13 @@ export class ReportComponent implements OnInit {
         
     try {
       const savedData = this.appContext.loadReportDataFromLocalStorage(accountID);
+      console.log('savedData', savedData);
       if (savedData && savedData.accountHistory && savedData.stats) {
         this.accountHistory = savedData.accountHistory;
         this.stats = savedData.stats;
         this.balanceData = savedData.balanceData;
+        
+        console.log('balanceData loaded from localStorage:', this.balanceData);
         
         // Actualizar el store
         const groupedTrades = Array.isArray(savedData.accountHistory) ? 
@@ -446,6 +452,7 @@ export class ReportComponent implements OnInit {
         // Marcar como cargados
         this.setLoadingState('userKey', true);
         this.setLoadingState('historyData', true);
+        // Marcar balance como cargado si existe (incluso si es null, pero está cargado)
         this.setLoadingState('balanceData', true);
         this.hasPendingRequests = false;
       } else {
@@ -483,6 +490,13 @@ export class ReportComponent implements OnInit {
       const savedUserData = localStorage.getItem(this.STORAGE_KEYS.USER_DATA);
       if (savedUserData) {
         this.user = JSON.parse(savedUserData);
+      }
+
+      if (this.currentAccount) {
+        const savedAccountHistory = localStorage.getItem(`Balance_${this.currentAccount.accountID}`);
+        if (savedAccountHistory) {
+          this.balanceData = JSON.parse(savedAccountHistory);
+        }
       }
 
     } catch (error) {
@@ -602,6 +616,11 @@ export class ReportComponent implements OnInit {
     // Reutilizar cuentas del contexto (ya cargadas en login)
     const contextAccounts = this.appContext.userAccounts();
     if (contextAccounts && contextAccounts.length > 0) {
+      // Evitar bucles infinitos - solo procesar si hay cambios reales
+      if (JSON.stringify(this.accountsData) === JSON.stringify(contextAccounts)) {
+        return;
+      }
+      
       this.accountsData = contextAccounts;
       this.currentAccount = this.accountsData[0]; // Siempre la primera
       
@@ -809,21 +828,27 @@ export class ReportComponent implements OnInit {
     accountId: string,
     accNum: number
   ) {
-    // Siempre consultar balance desde la API (puede cambiar)
-    this.reportService.getBalanceData(accountId, key, accNum).subscribe({
-      next: (balanceData) => {
-        this.balanceData = balanceData;
-        this.setLoadingState('balanceData', true);
-        // Verificar si todos los datos están listos después de cargar el balance
-        this.checkIfAllDataLoaded();
-      },
-      error: (err) => {
-        console.error('Error fetching balance data:', err);
-        this.setLoadingState('balanceData', true);
-        // Verificar si todos los datos están listos incluso en caso de error
-        this.checkIfAllDataLoaded();
-      },
-    });
+    // Solo consultar balance si no existe ya
+    if (this.balanceData === null || this.balanceData === undefined) {
+      this.reportService.getBalanceData(accountId, key, accNum).subscribe({
+        next: (balanceData) => {
+          this.balanceData = balanceData;
+          this.setLoadingState('balanceData', true);
+          // Verificar si todos los datos están listos después de cargar el balance
+          this.checkIfAllDataLoaded();
+        },
+        error: (err) => {
+          console.error('Error fetching balance data:', err);
+          this.setLoadingState('balanceData', true);
+          // Verificar si todos los datos están listos incluso en caso de error
+          this.checkIfAllDataLoaded();
+        },
+      });
+    } else {
+      // Si ya existe balanceData, marcar como cargado
+      this.setLoadingState('balanceData', true);
+      this.checkIfAllDataLoaded();
+    }
 
     // Solo hacer petición al trading history (la principal)
     this.reportService
@@ -843,24 +868,22 @@ export class ReportComponent implements OnInit {
           // Guardar datos en el contexto y localStorage por cuenta DESPUÉS de calcular stats
           if (this.currentAccount) {
             // Esperar a que las estadísticas estén calculadas
-            setTimeout(() => {
-              // Guardar en el contexto
-              const contextData = {
-                accountHistory: groupedTrades,
-                stats: this.stats,
-                balanceData: this.balanceData,
-                lastUpdated: Date.now()
-              };
-              this.appContext.setTradingHistoryForAccount(this.currentAccount!.id, contextData);
-              
-              // Guardar datos en localStorage después de recibir respuesta exitosa
-              this.saveDataToStorage();
-              
-              // Marcar history data como cargado DESPUÉS de guardar todo
-              this.setLoadingState('historyData', true);
-              // Marcar que no hay peticiones pendientes
-              this.hasPendingRequests = false;
-            }, 100); // Pequeño delay para asegurar que las stats estén calculadas
+            // Guardar en el contexto
+            const contextData = {
+              accountHistory: groupedTrades,
+              stats: this.stats,
+              balanceData: this.balanceData,
+              lastUpdated: Date.now()
+            };
+            this.appContext.setTradingHistoryForAccount(this.currentAccount!.id, contextData);
+            
+            // Guardar datos en localStorage después de recibir respuesta exitosa
+            this.saveDataToStorage();
+            
+            // Marcar history data como cargado DESPUÉS de guardar todo
+            this.setLoadingState('historyData', true);
+            // Marcar que no hay peticiones pendientes
+            this.hasPendingRequests = false;
           } else {
             // Si no hay cuenta actual, marcar como cargado inmediatamente
             this.setLoadingState('historyData', true);
@@ -911,11 +934,9 @@ export class ReportComponent implements OnInit {
     this.saveDataToStorage();
     
     // Marcar que las estadísticas están procesadas
-    setTimeout(() => {
-      this.statsProcessed = true;
-      this.chartsRendered = true;
-      this.checkIfAllDataLoaded();
-    }, 500);
+    this.statsProcessed = true;
+    this.chartsRendered = true;
+    this.checkIfAllDataLoaded();
   }
 
   prepareConfigDisplayData(strategyState: StrategyState) {
