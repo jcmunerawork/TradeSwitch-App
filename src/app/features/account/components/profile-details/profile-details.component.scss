@@ -183,7 +183,11 @@
 .password-form {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #4a4a4a;
+  border-top: 1px solid #4a4a4a;  
+}
+
+.password-form .form-group {
+  padding-bottom: 1rem;
 }
 
 .message {

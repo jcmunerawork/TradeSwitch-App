@@ -114,15 +114,13 @@
         class="password-form"
       >
         <div class="form-group">
-          <label for="currentPassword" class="form-label">Current Password</label>
-          <input
-            type="password"
-            id="currentPassword"
+          <app-password-input
             formControlName="currentPassword"
-            class="form-input"
-            [class.error]="passwordForm.get('currentPassword')?.errors && passwordForm.get('currentPassword')?.touched"
+            label="Current Password"
             placeholder="Enter your current password"
-          />
+            [required]="true"
+            [showValidation]="false"
+          ></app-password-input>
           <div class="error-message" *ngIf="getPasswordFieldError('currentPassword')">
             {{ getPasswordFieldError('currentPassword') }}
           </div>
@@ -130,26 +128,27 @@
 
         <div class="form-group">
           <app-password-input
+            formControlName="newPassword"
             label="New Password"
             placeholder="Enter your new password"
-            formControlName="newPassword"
-            class="form-input"
+            [required]="true"
             [showValidation]="true"
             [userEmail]="user?.email || ''"
-            [userName]="user?.firstName || ''"
+            [userName]="(user?.firstName || '') + ' ' + (user?.lastName || '')"
           ></app-password-input>
+          <div class="error-message" *ngIf="getPasswordFieldError('newPassword')">
+            {{ getPasswordFieldError('newPassword') }}
+          </div>
         </div>
 
         <div class="form-group">
-          <label for="confirmPassword" class="form-label">Confirm New Password</label>
-          <input
-            type="password"
-            id="confirmPassword"
+          <app-password-input
             formControlName="confirmPassword"
-            class="form-input"
-            [class.error]="passwordForm.get('confirmPassword')?.errors && passwordForm.get('confirmPassword')?.touched"
+            label="Confirm New Password"
             placeholder="Confirm your new password"
-          />
+            [required]="true"
+            [showValidation]="false"
+          ></app-password-input>
           <div class="error-message" *ngIf="getPasswordFieldError('confirmPassword')">
             {{ getPasswordFieldError('confirmPassword') }}
           </div>
