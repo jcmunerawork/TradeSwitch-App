@@ -184,6 +184,26 @@ export class ReportComponent implements OnInit {
 
     // Suscribirse a las cuentas del usuario - SIEMPRE cargar la primera
     this.appContext.userAccounts$.subscribe(accounts => {
+      // PRIMERO: Verificar si faltan datos antes de salir
+      if (accounts.length > 0) {
+        const currentAccountInList = accounts[0];
+        
+        // Si tenemos la misma cuenta pero nos faltan datos, cargarlos
+        if (this.currentAccount && 
+            this.currentAccount.accountID === currentAccountInList.accountID &&
+            (!this.balanceData || !this.stats || this.accountHistory.length === 0)) {
+          console.log('🔍 Misma cuenta pero faltan datos - Recargando desde localStorage:', {
+            hasBalanceData: !!this.balanceData,
+            hasStats: !!this.stats,
+            hasHistory: this.accountHistory.length > 0,
+            currentAccount: this.currentAccount?.accountID
+          });
+          this.startInternalLoading();
+          this.loadSavedReportData(this.currentAccount.accountID);
+          return; // Salir después de cargar
+        }
+      }
+      
       // Evitar bucles infinitos - solo procesar si hay cambios reales
       if (JSON.stringify(this.accountsData) === JSON.stringify(accounts)) {
         return;
@@ -191,17 +211,26 @@ export class ReportComponent implements OnInit {
       
       this.accountsData = accounts;
       if (accounts.length > 0) {
-        this.currentAccount = accounts[0];
+        // Solo procesar si la cuenta actual cambió o si no hay cuenta actual
+        const newAccount = accounts[0];
+        const accountChanged = !this.currentAccount || 
+                               this.currentAccount.accountID !== newAccount.accountID;
         
-        // Verificar si es una cuenta nueva (recién registrada)
-        if (this.isNewAccount(this.currentAccount)) {
-          // Cuenta nueva - hacer peticiones a la API
-          this.startInternalLoading();
-          this.fetchUserKey(this.currentAccount);
-        } else {
-          // Cuenta existente - cargar datos guardados
-          this.startInternalLoading();
-          this.loadSavedReportData(this.currentAccount.accountID);
+        if (accountChanged) {
+          this.currentAccount = newAccount;
+          
+          // Verificar si es una cuenta nueva (recién registrada)
+          if (this.isNewAccount(this.currentAccount)) {
+            // Cuenta nueva - hacer peticiones a la API
+            this.startInternalLoading();
+            this.fetchUserKey(this.currentAccount);
+          } else {
+            // Cuenta existente - cargar datos guardados solo si no existen
+            if (!this.balanceData || !this.stats || this.accountHistory.length === 0) {
+              this.startInternalLoading();
+              this.loadSavedReportData(this.currentAccount.accountID);
+            }
+          }
         }
       } else {
         // Si no hay cuentas, limpiar datos y parar loading
@@ -431,13 +460,14 @@ export class ReportComponent implements OnInit {
         
     try {
       const savedData = this.appContext.loadReportDataFromLocalStorage(accountID);
-      console.log('savedData', savedData);
+      console.log('📦 savedData from localStorage:', savedData);
       if (savedData && savedData.accountHistory && savedData.stats) {
         this.accountHistory = savedData.accountHistory;
         this.stats = savedData.stats;
         this.balanceData = savedData.balanceData;
         
-        console.log('balanceData loaded from localStorage:', this.balanceData);
+        console.log('💰 balanceData loaded from localStorage:', this.balanceData);
+        console.log('💰 balance value:', this.balanceData?.balance);
         
         // Actualizar el store
         const groupedTrades = Array.isArray(savedData.accountHistory) ? 

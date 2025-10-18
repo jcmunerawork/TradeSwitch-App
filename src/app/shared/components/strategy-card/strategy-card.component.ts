@@ -42,6 +42,7 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
   @Output() favorite = new EventEmitter<string>();
   @Output() moreOptions = new EventEmitter<string>();
   @Output() customize = new EventEmitter<string>();
+  @Output() editStrategy = new EventEmitter<string>();
   @Output() duplicate = new EventEmitter<string>();
   @Output() delete = new EventEmitter<string>();
   @Output() nameChanged = new EventEmitter<{id: string, newName: string}>();
@@ -130,13 +131,9 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
           id: this.strategy.id,
           newName: newName
         });
-        
-        // Mostrar mensaje de éxito
-        alert(`✅ Name of strategy updated successfully: "${newName}"`);
       } catch (error) {
-        // Mostrar mensaje de error al usuario
-        alert(`❌ Error updating the name of the strategy: ${error}`);
         // No actualizamos el nombre local si falla en Firebase
+        console.error('Error updating the name of the strategy:', error);
       } finally {
         this.isSavingName = false;
       }
@@ -164,6 +161,10 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
 
   onCustomize() {
     this.customize.emit(this.strategy.id);
+  }
+
+  onEditStrategy() {
+    this.editStrategy.emit(this.strategy.id);
   }
 
   onDuplicate() {

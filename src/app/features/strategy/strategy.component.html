@@ -89,6 +89,7 @@
           (favorite)="onStrategyFavorite($event)"
           (moreOptions)="onStrategyMoreOptions($event)"
           (customize)="onStrategyCustomize($event)"
+          (editStrategy)="onStrategyCustomize($event)"
           (duplicate)="copyStrategy($event)"
           (delete)="deleteStrategy($event)"
         ></app-strategy-card>
@@ -131,6 +132,7 @@
             (favorite)="onStrategyFavorite($event)"
             (moreOptions)="onStrategyMoreOptions($event)"
             (customize)="activateStrategy($event)"
+            (editStrategy)="onStrategyCustomize($event)"
             (duplicate)="copyStrategy($event)"
             (delete)="deleteStrategy($event)"
           ></app-strategy-card>

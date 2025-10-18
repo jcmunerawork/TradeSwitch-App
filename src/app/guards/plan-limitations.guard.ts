@@ -314,6 +314,19 @@ export class PlanLimitationsGuard implements CanActivate {
 
       // If user has reached the limit
       if (currentCount !== undefined && currentCount >= maxAllowed) {
+        // Check if user is on the maximum plan (Pro plan with max limits)
+        const isProPlanWithMaxLimits = limitations.planName.toLowerCase().includes('pro') && 
+                                       ((feature === 'strategies' && maxAllowed === 8) || 
+                                        (feature === 'accounts' && maxAllowed === 10));
+        
+        // If user is already on the maximum plan, don't show upgrade modal
+        if (isProPlanWithMaxLimits) {
+          return {
+            canAccess: false
+          };
+        }
+        
+        // For other plans, show upgrade modal
         return {
           canAccess: false,
           modalData: {

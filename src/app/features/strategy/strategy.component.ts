@@ -879,7 +879,11 @@ export class Strategy implements OnInit, OnDestroy {
       // 3. Verificar si ya hay una estrategia activa
       const hasActiveStrategy = this.activeStrategy !== null;
       
-      // 4. Crear configuración vacía con reglas por defecto (todas inactivas)
+      // 4. Verificar si es la primera estrategia del usuario
+      const totalStrategies = this.getTotalStrategiesCount();
+      const isFirstStrategy = totalStrategies === 0;
+      
+      // 5. Crear configuración vacía con reglas por defecto (todas inactivas)
       const emptyStrategyConfig: StrategyState = {
         maxDailyTrades: {
           isActive: false,
@@ -920,18 +924,19 @@ export class Strategy implements OnInit, OnDestroy {
         },
       };
 
-      // 5. Crear la nueva estrategia genérica (siempre inactiva para estrategias adicionales)
+      // 6. Crear la nueva estrategia genérica
+      // La primera estrategia siempre es activa, las adicionales siempre inactivas
       const strategyId = await this.strategySvc.createStrategyView(
         this.user.id,
         genericName,
         emptyStrategyConfig,
-        false // Siempre inactiva para estrategias adicionales
+        isFirstStrategy ? true : false // Primera estrategia activa, el resto inactivas
       );
 
-      // 6. Actualizar el estado del plan en tiempo real después de crear
+      // 7. Actualizar el estado del plan en tiempo real después de crear
       await this.checkPlanLimitations();
       
-      // 7. Redirigir directamente a edit-strategy con la nueva estrategia
+      // 8. Redirigir directamente a edit-strategy con la nueva estrategia
       this.router.navigate(['/edit-strategy'], { queryParams: { strategyId: strategyId } });
       
     } catch (error) {
