@@ -167,48 +167,104 @@
     </div>
   -->
   
-@if (showCancelPlanProcessing) {
-<!-- Cancel plan confirmation popup -->
-<div class="cancel-plan-popup">
-  <div class="popup-overlay" (click)="cancelCancelPlan()"></div>
-  <div class="popup-content">
-    <div class="popup-header">
-      <h3 class="popup-title">Cancel Membership</h3>
-      <button class="close-btn" (click)="cancelCancelPlan()">×</button>
-    </div>
-    
-    <div class="popup-body">
-      <div class="warning-icon">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+  @if (showCancelPlanProcessing) {
+    <!-- Cancel plan confirmation popup -->
+    <div class="cancel-plan-popup">
+      <div class="popup-overlay" (click)="cancelCancelPlan()"></div>
+      <div class="popup-content">
+        <div class="popup-header">
+          <h3 class="popup-title">Cancel Membership</h3>
+          <button class="close-btn" (click)="cancelCancelPlan()">×</button>
+        </div>
+        
+        <div class="popup-body">
+          <div class="warning-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          
+          <h4 class="warning-title">Are you sure you want to cancel your membership?</h4>
+          <p class="warning-text">
+            This action will immediately cancel your current plan and you will lose access to all premium features. 
+            This action cannot be undone.
+          </p>
+          
+          <div class="current-plan-info">
+            <p class="plan-label">Current Plan:</p>
+            <p class="plan-name">{{ userPlan?.name || 'Unknown Plan' }}</p>
+          </div>
+        </div>
+        
+        <div class="popup-footer">
+          <button class="btn-cancel" (click)="cancelCancelPlan()">
+            Keep Membership
+          </button>
+          <button class="btn-confirm" (click)="confirmCancelPlan()">
+            Yes, Cancel Plan
+          </button>
+        </div>
       </div>
-      
-      <h4 class="warning-title">Are you sure you want to cancel your membership?</h4>
-      <p class="warning-text">
-        This action will immediately cancel your current plan and you will lose access to all premium features. 
-        This action cannot be undone.
-      </p>
-      
-      <div class="current-plan-info">
-        <p class="plan-label">Current Plan:</p>
-        <p class="plan-name">{{ userPlan?.name || 'Unknown Plan' }}</p>
+    </div>
+    }
+    
+    @if (showDowngradeValidation && downgradeValidationData) {
+    <!-- Downgrade validation popup -->
+    <div class="cancel-plan-popup">
+      <div class="popup-overlay" (click)="closeDowngradeValidation()"></div>
+      <div class="popup-content">
+        <div class="popup-header">
+          <h3 class="popup-title">Cannot Downgrade Plan</h3>
+          <button class="close-btn" (click)="closeDowngradeValidation()">×</button>
+        </div>
+        
+        <div class="popup-body">
+          <div class="warning-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          
+          <h4 class="warning-title">You have too many resources for the {{ downgradeValidationData.targetPlan }} plan</h4>
+          <p class="warning-text">
+            To downgrade to the {{ downgradeValidationData.targetPlan }} plan, you need to reduce your resources first.
+          </p>
+          
+          <div class="resource-limits-info">
+            <div class="resource-item">
+              <p class="resource-label">Trading Accounts:</p>
+              <p class="resource-details">
+                You have {{ downgradeValidationData.currentAccounts }}, but {{ downgradeValidationData.targetPlan }} plan allows only {{ downgradeValidationData.maxAccounts }}.
+                @if (downgradeValidationData.accountsToDelete > 0) {
+                  <span class="excess-text">Please delete {{ downgradeValidationData.accountsToDelete }} account(s).</span>
+                }
+              </p>
+            </div>
+            
+            <div class="resource-item">
+              <p class="resource-label">Strategies:</p>
+              <p class="resource-details">
+                You have {{ downgradeValidationData.currentStrategies }}, but {{ downgradeValidationData.targetPlan }} plan allows only {{ downgradeValidationData.maxStrategies }}.
+                @if (downgradeValidationData.strategiesToDelete > 0) {
+                  <span class="excess-text">Please delete {{ downgradeValidationData.strategiesToDelete }} strategie(s).</span>
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="popup-footer">
+          <button class="btn-cancel" (click)="closeDowngradeValidation()">
+            Cancel
+          </button>
+          <button class="btn-confirm" (click)="goToManageResources()">
+            Manage Resources
+          </button>
+        </div>
       </div>
     </div>
-    
-    <div class="popup-footer">
-      <button class="btn-cancel" (click)="cancelCancelPlan()">
-        Keep Membership
-      </button>
-      <button class="btn-confirm" (click)="confirmCancelPlan()">
-        Yes, Cancel Plan
-      </button>
-    </div>
-  </div>
-</div>
-}
-
-}
+    }
+ }
   
   <!-- Componentes de procesamiento de pago y resumen
   @if (showSubscriptionProcessing) {

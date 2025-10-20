@@ -886,3 +886,46 @@
   display: block;
   margin-top: 0.25rem;
 }
+
+// Estilos para el popup de validación de downgrade (reutiliza estilos del popup de cancelar plan)
+.cancel-plan-popup {
+  // Los estilos base ya están definidos arriba, solo agregamos estilos específicos para el popup de downgrade
+  
+  .popup-body {
+    .resource-limits-info {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background-color: rgba(239, 68, 68, 0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    
+    .resource-item {
+      margin-bottom: 1rem;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    
+    .resource-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 0.25rem;
+    }
+    
+    .resource-details {
+      font-size: 0.875rem;
+      color: #d1d5db;
+      line-height: 1.4;
+    }
+    
+    .excess-text {
+      color: #fca5a5;
+      font-weight: 600;
+      display: block;
+      margin-top: 0.25rem;
+    }
+  }
+}

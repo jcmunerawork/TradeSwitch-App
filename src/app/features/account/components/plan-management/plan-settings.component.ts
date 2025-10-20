@@ -48,6 +48,18 @@ export class PlanSettingsComponent implements OnInit {
 
   // Estados para cancelar plan
   showCancelPlanProcessing = false;
+  
+  // Estados para validación de downgrade
+  showDowngradeValidation = false;
+  downgradeValidationData: {
+    targetPlan: string;
+    currentAccounts: number;
+    maxAccounts: number;
+    currentStrategies: number;
+    maxStrategies: number;
+    accountsToDelete: number;
+    strategiesToDelete: number;
+  } | null = null;
 
   // Inyectar servicios
   private subscriptionService = inject(SubscriptionService);
@@ -299,15 +311,27 @@ export class PlanSettingsComponent implements OnInit {
   // Métodos para cambio de plan
   async onPlanChange(plan: PlanCard): Promise<void> {
     try {
+      // Verificar si es el plan actual
+      if (this.isCurrentPlan(plan.name)) {
+        return; // No hacer nada si es el plan actual
+      }
+
+      // Validar si es un downgrade y si el usuario tiene recursos que exceden el plan de destino
+      const isDowngrade = this.isDowngrade(plan.name);
+      
+      if (isDowngrade) {
+        const validationResult = await this.validateDowngrade(plan.name);
+        
+        if (!validationResult.canDowngrade) {
+          this.showDowngradeValidationModal(validationResult);
+          return;
+        }
+      }
+
       // Verificar si el plan actual es FREE
       const isCurrentPlanFree = this.userPlan?.name.toLowerCase() === 'free';
       
       if (isCurrentPlanFree) {
-        // Si el plan actual es FREE y hace click en FREE → no hace nada
-        if (plan.name.toLowerCase() === 'free') {
-          return;
-        }
-        
         // Si el plan actual es FREE y hace click en otro plan → crear checkout session
         await this.createCheckoutSession(plan.name);
       } else {
@@ -468,5 +492,85 @@ export class PlanSettingsComponent implements OnInit {
     }
 
     window.open(portalSessionUrl, '_blank');
+  }
+
+  // Métodos para validación de downgrade
+  private isDowngrade(targetPlanName: string): boolean {
+    if (!this.userPlan) return false;
+    
+    const currentPlanLevel = this.getPlanLevel(this.userPlan.name);
+    const targetPlanLevel = this.getPlanLevel(targetPlanName);
+    
+    return targetPlanLevel < currentPlanLevel;
+  }
+
+  private getPlanLevel(planName: string): number {
+    const planLevels: { [key: string]: number } = {
+      'free': 1,
+      'starter': 2,
+      'pro': 3
+    };
+    return planLevels[planName.toLowerCase()] || 1;
+  }
+
+  private async validateDowngrade(targetPlanName: string): Promise<{
+    canDowngrade: boolean;
+    targetPlan: string;
+    currentAccounts: number;
+    maxAccounts: number;
+    currentStrategies: number;
+    maxStrategies: number;
+    accountsToDelete: number;
+    strategiesToDelete: number;
+  }> {
+    if (!this.user?.id) {
+      throw new Error('User ID not available');
+    }
+
+    // Obtener límites del plan de destino usando la lógica existente
+    const targetMaxAccountsStr = this.getTradingAccounts(targetPlanName);
+    const targetMaxStrategiesStr = this.getStrategies(targetPlanName);
+    
+    const targetMaxAccounts = parseInt(targetMaxAccountsStr);
+    const targetMaxStrategies = parseInt(targetMaxStrategiesStr);
+    
+    // Cargar datos actuales del usuario directamente desde Firebase
+    const userData = await this.authService.getUserDataForValidation(this.user.id);
+    const currentAccounts = userData.accounts.length;
+    const currentStrategies = userData.strategies.length;
+    
+    const accountsToDelete = Math.max(0, currentAccounts - targetMaxAccounts);
+    const strategiesToDelete = Math.max(0, currentStrategies - targetMaxStrategies);
+    
+    const canDowngrade = accountsToDelete === 0 && strategiesToDelete === 0;
+    
+    return {
+      canDowngrade,
+      targetPlan: targetPlanName,
+      currentAccounts,
+      maxAccounts: targetMaxAccounts,
+      currentStrategies,
+      maxStrategies: targetMaxStrategies,
+      accountsToDelete,
+      strategiesToDelete
+    };
+  }
+
+  private showDowngradeValidationModal(validationData: any): void {
+    this.downgradeValidationData = validationData;
+    this.showDowngradeValidation = true;
+  }
+
+  closeDowngradeValidation(): void {
+    this.showDowngradeValidation = false;
+    this.downgradeValidationData = null;
+  }
+
+  goToManageResources(): void {
+    this.showDowngradeValidation = false;
+    this.downgradeValidationData = null;
+    
+    // Navegar a las páginas de gestión de recursos
+    alert('Please delete excess resources before downgrading your plan.');
   }
 }
