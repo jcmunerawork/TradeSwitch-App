@@ -95,6 +95,8 @@ export class Sidebar implements OnDestroy {
     this.authService
       .logout()
       .then(() => {
+        // Limpiar todo el localStorage
+        localStorage.clear();
         this.store.dispatch(setUserData({ user: null }));
         this.router.navigate(['/login']);
       })

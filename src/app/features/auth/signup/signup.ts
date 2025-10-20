@@ -15,12 +15,9 @@ import { TextInputComponent } from '../../../shared/components/text-input/text-i
 import { AuthService } from '../../../shared/services/auth.service';
 import { PasswordInputComponent } from '../../../shared/components/password-input/password-input.component';
 import { User, UserStatus } from '../../overview/models/overview';
-import { Timestamp } from 'firebase/firestore';
-import { AccountData, UserCredentials } from '../models/userModel';
+import { UserCredentials } from '../models/userModel';
 import { Plan, PlanService } from '../../../shared/services/planService';
 import { PlanSelectionComponent, PlanCard } from './components/plan-selection/plan-selection.component';
-import { SubscriptionProcessingComponent } from '../../../shared/components/subscription-processing/subscription-processing.component';
-import { OrderSummaryComponent } from '../../../shared/components/order-summary/order-summary.component';
 import { Subscription, SubscriptionService } from '../../../shared/services/subscription-service';
 import { setUserData } from '../store/user.actions';
 import { Store } from '@ngrx/store';
@@ -38,8 +35,6 @@ import { AppContextService } from '../../../shared/context';
     PasswordInputComponent,
     RouterLink,
     PlanSelectionComponent,
-    SubscriptionProcessingComponent,
-    OrderSummaryComponent,
   ],
   templateUrl: './signup.html',
   styleUrl: './signup.scss',
@@ -50,27 +45,9 @@ export class SignupComponent implements OnInit {
   currentStep = 1;
   isAdminSignup: boolean = false;
   showPlanSelection = false;
-  showPaymentProcessing = false;
-  showOrderSummary = false;
   userData: any = null;
   selectedPlan: PlanCard | null = null;
-  selectedPlanId: string = '';
-  currentPaymentId: string = '';
   currentUserId: string = '';
-  
-  // Configuraciones para componentes compartidos
-  subscriptionProcessingConfig = {
-    paymentId: '',
-    userId: '',
-    context: 'signup' as const
-  };
-  
-  orderSummaryConfig = {
-    context: 'signup' as const,
-    planName: '',
-    price: 0,
-    userData: null
-  };
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
@@ -112,11 +89,94 @@ export class SignupComponent implements OnInit {
   onChange(): void {
     console.log('Form changed:', this.signupForm.value);
   }
-  onSubmit(): void {
+  async onSubmit(): Promise<void> {
     if (this.signupForm.valid) {
-      // Guardar datos del usuario y mostrar selección de planes
-      this.userData = this.signupForm.value;
-      this.showPlanSelection = true;
+      try {
+        // Establecer estado de carga
+        this.appContext.setLoading('user', true);
+        this.appContext.setError('user', null);
+
+        // Crear credenciales del usuario
+        const userCredentials = this.createUserCredentialsObject();
+        
+        // Verificar que el email no esté ya registrado
+        const existingUser = await this.authService.getUserByEmail(userCredentials.email);
+        
+        if (existingUser) {
+          alert('This email is already registered. Please use a different email or try logging in.');
+          this.appContext.setLoading('user', false);
+          return;
+        }
+        
+        // Crear el usuario en Firebase Auth
+        const userResponse = await this.authService.register(userCredentials);
+        const userId = userResponse.user.uid;
+        
+        // Crear el token y objeto usuario
+        const token = this.createTokenObject(userId);
+        const user: User = await this.createUserObject(userId, token.id);
+        
+        // Configurar como admin si corresponde
+        if (this.isAdminSignup) {
+          user.isAdmin = true;
+          user.status = UserStatus.ADMIN;
+        } else {
+          user.status = UserStatus.ACTIVE;
+        }
+        
+        // Crear usuario y token en Firestore
+        await this.authService.createUser(user as User);
+        await this.authService.createLinkToken(token);
+
+        // Crear suscripción gratuita activa por defecto
+        const freeSubscriptionData: Omit<Subscription, 'id' | 'created_at' | 'updated_at'> = {
+          planId: "Cb1B0tpxdE6AP6eMZDo0",
+          status: UserStatus.ACTIVE,
+          userId: userId,
+        };
+
+        await this.subscriptionService.createSubscription(userId, freeSubscriptionData);
+        
+        console.log('✅ User created successfully with free plan');
+
+        // Iniciar sesión automáticamente
+        const loginResponse = await this.authService.login(userCredentials);
+        const userData = await this.authService.getUserData(loginResponse.user.uid);
+        
+        // Actualizar contexto con datos completos del usuario
+        this.appContext.setCurrentUser(userData);
+        
+        // Mantener compatibilidad con NgRx
+        this.store.dispatch(setUserData({ user: userData }));
+        
+        // Guardar userId para usar en la selección de plan
+        this.currentUserId = userId;
+        
+        // Limpiar estado de carga
+        this.appContext.setLoading('user', false);
+        
+        // Guardar datos del usuario para mostrar en la selección de planes
+        this.userData = this.signupForm.value;
+        
+        // Si es admin, ir directo al dashboard
+        if (userData.isAdmin) {
+          alert('Registration completed successfully! Welcome Admin.');
+          this.router.navigate(['/overview']);
+        } else {
+          // Usuario normal: mostrar selección de planes
+          this.showPlanSelection = true;
+        }
+        
+      } catch (error: any) {
+        console.error('❌ Error in registration:', error);
+        this.appContext.setLoading('user', false);
+        this.appContext.setError('user', 'Error during registration');
+        
+        const errorMessage = error.message || 'An error occurred during registration. Please try again.';
+        alert(errorMessage);
+        
+        this.handleRegistrationError(error);
+      }
     } else {
       this.showValidationErrors();
     }
@@ -285,147 +345,39 @@ export class SignupComponent implements OnInit {
   async onPlanSelected(plan: PlanCard): Promise<void> {
     try {
       this.selectedPlan = plan;
-      this.showPlanSelection = false;
-      this.showPaymentProcessing = true;
       
-      // Establecer estado de carga
-      this.appContext.setLoading('user', true);
-      this.appContext.setError('user', null);
-      
-      // Verificar que el email no esté ya registrado
-      const userCredentials = this.createUserCredentialsObject();
-      const existingUser = await this.authService.getUserByEmail(userCredentials.email);
-      
-      if (existingUser) {
-        throw new Error('This email is already registered. Please use a different email or try logging in.');
+      // Si selecciona el plan Free, redirigir al dashboard
+      if (plan.name.toLowerCase() === 'free') {
+        console.log('✅ Free plan selected, redirecting to dashboard');
+        this.router.navigate(['/strategy']);
+        return;
       }
       
-      // Crear el usuario primero
-      const userResponse = await this.authService.register(userCredentials);
-      const userId = userResponse.user.uid;
-      
-      // Crear el token y objeto usuario
-      const token = this.createTokenObject(userId);
-      const user: User = await this.createUserObject(userId, token.id);
-      
-      if (this.isAdminSignup) {
-        user.isAdmin = true;
-        user.status = UserStatus.ADMIN;
-      }
-      
-      // Crear usuario y token en Firebase
-      await this.authService.createUser(user as User);
-      await this.authService.createLinkToken(token);
-
-      // Guardar IDs para el componente de procesamiento (sin crear pago aún)
-      this.currentUserId = userId;
-
-      // Actualizar contexto con datos del usuario
-      this.appContext.setCurrentUser(user);
-
-      this.authService
-        .login(userCredentials)
-        .then((response: any) => {
-          this.authService
-            .getUserData(response.user.uid)
-            .then((userData: User) => {
-              // Actualizar contexto con datos completos del usuario
-              this.appContext.setCurrentUser(userData);
-              
-              // Mantener compatibilidad con NgRx
-              this.store.dispatch(setUserData({ user: userData }));
-              
-              // Limpiar estado de carga
-              this.appContext.setLoading('user', false);
-            })
-            .catch((error: any) => {
-              this.appContext.setLoading('user', false);
-              this.appContext.setError('user', 'Error al obtener datos del usuario');
-              console.error('Error in the login:', error);
-            });
-        })
-        .catch((error: any) => {
-          this.appContext.setLoading('user', false);
-          this.appContext.setError('user', 'Error de autenticación');
-          console.error('Error in the login:', error);
-        });
-
-      const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(userId);
-      
-      // Obtener el plan de Firebase para validar que existe
-      const planFound = await this.planService.searchPlansByName(plan.name);
-      if (!planFound || planFound.length === 0) {
-        throw new Error(`Plan '${plan.name}' no encontrado en Firebase`);
-      }
-      
-      // Guardar el plan encontrado para usar después
-      this.selectedPlanId = planFound[0].id;
-      const priceId = planFound[0].planPriceId || '';
-      
-      // Configurar componentes compartidos (sin paymentId aún)
-      this.subscriptionProcessingConfig = {
-        paymentId: '', // Se creará después del procesamiento exitoso
-        userId: userId,
-        context: 'signup'
-      };
-      
-      this.orderSummaryConfig = {
-        context: 'signup',
-        planName: plan.name,
-        price: plan.price,
-        userData: this.userData
-      };
-
-      // PRIMERO: Verificar que el backend esté disponible
-      try {
-        const customerResponse = await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-customer', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            id: userId
-          })
-        });
-
-        if (!customerResponse.ok) {
-          throw new Error(`Error creating customer: ${customerResponse.status} ${customerResponse.statusText}`);
-        }
-      } catch (customerError: any) {
-        console.error('Error creating customer:', customerError);
-        // Si falla la creación del customer, eliminar la cuenta creada
-        await this.cleanupFailedAccount(userId);
-        throw new Error('Error connecting to payment service. Please try again.');
-      }
-
-      // SEGUNDO: Intentar crear la sesión de pago
-      try {
-        await this.simulatePaymentProcessing(priceId, bearerTokenFirebase);
-      } catch (paymentError: any) {
-        console.error('Error in payment processing:', paymentError);
-        // Si falla el payment, eliminar la cuenta creada
-        await this.cleanupFailedAccount(userId);
-        throw new Error('Payment processing failed. Please try again.');
-      }
+      // Si selecciona otro plan, crear checkout session
+      console.log(`💳 ${plan.name} plan selected, creating checkout session`);
+      await this.createCheckoutSession(plan.name);
       
     } catch (error: any) {
-      console.error('Error en el proceso de registro:', error);
-      this.onPaymentError('Error processing the subscription. Please try again.');
+      console.error('❌ Error in plan selection:', error);
+      alert('Error processing your plan selection. Please try again.');
+      this.showPlanSelection = true;
     }
   }
 
-  onGoBackToSignup(): void {
-    this.showPlanSelection = false;
-    // Los datos del usuario ya están en el formulario, no necesitamos hacer nada más
-  }
-
-  // TODO: IMPLEMENTAR ENDPOINT DE PAGO - Reemplazar simulación con API real
-  private async simulatePaymentProcessing(priceId: string, bearerTokenFirebase: string): Promise<void> {
-    if (!priceId || !bearerTokenFirebase) {
-      throw new Error('Price ID or bearer token not found');
-    }
-
+  private async createCheckoutSession(planName: string): Promise<void> {
     try {
+      // Obtener el plan completo desde el servicio
+      const plans = await this.planService.searchPlansByName(planName);
+      const selectedPlan = plans && plans.length > 0 ? plans[0] : null;
+      
+      if (!selectedPlan || !selectedPlan.planPriceId) {
+        throw new Error('Plan price ID not found');
+      }
+
+      // Obtener el token de Firebase
+      const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.currentUserId);
+
+      // Crear checkout session
       const response = await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-checkout-session', {
         method: 'POST',
         headers: {
@@ -433,7 +385,7 @@ export class SignupComponent implements OnInit {
           'Authorization': `Bearer ${bearerTokenFirebase}`
         },
         body: JSON.stringify({
-          priceId: priceId,
+          priceId: selectedPlan.planPriceId,
         })
       });
 
@@ -443,147 +395,29 @@ export class SignupComponent implements OnInit {
       }
 
       const responseData = await response.json();
-      const paymentUrl = responseData.body?.url || responseData.url;
+      const checkoutUrl = responseData.body?.url || responseData.url;
       
-      if (!paymentUrl) {
-        throw new Error('Payment URL not found in response');
+      if (!checkoutUrl) {
+        throw new Error('Checkout URL not found in response');
       }
 
-      // Navegar a la URL de pago en la misma pestaña
-      window.location.href = paymentUrl;
+      console.log('✅ Checkout session created, redirecting to Stripe');
       
-    } catch (fetchError: any) {
-      console.error('Fetch error details:', fetchError);
-      throw new Error('Error connecting to payment service. Please try again.');
-    }
-  }
-
-  private onPaymentError(errorMessage?: string): void {
-    this.showPaymentProcessing = false;
-    this.showPlanSelection = true;
-    const message = errorMessage || 'Error processing the subscription. Please try again.';
-    //alert(message);
-  }
-
-  async onPaymentProcessingSuccess(): Promise<void> {
-    try {
-      // Actualizar el usuario con el plan seleccionado
-      //await this.updateUserWithPlan();
-      
-      // Crear el pago en la subcolección de payments
-      await this.createUserSubscription();
-    } catch (error) {
-      console.error('Error updating user and creating subscription:', error);
-      this.onPaymentProcessingError();
-    }
-  }
-
-  onPaymentProcessingError(): void {
-    this.showPaymentProcessing = false;
-    this.showPlanSelection = true;
-    //alert('Error processing the subscription. Please try again.');
-  }
-
-  // Método para limpiar la cuenta si el payment falla
-  private async cleanupFailedAccount(userId: string): Promise<void> {
-    try {
-      
-      // 1. Eliminar usuario de Firebase Auth (esto elimina la autenticación)
-      const currentUser = this.authService.getCurrentUser();
-      if (currentUser) {
-        await currentUser.delete();
-        console.log('Firebase Auth user deleted');
-      }
-      
-      // 2. Eliminar datos del usuario de Firebase Firestore
-      await this.authService.deleteUser(userId);
-      
-      // 3. Eliminar token si existe
-      try {
-        const token = this.createTokenObject(userId);
-        await this.authService.deleteLinkToken(token.id);
-      } catch (tokenError) {
-        console.log('Token may not exist or already deleted:', tokenError);
-      }
-      
-      // 4. Limpiar contexto y store
-      this.appContext.setCurrentUser(null);
-      this.store.dispatch({ type: '[User] Clear User' });
-      
-      // 5. Limpiar variables locales
-      this.currentUserId = '';
-      this.selectedPlanId = '';
-      this.currentPaymentId = '';
-    } catch (cleanupError) {
-      console.error('Error during account cleanup:', cleanupError);
-      // No lanzar error aquí para no interrumpir el flujo principal
-    }
-  }
-
-  onPaymentProcessingGoBack(): void {
-    this.showPaymentProcessing = false;
-    this.showPlanSelection = true;
-  }
-
-  onOrderSummaryContinue(): void {
-    this.showOrderSummary = false;
-    alert('Registration completed successfully!');
-    this.router.navigate(['/login']);
-  }
-
-  private async updateUserWithPlan(): Promise<void> {
-    if (!this.selectedPlan || !this.currentUserId) {
-      throw new Error('Plan selected or user ID not available');
-    }
-
-    try {
-      // Obtener el usuario actual
-      const user = await this.authService.getUserById(this.currentUserId);
-      if (!user) {
-        throw new Error('User not found in Firebase');
-      }
-
-      // Actualizar el usuario con información del plan
-      const updatedUser = {
-        ...user,
-        subscription_date: new Date().getTime(),
-        lastUpdated: new Date().getTime(),
-        status: UserStatus.ACTIVE
-      };
-
-      // Actualizar el usuario en Firebase
-      await this.authService.updateUser(this.currentUserId, updatedUser);
+      // Redirigir a la página de checkout de Stripe
+      window.location.href = checkoutUrl;
       
     } catch (error) {
-      console.error('❌ Error updating user:', error);
-      throw new Error(`Error actualizando usuario: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      console.error('❌ Error creating checkout session:', error);
+      throw error;
     }
   }
 
-  private async createUserSubscription(): Promise<void> {
-    if (!this.selectedPlan || !this.currentUserId || !this.selectedPlanId) {
-      throw new Error('Plan seleccionado, ID de usuario o ID de plan no disponible');
-    }
+  onGoBackToSignup(): void {
+    this.showPlanSelection = false;
+  }
 
-    try {
-
-      // Crear el objeto de pago con la interfaz Payment usando el ID real del plan
-      const paymentData: Omit<Subscription, 'id' | 'created_at' | 'updated_at'> = {
-        planId: "Cb1B0tpxdE6AP6eMZDo0",
-        status: UserStatus.CREATED,
-        userId: this.currentUserId,
-      };
-
-      // Crear el pago en la subcolección de payments
-      const subscriptionId = await this.subscriptionService.createSubscription(this.currentUserId, paymentData);
-      this.currentPaymentId = subscriptionId;
-      
-      // Actualizar la configuración con el paymentId real
-      this.subscriptionProcessingConfig.paymentId = subscriptionId;
-      
-    } catch (error) {
-      console.error('❌ Error creando pago:', error);
-      throw new Error(`Error creando pago: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-    }
+  private handleRegistrationError(error: any): void {
+    console.log('Registration error:', error);
+    // Los errores comunes serán manejados por Firebase
   }
 }

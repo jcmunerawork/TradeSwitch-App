@@ -926,7 +926,30 @@ export class AppContextService {
   }): void {
     try {
       const key = `tradeSwitch_tradingHistory_${accountId}`;
-      localStorage.setItem(key, JSON.stringify(data));
+      
+      // Cargar datos existentes para preservar balanceData si es null
+      let existingBalanceData = null;
+      try {
+        const existingData = localStorage.getItem(key);
+        if (existingData) {
+          const parsed = JSON.parse(existingData);
+          existingBalanceData = parsed.balanceData;
+        }
+      } catch (error) {
+        // Si no hay datos existentes, continuar
+      }
+      
+      const dataToSave = {
+        accountHistory: data.accountHistory,
+        stats: data.stats,
+        // Solo sobrescribir balanceData si no es null, de lo contrario preservar el existente
+        balanceData: data.balanceData !== null && data.balanceData !== undefined 
+          ? data.balanceData 
+          : existingBalanceData,
+        lastUpdated: data.lastUpdated
+      };
+      
+      localStorage.setItem(key, JSON.stringify(dataToSave));
     } catch (error) {
       console.error('Error saving trading history to localStorage:', error);
     }
@@ -1006,15 +1029,31 @@ export class AppContextService {
     lastUpdated: number;
   }): void {
     try {
+      const key = `tradeSwitch_reportData_${accountID}`;
+      
+      // Cargar datos existentes para preservar balanceData si es null
+      let existingBalanceData = null;
+      try {
+        const existingData = localStorage.getItem(key);
+        if (existingData) {
+          const parsed = JSON.parse(existingData);
+          existingBalanceData = parsed.balanceData;
+        }
+      } catch (error) {
+        // Si no hay datos existentes, continuar
+      }
+      
       const dataToSave = {
         tradingAccount: tradingAccount,
         accountHistory: reportData.accountHistory,
         stats: reportData.stats,
-        balanceData: reportData.balanceData,
+        // Solo sobrescribir balanceData si no es null, de lo contrario preservar el existente
+        balanceData: reportData.balanceData !== null && reportData.balanceData !== undefined 
+          ? reportData.balanceData 
+          : existingBalanceData,
         lastUpdated: reportData.lastUpdated
       };
       
-      const key = `tradeSwitch_reportData_${accountID}`;
       localStorage.setItem(key, JSON.stringify(dataToSave));
     } catch (error) {
       console.error('Error saving report data to localStorage:', error);

@@ -272,10 +272,12 @@ export class PlanSettingsComponent implements OnInit {
   }
 
   getButtonText(planName: string): string {
-    const isCurrentPlanFree = this.userPlan?.name.toLowerCase() === 'free';
+    // Verificar si el plan de la card es el plan actual del usuario
+    const currentPlanName = this.userPlan?.name.toLowerCase();
+    const cardPlanName = planName.toLowerCase();
     
-    // Si es el plan FREE y el usuario tiene plan FREE
-    if (isCurrentPlanFree && planName.toLowerCase() === 'free') {
+    // Si el plan de la card coincide con el plan actual del usuario
+    if (currentPlanName === cardPlanName) {
       return 'Current plan';
     }
     
@@ -287,7 +289,7 @@ export class PlanSettingsComponent implements OnInit {
     const isCurrentPlanFree = this.userPlan?.name.toLowerCase() === 'free';
     
     // Solo deshabilitar el botón FREE cuando el usuario tiene plan FREE
-    if (isCurrentPlanFree && planName.toLowerCase() === 'free') {
+    if (this.userPlan?.name.toLowerCase() === planName.toLowerCase()) {
       return true;
     }
     

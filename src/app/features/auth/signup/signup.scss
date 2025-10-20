@@ -228,3 +228,25 @@
     }
   }
 }
+
+// Plan selection overlay - ocupa toda la pantalla sin sidebar
+.plan-selection-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--Background, #0a0a0a);
+  z-index: 9999;
+  overflow-y: auto;
+  
+  // Asegurar que cubra el sidebar
+  margin-left: 0 !important;
+  
+  @media (max-width: 768px) {
+    // En móvil también full screen
+    position: fixed;
+  }
+}

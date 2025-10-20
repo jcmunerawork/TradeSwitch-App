@@ -1,4 +1,4 @@
-@if (!showPlanSelection && !showPaymentProcessing && !showOrderSummary) {
+@if (!showPlanSelection) {
 <div class="signup-container">
   <div class="signup-wrapper">
 
@@ -63,7 +63,7 @@
           type="submit"
           class="submit-button"
         >
-          Next
+          Register
         </button>
         <!-- 
           <div class="signup-methods-separator">
@@ -105,22 +105,12 @@
     } 
   </div>
 </div>
-} @else if (showPlanSelection) {
-<app-plan-selection 
-  [userData]="userData"
-  (planSelected)="onPlanSelected($event)"
-  (goBack)="onGoBackToSignup()"
-></app-plan-selection>
-} @else if (showPaymentProcessing) {
-<app-subscription-processing
-  [config]="subscriptionProcessingConfig"
-  (paymentSuccess)="onPaymentProcessingSuccess()"
-  (paymentError)="onPaymentProcessingError()"
-  (goBack)="onPaymentProcessingGoBack()"
-></app-subscription-processing>
-} @else if (showOrderSummary) {
-<app-order-summary
-  [config]="orderSummaryConfig"
-  (continue)="onOrderSummaryContinue()"
-></app-order-summary>
+} @else {
+<div class="plan-selection-overlay">
+  <app-plan-selection 
+    [userData]="userData"
+    (planSelected)="onPlanSelected($event)"
+    (goBack)="onGoBackToSignup()"
+  ></app-plan-selection>
+</div>
 }
