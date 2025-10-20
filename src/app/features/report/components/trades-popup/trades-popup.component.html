@@ -64,7 +64,10 @@
                   [ngClass]="trade.followedStrategy ? 'followed' : 'not-followed'"
                 ></span>
               </div>
-              <div class="table-cell strategy-name-cell">{{ trade.strategyName }}</div>
+              <div class="table-cell strategy-name-cell">
+                <span *ngIf="trade.followedStrategy && trade.strategyName">{{ trade.strategyName }}</span>
+                <span *ngIf="!trade.followedStrategy" class="no-strategy">-</span>
+              </div>
             </div>
           </div>
         </div>

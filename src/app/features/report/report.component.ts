@@ -162,6 +162,9 @@ export class ReportComponent implements OnInit {
   }
 
   ngOnInit() {
+    // SIEMPRE iniciar loading al entrar a la ventana
+    this.startLoading();
+    
     // Cargar datos básicos
     this.loadSavedData();
     
@@ -184,6 +187,20 @@ export class ReportComponent implements OnInit {
 
     // Suscribirse a las cuentas del usuario - SIEMPRE cargar la primera
     this.appContext.userAccounts$.subscribe(accounts => {
+      // PRIMERO: Verificar si faltan datos antes de salir
+      if (accounts.length > 0) {
+        const currentAccountInList = accounts[0];
+        
+        // Si tenemos la misma cuenta pero nos faltan datos, cargarlos
+        if (this.currentAccount && 
+            this.currentAccount.accountID === currentAccountInList.accountID &&
+            (!this.balanceData || !this.stats || this.accountHistory.length === 0)) {
+          this.startInternalLoading();
+          this.loadSavedReportData(this.currentAccount.accountID);
+          return; // Salir después de cargar
+        }
+      }
+      
       // Evitar bucles infinitos - solo procesar si hay cambios reales
       if (JSON.stringify(this.accountsData) === JSON.stringify(accounts)) {
         return;
@@ -191,17 +208,26 @@ export class ReportComponent implements OnInit {
       
       this.accountsData = accounts;
       if (accounts.length > 0) {
-        this.currentAccount = accounts[0];
+        // Solo procesar si la cuenta actual cambió o si no hay cuenta actual
+        const newAccount = accounts[0];
+        const accountChanged = !this.currentAccount || 
+                               this.currentAccount.accountID !== newAccount.accountID;
         
-        // Verificar si es una cuenta nueva (recién registrada)
-        if (this.isNewAccount(this.currentAccount)) {
-          // Cuenta nueva - hacer peticiones a la API
-          this.startInternalLoading();
-          this.fetchUserKey(this.currentAccount);
-        } else {
-          // Cuenta existente - cargar datos guardados
-          this.startInternalLoading();
-          this.loadSavedReportData(this.currentAccount.accountID);
+        if (accountChanged) {
+          this.currentAccount = newAccount;
+          
+          // Verificar si es una cuenta nueva (recién registrada)
+          const isNew = this.isNewAccount(this.currentAccount);
+          
+          if (isNew) {
+            // Cuenta nueva - hacer peticiones a la API
+            this.startInternalLoading();
+            this.fetchUserKey(this.currentAccount);
+          } else {
+            // Cuenta existente - SIEMPRE mostrar loading
+            this.startInternalLoading();
+            this.loadSavedReportData(this.currentAccount.accountID);
+          }
         }
       } else {
         // Si no hay cuentas, limpiar datos y parar loading
@@ -230,7 +256,7 @@ export class ReportComponent implements OnInit {
     
     this.loadingTimeout = setTimeout(() => {
       this.loading = false;
-    }, 10000); // 10 segundos máximo para cuentas
+    }, 2000); // 10 segundos máximo para cuentas
   }
 
   private startInternalLoading() {
@@ -262,6 +288,11 @@ export class ReportComponent implements OnInit {
     this.store.dispatch(setProfitFactor({ profitFactor: 0 }));
     this.store.dispatch(setAvgWnL({ avgWnL: 0 }));
     this.store.dispatch(setTotalTrades({ totalTrades: 0 }));
+    
+    // Aumentar el tiempo de loading para evitar parpadeos
+    setTimeout(() => {
+      this.checkIfAllDataLoaded();
+    }, 800); // Esperar 1 segundo antes de verificar
   }
 
   private stopLoading() {
@@ -313,11 +344,11 @@ export class ReportComponent implements OnInit {
       this.loadingStates.strategies &&
       this.loadingStates.config;
 
-    // Si hay cuenta actual, verificar que TODOS los datos necesarios para mostrar la UI estén cargados
+    // Si hay cuenta actual, verificar que los datos necesarios estén cargados
+    // Balance e historial son independientes - no requieren ambos
     const accountDataLoaded = !this.currentAccount || 
       (this.loadingStates.userKey && 
-       this.loadingStates.historyData && 
-       this.loadingStates.balanceData);
+       (this.loadingStates.historyData || this.loadingStates.balanceData));
 
     // Verificar que los datos estén realmente disponibles para mostrar en la UI
     const uiDataReady = this.isUIDataReady();
@@ -334,12 +365,12 @@ export class ReportComponent implements OnInit {
     // Verificación adicional: asegurar que los datos estén realmente en localStorage
     const dataInLocalStorage = !this.currentAccount || this.isDataInLocalStorage();
 
-    if (criticalDataLoaded && accountDataLoaded && uiDataReady && noPendingRequests && statsReady && chartsReady && dataInLocalStorage) {
-      // Evitar bucles infinitos - solo procesar si no está ya procesado
-      if (!this.statsProcessed || !this.chartsRendered) {
-        // Todos los datos están cargados y listos para mostrar
-        this.loadSavedReportData(this.currentAccount?.accountID || '');
-      }
+    // Evitar bucles infinitos - solo procesar si no está ya procesado
+    const shouldProcess = !this.statsProcessed || !this.chartsRendered;
+
+    if (criticalDataLoaded && accountDataLoaded && uiDataReady && noPendingRequests && statsReady && chartsReady && dataInLocalStorage && shouldProcess) {
+      // Todos los datos están cargados y listos para mostrar
+      this.loadSavedReportData(this.currentAccount?.accountID || '');
     }
   }
 
@@ -388,13 +419,13 @@ export class ReportComponent implements OnInit {
     // Verificar que tenemos estrategias (puede ser array vacío, pero debe estar cargado)
     const hasStrategies = Array.isArray(this.strategies);
 
-    // Verificar que las gráficas tengan datos reales (no valores por defecto)
-    const hasRealChartData = this.hasRealChartData();
-
-    // Verificar que los datos estén realmente procesados y no sean valores temporales
+    // Para cuentas nuevas, no verificar datos reales - solo que estén cargados
     const hasProcessedData = this.statsProcessed && this.chartsRendered;
 
-    return hasBalanceData && hasHistoryData && hasStats && hasStrategies && hasRealChartData && hasProcessedData;
+    // Balance e historial son independientes - al menos uno debe estar disponible
+    const hasAccountData = hasBalanceData || hasHistoryData;
+
+    return hasAccountData && hasStats && hasStrategies && hasProcessedData;
   }
 
   private hasRealChartData(): boolean {
@@ -431,30 +462,30 @@ export class ReportComponent implements OnInit {
         
     try {
       const savedData = this.appContext.loadReportDataFromLocalStorage(accountID);
-      console.log('savedData', savedData);
       if (savedData && savedData.accountHistory && savedData.stats) {
-        this.accountHistory = savedData.accountHistory;
-        this.stats = savedData.stats;
-        this.balanceData = savedData.balanceData;
-        
-        console.log('balanceData loaded from localStorage:', this.balanceData);
-        
-        // Actualizar el store
-        const groupedTrades = Array.isArray(savedData.accountHistory) ? 
-          savedData.accountHistory.map((trade: any) => ({
-            ...trade,
-            pnl: trade.pnl ?? 0,
-            isWon: trade.isWon ?? false,
-            isOpen: trade.isOpen ?? false
-          })) : [];
-        this.store.dispatch(setGroupedTrades({ groupedTrades }));
-        
-        // Marcar como cargados
-        this.setLoadingState('userKey', true);
-        this.setLoadingState('historyData', true);
-        // Marcar balance como cargado si existe (incluso si es null, pero está cargado)
-        this.setLoadingState('balanceData', true);
-        this.hasPendingRequests = false;
+        // Simular tiempo de loading para mostrar el spinner
+        setTimeout(() => {
+          this.accountHistory = savedData.accountHistory;
+          this.stats = savedData.stats;
+          this.balanceData = savedData.balanceData;
+          
+          // Actualizar el store
+          const groupedTrades = Array.isArray(savedData.accountHistory) ? 
+            savedData.accountHistory.map((trade: any) => ({
+              ...trade,
+              pnl: trade.pnl ?? 0,
+              isWon: trade.isWon ?? false,
+              isOpen: trade.isOpen ?? false
+            })) : [];
+          this.store.dispatch(setGroupedTrades({ groupedTrades }));
+          
+          // Marcar como cargados
+          this.setLoadingState('userKey', true);
+          this.setLoadingState('historyData', true);
+          // Marcar balance como cargado si existe (incluso si es null, pero está cargado)
+          this.setLoadingState('balanceData', true);
+          this.hasPendingRequests = false;
+        }, 800); // Esperar 2 segundos para mostrar loading
       } else {
         // No hay datos guardados, parar loading interno
         this.stopInternalLoading();
@@ -630,8 +661,8 @@ export class ReportComponent implements OnInit {
       // Marcar cuentas como cargadas
       this.setLoadingState('accounts', true);
       
-      // Parar loading general
-      this.loading = false;
+      // SIEMPRE iniciar loading interno para mostrar loading
+      this.startInternalLoading();
       
       // Cargar datos de la primera cuenta
       this.loadSavedReportData(this.currentAccount.accountID);
@@ -807,7 +838,7 @@ export class ReportComponent implements OnInit {
           this.fetchHistoryData(
             key,
             account.accountID,
-            1
+            account.accountNumber
           );
 
           this.store.dispatch(setUserKey({ userKey: key }));
@@ -936,7 +967,11 @@ export class ReportComponent implements OnInit {
     // Marcar que las estadísticas están procesadas
     this.statsProcessed = true;
     this.chartsRendered = true;
-    this.checkIfAllDataLoaded();
+    
+    // Esperar un poco antes de verificar para evitar recargas múltiples
+    setTimeout(() => {
+      this.checkIfAllDataLoaded();
+    }, 800);
   }
 
   prepareConfigDisplayData(strategyState: StrategyState) {
@@ -1056,7 +1091,7 @@ export class ReportComponent implements OnInit {
     // Guardar cuenta seleccionada en localStorage
     this.saveDataToStorage();
     
-    // Iniciar loading interno
+    // SIEMPRE iniciar loading interno para mostrar loading
     this.startInternalLoading();
     
     // Reset account-related loading states
@@ -1071,7 +1106,7 @@ export class ReportComponent implements OnInit {
     const savedData = this.appContext.loadReportDataFromLocalStorage(account.accountID);
     
     if (savedData && savedData.accountHistory && savedData.stats) {
-      // Si existe en localStorage, cargar directamente
+      // Si existe en localStorage, cargar directamente con loading
       this.loadSavedReportData(account.accountID);
     } else {
       // Si no existe, hacer peticiones a la API

@@ -59,8 +59,8 @@
   }
 
   <!-- Primera validación: ¿Existe alguna estrategia en general? -->
-  @if (userStrategies.length === 0 && !activeStrategy) {
-  <!-- No hay estrategias en absoluto -->
+  @if (userStrategies.length === 0 && !activeStrategy && accountsData.length > 0) {
+  <!-- No hay estrategias en absoluto, pero hay cuentas -->
   <div class="empty-strategies d-flex flex-col align-items-center">
     <div class="empty-icon">
       <span class="material-symbols-outlined" style="font-size: 28px;">content_paste_search</span>
@@ -71,7 +71,7 @@
       Create First Strategy
     </button>
   </div>
-  } @else {
+  } @else if (accountsData.length > 0) {
   <!-- Hay al menos una estrategia, mostrar la activa -->
   @if (activeStrategy) {
   <div class="active-strategy d-flex flex-col mb-20">

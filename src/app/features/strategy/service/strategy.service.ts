@@ -189,4 +189,9 @@ export class SettingsService {
   async deleteStrategyView(strategyId: string): Promise<void> {
     return this.strategyOperationsService.deleteStrategyView(strategyId);
   }
+
+  // Marcar una estrategia como deleted (soft delete)
+  async markStrategyAsDeleted(strategyId: string): Promise<void> {
+    return this.strategyOperationsService.markStrategyAsDeleted(strategyId);
+  }
 }

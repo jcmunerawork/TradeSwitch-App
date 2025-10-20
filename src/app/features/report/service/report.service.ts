@@ -48,15 +48,18 @@ export class ReportService {
     return this.tradeLockerApiService.getTradingHistory(accessToken, accountId, accNum)
       .pipe(
         switchMap(async (details) => {
+          // Verificar si hay datos válidos
+          if (!details || !details.d || !details.d.ordersHistory) {
+            this.appContext.updateReportHistory([]);
+            this.appContext.setLoading('report', false);
+            return [];
+          }
+
           const historyTrades: historyTrade[] =
             details.d.ordersHistory.map(arrayToHistoryTrade);
           
           // Pasar accessToken y accNum a la función
-          const groupedTrades = await groupOrdersByPosition(historyTrades, {
-            getInstrumentDetails: (accessToken: string, tradableInstrumentId: string, routeId: string, accNum: number) => {
-              return this.tradeLockerApiService.getInstrumentDetails(accessToken, tradableInstrumentId, routeId, accNum);
-            }
-          }, accessToken, accNum);
+          const groupedTrades = await groupOrdersByPosition(historyTrades, this, accessToken, accNum);
           
           // Actualizar contexto con los datos del historial
           this.appContext.updateReportHistory(groupedTrades);
@@ -78,6 +81,42 @@ export class ReportService {
     return this.tradeLockerApiService.getAccountBalance(accountId, accessToken, accNum)
       .pipe(
         map((details) => {
+          // Verificar si hay datos válidos
+          if (!details || !details.d || !details.d.accountDetailsData) {
+            const emptyBalanceData: BalanceData = {
+              balance: 0,
+              projectedBalance: 0,
+              availableFunds: 0,
+              blockedBalance: 0,
+              cashBalance: 0,
+              unsettledCash: 0,
+              withdrawalAvailable: 0,
+              stocksValue: 0,
+              optionValue: 0,
+              initialMarginReq: 0,
+              maintMarginReq: 0,
+              marginWarningLevel: 0,
+              blockedForStocks: 0,
+              stockOrdersReq: 0,
+              stopOutLevel: 0,
+              warningMarginReq: 0,
+              marginBeforeWarning: 0,
+              todayGross: 0,
+              todayNet: 0,
+              todayFees: 0,
+              todayVolume: 0,
+              todayTradesCount: 0,
+              openGrossPnL: 0,
+              openNetPnL: 0,
+              positionsCount: 0,
+              ordersCount: 0
+            };
+            
+            this.appContext.updateReportBalance(emptyBalanceData);
+            this.appContext.setLoading('report', false);
+            return emptyBalanceData;
+          }
+
           // Extract all balance data for calculations
           const accountData = details.d;
           

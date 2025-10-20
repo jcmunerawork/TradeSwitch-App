@@ -50,6 +50,17 @@ export class TradeLockerApiService {
     return this.http.post<TradeLockerTokenResponse>(tokenUrl, body, { headers });
   }
 
+  refreshToken(accessToken: string): Observable<any> {
+    const refreshUrl = `${this.baseUrl}/auth/jwt/refresh`;
+    
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`
+    });
+    
+    return this.http.post<any>(refreshUrl, { headers });
+  }
+
   /**
    * Validate account credentials in TradeLocker
    */

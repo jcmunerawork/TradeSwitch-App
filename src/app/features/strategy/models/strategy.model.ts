@@ -80,4 +80,6 @@ export interface ConfigurationOverview {
   configurationId: string; // ID del documento en la colección 'configurations'
   dateActive?: any[]; // Fecha cuando se activó la estrategia
   dateInactive?: any[]; // Fecha cuando se desactivó la estrategia
+  deleted?: boolean; // Indica si la estrategia está marcada como eliminada
+  deleted_at?: any; // Timestamp de Firebase cuando se marcó como eliminada
 }

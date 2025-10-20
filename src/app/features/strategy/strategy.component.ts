@@ -978,6 +978,7 @@ export class Strategy implements OnInit, OnDestroy {
       const balance = currentConfig?.riskPerTrade?.balance || 0;
       this.loadConfig(balance);
     } catch (error) {
+      console.error('Error activating strategy:', error);
       alert('Error activating strategy. Please try again.');
     } finally {
       // Ocultar loading al finalizar
@@ -992,7 +993,7 @@ export class Strategy implements OnInit, OnDestroy {
     this.showDeleteConfirmPopup = true;
   }
 
-  // Confirmar eliminación de estrategia
+  // Confirmar eliminación de estrategia (marcar como deleted)
   confirmDeleteStrategy = async () => {
     this.showDeleteConfirmPopup = false;
     
@@ -1000,7 +1001,8 @@ export class Strategy implements OnInit, OnDestroy {
       // Mostrar loading completo durante la eliminación
       this.isProcessingStrategy = true;
       
-      await this.strategySvc.deleteStrategyView(this.strategyToDeleteId);
+      // Marcar la estrategia como deleted en lugar de borrarla
+      await this.strategySvc.markStrategyAsDeleted(this.strategyToDeleteId);
       
       // Invalidar cache y recargar estrategias
       await this.invalidateCacheAndReload();
@@ -1029,7 +1031,7 @@ export class Strategy implements OnInit, OnDestroy {
         }
       }
     } catch (error) {
-      alert('Error deleting strategy. Please try again.');
+      alert('Error marking strategy as deleted. Please try again.');
     } finally {
       // Ocultar loading al finalizar
       this.isProcessingStrategy = false;

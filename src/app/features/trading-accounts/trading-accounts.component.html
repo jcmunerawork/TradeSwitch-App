@@ -1,9 +1,11 @@
 @if (loading) {
   <!-- Loading State - Replaces entire window -->
-  <app-loading-spinner 
-    title="Loading your trading accounts..." 
-    description="Please wait while we fetch your account information and balances.">
-  </app-loading-spinner>
+  <div class="regularText color-background">
+    <app-loading-spinner 
+      title="Loading your trading accounts..." 
+      description="Please wait while we fetch your account information and balances.">
+    </app-loading-spinner>
+  </div>
 } @else {
   <!-- Main Content -->
   <div class="main-titles color-background d-flex flex-col mb-32">

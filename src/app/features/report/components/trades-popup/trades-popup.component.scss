@@ -16,21 +16,21 @@
   background: #1a1a1a;
   border: 1px solid #333;
   border-radius: 8px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 60vh;
+  width: 95%;
+  max-width: 1200px; // Aumentar ancho máximo para pantallas grandes
+  max-height: 80vh; // Aumentar altura máxima
   overflow: hidden;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
   
   @media (max-width: 1024px) {
-    width: 95%;
-    max-width: 500px;
-    max-height: 65vh;
+    width: 98%;
+    max-width: 1000px;
+    max-height: 85vh;
   }
   
   @media (max-width: 768px) {
     width: 98%;
-    max-height: 70vh;
+    max-height: 90vh;
     border-radius: 6px;
   }
   
@@ -269,7 +269,7 @@
   overflow: hidden;
   padding: 0;
   min-width: 500px;
-  width: max-content; /* Asegura que la tabla mantenga su ancho natural */
+  width: 100%; /* Usar todo el ancho disponible */
 }
 
 .table-header {
@@ -451,6 +451,11 @@
   color: #e0e0e0;
   font-family: 'Inter', Arial, sans-serif;
   font-weight: 400;
+  
+  .no-strategy {
+    color: #666;
+    font-style: italic;
+  }
 }
 
 // Scrollbar styling

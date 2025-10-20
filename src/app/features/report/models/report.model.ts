@@ -199,6 +199,7 @@ export interface CalendarDay {
   tradesCount: number;
   followedStrategy: boolean;
   tradeWinPercent: number;
+  strategyName?: string | null; // Nombre de la estrategia seguida en este día
 }
 
 export interface ReportState {

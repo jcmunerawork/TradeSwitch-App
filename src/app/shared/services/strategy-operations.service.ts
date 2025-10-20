@@ -302,14 +302,22 @@ export class StrategyOperationsService {
         strategies.push(data);
       });
       
+      // Filtrar estrategias que no estén marcadas como deleted
+      // Mostrar solo las que:
+      // 1. No tienen el campo 'deleted' (estrategias antiguas)
+      // 2. Tienen 'deleted: false' (explícitamente no eliminadas)
+      const activeStrategies = strategies.filter(strategy => 
+        strategy.deleted === undefined || strategy.deleted === false
+      );
+      
       // Ordenar manualmente por updated_at descendente
-      strategies.sort((a, b) => {
+      activeStrategies.sort((a, b) => {
         const dateA = a.updated_at.toDate();
         const dateB = b.updated_at.toDate();
         return dateB.getTime() - dateA.getTime();
       });
       
-      return strategies;
+      return activeStrategies;
     } catch (error) {
       console.error('❌ Error getting user strategies:', error);
       return [];
@@ -468,6 +476,66 @@ export class StrategyOperationsService {
       }
     } catch (error) {
       console.error('Error deleting strategy:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Marcar una estrategia como deleted (soft delete)
+   */
+  async markStrategyAsDeleted(strategyId: string): Promise<void> {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return;
+    }
+
+    try {
+      // 1. Obtener el configurationId del overview
+      const strategy = await this.getConfigurationOverview(strategyId);
+      if (!strategy) {
+        throw new Error('Strategy not found');
+      }
+
+      const currentTimestamp = new Date();
+
+      // 2. Marcar configuration-overview como deleted y agregar dateInactive
+      const overviewDocRef = doc(this.db, 'configuration-overview', strategyId);
+      const overviewDoc = await getDoc(overviewDocRef);
+      
+      if (overviewDoc.exists()) {
+        const currentData = overviewDoc.data();
+        const updateData: any = {
+          deleted: true,
+          deleted_at: Timestamp.now(),
+          updated_at: Timestamp.now(),
+          status: false // Marcar como inactiva
+        };
+
+        // Agregar dateInactive si la estrategia estaba activa
+        if (currentData['status'] === true) {
+          const currentDateInactive = currentData['dateInactive'] || [];
+          const newDateInactive = [...currentDateInactive, Timestamp.fromDate(currentTimestamp)];
+          updateData.dateInactive = newDateInactive;
+        }
+
+        await updateDoc(overviewDocRef, updateData);
+      }
+
+      // 3. Marcar configuration como deleted usando configurationId
+      if (strategy.configurationId) {
+        try {
+          const configDocRef = doc(this.db, 'configurations', strategy.configurationId);
+          await updateDoc(configDocRef, {
+            deleted: true,
+            deleted_at: Timestamp.now(),
+            updated_at: Timestamp.now()
+          });
+        } catch (error) {
+          console.warn('Configuration not found for soft deletion:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error marking strategy as deleted:', error);
       throw error;
     }
   }

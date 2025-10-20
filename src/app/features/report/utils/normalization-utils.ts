@@ -31,115 +31,117 @@ export function arrayToHistoryTrade(arr: any[]): historyTrade {
 }
 
 export async function groupOrdersByPosition(orders: historyTrade[], reportService: any, accessToken: string, accNum: number): Promise<GroupedTradeFinal[]> {
-
-  // Filtrar solo trades que no estén cancelados
-  const validOrders = orders.filter(order => order.status !== 'cancelled');
-
-  // Convertir cada orden a un trade individual
-  const individualTrades: GroupedTradeFinal[] = validOrders.map((order, index) => {
-    // Crear trade individual
-    const trade: GroupedTradeFinal = {
-      ...order,
-      instrument: undefined, // Se asignará después de obtener los detalles del instrumento
-      pnl: 0,
-      isWon: false,
-      isOpen: order.isOpen === 'false' ? false : true,
-    };
+  // Filtrar solo trades que no estén cancelados y que tengan status 'Filled' (case insensitive)
+  const validOrders = orders.filter(order => {
+    const hasValidStatus = order.status && (
+      order.status.toLowerCase() === 'filled' || 
+      order.status === 'Filled' || 
+      order.status === 'filled'
+    );
+    const hasValidPositionId = order.positionId && 
+      order.positionId !== 'null' && 
+      order.positionId !== '' &&
+      order.positionId !== null &&
+      order.positionId !== undefined;
     
-    return trade;
+    return hasValidStatus && hasValidPositionId;
   });
   
-  // Agrupar trades por positionId
-  const tradesByPosition: { [positionId: string]: GroupedTradeFinal[] } = {};
+  // Agrupar órdenes por positionId
+  const ordersByPosition: { [positionId: string]: historyTrade[] } = {};
   
-  individualTrades.forEach(trade => {
-    const basePositionId = trade.positionId;
-    if (!tradesByPosition[basePositionId]) {
-      tradesByPosition[basePositionId] = [];
+  validOrders.forEach(order => {
+    const positionId = order.positionId;
+    if (!ordersByPosition[positionId]) {
+      ordersByPosition[positionId] = [];
     }
-    tradesByPosition[basePositionId].push(trade);
+    ordersByPosition[positionId].push(order);
   });
   
   // Obtener lotSize de todos los instrumentos únicos ANTES de procesar trades
-  const instrumentDetailsMap = await fetchInstrumentDetails(individualTrades, reportService, accessToken, accNum);
+  const instrumentDetailsMap = await fetchInstrumentDetails(validOrders, reportService, accessToken, accNum);
   
-  // Calcular wins/losses y P&L
+  // Procesar cada posición para crear un trade final
   const finalTrades: GroupedTradeFinal[] = [];
   let totalWins = 0;
   let totalLosses = 0;
   
-  Object.values(tradesByPosition).forEach(positionTrades => {
-    // El primer trade es el que tiene isOpen: true, no por fecha
-    const firstTrade = positionTrades.find(trade => trade.isOpen === true);
-    const secondTrade = positionTrades.find(trade => trade.isOpen === false);
+  Object.entries(ordersByPosition).forEach(([positionId, positionOrders]) => {
+    // Ordenar por fecha de creación para asegurar orden correcto
+    positionOrders.sort((a, b) => new Date(a.createdDate).getTime() - new Date(b.createdDate).getTime());
     
-    if (firstTrade && secondTrade) {
-      // Verificar que ambos trades estén filled
-      if (firstTrade.side && secondTrade.side) {
-        let isWin = false;
-        
-        if (firstTrade.side === 'sell' && secondTrade.side === 'buy') {
-          // Vendió primero, compró después
-          // Gana si: precio_venta > precio_compra
-          const sellPrice = Number(firstTrade.price);
-          const buyPrice = Number(secondTrade.price);
-          isWin = sellPrice > buyPrice;
-        } else if (firstTrade.side === 'buy' && secondTrade.side === 'sell') {
-          // Compró primero, vendió después
-          // Gana si: precio_venta > precio_compra
-          const buyPrice = Number(firstTrade.price);
-          const sellPrice = Number(secondTrade.price);
-          isWin = sellPrice > buyPrice;
-        }
-        
-        // Calcular P&L aquí mismo
-        const tradeKey = `${firstTrade.tradableInstrumentId}-${firstTrade.routeId}`;
-        const instrumentDetails = instrumentDetailsMap.get(tradeKey);
-        const lotSize = instrumentDetails?.lotSize || 1;
-        
-        // Asignar el nombre del instrumento al trade
-        if (instrumentDetails?.name) {
-          firstTrade.instrument = instrumentDetails.name;
-        }
-        
-        const entryPrice = Number(firstTrade.price);
-        const exitPrice = Number(secondTrade.price);
-        const quantity = Number(firstTrade.qty);
-        
-        // Calcular P&L según el tipo de trade
-        let pnl: number;
-        if (firstTrade.side === 'buy' && secondTrade.side === 'sell') {
-          // BUY → SELL: Ganas si vendes más caro de lo que compraste
-          pnl = (exitPrice - entryPrice) * (quantity * lotSize);
-        } else if (firstTrade.side === 'sell' && secondTrade.side === 'buy') {
-          // SELL → BUY: Ganas si compras más barato de lo que vendiste
-          pnl = (entryPrice - exitPrice) * (quantity * lotSize);
-        } else {
-          // Fallback (no debería pasar)
-          pnl = (exitPrice - entryPrice) * (quantity * lotSize);
-        }
-        
-        // Actualizar el primer trade con el resultado
-        firstTrade.isWon = isWin;
-        firstTrade.isOpen = false; // Ya está cerrado
-        firstTrade.pnl = pnl; // Asignar P&L calculado
-        
-        // Agregar solo el primer trade (representa la posición completa)
-        finalTrades.push(firstTrade);
-        
-        // Contar wins y losses
-        if (isWin) {
-          totalWins++;
-        } else {
-          totalLosses++;
-        }
+    // Buscar la orden de apertura (isOpen: true) y la de cierre (isOpen: false)
+    const openOrder = positionOrders.find(order => order.isOpen === 'true');
+    const closeOrder = positionOrders.find(order => order.isOpen === 'false');
+    
+    if (openOrder && closeOrder) {
+      // Calcular P&L
+      const tradeKey = `${openOrder.tradableInstrumentId}-${openOrder.routeId}`;
+      const instrumentDetails = instrumentDetailsMap.get(tradeKey);
+      const lotSize = instrumentDetails?.lotSize || 1;
+      
+      const entryPrice = Number(openOrder.price);
+      const exitPrice = Number(closeOrder.price);
+      const quantity = Number(openOrder.qty);
+      
+      // Calcular P&L según el tipo de trade
+      let pnl: number;
+      let isWin = false;
+      
+      if (openOrder.side === 'buy' && closeOrder.side === 'sell') {
+        // BUY → SELL: Ganas si vendes más caro de lo que compraste
+        pnl = (exitPrice - entryPrice) * (quantity * lotSize);
+        isWin = exitPrice > entryPrice;
+      } else if (openOrder.side === 'sell' && closeOrder.side === 'buy') {
+        // SELL → BUY: Ganas si compras más barato de lo que vendiste
+        pnl = (entryPrice - exitPrice) * (quantity * lotSize);
+        isWin = entryPrice > exitPrice;
       } else {
-        // Si no están filled, agregarlos como están
-        finalTrades.push(...positionTrades);
+        // Fallback (no debería pasar)
+        pnl = (exitPrice - entryPrice) * (quantity * lotSize);
+        isWin = pnl > 0;
+      }
+      
+      // Crear el trade final usando la orden de apertura como base
+      const finalTrade: GroupedTradeFinal = {
+        ...openOrder,
+        instrument: instrumentDetails?.name || openOrder.tradableInstrumentId,
+        pnl: pnl,
+        isWon: isWin,
+        isOpen: false, // Ya está cerrado
+        lastModified: closeOrder.lastModified, // Usar la fecha de cierre
+      };
+      
+      // Validar que el trade final tenga positionId válido
+      if (finalTrade.positionId && finalTrade.positionId !== 'null' && finalTrade.positionId !== '') {
+        finalTrades.push(finalTrade);
+      }
+      
+      // Contar wins y losses
+      if (isWin) {
+        totalWins++;
+      } else {
+        totalLosses++;
       }
     } else {
-      // Si no se encuentran ambos trades (isOpen true/false), agregar todos
-      finalTrades.push(...positionTrades);
+      // Si no se encuentran ambos trades, agregar la orden de apertura si existe
+      if (openOrder) {
+        const tradeKey = `${openOrder.tradableInstrumentId}-${openOrder.routeId}`;
+        const instrumentDetails = instrumentDetailsMap.get(tradeKey);
+        
+        const finalTrade: GroupedTradeFinal = {
+          ...openOrder,
+          instrument: instrumentDetails?.name || openOrder.tradableInstrumentId,
+          pnl: 0,
+          isWon: false,
+          isOpen: true,
+        };
+        
+        // Validar que el trade final tenga positionId válido
+        if (finalTrade.positionId && finalTrade.positionId !== 'null' && finalTrade.positionId !== '') {
+          finalTrades.push(finalTrade);
+        }
+      }
     }
   });
   
@@ -147,7 +149,7 @@ export async function groupOrdersByPosition(orders: historyTrade[], reportServic
 }
 
 async function fetchInstrumentDetails(
-  trades: GroupedTradeFinal[],
+  orders: historyTrade[],
   reportService: any,
   accessToken: string,
   accNum: number
@@ -155,17 +157,18 @@ async function fetchInstrumentDetails(
   // Extraer tradableInstrumentId y routeId únicos
   const uniqueInstruments = new Map<string, { tradableInstrumentId: string, routeId: string }>();
   
-  trades.forEach(trade => {
-    if (trade.tradableInstrumentId && trade.routeId) {
-      const key = `${trade.tradableInstrumentId}-${trade.routeId}`;
+  orders.forEach(order => {
+    if (order.tradableInstrumentId && order.routeId) {
+      const key = `${order.tradableInstrumentId}-${order.routeId}`;
       if (!uniqueInstruments.has(key)) {
         uniqueInstruments.set(key, {
-          tradableInstrumentId: trade.tradableInstrumentId,
-          routeId: trade.routeId
+          tradableInstrumentId: order.tradableInstrumentId,
+          routeId: order.routeId
         });
       }
     }
   });
+  
   // Hacer consultas a la API para obtener lotSize y name de cada instrumento
   const instrumentDetailsMap = new Map<string, { lotSize: number, name: string }>(); // key: tradableInstrumentId-routeId, value: {lotSize, name}
 
@@ -182,6 +185,7 @@ async function fetchInstrumentDetails(
 
       const lotSize = instrumentDetails.lotSize;
       const name = instrumentDetails.name;
+      
       instrumentDetailsMap.set(key, { lotSize, name });
 
       // Pequeña pausa entre peticiones para evitar rate limiting

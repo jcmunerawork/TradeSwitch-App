@@ -16,6 +16,8 @@ import { NumberFormatterService } from '../../../../shared/utils/number-formatte
 import { TradesPopupComponent } from '../trades-popup/trades-popup.component';
 import { ConfigurationOverview } from '../../../strategy/models/strategy.model';
 import { PluginHistoryService, PluginHistory } from '../../../../shared/services/plugin-history.service';
+import { AppContextService } from '../../../../shared/context';
+import { TradeLockerApiService } from '../../../../shared/services/tradelocker-api.service';
 
 @Component({
   selector: 'app-calendar',
@@ -43,7 +45,9 @@ export class CalendarComponent {
 
   constructor(
     private reportSvc: ReportService,
-    private pluginHistoryService: PluginHistoryService
+    private pluginHistoryService: PluginHistoryService,
+    private appContext: AppContextService,
+    private tradeLockerApiService: TradeLockerApiService
   ) {}
   private numberFormatter = new NumberFormatterService();
 
@@ -55,6 +59,9 @@ export class CalendarComponent {
     if (this.userId) {
       this.loadPluginHistory();
     }
+
+    // Procesar trades para obtener nombres de instrumentos
+    this.processTradesForCalendar();
 
     this.generateCalendar(this.selectedMonth);
 
@@ -68,6 +75,120 @@ export class CalendarComponent {
   }
 
   /**
+   * Procesar trades para obtener nombres de instrumentos
+   */
+  private async processTradesForCalendar() {
+    if (!this.groupedTrades || this.groupedTrades.length === 0) {
+      return;
+    }
+
+    // Verificar si los trades ya tienen nombres de instrumentos correctos
+    const firstTrade = this.groupedTrades[0];
+    const needsProcessing = !firstTrade.instrument || 
+                           firstTrade.instrument === firstTrade.tradableInstrumentId ||
+                           firstTrade.instrument === '';
+
+    try {
+      // Obtener instrumentos únicos
+      const uniqueInstruments = new Map<string, { tradableInstrumentId: string, routeId: string }>();
+      
+      this.groupedTrades.forEach(trade => {
+        if (trade.tradableInstrumentId && trade.routeId) {
+          const key = `${trade.tradableInstrumentId}-${trade.routeId}`;
+          if (!uniqueInstruments.has(key)) {
+            uniqueInstruments.set(key, {
+              tradableInstrumentId: trade.tradableInstrumentId,
+              routeId: trade.routeId
+            });
+          }
+        }
+      });
+
+      // Obtener detalles de instrumentos
+      const instrumentDetailsMap = new Map<string, { lotSize: number, name: string }>();
+
+      for (const [key, instrument] of uniqueInstruments) {
+        try {
+          // Obtener el token real del usuario desde el contexto
+          const userKey = await this.getUserToken();
+          if (!userKey) {
+            throw new Error('Token de usuario no disponible');
+          }
+
+          const instrumentDetails = await this.reportSvc.getInstrumentDetails(
+            userKey, // Token real del usuario
+            instrument.tradableInstrumentId,
+            instrument.routeId,
+            1
+          ).toPromise();
+
+          if (instrumentDetails) {
+            instrumentDetailsMap.set(key, {
+              lotSize: instrumentDetails.lotSize || 1,
+              name: instrumentDetails.name || instrument.tradableInstrumentId
+            });
+          } else {
+            instrumentDetailsMap.set(key, {
+              lotSize: 1,
+              name: instrument.tradableInstrumentId
+            });
+          }
+
+        } catch (error) {
+          instrumentDetailsMap.set(key, {
+            lotSize: 1,
+            name: instrument.tradableInstrumentId
+          });
+        }
+      }
+
+      // Actualizar trades con nombres de instrumentos
+      this.groupedTrades.forEach(trade => {
+        const key = `${trade.tradableInstrumentId}-${trade.routeId}`;
+        const instrumentDetails = instrumentDetailsMap.get(key);
+        
+        if (instrumentDetails) {
+          trade.instrument = instrumentDetails.name;
+        }
+      });
+
+    } catch (error) {
+      console.error('Error procesando trades para calendario:', error);
+    }
+  }
+
+  /**
+   * Obtener el token del usuario desde el store
+   */
+  private async getUserToken(): Promise<string | null> {
+    try {
+      // Obtener la cuenta actual del contexto
+      const accounts = this.appContext.userAccounts();
+      if (!accounts || accounts.length === 0) {
+        return null;
+      }
+      
+      const currentAccount = accounts[0]; // Tomar la primera cuenta
+
+      // Usar el TradeLockerApiService para obtener el token
+      const userKey = await this.tradeLockerApiService.getUserKey(
+        currentAccount.emailTradingAccount,
+        currentAccount.brokerPassword,
+        currentAccount.server
+      ).toPromise();
+
+      if (userKey) {
+        return userKey;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error obteniendo token del usuario:', error);
+      return null;
+    }
+  }
+
+  /**
    * Cargar plugin history para el usuario
    */
   async loadPluginHistory() {
@@ -75,10 +196,8 @@ export class CalendarComponent {
       const pluginHistoryArray = await this.pluginHistoryService.getPluginUsageHistory(this.userId);
       if (pluginHistoryArray.length > 0) {
         this.pluginHistory = pluginHistoryArray[0];
-        console.log('Plugin history loaded:', this.pluginHistory);
       } else {
         this.pluginHistory = null;
-        console.log('No plugin history found for user');
       }
     } catch (error) {
       console.error('Error loading plugin history:', error);
@@ -87,61 +206,165 @@ export class CalendarComponent {
   }
 
   /**
-   * Determinar si se siguió la estrategia basándose en los rangos de fechas del plugin
+   * Determinar qué estrategia se siguió en una fecha específica
    * @param tradeDate - Fecha del trade a validar
-   * @returns true si se siguió la estrategia, false si no
+   * @returns nombre de la estrategia seguida o null si no se siguió ninguna
    */
-  didFollowStrategy(tradeDate: Date): boolean {
+  getStrategyFollowedOnDate(tradeDate: Date): string | null {
+    // Si no hay plugin history, no se siguió ninguna estrategia
     if (!this.pluginHistory || !this.pluginHistory.dateActive || !this.pluginHistory.dateInactive) {
-      return false; // Sin plugin history, no se siguió estrategia
+      return null;
+    }
+
+    // Si no hay strategies, no se siguió ninguna estrategia
+    if (!this.strategies || this.strategies.length === 0) {
+      return null;
     }
 
     const dateActive = this.pluginHistory.dateActive;
     const dateInactive = this.pluginHistory.dateInactive;
     const now = new Date();
 
+    // Determinar si el plugin estaba activo en la fecha del trade
+    let pluginWasActive = false;
+    let activeRanges: { start: Date, end: Date }[] = [];
+
     // Si dateActive tiene más elementos que dateInactive, está activo hasta ahora
     if (dateActive.length > dateInactive.length) {
+      // Crear rangos para todos los pares completos
+      for (let i = 0; i < dateInactive.length; i++) {
+        activeRanges.push({
+          start: new Date(dateActive[i]),
+          end: new Date(dateInactive[i])
+        });
+      }
       // El último rango activo va desde la última fecha de active hasta ahora
-      const lastActiveDate = new Date(dateActive[dateActive.length - 1]);
-      return tradeDate >= lastActiveDate && tradeDate <= now;
-    }
-
-    // Si tienen la misma cantidad, crear rangos de fechas
-    if (dateActive.length === dateInactive.length) {
-      // Crear rangos: active[0] -> inactive[0], active[1] -> inactive[1], etc.
+      activeRanges.push({
+        start: new Date(dateActive[dateActive.length - 1]),
+        end: now
+      });
+    } else {
+      // Si tienen la misma cantidad, crear rangos de fechas
       for (let i = 0; i < dateActive.length; i++) {
-        const activeStart = new Date(dateActive[i]);
-        const inactiveEnd = new Date(dateInactive[i]);
-        
-        // Si el trade está dentro de este rango activo
-        if (tradeDate >= activeStart && tradeDate <= inactiveEnd) {
-          return true;
-        }
+        activeRanges.push({
+          start: new Date(dateActive[i]),
+          end: new Date(dateInactive[i])
+        });
       }
     }
 
-    return false; // No está en ningún rango activo
+    // Verificar si el plugin estaba activo en la fecha del trade
+    for (const range of activeRanges) {
+      if (tradeDate >= range.start && tradeDate <= range.end) {
+        pluginWasActive = true;
+        break;
+      }
+    }
+
+    // Si el plugin no estaba activo, no se siguió ninguna estrategia
+    if (!pluginWasActive) {
+      return null;
+    }
+
+    // Ahora buscar qué estrategia estaba activa en esa fecha
+    for (const strategy of this.strategies) {
+      // IMPORTANTE: NO filtrar estrategias eliminadas aquí
+      // Las estrategias eliminadas (soft delete) SÍ deben considerarse
+      // porque en el momento del trade existían y podrían haber sido seguidas
+      
+      // Si la estrategia no tiene fechas de activación, no se siguió
+      if (!strategy.dateActive || !strategy.dateInactive) {
+        continue; // Saltar estrategias sin fechas
+      }
+
+      const strategyActive = strategy.dateActive;
+      const strategyInactive = strategy.dateInactive;
+
+      // Verificar si la estrategia estaba activa en la fecha del trade
+      let strategyWasActive = false;
+
+      // Si strategyActive tiene más elementos que strategyInactive, está activa hasta ahora
+      if (strategyActive.length > strategyInactive.length) {
+        // Crear rangos para todos los pares completos
+        for (let i = 0; i < strategyInactive.length; i++) {
+          const start = new Date(strategyActive[i]);
+          const end = new Date(strategyInactive[i]);
+          if (tradeDate >= start && tradeDate <= end) {
+            strategyWasActive = true;
+            break;
+          }
+        }
+        // El último rango activo va desde la última fecha de active hasta ahora
+        if (!strategyWasActive) {
+          const lastActiveDate = new Date(strategyActive[strategyActive.length - 1]);
+          if (tradeDate >= lastActiveDate && tradeDate <= now) {
+            strategyWasActive = true;
+          }
+        }
+      } else {
+        // Si tienen la misma cantidad, crear rangos de fechas
+        for (let i = 0; i < strategyActive.length; i++) {
+          const start = new Date(strategyActive[i]);
+          const end = new Date(strategyInactive[i]);
+          if (tradeDate >= start && tradeDate <= end) {
+            strategyWasActive = true;
+            break;
+          }
+        }
+      }
+
+      // Si la estrategia estaba activa, retornar su nombre
+      if (strategyWasActive) {
+        return strategy.name || 'Unknown Strategy';
+      }
+    }
+
+    // Si el plugin estaba activo pero no había estrategia activa, retornar null
+    return null;
+  }
+
+  /**
+   * Determinar si se siguió la estrategia basándose en los rangos de fechas del plugin
+   * @param tradeDate - Fecha del trade a validar
+   * @returns true si se siguió la estrategia, false si no
+   */
+  didFollowStrategy(tradeDate: Date): boolean {
+    return this.getStrategyFollowedOnDate(tradeDate) !== null;
   }
 
   generateCalendar(targetMonth: Date) {
     const tradesByDay: { [date: string]: GroupedTradeFinal[] } = {};
 
-    // Agrupar trades por día usando la zona horaria del dispositivo
-    this.groupedTrades.forEach((trade) => {
+    // Primero, filtrar trades válidos (con positionId válido) y deduplicar
+    const validTrades = this.groupedTrades.filter(trade => 
+      trade.positionId && 
+      trade.positionId !== 'null' && 
+      trade.positionId !== '' &&
+      trade.positionId !== null
+    );
+    
+    // Deduplicar por positionId
+    const uniqueTrades = validTrades.filter((trade, index, self) => 
+      index === self.findIndex(t => t.positionId === trade.positionId)
+    );
+
+    // Agrupar trades únicos por día usando la zona horaria del dispositivo
+    uniqueTrades.forEach((trade) => {
       const tradeDate = new Date(Number(trade.lastModified));
       // Usar la zona horaria local del dispositivo
       const key = `${tradeDate.getFullYear()}-${tradeDate.getMonth()}-${tradeDate.getDate()}`;
 
-      if (!tradesByDay[key]) tradesByDay[key] = [];
-      tradesByDay[key].push(trade);
+      // Solo incluir trades que estén en el mes seleccionado
+      const tradeYear = tradeDate.getFullYear();
+      const tradeMonth = tradeDate.getMonth();
+      const targetYear = targetMonth.getFullYear();
+      const targetMonthIndex = targetMonth.getMonth();
+      
+      if (tradeYear === targetYear && tradeMonth === targetMonthIndex) {
+        if (!tradesByDay[key]) tradesByDay[key] = [];
+        tradesByDay[key].push(trade);
+      }
     });
-
-    // Verificar duplicados de manera simple
-    const allTrades = Object.values(tradesByDay).flat();
-    const uniqueTrades = allTrades.filter((trade, index, self) => 
-      index === self.findIndex(t => t.positionId === trade.positionId)
-    );
 
     // Generar calendario del mes objetivo
     const year = targetMonth.getFullYear();
@@ -170,6 +393,7 @@ export class CalendarComponent {
       
       // Determinar si se siguió la estrategia basándose en los rangos de fechas del plugin
       const followedStrategy = tradesCount > 0 ? this.didFollowStrategy(currentDay) : false;
+      const strategyName = tradesCount > 0 ? this.getStrategyFollowedOnDate(currentDay) : null;
 
       days.push({
         date: new Date(currentDay),
@@ -178,6 +402,7 @@ export class CalendarComponent {
         tradesCount: trades.length,
         followedStrategy: followedStrategy,
         tradeWinPercent: Math.round(tradeWinPercent),
+        strategyName: strategyName,
       });
 
       currentDay.setDate(currentDay.getDate() + 1);
@@ -188,6 +413,7 @@ export class CalendarComponent {
     for (let i = 0; i < days.length; i += 7) {
       this.calendar.push(days.slice(i, i + 7));
     }
+    
   }
 
   getDateNDaysAgo(daysAgo: number): Date {
@@ -289,6 +515,7 @@ export class CalendarComponent {
   }
 
   navigateToCurrentMonth(): void {
+    console.log('=== NAVEGACIÓN A MES ACTUAL ===');
     this.selectedMonth = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth());
     this.generateCalendar(this.selectedMonth);
   }
@@ -300,7 +527,7 @@ export class CalendarComponent {
   }
 
   generateCSVData(): string {
-    const headers = ['Date', 'PnL Total', 'Trades Count', 'Win Percentage', 'Strategy Followed'];
+    const headers = ['Date', 'PnL Total', 'Trades Count', 'Win Percentage', 'Strategy Followed', 'Strategy Name'];
     const rows = [headers.join(',')];
 
     this.calendar.flat().forEach(day => {
@@ -309,8 +536,9 @@ export class CalendarComponent {
       const tradesCount = day.tradesCount;
       const winPercentage = day.tradeWinPercent;
       const strategyFollowed = day.followedStrategy ? 'Yes' : 'No';
+      const strategyName = day.strategyName || 'None';
 
-      rows.push([date, pnlTotal, tradesCount, winPercentage, strategyFollowed].join(','));
+      rows.push([date, pnlTotal, tradesCount, winPercentage, strategyFollowed, strategyName].join(','));
     });
 
     return rows.join('\n');
@@ -359,5 +587,59 @@ export class CalendarComponent {
 
   formatPercentage(value: number): string {
     return this.numberFormatter.formatPercentage(value);
+  }
+
+  /**
+   * Obtener resumen de estrategias seguidas en un período
+   * @param days - Array de días del calendario
+   * @returns objeto con estadísticas de estrategias
+   */
+  getStrategySummary(days: CalendarDay[]): {
+    totalDays: number;
+    strategyDays: number;
+    strategiesUsed: { [strategyName: string]: number };
+    strategyPercentage: number;
+  } {
+    const totalDays = days.length;
+    let strategyDays = 0;
+    const strategiesUsed: { [strategyName: string]: number } = {};
+
+    days.forEach(day => {
+      if (day.followedStrategy && day.strategyName) {
+        strategyDays++;
+        if (strategiesUsed[day.strategyName]) {
+          strategiesUsed[day.strategyName]++;
+        } else {
+          strategiesUsed[day.strategyName] = 1;
+        }
+      }
+    });
+
+    const strategyPercentage = totalDays > 0 ? Math.round((strategyDays / totalDays) * 100 * 10) / 10 : 0;
+
+    return {
+      totalDays,
+      strategyDays,
+      strategiesUsed,
+      strategyPercentage
+    };
+  }
+
+  /**
+   * Obtener resumen de estrategias para los últimos N días
+   * @param days - Número de días a analizar
+   * @returns resumen de estrategias
+   */
+  getStrategySummaryLastNDays(days: number): {
+    totalDays: number;
+    strategyDays: number;
+    strategiesUsed: { [strategyName: string]: number };
+    strategyPercentage: number;
+  } {
+    const fromDate = this.getDateNDaysAgo(days - 1);
+    const toDate = new Date();
+    const daysInRange = this.filterDaysInRange(this.calendar.flat(), fromDate, toDate);
+    
+    return this.getStrategySummary(daysInRange);
   }
 }

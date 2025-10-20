@@ -173,7 +173,7 @@ export class TradingAccountsComponent {
 
   getActualBalance(key: string, account: AccountData) {
     return this.reportSvc
-      .getBalanceData(account.accountID, key, 1)
+      .getBalanceData(account.accountID, key, account.accountNumber)
       .pipe(
         concatMap((balanceData) => {
           // Guardar el balance en la cuenta

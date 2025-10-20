@@ -95,8 +95,13 @@ export class TradesPopupComponent {
   }
 
   getStrategyNameForTrade(trade: GroupedTradeFinal): string {
+    // Si no se siguió estrategia, no mostrar nombre
+    if (!this.selectedDay?.followedStrategy) {
+      return '';
+    }
+
     if (!this.strategies || this.strategies.length === 0) {
-      return 'Swing Trading Strategy';
+      return '-';
     }
 
     const tradeDate = new Date(Number(trade.lastModified));
@@ -105,6 +110,10 @@ export class TradesPopupComponent {
     
     // Buscar la estrategia que estaba activa en la fecha del trade
     for (const strategy of this.strategies) {
+      // IMPORTANTE: NO filtrar estrategias eliminadas aquí
+      // Las estrategias eliminadas (soft delete) SÍ deben considerarse
+      // porque en el momento del trade existían y podrían haber sido seguidas
+      
       if (strategy.dateActive && strategy.dateActive.length > 0) {
         // Revisar cada período de activación de esta estrategia
         for (let i = 0; i < strategy.dateActive.length; i++) {
@@ -133,7 +142,7 @@ export class TradesPopupComponent {
       }
     }
     
-    return 'Swing Trading Strategy';
+    return '-';
   }
 
   getTickerColor(ticker: string): string {
