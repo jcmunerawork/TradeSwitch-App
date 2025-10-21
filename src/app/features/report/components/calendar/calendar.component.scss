@@ -36,7 +36,9 @@
 .actual-month {
   text-align: center;
   margin: 0;
-  min-width: 120px;
+  min-width: 80px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .calendar-title {
@@ -76,9 +78,8 @@
 .month-navigation {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  width: 100%;
+  gap: 8px;
+  width: auto;
   font-family: "SF Pro Display", Arial, sans-serif;
   color: #e3e3e3;
   font-size: 14px;
@@ -575,8 +576,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   background: rgba(158, 196, 242, 0.1);
   border: 1px solid rgba(158, 196, 242, 0.3);
   border-radius: 6px;

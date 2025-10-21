@@ -7,9 +7,12 @@ import {
     where,
     query,
     onSnapshot,
+    doc,
+    getDoc,
 } from 'firebase/firestore';
 import { Observable, from } from 'rxjs';
 import { firebaseApp } from '../../firebase/firebase.init';
+import { TimezoneService } from './timezone.service';
 
 export interface PluginHistory {
     id: string;
@@ -30,6 +33,7 @@ export class PluginHistoryService {
 
     constructor(
         @Inject(PLATFORM_ID) private platformId: Object,
+        private timezoneService: TimezoneService
     ) {
         this.isBrowser = isPlatformBrowser(this.platformId);
         if (this.isBrowser) {
@@ -45,21 +49,20 @@ export class PluginHistoryService {
 
         try {
             // NUEVA LÓGICA: Buscar por document ID = plugin_{userId}
+            console.log('🔌 Buscando plugin para el usuario:', userId);
             const pluginDocId = `plugin_${userId}`;
-            const ref = collection(this.db, 'plugin_history');
-            const q = await getDocs(query(ref, where('__name__', '==', pluginDocId)));
+            const docRef = doc(this.db, 'plugin_history', pluginDocId);
+            const docSnap = await getDoc(docRef);
 
-            if (q.empty) {
+            if (!docSnap.exists()) {
                 console.log('⚠️ No se encontró plugin para el usuario:', userId);
                 return [];
             }
 
-            const pluginHistory = q.docs.map((doc) => {
-                const data = doc.data();
-                return { id: doc.id, ...data };
-            });
+            const data = docSnap.data();
+            const pluginHistory = { id: docSnap.id, ...data };
 
-            return pluginHistory as PluginHistory[];
+            return [pluginHistory] as PluginHistory[];
 
         } catch (error) {
             console.error('Error getting plugin usage history:', error);
@@ -70,11 +73,12 @@ export class PluginHistoryService {
 
     /**
      * MÉTODO NUEVO: Determinar si el plugin está activo basándose en las fechas
-     * LÓGICA:
+     * LÓGICA MEJORADA CON ZONA HORARIA:
      * - Si dateActive tiene más elementos que dateInactive: está activo
      * - Si tienen la misma cantidad: comparar la última fecha de cada array
      * - Si la última fecha de dateActive > última fecha de dateInactive: está activo
      * - Si la última fecha de dateInactive > última fecha de dateActive: está inactivo
+     * - Usa conversión UTC para comparaciones precisas
      */
     isPluginActiveByDates(pluginHistory: PluginHistory): boolean {
         if (!pluginHistory.dateActive || !pluginHistory.dateInactive) {
@@ -96,8 +100,10 @@ export class PluginHistoryService {
                 return false; // No hay fechas, asumir inactivo
             }
 
-            const lastActiveDate = new Date(activeDates[activeDates.length - 1]);
-            const lastInactiveDate = new Date(inactiveDates[inactiveDates.length - 1]);
+            // MEJORA: Usar conversión UTC para comparaciones precisas
+            const lastActiveDate = this.timezoneService.convertToUTC(activeDates[activeDates.length - 1]);
+            const lastInactiveDate = this.timezoneService.convertToUTC(inactiveDates[inactiveDates.length - 1]);
+
 
             // Si la última fecha de active es mayor que la de inactive, está activo
             return lastActiveDate > lastInactiveDate;

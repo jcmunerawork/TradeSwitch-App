@@ -522,6 +522,8 @@ export class Strategy implements OnInit, OnDestroy {
   }
 
   // Contar el total de estrategias del usuario (activas + inactivas) sin duplicar
+  // IMPORTANTE: Solo cuenta estrategias NO eliminadas (deleted !== true)
+  // Las estrategias eliminadas (deleted: true) NO se incluyen en este conteo
   private getTotalStrategiesCount(): number {
     const uniqueIds = new Set<string>();
     this.userStrategies.forEach(s => uniqueIds.add((s as any).id));
@@ -882,6 +884,8 @@ export class Strategy implements OnInit, OnDestroy {
       const hasActiveStrategy = this.activeStrategy !== null;
       
       // 4. Verificar si es la primera estrategia del usuario
+      // NOTA: getTotalStrategiesCount() solo cuenta estrategias NO eliminadas (deleted !== true)
+      // Las estrategias eliminadas no cuentan para determinar si es la primera
       const totalStrategies = this.getTotalStrategiesCount();
       const isFirstStrategy = totalStrategies === 0;
       
@@ -934,6 +938,20 @@ export class Strategy implements OnInit, OnDestroy {
         emptyStrategyConfig,
         isFirstStrategy ? true : false // Primera estrategia activa, el resto inactivas
       );
+
+      // 6.1. Si NO es la primera estrategia, agregar dateInactive inmediatamente
+      // Esto evita problemas en los reports al tener estrategias con dateActive sin dateInactive
+      if (!isFirstStrategy) {
+        const inactiveTime = new Date(Date.now() + 2000); // +2 segundos desde ahora
+        
+        // Solo agregar dateInactive para cerrar el ciclo de activación/desactivación
+        await this.strategySvc.updateStrategyDates(
+          this.user.id,
+          strategyId,
+          undefined, // No agregar dateActive (ya existe uno)
+          inactiveTime // Agregar dateInactive en 2 segundos
+        );
+      }
 
       // 7. Actualizar el estado del plan en tiempo real después de crear
       await this.checkPlanLimitations();
@@ -1265,6 +1283,20 @@ export class Strategy implements OnInit, OnDestroy {
         strategyConfig,
         isActiveStrategy ? false : undefined // false = inactiva, undefined = mantener estado original
       );
+
+      // Si se está copiando una estrategia activa (isActiveStrategy = true), 
+      // agregar dateInactive inmediatamente para cerrar el ciclo de activación
+      if (isActiveStrategy) {
+        const inactiveTime = new Date(Date.now() + 2000); // +2 segundos desde ahora
+        
+        // Solo agregar dateInactive para cerrar el ciclo de activación/desactivación
+        await this.strategySvc.updateStrategyDates(
+          this.user.id,
+          newStrategyId,
+          undefined, // No agregar dateActive (ya existe uno)
+          inactiveTime // Agregar dateInactive en 2 segundos
+        );
+      }
 
       // Invalidar cache y recargar estrategias
       await this.invalidateCacheAndReload();

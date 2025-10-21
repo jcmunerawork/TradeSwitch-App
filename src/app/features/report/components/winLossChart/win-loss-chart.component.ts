@@ -33,11 +33,11 @@ export class WinLossChartComponent implements OnInit, OnChanges, OnDestroy {
   private getDonutSize(): string {
     if (typeof window !== 'undefined') {
       if (window.innerWidth <= 480) {
-        return '80%'; // Más delgado en pantallas muy pequeñas
+        return '85%'; // Más grueso en pantallas muy pequeñas para mejor visibilidad
       } else if (window.innerWidth <= 768) {
-        return '75%'; // Delgado en tablets
+        return '80%'; // Moderadamente grueso en tablets
       } else if (window.innerWidth <= 1024) {
-        return '70%'; // Moderadamente delgado en pantallas medianas
+        return '75%'; // Tamaño medio en pantallas medianas
       }
     }
     return '80%'; // Tamaño normal en desktop

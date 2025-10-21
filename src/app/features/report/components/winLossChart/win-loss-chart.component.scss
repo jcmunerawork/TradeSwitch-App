@@ -84,10 +84,17 @@
   
   @media (max-width: 1024px) {
     gap: 12px;
+    min-height: 200px; /* Asegurar altura mínima para el círculo */
   }
   
   @media (max-width: 768px) {
     gap: 8px;
+    min-height: 180px; /* Asegurar altura mínima para el círculo */
+  }
+  
+  @media (max-width: 480px) {
+    gap: 6px;
+    min-height: 160px; /* Asegurar altura mínima para el círculo */
   }
 }
 
@@ -106,6 +113,36 @@
     left: 0;
     width: 100% !important;
     height: 100% !important;
+    
+    /* Asegurar que el SVG del gráfico se muestre correctamente */
+    ::ng-deep svg {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+    }
+    
+    /* Asegurar que el contenedor del gráfico tenga las dimensiones correctas */
+    ::ng-deep .apexcharts-canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+  }
+  
+  /* Asegurar que el círculo se muestre correctamente en pantallas pequeñas */
+  @media (max-width: 1024px) {
+    min-height: 200px;
+    min-width: 200px;
+  }
+  
+  @media (max-width: 768px) {
+    min-height: 180px;
+    min-width: 180px;
+  }
+  
+  @media (max-width: 480px) {
+    min-height: 160px;
+    min-width: 160px;
   }
 }
 

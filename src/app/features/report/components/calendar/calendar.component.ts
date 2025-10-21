@@ -18,6 +18,7 @@ import { ConfigurationOverview } from '../../../strategy/models/strategy.model';
 import { PluginHistoryService, PluginHistory } from '../../../../shared/services/plugin-history.service';
 import { AppContextService } from '../../../../shared/context';
 import { TradeLockerApiService } from '../../../../shared/services/tradelocker-api.service';
+import { TimezoneService } from '../../../../shared/services/timezone.service';
 
 @Component({
   selector: 'app-calendar',
@@ -47,7 +48,8 @@ export class CalendarComponent {
     private reportSvc: ReportService,
     private pluginHistoryService: PluginHistoryService,
     private appContext: AppContextService,
-    private tradeLockerApiService: TradeLockerApiService
+    private tradeLockerApiService: TradeLockerApiService,
+    private timezoneService: TimezoneService
   ) {}
   private numberFormatter = new NumberFormatterService();
 
@@ -55,10 +57,8 @@ export class CalendarComponent {
     this.currentDate = new Date();
     this.selectedMonth = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth());
 
-    // Cargar plugin history si tenemos userId
-    if (this.userId) {
-      this.loadPluginHistory();
-    }
+    // Obtener userId desde el contexto de autenticación
+    this.loadUserIdAndInitialize();
 
     // Procesar trades para obtener nombres de instrumentos
     this.processTradesForCalendar();
@@ -75,6 +75,53 @@ export class CalendarComponent {
   }
 
   /**
+   * Obtener userId desde el contexto de autenticación y inicializar
+   */
+  private async loadUserIdAndInitialize() {
+    try {
+      // Obtener el usuario actual desde el contexto
+      const currentUser = this.appContext.currentUser();
+      
+      if (currentUser && currentUser.id) {
+        this.userId = currentUser.id;
+        
+        // Cargar plugin history con el userId obtenido
+        await this.loadPluginHistory();
+      }
+    } catch (error) {
+      console.error('Error obteniendo userId desde contexto:', error);
+    }
+  }
+
+  /**
+   * Convertir Timestamp de Firestore a Date
+   */
+  private convertFirestoreTimestamp(timestamp: any): Date {
+    if (timestamp && typeof timestamp === 'object' && 'seconds' in timestamp) {
+      // Es un Timestamp de Firestore
+      return new Date(timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000);
+    } else {
+      // Es un string o Date normal
+      return new Date(timestamp);
+    }
+  }
+
+  /**
+   * MEJORA: Convertir fecha a UTC considerando zona horaria del usuario
+   * MÉTODO ESPECÍFICO: Para fechas de trades del servidor
+   */
+  private convertToUTCWithTimezone(date: Date | string | number): Date {
+    try {
+      // Usar el método específico para fechas de trades
+      return this.timezoneService.convertTradeDateToUTC(date);
+    } catch (error) {
+      console.error('Error convirtiendo fecha a UTC:', error);
+      // Fallback: conversión básica
+      return new Date(date);
+    }
+  }
+
+  /**
    * Procesar trades para obtener nombres de instrumentos
    */
   private async processTradesForCalendar() {
@@ -86,10 +133,15 @@ export class CalendarComponent {
     const firstTrade = this.groupedTrades[0];
     const needsProcessing = !firstTrade.instrument || 
                            firstTrade.instrument === firstTrade.tradableInstrumentId ||
-                           firstTrade.instrument === '';
+                           firstTrade.instrument === '' ||
+                           firstTrade.instrument === 'Cargando...';
+
+    if (!needsProcessing) {
+      return; // Ya están procesados
+    }
 
     try {
-      // Obtener instrumentos únicos
+      // Obtener instrumentos únicos (optimización: solo una petición por combinación única)
       const uniqueInstruments = new Map<string, { tradableInstrumentId: string, routeId: string }>();
       
       this.groupedTrades.forEach(trade => {
@@ -104,7 +156,14 @@ export class CalendarComponent {
         }
       });
 
-      // Obtener detalles de instrumentos
+      // Establecer "Cargando..." como valor inicial para todos los trades
+      this.groupedTrades.forEach(trade => {
+        if (trade.tradableInstrumentId && trade.routeId) {
+          trade.instrument = 'Cargando...';
+        }
+      });
+
+      // Obtener detalles de instrumentos (una sola petición por combinación única)
       const instrumentDetailsMap = new Map<string, { lotSize: number, name: string }>();
 
       for (const [key, instrument] of uniqueInstruments) {
@@ -135,6 +194,7 @@ export class CalendarComponent {
           }
 
         } catch (error) {
+          console.warn(`Error obteniendo detalles del instrumento ${key}:`, error);
           instrumentDetailsMap.set(key, {
             lotSize: 1,
             name: instrument.tradableInstrumentId
@@ -142,18 +202,28 @@ export class CalendarComponent {
         }
       }
 
-      // Actualizar trades con nombres de instrumentos
+      // Actualizar trades con nombres de instrumentos (aplicar a todos los trades con la misma combinación)
       this.groupedTrades.forEach(trade => {
-        const key = `${trade.tradableInstrumentId}-${trade.routeId}`;
-        const instrumentDetails = instrumentDetailsMap.get(key);
-        
-        if (instrumentDetails) {
-          trade.instrument = instrumentDetails.name;
+        if (trade.tradableInstrumentId && trade.routeId) {
+          const key = `${trade.tradableInstrumentId}-${trade.routeId}`;
+          const instrumentDetails = instrumentDetailsMap.get(key);
+          
+          if (instrumentDetails) {
+            trade.instrument = instrumentDetails.name;
+          } else {
+            trade.instrument = trade.tradableInstrumentId; // Fallback al ID
+          }
         }
       });
 
     } catch (error) {
       console.error('Error procesando trades para calendario:', error);
+      // En caso de error, establecer fallback
+      this.groupedTrades.forEach(trade => {
+        if (trade.tradableInstrumentId && trade.routeId) {
+          trade.instrument = trade.tradableInstrumentId;
+        }
+      });
     }
   }
 
@@ -207,7 +277,7 @@ export class CalendarComponent {
 
   /**
    * Determinar qué estrategia se siguió en una fecha específica
-   * Implementa la lógica completa para manejar múltiples cambios en un día
+   * NUEVA LÓGICA: Asociar trades con estrategias basándose en fechas exactas
    * @param tradeDate - Fecha y hora exacta del trade a validar
    * @returns nombre de la estrategia seguida o null si no se siguió ninguna
    */
@@ -218,12 +288,18 @@ export class CalendarComponent {
       return null; // Plugin no estaba activo
     }
 
-    // PASO 2: Buscar estrategias activas en la fecha/hora exacta del trade
-    return this.getActiveStrategyAtTime(tradeDate);
+    // PASO 2: Buscar estrategias que incluyan la fecha/hora exacta del trade
+    const activeStrategy = this.getActiveStrategyAtTime(tradeDate);
+    if (!activeStrategy) {
+      return null; // No había estrategia activa en ese momento
+    }
+
+    return activeStrategy;
   }
 
   /**
    * PASO 1: Determinar si el plugin estaba activo en la fecha/hora exacta del trade
+   * MEJORA: Usar conversión UTC para comparaciones precisas
    * @param tradeDate - Fecha y hora exacta del trade
    * @returns rango activo del plugin o null si no estaba activo
    */
@@ -236,6 +312,10 @@ export class CalendarComponent {
     const dateInactive = this.pluginHistory.dateInactive;
     const now = new Date();
 
+    // MEJORA: Convertir fecha del trade a UTC para comparación precisa
+    const tradeDateUTC = this.convertToUTCWithTimezone(tradeDate);
+
+
     // Crear rangos de actividad del plugin
     const activeRanges: { start: Date, end: Date }[] = [];
 
@@ -244,28 +324,28 @@ export class CalendarComponent {
       // Crear rangos para todos los pares completos
       for (let i = 0; i < dateInactive.length; i++) {
         activeRanges.push({
-          start: new Date(dateActive[i]),
-          end: new Date(dateInactive[i])
+          start: this.convertToUTCWithTimezone(dateActive[i]),
+          end: this.convertToUTCWithTimezone(dateInactive[i])
         });
       }
       // El último rango activo va desde la última fecha de active hasta ahora
       activeRanges.push({
-        start: new Date(dateActive[dateActive.length - 1]),
-        end: now
+        start: this.convertToUTCWithTimezone(dateActive[dateActive.length - 1]),
+        end: this.convertToUTCWithTimezone(now)
       });
     } else {
       // Si tienen la misma cantidad, crear rangos de fechas
       for (let i = 0; i < dateActive.length; i++) {
         activeRanges.push({
-          start: new Date(dateActive[i]),
-          end: new Date(dateInactive[i])
+          start: this.convertToUTCWithTimezone(dateActive[i]),
+          end: this.convertToUTCWithTimezone(dateInactive[i])
         });
       }
     }
 
     // Verificar si el plugin estaba activo en la fecha/hora exacta del trade
     for (const range of activeRanges) {
-      if (tradeDate >= range.start && tradeDate <= range.end) {
+      if (tradeDateUTC >= range.start && tradeDateUTC <= range.end) {
         return range; // Plugin estaba activo en este rango
       }
     }
@@ -275,6 +355,7 @@ export class CalendarComponent {
 
   /**
    * PASO 2: Buscar la estrategia activa en la fecha/hora exacta del trade
+   * MEJORA: Usar conversión UTC para comparaciones precisas
    * @param tradeDate - Fecha y hora exacta del trade
    * @returns nombre de la estrategia activa o null si no había ninguna
    */
@@ -283,13 +364,17 @@ export class CalendarComponent {
       return null;
     }
 
+    // MEJORA: Convertir fecha del trade a UTC para comparación precisa
+    const tradeDateUTC = this.convertToUTCWithTimezone(tradeDate);
+
+
     // Buscar estrategias activas en la fecha/hora exacta del trade
     for (const strategy of this.strategies) {
       // IMPORTANTE: NO filtrar estrategias eliminadas aquí
       // Las estrategias eliminadas (soft delete) SÍ deben considerarse
       // porque en el momento del trade existían y podrían haber sido seguidas
       
-      if (this.isStrategyActiveAtTime(strategy, tradeDate)) {
+      if (this.isStrategyActiveAtTime(strategy, tradeDateUTC)) {
         return strategy.name || 'Unknown Strategy';
       }
     }
@@ -299,8 +384,9 @@ export class CalendarComponent {
 
   /**
    * Verificar si una estrategia específica estaba activa en la fecha/hora exacta
+   * MEJORA: Usar conversión UTC para comparaciones precisas
    * @param strategy - Estrategia a verificar
-   * @param tradeDate - Fecha y hora exacta del trade
+   * @param tradeDate - Fecha y hora exacta del trade (ya en UTC)
    * @returns true si la estrategia estaba activa, false si no
    */
   private isStrategyActiveAtTime(strategy: ConfigurationOverview, tradeDate: Date): boolean {
@@ -321,21 +407,21 @@ export class CalendarComponent {
       // Crear rangos para todos los pares completos
       for (let i = 0; i < strategyInactive.length; i++) {
         strategyRanges.push({
-          start: new Date(strategyActive[i]),
-          end: new Date(strategyInactive[i])
+          start: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyActive[i])),
+          end: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyInactive[i]))
         });
       }
       // El último rango activo va desde la última fecha de active hasta ahora
       strategyRanges.push({
-        start: new Date(strategyActive[strategyActive.length - 1]),
-        end: now
+        start: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyActive[strategyActive.length - 1])),
+        end: this.convertToUTCWithTimezone(now)
       });
     } else {
       // Si tienen la misma cantidad, crear rangos de fechas
       for (let i = 0; i < strategyActive.length; i++) {
         strategyRanges.push({
-          start: new Date(strategyActive[i]),
-          end: new Date(strategyInactive[i])
+          start: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyActive[i])),
+          end: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyInactive[i]))
         });
       }
     }
@@ -415,21 +501,21 @@ export class CalendarComponent {
       // Crear rangos para todos los pares completos
       for (let i = 0; i < strategyInactive.length; i++) {
         strategyRanges.push({
-          start: new Date(strategyActive[i]),
-          end: new Date(strategyInactive[i])
+          start: this.convertFirestoreTimestamp(strategyActive[i]),
+          end: this.convertFirestoreTimestamp(strategyInactive[i])
         });
       }
       // El último rango activo va desde la última fecha de active hasta ahora
       strategyRanges.push({
-        start: new Date(strategyActive[strategyActive.length - 1]),
+        start: this.convertFirestoreTimestamp(strategyActive[strategyActive.length - 1]),
         end: now
       });
     } else {
       // Si tienen la misma cantidad, crear rangos de fechas
       for (let i = 0; i < strategyActive.length; i++) {
         strategyRanges.push({
-          start: new Date(strategyActive[i]),
-          end: new Date(strategyInactive[i])
+          start: this.convertFirestoreTimestamp(strategyActive[i]),
+          end: this.convertFirestoreTimestamp(strategyInactive[i])
         });
       }
     }
@@ -462,7 +548,9 @@ export class CalendarComponent {
 
     // Agrupar trades únicos por día usando la zona horaria del dispositivo
     uniqueTrades.forEach((trade) => {
-      const tradeDate = new Date(Number(trade.lastModified));
+      // MEJORA: Usar conversión correcta de fecha de trade
+      const tradeDate = this.convertToUTCWithTimezone(Number(trade.lastModified));
+      
       // Usar la zona horaria local del dispositivo
       const key = `${tradeDate.getFullYear()}-${tradeDate.getMonth()}-${tradeDate.getDate()}`;
 
@@ -511,7 +599,8 @@ export class CalendarComponent {
       if (tradesCount > 0) {
         // Verificar cada trade individualmente usando su fecha/hora exacta
         for (const trade of trades) {
-          const tradeDate = new Date(Number(trade.lastModified));
+          // MEJORA: Usar conversión correcta de fecha de trade
+          const tradeDate = this.convertToUTCWithTimezone(Number(trade.lastModified));
           const tradeStrategyInfo = this.getTradeStrategyInfo(tradeDate);
           
           if (tradeStrategyInfo.followedStrategy) {
@@ -642,7 +731,6 @@ export class CalendarComponent {
   }
 
   navigateToCurrentMonth(): void {
-    console.log('=== NAVEGACIÓN A MES ACTUAL ===');
     this.selectedMonth = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth());
     this.generateCalendar(this.selectedMonth);
   }
@@ -795,7 +883,8 @@ export class CalendarComponent {
       if (day.trades && day.trades.length > 0) {
         day.trades.forEach(trade => {
           totalTrades++;
-          const tradeDate = new Date(Number(trade.lastModified));
+          // MEJORA: Usar conversión correcta de fecha de trade
+          const tradeDate = this.convertToUTCWithTimezone(Number(trade.lastModified));
           const tradeStrategyInfo = this.getTradeStrategyInfo(tradeDate);
           
           if (!tradeStrategyInfo.pluginActive) {
@@ -845,4 +934,62 @@ export class CalendarComponent {
     
     return this.getDetailedTradeAnalysis(daysInRange);
   }
+
+  /**
+   * Verificar estado actual del plugin
+   * @returns true si el plugin está activo ahora, false si no
+   */
+  isPluginCurrentlyActive(): boolean {
+    if (!this.pluginHistory) {
+      return false;
+    }
+    
+    return this.pluginHistoryService.isPluginActiveByDates(this.pluginHistory);
+  }
+
+  /**
+   * Obtener información detallada del estado del plugin
+   * @returns información completa del estado del plugin
+   */
+  getPluginStatusInfo(): {
+    isActive: boolean;
+    lastActiveDate: string | null;
+    lastInactiveDate: string | null;
+    activeRanges: { start: string, end: string }[];
+  } {
+    if (!this.pluginHistory) {
+      return {
+        isActive: false,
+        lastActiveDate: null,
+        lastInactiveDate: null,
+        activeRanges: []
+      };
+    }
+
+    const isActive = this.pluginHistoryService.isPluginActiveByDates(this.pluginHistory);
+    const lastActiveDate = this.pluginHistory.dateActive?.[this.pluginHistory.dateActive.length - 1] || null;
+    const lastInactiveDate = this.pluginHistory.dateInactive?.[this.pluginHistory.dateInactive.length - 1] || null;
+    
+    // Crear rangos activos para mostrar
+    const activeRanges: { start: string, end: string }[] = [];
+    if (this.pluginHistory.dateActive && this.pluginHistory.dateInactive) {
+      const dateActive = this.pluginHistory.dateActive;
+      const dateInactive = this.pluginHistory.dateInactive;
+      
+      for (let i = 0; i < Math.min(dateActive.length, dateInactive.length); i++) {
+        activeRanges.push({
+          start: new Date(dateActive[i]).toISOString(),
+          end: new Date(dateInactive[i]).toISOString()
+        });
+      }
+    }
+
+    return {
+      isActive,
+      lastActiveDate,
+      lastInactiveDate,
+      activeRanges
+    };
+  }
+
 }

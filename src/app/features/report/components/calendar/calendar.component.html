@@ -1,35 +1,39 @@
 <div class="calendar-grid d-flex flex-col p-22">
-  <div class="calendar-titles mb-14 d-flex flex-col gap-12">
-    <!-- Primera fila: Título y Export Data -->
+  <div class="calendar-titles mb-14">
+    <!-- Título y Selector de meses en una sola línea -->
     <div class="calendar-header-row d-flex items-center justify-between">
       <p class="calendar-title">My Strategy</p>
+      
+      <!-- Selector de meses en el extremo derecho -->
+      <div class="month-navigation d-flex align-items-center gap-12">
+        <button 
+          class="nav-arrow nav-arrow-left" 
+          [disabled]="!canNavigateLeft()"
+          (click)="navigateToPreviousMonth()"
+          [class.disabled]="!canNavigateLeft()"
+        >
+          <span class="material-symbols-outlined" style="font-size: 20px;">chevron_left</span>
+        </button>
+        
+        <p class="actual-month">{{ currentMonthYear }}</p>
+        
+        <button 
+          class="nav-arrow nav-arrow-right" 
+          [disabled]="!canNavigateRight()"
+          (click)="navigateToNextMonth()"
+          [class.disabled]="!canNavigateRight()"
+        >
+          <span class="material-symbols-outlined" style="font-size: 20px;">chevron_right</span>
+        </button>
+      </div>
+      
+      <!-- Export Data comentado -->
+      <!--
       <button class="export-btn d-flex align-items-center gap-8" (click)="exportData()">
         <span>Export Data</span>
         <span class="material-symbols-outlined" style="font-size: 18px">call_made</span>
       </button>
-    </div>
-    
-    <!-- Segunda fila: Selector de meses -->
-    <div class="month-navigation d-flex align-items-center justify-center gap-12">
-      <button 
-        class="nav-arrow nav-arrow-left" 
-        [disabled]="!canNavigateLeft()"
-        (click)="navigateToPreviousMonth()"
-        [class.disabled]="!canNavigateLeft()"
-      >
-        <span class="material-symbols-outlined" style="font-size: 20px;">chevron_left</span>
-      </button>
-      
-      <p class="actual-month">{{ currentMonthYear }}</p>
-      
-      <button 
-        class="nav-arrow nav-arrow-right" 
-        [disabled]="!canNavigateRight()"
-        (click)="navigateToNextMonth()"
-        [class.disabled]="!canNavigateRight()"
-      >
-        <span class="material-symbols-outlined" style="font-size: 20px;">chevron_right</span>
-      </button>
+      -->
     </div>
   </div>
   <div
