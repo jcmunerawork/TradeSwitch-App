@@ -22,31 +22,49 @@ export class Sidebar implements OnDestroy {
   isAdmin: boolean = false;
   userToken: string = '';
   isBanned: boolean = false;
+  private hasInitializedWidth = false;
 
   constructor(
     private authService: AuthService,
     private router: Router,
     private store: Store
   ) {
+    // Inicializar el ancho a 0 inmediatamente para evitar el flash
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement;
+      root.style.setProperty('--sidebar-width', '0px');
+    }
+
     this.store.select(selectUser).subscribe((user) => {
       this.userName = user?.user?.firstName || '';
       this.lastName = user?.user?.lastName || '';
       this.isAdmin = user?.user?.isAdmin || false;
       this.userToken = user?.user?.tokenId || '';
       this.isBanned = user?.user?.status === UserStatus.BANNED;
+      
+      // Solo actualizar el ancho del sidebar una vez que tengamos datos del usuario
+      if (this.userName && !this.hasInitializedWidth) {
+        this.hasInitializedWidth = true;
+        this.updateSidebarWidth(this.router.url);
+      } else if (!this.userName && this.hasInitializedWidth) {
+        // Si el usuario se desloguea, resetear
+        this.hasInitializedWidth = false;
+        if (typeof document !== 'undefined') {
+          const root = document.documentElement;
+          root.style.setProperty('--sidebar-width', '0px');
+        }
+      }
     });
     
     // Escuchar cambios de ruta para ajustar el sidebar
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe((event: NavigationEnd) => {
-        this.updateSidebarWidth(event.url);
+        // Solo actualizar si ya tenemos usuario
+        if (this.userName) {
+          this.updateSidebarWidth(event.url);
+        }
       });
-    
-    // Establecer el ancho inicial del sidebar (solo en el cliente)
-    if (typeof document !== 'undefined') {
-      this.updateSidebarWidth(this.router.url);
-    }
   }
 
   private updateSidebarWidth(url: string) {
