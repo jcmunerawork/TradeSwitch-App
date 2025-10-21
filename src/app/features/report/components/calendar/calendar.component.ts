@@ -207,17 +207,28 @@ export class CalendarComponent {
 
   /**
    * Determinar qué estrategia se siguió en una fecha específica
-   * @param tradeDate - Fecha del trade a validar
+   * Implementa la lógica completa para manejar múltiples cambios en un día
+   * @param tradeDate - Fecha y hora exacta del trade a validar
    * @returns nombre de la estrategia seguida o null si no se siguió ninguna
    */
   getStrategyFollowedOnDate(tradeDate: Date): string | null {
-    // Si no hay plugin history, no se siguió ninguna estrategia
-    if (!this.pluginHistory || !this.pluginHistory.dateActive || !this.pluginHistory.dateInactive) {
-      return null;
+    // PASO 1: Verificar si el plugin estaba activo en la fecha/hora exacta del trade
+    const pluginActiveRange = this.getPluginActiveRange(tradeDate);
+    if (!pluginActiveRange) {
+      return null; // Plugin no estaba activo
     }
 
-    // Si no hay strategies, no se siguió ninguna estrategia
-    if (!this.strategies || this.strategies.length === 0) {
+    // PASO 2: Buscar estrategias activas en la fecha/hora exacta del trade
+    return this.getActiveStrategyAtTime(tradeDate);
+  }
+
+  /**
+   * PASO 1: Determinar si el plugin estaba activo en la fecha/hora exacta del trade
+   * @param tradeDate - Fecha y hora exacta del trade
+   * @returns rango activo del plugin o null si no estaba activo
+   */
+  private getPluginActiveRange(tradeDate: Date): { start: Date, end: Date } | null {
+    if (!this.pluginHistory || !this.pluginHistory.dateActive || !this.pluginHistory.dateInactive) {
       return null;
     }
 
@@ -225,9 +236,8 @@ export class CalendarComponent {
     const dateInactive = this.pluginHistory.dateInactive;
     const now = new Date();
 
-    // Determinar si el plugin estaba activo en la fecha del trade
-    let pluginWasActive = false;
-    let activeRanges: { start: Date, end: Date }[] = [];
+    // Crear rangos de actividad del plugin
+    const activeRanges: { start: Date, end: Date }[] = [];
 
     // Si dateActive tiene más elementos que dateInactive, está activo hasta ahora
     if (dateActive.length > dateInactive.length) {
@@ -253,74 +263,91 @@ export class CalendarComponent {
       }
     }
 
-    // Verificar si el plugin estaba activo en la fecha del trade
+    // Verificar si el plugin estaba activo en la fecha/hora exacta del trade
     for (const range of activeRanges) {
       if (tradeDate >= range.start && tradeDate <= range.end) {
-        pluginWasActive = true;
-        break;
+        return range; // Plugin estaba activo en este rango
       }
     }
 
-    // Si el plugin no estaba activo, no se siguió ninguna estrategia
-    if (!pluginWasActive) {
+    return null; // Plugin no estaba activo
+  }
+
+  /**
+   * PASO 2: Buscar la estrategia activa en la fecha/hora exacta del trade
+   * @param tradeDate - Fecha y hora exacta del trade
+   * @returns nombre de la estrategia activa o null si no había ninguna
+   */
+  private getActiveStrategyAtTime(tradeDate: Date): string | null {
+    if (!this.strategies || this.strategies.length === 0) {
       return null;
     }
 
-    // Ahora buscar qué estrategia estaba activa en esa fecha
+    // Buscar estrategias activas en la fecha/hora exacta del trade
     for (const strategy of this.strategies) {
       // IMPORTANTE: NO filtrar estrategias eliminadas aquí
       // Las estrategias eliminadas (soft delete) SÍ deben considerarse
       // porque en el momento del trade existían y podrían haber sido seguidas
       
-      // Si la estrategia no tiene fechas de activación, no se siguió
-      if (!strategy.dateActive || !strategy.dateInactive) {
-        continue; // Saltar estrategias sin fechas
-      }
-
-      const strategyActive = strategy.dateActive;
-      const strategyInactive = strategy.dateInactive;
-
-      // Verificar si la estrategia estaba activa en la fecha del trade
-      let strategyWasActive = false;
-
-      // Si strategyActive tiene más elementos que strategyInactive, está activa hasta ahora
-      if (strategyActive.length > strategyInactive.length) {
-        // Crear rangos para todos los pares completos
-        for (let i = 0; i < strategyInactive.length; i++) {
-          const start = new Date(strategyActive[i]);
-          const end = new Date(strategyInactive[i]);
-          if (tradeDate >= start && tradeDate <= end) {
-            strategyWasActive = true;
-            break;
-          }
-        }
-        // El último rango activo va desde la última fecha de active hasta ahora
-        if (!strategyWasActive) {
-          const lastActiveDate = new Date(strategyActive[strategyActive.length - 1]);
-          if (tradeDate >= lastActiveDate && tradeDate <= now) {
-            strategyWasActive = true;
-          }
-        }
-      } else {
-        // Si tienen la misma cantidad, crear rangos de fechas
-        for (let i = 0; i < strategyActive.length; i++) {
-          const start = new Date(strategyActive[i]);
-          const end = new Date(strategyInactive[i]);
-          if (tradeDate >= start && tradeDate <= end) {
-            strategyWasActive = true;
-            break;
-          }
-        }
-      }
-
-      // Si la estrategia estaba activa, retornar su nombre
-      if (strategyWasActive) {
+      if (this.isStrategyActiveAtTime(strategy, tradeDate)) {
         return strategy.name || 'Unknown Strategy';
       }
     }
 
-    // Si el plugin estaba activo pero no había estrategia activa, retornar null
-    return null;
+    return null; // No había estrategia activa en ese momento
+  }
+
+  /**
+   * Verificar si una estrategia específica estaba activa en la fecha/hora exacta
+   * @param strategy - Estrategia a verificar
+   * @param tradeDate - Fecha y hora exacta del trade
+   * @returns true si la estrategia estaba activa, false si no
+   */
+  private isStrategyActiveAtTime(strategy: ConfigurationOverview, tradeDate: Date): boolean {
+    // Si la estrategia no tiene fechas de activación, no estaba activa
+    if (!strategy.dateActive || !strategy.dateInactive) {
+      return false;
+    }
+
+    const strategyActive = strategy.dateActive;
+    const strategyInactive = strategy.dateInactive;
+    const now = new Date();
+
+    // Crear rangos de actividad de la estrategia
+    const strategyRanges: { start: Date, end: Date }[] = [];
+
+    // Si strategyActive tiene más elementos que strategyInactive, está activa hasta ahora
+    if (strategyActive.length > strategyInactive.length) {
+      // Crear rangos para todos los pares completos
+      for (let i = 0; i < strategyInactive.length; i++) {
+        strategyRanges.push({
+          start: new Date(strategyActive[i]),
+          end: new Date(strategyInactive[i])
+        });
+      }
+      // El último rango activo va desde la última fecha de active hasta ahora
+      strategyRanges.push({
+        start: new Date(strategyActive[strategyActive.length - 1]),
+        end: now
+      });
+    } else {
+      // Si tienen la misma cantidad, crear rangos de fechas
+      for (let i = 0; i < strategyActive.length; i++) {
+        strategyRanges.push({
+          start: new Date(strategyActive[i]),
+          end: new Date(strategyInactive[i])
+        });
+      }
+    }
+
+    // Verificar si la estrategia estaba activa en la fecha/hora exacta del trade
+    for (const range of strategyRanges) {
+      if (tradeDate >= range.start && tradeDate <= range.end) {
+        return true; // Estrategia estaba activa en este rango
+      }
+    }
+
+    return false; // Estrategia no estaba activa
   }
 
   /**
@@ -330,6 +357,91 @@ export class CalendarComponent {
    */
   didFollowStrategy(tradeDate: Date): boolean {
     return this.getStrategyFollowedOnDate(tradeDate) !== null;
+  }
+
+  /**
+   * Obtener información detallada sobre la estrategia seguida en un trade específico
+   * @param tradeDate - Fecha y hora exacta del trade
+   * @returns objeto con información detallada sobre la estrategia seguida
+   */
+  getTradeStrategyInfo(tradeDate: Date): {
+    followedStrategy: boolean;
+    strategyName: string | null;
+    pluginActive: boolean;
+    pluginActiveRange: { start: Date, end: Date } | null;
+    strategyActiveRange: { start: Date, end: Date } | null;
+  } {
+    const pluginActiveRange = this.getPluginActiveRange(tradeDate);
+    const strategyName = this.getActiveStrategyAtTime(tradeDate);
+    
+    // Obtener el rango activo de la estrategia si existe
+    let strategyActiveRange: { start: Date, end: Date } | null = null;
+    if (strategyName && this.strategies) {
+      const strategy = this.strategies.find(s => s.name === strategyName);
+      if (strategy && strategy.dateActive && strategy.dateInactive) {
+        strategyActiveRange = this.getStrategyActiveRange(strategy, tradeDate);
+      }
+    }
+
+    return {
+      followedStrategy: strategyName !== null,
+      strategyName,
+      pluginActive: pluginActiveRange !== null,
+      pluginActiveRange,
+      strategyActiveRange
+    };
+  }
+
+  /**
+   * Obtener el rango activo de una estrategia específica en una fecha
+   * @param strategy - Estrategia a verificar
+   * @param tradeDate - Fecha del trade
+   * @returns rango activo de la estrategia o null si no estaba activa
+   */
+  private getStrategyActiveRange(strategy: ConfigurationOverview, tradeDate: Date): { start: Date, end: Date } | null {
+    if (!strategy.dateActive || !strategy.dateInactive) {
+      return null;
+    }
+
+    const strategyActive = strategy.dateActive;
+    const strategyInactive = strategy.dateInactive;
+    const now = new Date();
+
+    // Crear rangos de actividad de la estrategia
+    const strategyRanges: { start: Date, end: Date }[] = [];
+
+    // Si strategyActive tiene más elementos que strategyInactive, está activa hasta ahora
+    if (strategyActive.length > strategyInactive.length) {
+      // Crear rangos para todos los pares completos
+      for (let i = 0; i < strategyInactive.length; i++) {
+        strategyRanges.push({
+          start: new Date(strategyActive[i]),
+          end: new Date(strategyInactive[i])
+        });
+      }
+      // El último rango activo va desde la última fecha de active hasta ahora
+      strategyRanges.push({
+        start: new Date(strategyActive[strategyActive.length - 1]),
+        end: now
+      });
+    } else {
+      // Si tienen la misma cantidad, crear rangos de fechas
+      for (let i = 0; i < strategyActive.length; i++) {
+        strategyRanges.push({
+          start: new Date(strategyActive[i]),
+          end: new Date(strategyInactive[i])
+        });
+      }
+    }
+
+    // Buscar el rango que contiene la fecha del trade
+    for (const range of strategyRanges) {
+      if (tradeDate >= range.start && tradeDate <= range.end) {
+        return range;
+      }
+    }
+
+    return null;
   }
 
   generateCalendar(targetMonth: Date) {
@@ -392,8 +504,23 @@ export class CalendarComponent {
       const tradeWinPercent = tradesCount > 0 ? Math.round((wins / tradesCount) * 1000) / 10 : 0;
       
       // Determinar si se siguió la estrategia basándose en los rangos de fechas del plugin
-      const followedStrategy = tradesCount > 0 ? this.didFollowStrategy(currentDay) : false;
-      const strategyName = tradesCount > 0 ? this.getStrategyFollowedOnDate(currentDay) : null;
+      // Para cada día, verificar si ALGÚN trade siguió la estrategia
+      let followedStrategy = false;
+      let strategyName: string | null = null;
+      
+      if (tradesCount > 0) {
+        // Verificar cada trade individualmente usando su fecha/hora exacta
+        for (const trade of trades) {
+          const tradeDate = new Date(Number(trade.lastModified));
+          const tradeStrategyInfo = this.getTradeStrategyInfo(tradeDate);
+          
+          if (tradeStrategyInfo.followedStrategy) {
+            followedStrategy = true;
+            strategyName = tradeStrategyInfo.strategyName;
+            break; // Si al menos un trade siguió la estrategia, el día cuenta
+          }
+        }
+      }
 
       days.push({
         date: new Date(currentDay),
@@ -641,5 +768,81 @@ export class CalendarComponent {
     const daysInRange = this.filterDaysInRange(this.calendar.flat(), fromDate, toDate);
     
     return this.getStrategySummary(daysInRange);
+  }
+
+  /**
+   * Obtener análisis detallado de trades que siguieron estrategias
+   * @param days - Array de días del calendario
+   * @returns análisis detallado de trades y estrategias
+   */
+  getDetailedTradeAnalysis(days: CalendarDay[]): {
+    totalTrades: number;
+    tradesWithStrategy: number;
+    tradesWithoutStrategy: number;
+    strategyCompliance: number;
+    tradesByStrategy: { [strategyName: string]: number };
+    tradesWithoutPlugin: number;
+    tradesWithPluginButNoStrategy: number;
+  } {
+    let totalTrades = 0;
+    let tradesWithStrategy = 0;
+    let tradesWithoutStrategy = 0;
+    let tradesWithoutPlugin = 0;
+    let tradesWithPluginButNoStrategy = 0;
+    const tradesByStrategy: { [strategyName: string]: number } = {};
+
+    days.forEach(day => {
+      if (day.trades && day.trades.length > 0) {
+        day.trades.forEach(trade => {
+          totalTrades++;
+          const tradeDate = new Date(Number(trade.lastModified));
+          const tradeStrategyInfo = this.getTradeStrategyInfo(tradeDate);
+          
+          if (!tradeStrategyInfo.pluginActive) {
+            tradesWithoutPlugin++;
+          } else if (tradeStrategyInfo.followedStrategy) {
+            tradesWithStrategy++;
+            const strategyName = tradeStrategyInfo.strategyName || 'Unknown';
+            tradesByStrategy[strategyName] = (tradesByStrategy[strategyName] || 0) + 1;
+          } else {
+            tradesWithPluginButNoStrategy++;
+          }
+        });
+      }
+    });
+
+    tradesWithoutStrategy = tradesWithoutPlugin + tradesWithPluginButNoStrategy;
+    const strategyCompliance = totalTrades > 0 ? Math.round((tradesWithStrategy / totalTrades) * 100 * 10) / 10 : 0;
+
+    return {
+      totalTrades,
+      tradesWithStrategy,
+      tradesWithoutStrategy,
+      strategyCompliance,
+      tradesByStrategy,
+      tradesWithoutPlugin,
+      tradesWithPluginButNoStrategy
+    };
+  }
+
+  /**
+   * Obtener análisis detallado de trades para los últimos N días
+   * @param days - Número de días a analizar
+   * @returns análisis detallado de trades
+   */
+  getDetailedTradeAnalysisLastNDays(days: number): {
+    totalTrades: number;
+    tradesWithStrategy: number;
+    tradesWithoutStrategy: number;
+    strategyCompliance: number;
+    tradesByStrategy: { [strategyName: string]: number };
+    tradesWithoutPlugin: number;
+    tradesWithPluginButNoStrategy: number;
+  } {
+    const fromDate = this.getDateNDaysAgo(days - 1);
+    const toDate = new Date();
+    const daysInRange = this.filterDaysInRange(this.calendar.flat(), fromDate, toDate);
+    
+    return this.getDetailedTradeAnalysis(daysInRange);
   }
 }

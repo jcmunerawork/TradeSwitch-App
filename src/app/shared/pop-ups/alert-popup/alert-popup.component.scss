@@ -1,0 +1,145 @@
+// Alert popup styles
+.alert-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  font-family: "SF Pro Display";
+}
+
+.alert-popup-content {
+  background: #1a1a1a;
+  border-radius: 12px;
+  border: 1px solid #333;
+  max-width: 480px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.alert-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 24px 0 24px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 16px;
+}
+
+.alert-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+  
+  &.icon-error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+  }
+  
+  &.icon-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+  }
+  
+  &.icon-success {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+  }
+  
+  &.icon-info {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+  }
+}
+
+.alert-popup-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+  flex: 1;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  
+  &:hover {
+    background: #333;
+    color: #fff;
+  }
+}
+
+.alert-popup-body {
+  padding: 24px;
+}
+
+.alert-popup-message {
+  color: #d1d5db;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre-line;
+}
+
+.alert-popup-footer {
+  padding: 0 24px 24px 24px;
+}
+
+.alert-popup-button {
+  width: 100%;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  background: #3b82f6;
+  color: #fff;
+  
+  &:hover {
+    background: #2563eb;
+  }
+  
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .alert-popup-content {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .alert-popup-header, .alert-popup-body, .alert-popup-footer {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}

@@ -121,7 +121,7 @@
       } @if (myChoices && myChoices.riskReward.isActive) {
       <app-edit-risk-reward-ratio></app-edit-risk-reward-ratio>
       } @if (myChoices && myChoices.riskPerTrade.isActive) {
-      <app-edit-risk-per-trade #riskPerTradeRef></app-edit-risk-per-trade>
+      <app-edit-risk-per-trade #riskPerTradeRef [userAccounts]="accountsData"></app-edit-risk-per-trade>
       } @if (myChoices && myChoices.daysAllowed.isActive) {
       <app-edit-days-allowed #daysAllowedRef></app-edit-days-allowed>
       } @if (myChoices && myChoices.assetsAllowed.isActive) {

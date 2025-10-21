@@ -17,6 +17,7 @@ import { setUserData } from '../store/user.actions';
 import { User } from '../../overview/models/overview';
 import { UserCredentials } from '../models/userModel';
 import { AppContextService } from '../../../shared/context';
+import { AlertService } from '../../../shared/services/alert.service';
 import { ForgotPasswordPopupComponent } from '../../../shared/pop-ups/forgot-password/forgot-password.component';
 
 @Component({
@@ -42,7 +43,8 @@ export class Login {
     private authService: AuthService,
     private store: Store,
     private router: Router,
-    private appContext: AppContextService
+    private appContext: AppContextService,
+    private alertService: AlertService
   ) {
     this.loginForm = this.fb.group({
       loginEmail: ['', [Validators.required, Validators.email, this.emailValidator]],
@@ -164,7 +166,7 @@ export class Login {
 
     // Mostrar alerta si hay errores
     if (errors.length > 0) {
-      alert('Validation errors:\n\n' + errors.join('\n'));
+      this.alertService.showError('Validation errors:\n\n' + errors.join('\n'), 'Validation Error');
     }
   }
 
@@ -190,6 +192,6 @@ export class Login {
       errorMessage += 'Email or password is incorrect. Please check your credentials and try again.';
     }
     
-    alert(errorMessage);
+    this.alertService.showError(errorMessage, 'Login Error');
   }
 }

@@ -22,6 +22,8 @@ import { Subscription, SubscriptionService } from '../../../shared/services/subs
 import { setUserData } from '../store/user.actions';
 import { Store } from '@ngrx/store';
 import { AppContextService } from '../../../shared/context';
+import { StripeLoaderPopupComponent } from '../../../shared/pop-ups/stripe-loader-popup/stripe-loader-popup.component';
+import { AlertService } from '../../../shared/services/alert.service';
 
 @Component({
   selector: 'app-signup',
@@ -35,6 +37,7 @@ import { AppContextService } from '../../../shared/context';
     PasswordInputComponent,
     RouterLink,
     PlanSelectionComponent,
+    StripeLoaderPopupComponent,
   ],
   templateUrl: './signup.html',
   styleUrl: './signup.scss',
@@ -48,6 +51,12 @@ export class SignupComponent implements OnInit {
   userData: any = null;
   selectedPlan: PlanCard | null = null;
   currentUserId: string = '';
+  
+  // Estados para loader y error de Stripe
+  showStripeLoader = false;
+  showStripeError = false;
+  stripeErrorMessage = '';
+  
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
@@ -55,7 +64,8 @@ export class SignupComponent implements OnInit {
     private planService: PlanService,
     private subscriptionService: SubscriptionService,
     private store: Store,
-    private appContext: AppContextService
+    private appContext: AppContextService,
+    private alertService: AlertService
   ) {
     this.signupForm = this.fb.group({
       firstName: ['', [Validators.required, Validators.minLength(2)]],
@@ -103,7 +113,7 @@ export class SignupComponent implements OnInit {
         const existingUser = await this.authService.getUserByEmail(userCredentials.email);
         
         if (existingUser) {
-          alert('This email is already registered. Please use a different email or try logging in.');
+          this.alertService.showError('This email is already registered. Please use a different email or try logging in.', 'Email Already Registered');
           this.appContext.setLoading('user', false);
           return;
         }
@@ -136,9 +146,6 @@ export class SignupComponent implements OnInit {
         };
 
         await this.subscriptionService.createSubscription(userId, freeSubscriptionData);
-        
-        console.log('✅ User created successfully with free plan');
-
         // Iniciar sesión automáticamente
         const loginResponse = await this.authService.login(userCredentials);
         const userData = await this.authService.getUserData(loginResponse.user.uid);
@@ -160,7 +167,6 @@ export class SignupComponent implements OnInit {
         
         // Si es admin, ir directo al dashboard
         if (userData.isAdmin) {
-          alert('Registration completed successfully! Welcome Admin.');
           this.router.navigate(['/overview']);
         } else {
           // Usuario normal: mostrar selección de planes
@@ -168,12 +174,11 @@ export class SignupComponent implements OnInit {
         }
         
       } catch (error: any) {
-        console.error('❌ Error in registration:', error);
         this.appContext.setLoading('user', false);
         this.appContext.setError('user', 'Error during registration');
         
         const errorMessage = error.message || 'An error occurred during registration. Please try again.';
-        alert(errorMessage);
+        this.alertService.showError(errorMessage, 'Registration Error');
         
         this.handleRegistrationError(error);
       }
@@ -336,31 +341,56 @@ export class SignupComponent implements OnInit {
 
     // Mostrar alerta con todos los errores
     if (errors.length > 0) {
-      alert('Validation errors:\n\n' + errors.join('\n'));
+      this.alertService.showError('Validation errors:\n\n' + errors.join('\n'), 'Validation Error');
     }
 
     this.markFormGroupTouched();
   }
 
   async onPlanSelected(plan: PlanCard): Promise<void> {
+    this.selectedPlan = plan;
+    
+    // Si selecciona el plan Free, redirigir al dashboard (sin loader ni pop-ups de Stripe)
+    if (plan.name.toLowerCase() === 'free') {
+      this.router.navigate(['/strategy']);
+      return;
+    }
+    
+    // Solo para planes de pago: mostrar loader y manejar errores de Stripe
     try {
-      this.selectedPlan = plan;
+      this.showStripeLoader = true;
       
-      // Si selecciona el plan Free, redirigir al dashboard
-      if (plan.name.toLowerCase() === 'free') {
-        console.log('✅ Free plan selected, redirecting to dashboard');
-        this.router.navigate(['/strategy']);
-        return;
+      // Variable para controlar si hay error
+      let hasError = false;
+      let errorMessage = '';
+      
+      try {
+        await this.createCheckoutSession(plan.name);
+      } catch (error) {
+        // Marcar que hay error pero no mostrar pop-up aún
+        hasError = true;
+        errorMessage = 'Error redirecting to payment. Please try again.';
+        console.error('Error during checkout session creation:', error);
       }
       
-      // Si selecciona otro plan, crear checkout session
-      console.log(`💳 ${plan.name} plan selected, creating checkout session`);
-      await this.createCheckoutSession(plan.name);
+      // Esperar mínimo 2 segundos antes de mostrar error o ocultar loader
+      setTimeout(() => {
+        if (hasError) {
+          // Si hay error, mostrar pop-up de error
+          this.showStripeLoader = false;
+          this.showStripeError = true;
+          this.stripeErrorMessage = errorMessage;
+        } else {
+          // Si no hay error, el loader se ocultará automáticamente por la redirección
+          this.showStripeLoader = false;
+        }
+      }, 2000);
       
     } catch (error: any) {
       console.error('❌ Error in plan selection:', error);
-      alert('Error processing your plan selection. Please try again.');
-      this.showPlanSelection = true;
+      this.showStripeLoader = false;
+      this.showStripeError = true;
+      this.stripeErrorMessage = 'Error processing your plan selection. Please try again.';
     }
   }
 
@@ -400,8 +430,6 @@ export class SignupComponent implements OnInit {
       if (!checkoutUrl) {
         throw new Error('Checkout URL not found in response');
       }
-
-      console.log('✅ Checkout session created, redirecting to Stripe');
       
       // Redirigir a la página de checkout de Stripe
       window.location.href = checkoutUrl;
@@ -414,6 +442,13 @@ export class SignupComponent implements OnInit {
 
   onGoBackToSignup(): void {
     this.showPlanSelection = false;
+  }
+
+  // Método para cerrar el pop-up de error de Stripe
+  closeStripeError(): void {
+    this.showStripeError = false;
+    this.stripeErrorMessage = '';
+    this.showPlanSelection = true; // Volver a mostrar la selección de planes
   }
 
   private handleRegistrationError(error: any): void {

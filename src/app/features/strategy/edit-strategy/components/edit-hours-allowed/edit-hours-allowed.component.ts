@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { AlertService } from '../../../../../shared/services/alert.service';
 import { Store } from '@ngrx/store';
 import { SettingsService } from '../../../service/strategy.service';
 import {
@@ -76,7 +77,7 @@ export class EditHoursAllowedComponent implements OnInit {
     { value: 'America/Vancouver', label: 'Vancouver (GMT-08:00)' }
   ];
 
-  constructor(private store: Store, private settingsService: SettingsService) {}
+  constructor(private store: Store, private settingsService: SettingsService, private alertService: AlertService) {}
 
   ngOnInit(): void {
     this.listenRuleConfiguration();
@@ -123,13 +124,11 @@ export class EditHoursAllowedComponent implements OnInit {
       const closeMinutes = this.toMinutes(tempConfig.tradingCloseTime);
       
       if (openMinutes >= closeMinutes) {
-        alert('Opening time must be earlier than closing time.');
+        this.alertService.showWarning('Opening time must be earlier than closing time.', 'Invalid Time Range');
         return;
       }
       if (closeMinutes - openMinutes < 30) {
-        alert(
-          'There must be at least a 30-minute difference between opening and closing times.'
-        );
+        this.alertService.showWarning('There must be at least a 30-minute difference between opening and closing times.', 'Minimum Time Difference');
         return;
       }
     }

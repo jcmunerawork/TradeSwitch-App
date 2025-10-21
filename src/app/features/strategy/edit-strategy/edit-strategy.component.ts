@@ -28,6 +28,7 @@ import { EditHoursAllowedComponent } from './components/edit-hours-allowed/edit-
 import { AuthService } from '../../auth/service/authService';
 import { AccountData } from '../../auth/models/userModel';
 import { PluginHistoryService, PluginHistory } from '../../../shared/services/plugin-history.service';
+import { AlertService } from '../../../shared/services/alert.service';
 import { Instrument } from '../../report/models/report.model';
 import { StrategyCacheService } from '../services/strategy-cache.service';
 import { BalanceCacheService } from '../services/balance-cache.service';
@@ -93,7 +94,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private pluginHistoryService: PluginHistoryService,
     private strategyCacheService: StrategyCacheService,
-    private balanceCacheService: BalanceCacheService
+    private balanceCacheService: BalanceCacheService,
+    private alertService: AlertService
   ) {
     this.config$ = this.store.select(allRules);
   }
@@ -300,14 +302,32 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
    * Inicializar con configuración y balance específicos
    */
   initializeWithConfigAndBalance(configuration: StrategyState, balance: number) {
-    // Actualizar balance en riskPerTrade
-    const configWithBalance = {
-      ...configuration,
-      riskPerTrade: {
-        ...configuration.riskPerTrade,
-        balance: balance
-      }
-    };
+    // Solo actualizar balance si es para balance actual (ACTUAL_B)
+    // Para balance inicial (INITIAL_B), mantener el valor de Firebase
+    let configWithBalance = { ...configuration };
+    
+    if (configuration.riskPerTrade.percentage_type === 'ACTUAL_B') {
+      // Para balance actual, usar el balance del cache
+      configWithBalance = {
+        ...configuration,
+        riskPerTrade: {
+          ...configuration.riskPerTrade,
+          actualBalance: balance
+        }
+      };
+    } else if (configuration.riskPerTrade.percentage_type === 'INITIAL_B') {
+      // Para balance inicial, mantener el valor de Firebase (no modificar)
+      configWithBalance = configuration;
+    } else {
+      // Para otros casos, usar el balance del cache
+      configWithBalance = {
+        ...configuration,
+        riskPerTrade: {
+          ...configuration.riskPerTrade,
+          balance: balance
+        }
+      };
+    }
 
     // Cargar en el store
     this.store.dispatch(resetConfig({ config: configWithBalance }));
@@ -647,7 +667,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   saveStrategy() {
     // Verificar si se puede guardar (plugin no activo)
     if (!this.canSaveStrategy()) {
-      alert('Cannot save strategy while plugin is active. Please deactivate the plugin first.');
+      this.alertService.showWarning('Cannot save strategy while plugin is active. Please deactivate the plugin first.', 'Plugin Active');
       return;
     }
 
@@ -701,7 +721,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           })
           .catch((err) => {
             console.error('Update Error:', err);
-            alert('Error Updating Strategy');
+            this.alertService.showError('Error Updating Strategy', 'Update Error');
           })
           .finally(() => {
             this.loading = false;
@@ -719,7 +739,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           })
           .catch((err) => {
             console.error('Create Error:', err);
-            alert('Error Creating Strategy');
+            this.alertService.showError('Error Creating Strategy', 'Creation Error');
           })
           .finally(() => {
             this.loading = false;
@@ -803,7 +823,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       const errorMessage = 'Cannot save strategy. Please complete the following rules:\n\n' + 
                           validationErrors.join('\n') + 
                           '\n\nAll required fields must be filled before saving.';
-      alert(errorMessage);
+      this.alertService.showError(errorMessage, 'Validation Error');
       return false;
     }
 
@@ -854,7 +874,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       this.isEditingName = false;
     } catch (error) {
       console.error('Error updating strategy name:', error);
-      alert('Error updating strategy name');
+      this.alertService.showError('Error updating strategy name', 'Name Update Error');
       this.cancelEditName();
     }
   }
@@ -885,7 +905,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   resetStrategy() {
     // Verificar si se puede resetear (plugin no activo)
     if (!this.canSaveStrategy()) {
-      alert('Cannot reset strategy while plugin is active. Please deactivate the plugin first.');
+      this.alertService.showWarning('Cannot reset strategy while plugin is active. Please deactivate the plugin first.', 'Plugin Active');
       return;
     }
 

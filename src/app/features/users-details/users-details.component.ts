@@ -10,6 +10,7 @@ import { Timestamp } from 'firebase/firestore';
 import { UserModalComponent } from './components/user-modal/user-modal.component';
 import { AuthService } from '../auth/service/authService';
 import { AppContextService } from '../../shared/context';
+import { AlertService } from '../../shared/services/alert.service';
 
 @Component({
   selector: 'app-users-details',
@@ -31,7 +32,8 @@ export class UsersDetails {
     private store: Store,
     private userManagementService: UserManagementService,
     private userSvc: AuthService,
-    private appContext: AppContextService
+    private appContext: AppContextService,
+    private alertService: AlertService
   ) {}
 
   loading = false;
@@ -92,7 +94,7 @@ export class UsersDetails {
         status: UserStatus.BANNED,
       });
     } else {
-      alert('Use the firstName as Username to ban the user');
+      this.alertService.showInfo('Use the firstName as Username to ban the user', 'Ban User');
     }
   }
 
@@ -103,7 +105,7 @@ export class UsersDetails {
         status: UserStatus.PURCHASED,
       });
     } else {
-      alert('Use the firstName as Username to unban the user');
+      this.alertService.showInfo('Use the firstName as Username to unban the user', 'Unban User');
     }
   }
 

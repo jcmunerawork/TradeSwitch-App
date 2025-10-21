@@ -250,3 +250,139 @@
     position: fixed;
   }
 }
+
+// Estilos para el popup de error de Stripe
+.cancel-plan-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "SF Pro Display";
+  
+  .popup-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+  }
+  
+  .popup-content {
+    position: relative;
+    background: #1a1a1a;
+    border-radius: 12px;
+    border: 1px solid #333;
+    max-width: 480px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  .popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 24px 0 24px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 16px;
+    
+    .popup-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #fff;
+      margin: 0;
+    }
+    
+    .close-btn {
+      background: none;
+      border: none;
+      color: #999;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        background: #333;
+        color: #fff;
+      }
+    }
+  }
+  
+  .popup-body {
+    padding: 24px;
+    text-align: center;
+    
+    .warning-icon {
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: center;
+    }
+    
+    .warning-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      margin: 0 0 12px 0;
+    }
+    
+    .warning-text {
+      color: #999;
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 0 0 20px 0;
+    }
+  }
+  
+  .popup-footer {
+    display: flex;
+    gap: 12px;
+    padding: 0 24px 24px 24px;
+    
+    .btn-confirm {
+      flex: 1;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+      background: #dc2626;
+      color: #fff;
+      
+      &:hover {
+        background: #b91c1c;
+      }
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .cancel-plan-popup {
+    .popup-content {
+      width: 95%;
+      margin: 20px;
+    }
+    
+    .popup-header, .popup-body, .popup-footer {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+  }
+}

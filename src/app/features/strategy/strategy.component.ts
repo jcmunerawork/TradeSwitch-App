@@ -26,6 +26,7 @@ import { PlanLimitationsGuard } from '../../guards/plan-limitations.guard';
 import { AppContextService } from '../../shared/context';
 import { StrategyCacheService } from './services/strategy-cache.service';
 import { BalanceCacheService } from './services/balance-cache.service';
+import { AlertService } from '../../shared/services/alert.service';
 
 
 @Component({
@@ -113,7 +114,8 @@ export class Strategy implements OnInit, OnDestroy {
     private planLimitationsGuard: PlanLimitationsGuard,
     private appContext: AppContextService,
     private strategyCacheService: StrategyCacheService,
-    private balanceCacheService: BalanceCacheService
+    private balanceCacheService: BalanceCacheService,
+    private alertService: AlertService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -590,7 +592,7 @@ export class Strategy implements OnInit, OnDestroy {
     if (strategyId) {
       this.router.navigate(['/edit-strategy'], { queryParams: { strategyId: strategyId } });
     } else {
-      alert('No strategy found. Please create a strategy first.');
+      this.alertService.showWarning('No strategy found. Please create a strategy first.', 'No Strategy Found');
     }
   }
 
@@ -941,7 +943,7 @@ export class Strategy implements OnInit, OnDestroy {
       
     } catch (error) {
       console.error('Error creating generic strategy:', error);
-      alert('Error creating strategy. Please try again.');
+      this.alertService.showError('Error creating strategy. Please try again.', 'Strategy Creation Error');
     }
   }
 
@@ -984,7 +986,7 @@ export class Strategy implements OnInit, OnDestroy {
       this.loadConfig(balance);
     } catch (error) {
       console.error('Error activating strategy:', error);
-      alert('Error activating strategy. Please try again.');
+      this.alertService.showError('Error activating strategy. Please try again.', 'Strategy Activation Error');
     } finally {
       // Ocultar loading al finalizar
       this.isProcessingStrategy = false;
@@ -1036,7 +1038,7 @@ export class Strategy implements OnInit, OnDestroy {
         }
       }
     } catch (error) {
-      alert('Error marking strategy as deleted. Please try again.');
+      this.alertService.showError('Error marking strategy as deleted. Please try again.', 'Strategy Deletion Error');
     } finally {
       // Ocultar loading al finalizar
       this.isProcessingStrategy = false;
@@ -1053,7 +1055,7 @@ export class Strategy implements OnInit, OnDestroy {
   // Actualizar nombre de estrategia
   async updateStrategyName(strategyId: string, newName: string) {
     if (!newName.trim()) {
-      alert('Please enter a valid strategy name');
+      this.alertService.showWarning('Please enter a valid strategy name', 'Invalid Strategy Name');
       return;
     }
 
@@ -1063,7 +1065,7 @@ export class Strategy implements OnInit, OnDestroy {
       // Invalidar cache y recargar estrategias
       await this.invalidateCacheAndReload();
     } catch (error) {
-      alert('Error updating strategy name. Please try again.');
+      this.alertService.showError('Error updating strategy name. Please try again.', 'Strategy Name Update Error');
     }
   }
 
@@ -1215,7 +1217,7 @@ export class Strategy implements OnInit, OnDestroy {
         if (isProPlanWithMaxStrategies) {
           // Para plan Pro con 8 estrategias: desactivar botón y mostrar mensaje
           this.isAddStrategyDisabled = true;
-          alert('You have reached the maximum number of strategies (8) for your Pro plan.');
+          this.alertService.showWarning('You have reached the maximum number of strategies (8) for your Pro plan.', 'Strategy Limit Reached');
           return;
         } else {
           // Para otros planes: redirigir a la página de cuenta
@@ -1283,7 +1285,7 @@ export class Strategy implements OnInit, OnDestroy {
       }
       
     } catch (error) {
-      alert('Error copying strategy. Please try again.');
+      this.alertService.showError('Error copying strategy. Please try again.', 'Strategy Copy Error');
     } finally {
       // Ocultar loading al finalizar
       this.isProcessingStrategy = false;

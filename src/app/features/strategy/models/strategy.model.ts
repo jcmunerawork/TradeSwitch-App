@@ -42,7 +42,7 @@ export interface RiskPerTradeConfig {
   percentage_type: "INITIAL_B" | "ACTUAL_B" | "NULL";
   risk_ammount: number;
   balance: number;
-  actualBalance?: number;
+  actualBalance?: any;
   type: RuleType;
 }
 export interface HoursAllowedConfig {

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, HostListener, OnInit, ViewChild, ElementRef, Input } from '@angular/core';
 import { take } from 'rxjs/operators';
 import {
   MaxDailyTradesConfig,
@@ -29,6 +29,8 @@ import { NumberFormatterService } from '../../../../../shared/utils/number-forma
   standalone: true,
 })
 export class EditRiskPerTradeComponent implements OnInit {
+  @Input() userAccounts: AccountData[] = [];
+  
   config: RiskPerTradeConfig = {
     isActive: false,
     review_type: 'MAX',
@@ -48,8 +50,7 @@ export class EditRiskPerTradeComponent implements OnInit {
   // Valores del balance actual (se obtiene del servicio)
   actualBalance: number = 0;
   initialBalance: number = 0;
-  // Cuentas del usuario y balances por cuenta
-  userAccounts: AccountData[] = [];
+  // Balances por cuenta
   accountActualBalances: Record<string, number> = {};
   selectedAccount: AccountData | null = null;
   
@@ -85,6 +86,10 @@ export class EditRiskPerTradeComponent implements OnInit {
 
   // Rastrear el estado inicial de Firebase
   private initialFirebaseState: boolean | null = null;
+  
+  // Control de peticiones para evitar llamadas infinitas
+  private accountLoadAttempts: number = 0;
+  private maxAccountLoadAttempts: number = 2;
 
   // Referencia al dropdown de cuenta
   @ViewChild('accountSelect') accountSelect?: ElementRef<HTMLSelectElement>;
@@ -106,7 +111,24 @@ export class EditRiskPerTradeComponent implements OnInit {
     // Capturar el estado inicial ANTES de suscribirse al observable
     this.captureInitialFirebaseState();
     this.listenRuleConfiguration();
+    
+    // Inicializar cuentas si vienen como input
+    this.initializeUserAccounts();
   }
+
+  /**
+   * Inicializar cuentas del usuario desde el input
+   */
+  private initializeUserAccounts(): void {
+    if (this.userAccounts && this.userAccounts.length > 0) {
+      // Las cuentas ya vienen cargadas desde el componente padre
+      console.log('User accounts loaded from parent:', this.userAccounts);
+    } else {
+      // Si no hay cuentas, cargar desde el servicio (fallback)
+      this.loadUserAccounts();
+    }
+  }
+
 
   /**
    * Capturar el estado inicial de Firebase desde el store actual
@@ -216,10 +238,16 @@ export class EditRiskPerTradeComponent implements OnInit {
     
     // Solo cargar el balance actual cuando el usuario seleccione "by actual balance"
     if (type === 'by actual balance') {
-      this.loadUserAccounts().then(() => this.loadActualBalancesForAccounts());
+      if (this.userAccounts.length > 0) {
+        this.loadActualBalancesForAccounts();
+      } else {
+        this.loadUserAccounts().then(() => this.loadActualBalancesForAccounts());
+      }
     } else {
-      // by initial balance -> solo necesitamos las cuentas desde Firebase
-      this.loadUserAccounts();
+      // by initial balance -> las cuentas ya están disponibles desde el input
+      if (this.userAccounts.length === 0) {
+        this.loadUserAccounts();
+      }
     }
     
     this.saveConfiguration();
@@ -272,6 +300,15 @@ export class EditRiskPerTradeComponent implements OnInit {
   onSelectAccount(event: Event) {
     const accountID = (event.target as HTMLSelectElement).value;
     this.selectedAccount = this.userAccounts.find(a => a.accountID === accountID) || null;
+    
+    // Asegurar que se tengan los tipos necesarios para mostrar el input de porcentaje
+    if (!this.selectedSizeType) {
+      this.selectedSizeType = 'max-size'; // Valor por defecto
+    }
+    if (!this.selectedCalculationType) {
+      this.selectedCalculationType = 'by percentage'; // Valor por defecto
+    }
+    
     // Ajustar balances visibles según selección
     if (this.selectedBalanceType === 'by initial balance') {
       this.initialBalance = this.selectedAccount?.initialBalance || 0;
@@ -512,6 +549,9 @@ export class EditRiskPerTradeComponent implements OnInit {
       .subscribe((config) => {
         this.config = config;
         
+        // Resetear contador de intentos cuando se carga una nueva configuración
+        this.accountLoadAttempts = 0;
+        
         // El estado inicial ya fue capturado en ngOnInit, solo procesar la lógica
         
         if (config.isActive) {
@@ -561,12 +601,17 @@ export class EditRiskPerTradeComponent implements OnInit {
                 this.priceInputValue = this.displayPriceValue;
               }
             }
-            
+
             // Cargar balance y seleccionar cuenta según el tipo
             if (config.percentage_type === 'INITIAL_B' && config.balance && config.balance > 0) {
+              // Configurar el tipo de balance y cálculo para balance inicial
+              this.selectedBalanceType = 'by initial balance';
+              this.selectedCalculationType = 'by percentage';
+              
               // Cargar balance inicial y seleccionar la cuenta correspondiente
               this.initialBalance = config.balance;
               this.initialBalanceValue = config.balance;
+
               this.displayInitialBalanceValue = config.balance.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
@@ -574,63 +619,177 @@ export class EditRiskPerTradeComponent implements OnInit {
               this.isInitialBalanceConfirmed = true;
               this.isInitialBalanceEditing = false;
               
-              // Cargar cuentas y seleccionar la que coincida con el balance
-              this.loadUserAccounts().then(() => {
-                this.selectedAccount = this.userAccounts.find(account => 
-                  account.initialBalance === config.balance
-                ) || null;
+              // Usar cuentas disponibles o cargarlas si es necesario
+              if (this.userAccounts.length > 0) {
                 
-                // Seleccionar automáticamente en el dropdown
-                if (this.selectedAccount && this.accountSelect) {
+                // Buscar la cuenta que coincida con el balance inicial
+                const matchingAccount = this.userAccounts.find((account) => {
+                  // Asegurar que ambos valores sean números
+                  const accountBalance = Number(account.initialBalance) || 0;
+                  const configBalance = Number(config.balance) || 0;
+                  const difference = Math.abs(accountBalance - configBalance);
+                  return difference < 0.01; // Tolerancia para decimales
+                });
+                
+                if (matchingAccount) {
+                  this.selectedAccount = matchingAccount;
+                  // Seleccionar en el dropdown
                   setTimeout(() => {
-                    const selectElement = this.accountSelect!.nativeElement;
-                    const optionIndex = this.userAccounts.findIndex(account => 
-                      account.accountID === this.selectedAccount!.accountID
-                    );
-                    if (optionIndex !== -1) {
-                      selectElement.selectedIndex = optionIndex + 1; // +1 porque el primer option es el placeholder
-                    }
-                    // Validar después de seleccionar automáticamente
-                    this.validateConfig(this.config);
-                  }, 100);
-                } else {
-                  // Si no hay cuenta seleccionada, validar inmediatamente
-                  this.validateConfig(this.config);
-                }
-              });
-              
-            } else if (config.percentage_type === 'ACTUAL_B' && config.actualBalance && config.actualBalance > 0) {
-              // Cargar balance actual y seleccionar la cuenta correspondiente
-              this.actualBalance = config.actualBalance;
-              
-              // Cargar cuentas y balances actuales, luego seleccionar la cuenta correcta
-              this.loadUserAccounts().then(() => {
-                this.loadActualBalancesForAccounts().then(() => {
-                  // Buscar la cuenta que tenga el balance actual que coincida
-                  this.selectedAccount = this.userAccounts.find(account => {
-                    const accountBalance = this.accountActualBalances[account.accountID];
-                    return Math.abs(accountBalance - config.actualBalance!) < 0.01; // Tolerancia para decimales
-                  }) || null;
-                  
-                  // Seleccionar automáticamente en el dropdown
-                  if (this.selectedAccount && this.accountSelect) {
-                    setTimeout(() => {
-                      const selectElement = this.accountSelect!.nativeElement;
+                    if (this.accountSelect) {
+                      const selectElement = this.accountSelect.nativeElement;
                       const optionIndex = this.userAccounts.findIndex(account => 
-                        account.accountID === this.selectedAccount!.accountID
+                        account.accountID === matchingAccount.accountID
                       );
                       if (optionIndex !== -1) {
-                        selectElement.selectedIndex = optionIndex + 1; // +1 porque el primer option es el placeholder
+                        selectElement.selectedIndex = optionIndex + 1;
                       }
-                      // Validar después de seleccionar automáticamente
-                      this.validateConfig(this.config);
+                    }
+                  }, 100);
+                } else {
+                  this.selectedAccount = null;
+                  this.isValid = false;
+                  this.errorMessage = 'Please complete this rule. The saved balance does not match any available account.';
+                }
+              } else {
+                // Controlar intentos de carga para evitar peticiones infinitas
+                if (this.accountLoadAttempts < this.maxAccountLoadAttempts) {
+                  this.accountLoadAttempts++;
+                  this.loadUserAccounts().then(() => {
+                    // Buscar la cuenta que coincida con el balance inicial
+                    const matchingAccount = this.userAccounts.find((account) => {
+                      // Asegurar que ambos valores sean números
+                      const accountBalance = Number(account.initialBalance) || 0;
+                      const configBalance = Number(config.balance) || 0;
+                      const difference = Math.abs(accountBalance - configBalance);
+                      return difference < 0.01; // Tolerancia para decimales
+                    });
+                    
+                    if (matchingAccount) {
+                      this.selectedAccount = matchingAccount;
+                      // Seleccionar en el dropdown
+                      setTimeout(() => {
+                        if (this.accountSelect) {
+                          const selectElement = this.accountSelect.nativeElement;
+                          const optionIndex = this.userAccounts.findIndex(account => 
+                            account.accountID === matchingAccount.accountID
+                          );
+                          if (optionIndex !== -1) {
+                            selectElement.selectedIndex = optionIndex + 1; // +1 porque el primer option es el placeholder
+                          }
+                        }
+                      }, 100);
+                    } else {
+                      this.selectedAccount = null;
+                      this.isValid = false;
+                      this.errorMessage = 'Please complete this rule. The saved balance does not match any available account.';
+                    }
+                  }).catch(() => {
+                    // Si falla la carga, mostrar error
+                    this.selectedAccount = null;
+                    this.isValid = false;
+                    this.errorMessage = 'Error loading accounts. Please try again.';
+                  });
+                } else {
+                  // Máximo de intentos alcanzado, mostrar error
+                  this.selectedAccount = null;
+                  this.isValid = false;
+                  this.errorMessage = 'Please complete this rule. The saved balance does not match any available account.';
+                }
+              }
+              
+            } else if (config.percentage_type === 'ACTUAL_B' && config.actualBalance.balance && config.actualBalance.balance > 0) {
+              // Configurar el tipo de balance y cálculo para balance actual
+              this.selectedBalanceType = 'by actual balance';
+              this.selectedCalculationType = 'by percentage';
+              
+              // Cargar balance actual y seleccionar la cuenta correspondiente
+              this.actualBalance = config.actualBalance.balance || 0;
+              
+              // Usar cuentas disponibles o cargarlas si es necesario
+              if (this.userAccounts.length > 0) {
+                this.loadActualBalancesForAccounts().then(() => {
+                  // Buscar la cuenta que tenga el balance actual que coincida
+                  const matchingAccount = this.userAccounts.find(account => {
+                    // Asegurar que ambos valores sean números
+                    const accountBalance = Number(this.accountActualBalances[account.accountID]) || 0;
+                    const configBalance = Number(config.actualBalance.balance) || 0;
+                    const difference = Math.abs(accountBalance - configBalance);
+                    return difference < 0.01; // Tolerancia para decimales
+                  });
+                  
+                  if (matchingAccount) {
+                    this.selectedAccount = matchingAccount;
+                    // Seleccionar en el dropdown
+                    setTimeout(() => {
+                      if (this.accountSelect) {
+                        const selectElement = this.accountSelect.nativeElement;
+                        const optionIndex = this.userAccounts.findIndex(account => 
+                          account.accountID === matchingAccount.accountID
+                        );
+                        if (optionIndex !== -1) {
+                          selectElement.selectedIndex = optionIndex + 1; // +1 porque el primer option es el placeholder
+                        }
+                      }
                     }, 100);
                   } else {
-                    // Si no hay cuenta seleccionada, validar inmediatamente
-                    this.validateConfig(this.config);
+                    this.selectedAccount = null;
+                    this.isValid = false;
+                    this.errorMessage = 'Please complete this rule. The saved balance does not match any available account.';
                   }
                 });
-              });
+              } else {
+                // Controlar intentos de carga para evitar peticiones infinitas
+                if (this.accountLoadAttempts < this.maxAccountLoadAttempts) {
+                  this.accountLoadAttempts++;
+                  this.loadUserAccounts().then(() => {
+                    this.loadActualBalancesForAccounts().then(() => {
+                      // Buscar la cuenta que tenga el balance actual que coincida
+                      const matchingAccount = this.userAccounts.find(account => {
+                        // Asegurar que ambos valores sean números
+                        const accountBalance = Number(this.accountActualBalances[account.accountID]) || 0;
+                        const configBalance = Number(config.actualBalance.balance) || 0;
+                        const difference = Math.abs(accountBalance - configBalance);
+                        return difference < 0.01; // Tolerancia para decimales
+                      });
+                      
+                      if (matchingAccount) {
+                        this.selectedAccount = matchingAccount;
+                        // Seleccionar en el dropdown
+                        setTimeout(() => {
+                          if (this.accountSelect) {
+                            const selectElement = this.accountSelect.nativeElement;
+                            const optionIndex = this.userAccounts.findIndex(account => 
+                              account.accountID === matchingAccount.accountID
+                            );
+                            if (optionIndex !== -1) {
+                              selectElement.selectedIndex = optionIndex + 1; // +1 porque el primer option es el placeholder
+                            }
+                          }
+                        }, 100);
+                      } else {
+                        this.selectedAccount = null;
+                        this.isValid = false;
+                        this.errorMessage = 'Please complete this rule. The saved balance does not match any available account.';
+                      }
+                    }).catch(() => {
+                      // Si falla la carga de balances, mostrar error
+                      this.selectedAccount = null;
+                      this.isValid = false;
+                      this.errorMessage = 'Error loading account balances. Please try again.';
+                    });
+                  }).catch(() => {
+                    // Si falla la carga de cuentas, mostrar error
+                    this.selectedAccount = null;
+                    this.isValid = false;
+                    this.errorMessage = 'Error loading accounts. Please try again.';
+                  });
+                } else {
+                  // Máximo de intentos alcanzado, mostrar error
+                  this.selectedAccount = null;
+                  this.isValid = false;
+                  this.errorMessage = 'Please complete this rule. The saved balance does not match any available account.';
+                }
+              }
             }
           }
           

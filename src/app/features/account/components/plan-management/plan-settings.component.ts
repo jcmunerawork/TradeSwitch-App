@@ -17,10 +17,11 @@ import { OrderSummaryComponent } from '../../../../shared/components/order-summa
 import { UserStatus } from '../../../overview/models/overview';
 import { AppContextService } from '../../../../shared/context/context';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
+import { StripeLoaderPopupComponent } from '../../../../shared/pop-ups/stripe-loader-popup/stripe-loader-popup.component';
 
 @Component({
   selector: 'app-plan-settings',
-  imports: [CommonModule, LoadingSpinnerComponent /*SubscriptionProcessingComponent OrderSummaryComponent*/],
+  imports: [CommonModule, LoadingSpinnerComponent, StripeLoaderPopupComponent /*SubscriptionProcessingComponent OrderSummaryComponent*/],
   templateUrl: './plan-settings.component.html',
   styleUrl: './plan-settings.component.scss',
   standalone: true,
@@ -60,6 +61,12 @@ export class PlanSettingsComponent implements OnInit {
     accountsToDelete: number;
     strategiesToDelete: number;
   } | null = null;
+
+  // Estados para pop-up de carga y error de redirección
+  showRedirectLoading = false;
+  showRedirectError = false;
+  redirectErrorMessage = '';
+  private windowCheckInterval: any = null;
 
   // Inyectar servicios
   private subscriptionService = inject(SubscriptionService);
@@ -330,17 +337,56 @@ export class PlanSettingsComponent implements OnInit {
 
       // Verificar si el plan actual es FREE
       const isCurrentPlanFree = this.userPlan?.name.toLowerCase() === 'free';
+      const isTargetPlanFree = plan.name.toLowerCase() === 'free';
       
-      if (isCurrentPlanFree) {
-        // Si el plan actual es FREE y hace click en otro plan → crear checkout session
-        await this.createCheckoutSession(plan.name);
-      } else {
-        // Si el plan actual NO es FREE → abrir portal de Stripe
-        await this.openStripePortal();
+      // Si el plan actual es FREE y el plan de destino también es FREE, no hacer nada
+      if (isCurrentPlanFree && isTargetPlanFree) {
+        return; // No hacer nada si ambos son Free
       }
+      
+      // Si llegamos aquí, significa que puede hacer el cambio de plan
+      // Mostrar pop-up de carga solo para planes de pago
+      this.showRedirectLoading = true;
+      
+      // Variable para controlar si hay error
+      let hasError = false;
+      let errorMessage = '';
+      
+      try {
+        if (isCurrentPlanFree) {
+          // Si el plan actual es FREE y hace click en otro plan → crear checkout session
+          await this.createCheckoutSession(plan.name);
+        } else {
+          // Si el plan actual NO es FREE → abrir portal de Stripe
+          await this.openStripePortal();
+        }
+      } catch (error) {
+        // Marcar que hay error pero no mostrar pop-up aún
+        hasError = true;
+        errorMessage = 'Error redirecting to payment. Please try again.';
+        console.error('Error during plan change:', error);
+      }
+      
+      // Esperar mínimo 2 segundos antes de mostrar error o ocultar loader
+      setTimeout(() => {
+        if (hasError) {
+          // Si hay error, mostrar pop-up de error
+          this.showRedirectLoading = false;
+          this.showRedirectError = true;
+          this.redirectErrorMessage = errorMessage;
+          
+          // Limpiar intervalo si existe
+          if (this.windowCheckInterval) {
+            clearInterval(this.windowCheckInterval);
+            this.windowCheckInterval = null;
+          }
+        }
+        // Si no hay error, el loader se ocultará automáticamente cuando se cierre la ventana
+      }, 2000);
     } catch (error) {
       console.error('Error processing plan change:', error);
-      alert('Error processing your request. Please try again.');
+      // Eliminar el alert y manejar el error de forma más elegante
+      console.error('Error processing your request. Please try again.');
     }
   }
 
@@ -385,6 +431,7 @@ export class PlanSettingsComponent implements OnInit {
       
     } catch (error) {
       console.error('Error creating checkout session:', error);
+      // No ocultar el loader aquí, dejar que el timeout de 2 segundos lo maneje
       throw error;
     }
   }
@@ -415,9 +462,34 @@ export class PlanSettingsComponent implements OnInit {
         throw new Error('Portal session URL not found in response');
       }
 
-      window.open(portalSessionUrl, '_blank');
+      // Abrir portal en nueva ventana
+      const newWindow = window.open(portalSessionUrl, '_blank');
+      
+      // Verificar si la ventana se abrió correctamente
+      if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+        throw new Error('Failed to open Stripe portal. Please check your pop-up blocker.');
+      }
+
+      // Verificar periódicamente si la ventana sigue abierta
+      this.windowCheckInterval = setInterval(() => {
+        if (newWindow.closed) {
+          // La ventana se cerró, ocultar loading
+          clearInterval(this.windowCheckInterval);
+          this.showRedirectLoading = false;
+        }
+      }, 500);
+
+      // Timeout de seguridad: si después de 10 segundos no se ha cerrado la ventana, ocultar loading
+      setTimeout(() => {
+        if (this.windowCheckInterval) {
+          clearInterval(this.windowCheckInterval);
+        }
+        this.showRedirectLoading = false;
+      }, 8000);
+
     } catch (error) {
       console.error('Error opening Stripe portal:', error);
+      // No ocultar el loader aquí, dejar que el timeout de 2 segundos lo maneje
       throw error;
     }
   }
@@ -445,17 +517,15 @@ export class PlanSettingsComponent implements OnInit {
           planId: ''
         });
         
-        alert('Your plan has been cancelled successfully.');
-        
         // Recargar los datos del usuario
         await this.loadUserPlan();
         
       } else {
-        alert('No active subscription found to cancel.');
+        console.error('No active subscription found to cancel.');
       }
       
     } catch (error) {
-      alert('Error cancelling plan. Please try again.');
+      console.error('Error cancelling plan. Please try again.');
     } finally {
       this.showCancelPlanProcessing = false;
     }
@@ -466,32 +536,36 @@ export class PlanSettingsComponent implements OnInit {
   }
 
   async onManageSubscription(): Promise<void> {
+    try {
+      const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
 
-    const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
+      const response = await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-portal-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${bearerTokenFirebase}`
+        },
+        body: JSON.stringify({
+          userId: this.user?.id
+        })
+      });
 
-    const response = await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-portal-session', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${bearerTokenFirebase}`
-      },
-      body: JSON.stringify({
-        userId: this.user?.id
-      })
-    });
+      if (!response.ok) {
+        throw new Error('Error creating portal session');
+      }
 
-    if (!response.ok) {
-      throw new Error('Error creating portal session');
+      const responseData = await response.json();
+      const portalSessionUrl = responseData.body?.url || responseData.url;
+      
+      if (!portalSessionUrl) {
+        throw new Error('Portal session URL not found in response');
+      }
+
+      window.open(portalSessionUrl, '_blank');
+    } catch (error) {
+      console.error('Error opening Stripe portal:', error);
+      // Manejar el error de forma más elegante sin alert
     }
-
-    const responseData = await response.json();
-    const portalSessionUrl = responseData.body?.url || responseData.url;
-    
-    if (!portalSessionUrl) {
-      throw new Error('Portal session URL not found in response');
-    }
-
-    window.open(portalSessionUrl, '_blank');
   }
 
   // Métodos para validación de downgrade
@@ -571,6 +645,22 @@ export class PlanSettingsComponent implements OnInit {
     this.downgradeValidationData = null;
     
     // Navegar a las páginas de gestión de recursos
-    alert('Please delete excess resources before downgrading your plan.');
+    // TODO: Implementar navegación a las páginas de gestión de recursos
+    console.log('Please delete excess resources before downgrading your plan.');
+  }
+
+  // Métodos para manejar pop-ups de redirección
+  closeRedirectError(): void {
+    this.showRedirectError = false;
+    this.redirectErrorMessage = '';
+    
+    // Limpiar intervalo si existe
+    if (this.windowCheckInterval) {
+      clearInterval(this.windowCheckInterval);
+      this.windowCheckInterval = null;
+    }
+    
+    // Ocultar loading si está visible
+    this.showRedirectLoading = false;
   }
 }
