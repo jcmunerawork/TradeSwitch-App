@@ -47,7 +47,7 @@ const response = await fetch('https://trade-manager-backend-.../payments/create-
 
 ### **Código Nuevo**:
 ```typescript
-const response = await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-checkout-session', {
+const response = await fetch('https://api.tradeswitch.io/payments/create-checkout-session', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -231,7 +231,7 @@ export class PaymentSuccessComponent implements OnInit {
       const token = await this.authService.getBearerTokenFirebase(userId);
 
       const response = await fetch(
-        'https://trade-manager-backend-836816769157.us-central1.run.app/payments/verify-session',
+        'https://api.tradeswitch.io/payments/verify-session',
         {
           method: 'POST',
           headers: {

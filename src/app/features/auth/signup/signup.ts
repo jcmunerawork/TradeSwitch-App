@@ -408,7 +408,7 @@ export class SignupComponent implements OnInit {
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.currentUserId);
 
       // Crear checkout session
-      const response = await fetch('https://trade-manager-backend-836816769157.us-central1.run.app/payments/create-checkout-session', {
+      const response = await fetch('https://api.tradeswitch.io/payments/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -42,3 +42,25 @@
   font-weight: 500;
   margin: 0;
 }
+
+// Responsive para móviles
+@media (max-width: 480px) {
+  .stripe-loader-overlay {
+    padding: 16px;
+  }
+
+  .loading-content {
+    gap: 0.75rem;
+  }
+
+  .loading-spinner {
+    width: 36px;
+    height: 36px;
+    border-width: 2.5px;
+  }
+
+  .loading-text {
+    font-size: 0.875rem;
+    padding: 0 20px;
+  }
+}

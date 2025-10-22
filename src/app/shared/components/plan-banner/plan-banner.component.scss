@@ -4,23 +4,50 @@
   border-radius: 8px;
   border: 1px solid;
   background: rgba(59, 113, 202, 0.1);
+  font-family: "SF Pro Display", Arial, sans-serif;
   
   &.plan-banner-info {
     border-color: #3B71CA;
     background: rgba(59, 113, 202, 0.1);
     color: #e3e3e3;
+    
+    .banner-icon {
+      background: rgba(59, 113, 202, 0.25);
+      color: #3B71CA;
+    }
+    
+    .upgrade-link {
+      color: #3B71CA;
+    }
   }
   
   &.plan-banner-warning {
     border-color: #ff9500;
     background: rgba(255, 149, 0, 0.1);
     color: #ffc107;
+    
+    .banner-icon {
+      color: #ff9500;
+    }
+    
+    .upgrade-link {
+      color: #ff9500;
+    }
   }
   
   &.plan-banner-success {
     border-color: #34c759;
     background: rgba(52, 199, 89, 0.1);
     color: #34c759;
+    
+    .banner-icon {
+      background: rgba(52, 199, 89, 0.25);
+      color: #34c759;
+    }
+    
+    .upgrade-link {
+      color: #34c759;
+    }
   }
   
   .banner-content {
@@ -34,11 +61,9 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: #3B71CA;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
       font-size: 12px;
     }
     
@@ -50,12 +75,13 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      font-family: "SF Pro Display", Arial, sans-serif;
       
       .upgrade-link {
-        color: #3B71CA;
         text-decoration: underline;
         cursor: pointer;
         font-weight: 500;
+        font-family: "SF Pro Display", Arial, sans-serif;
         
         &:hover {
           opacity: 0.8;
