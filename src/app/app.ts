@@ -12,5 +12,5 @@ import { MobileHeaderComponent } from './shared/mobile-header/mobile-header.comp
   standalone: true,
 })
 export class App {
-  protected readonly title = signal('Trade-Manager');
+  protected readonly title = signal('Trade-Switch');
 }
