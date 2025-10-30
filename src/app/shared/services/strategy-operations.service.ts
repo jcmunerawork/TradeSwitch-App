@@ -195,7 +195,7 @@ export class StrategyOperationsService {
         updated_at: now,
         days_active: 0,
         configurationId,
-        dateActive: [now],
+        dateActive: [now.toISOString()],
       };
 
       const docRef = await addDoc(collection(this.db, 'configuration-overview'), overviewData as any);
@@ -418,7 +418,7 @@ export class StrategyOperationsService {
       // Solo actualizar si se proporciona un valor válido
       if (dateActive !== undefined && dateActive !== null) {
         const currentDateActive = currentData['dateActive'] || [];
-        const newDateActive = [...currentDateActive, Timestamp.fromDate(dateActive)];
+        const newDateActive = [...currentDateActive, dateActive.toISOString()];
         updateData.dateActive = newDateActive;
         
         // Si se está activando, cambiar status a true
@@ -428,7 +428,7 @@ export class StrategyOperationsService {
       // Solo actualizar si se proporciona un valor válido
       if (dateInactive !== undefined && dateInactive !== null) {
         const currentDateInactive = currentData['dateInactive'] || [];
-        const newDateInactive = [...currentDateInactive, Timestamp.fromDate(dateInactive)];
+        const newDateInactive = [...currentDateInactive, dateInactive.toISOString()];
         updateData.dateInactive = newDateInactive;
         
         // Si se está desactivando, cambiar status a false

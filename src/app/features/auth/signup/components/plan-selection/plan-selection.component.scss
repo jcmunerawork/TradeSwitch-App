@@ -2,14 +2,25 @@
   min-height: 100vh;
   background: #0a0a0a;
   padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .header-section {
   display: flex;
   justify-content: space-between;
   align-items: start;
-  margin-bottom: 0.5rem;
+  margin-top: 3rem; // Margen superior para despegar de arriba
+  margin-bottom: 2rem;
   width: 100%;
+  max-width: calc((20rem * 3) + (1rem * 2)); // Alinear con las 3 cards + gaps
+  
+  .main-titles {
+    // Alinear el título con el inicio de las cards
+    margin-left: 0;
+    gap: 0.5rem; // Reducir espacio entre título y subtítulo
+  }
 }
 
 .close-button {
@@ -32,6 +43,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   width: 100%;
+  max-width: calc((20rem * 3) + (1rem * 2)); // Ancho máximo para 3 cards + gaps
   
   .plan-card {
     gap: 32px;
@@ -62,6 +74,28 @@
       width: 100%;
       position: relative; // Para posicionar el badge
       min-height: 80px; // Altura mínima consistente
+      
+      .plan-card-titles {
+        .planName {
+          font-size: 1.25rem !important; // Nombre del plan
+          font-weight: 700 !important; // Negrilla en nombre del plan
+        }
+        
+        // Precio y periodo
+        h2 {
+          display: flex;
+          align-items: baseline;
+          gap: 0.25rem;
+          
+          .titleText {
+            font-size: 2rem !important; // Precio del plan
+            line-height: 1;
+          }
+          
+          font-size: 0.875rem !important; // Periodo del plan
+          font-weight: 400;
+        }
+      }
       
       .card-icon {
         border-radius: 8.235px;
@@ -122,6 +156,10 @@
         border-radius: 0.25rem;
         color: #14ae5c;
         z-index: 1;
+        
+        .mostPopular {
+          font-size: 0.75rem !important; // Tamaño del texto "Most Popular"
+        }
       }
     }
 
@@ -158,6 +196,7 @@
         padding: 0.625rem;
         cursor: pointer;
         transition: all 0.2s ease;
+        font-size: 0.875rem !important; // Texto del botón
         
         &:hover {
           background: #8ae01f;
