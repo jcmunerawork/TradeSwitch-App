@@ -1,16 +1,16 @@
 <div
-  class="table-container color-background d-flex flex-col justify-between p-24"
+  class="table-container color-background"
 >
-  <div class="d-flex flex-col">
-    <div class="d-flex justify-between items-center mb-24">
+  <div class="table-content">
+    <div class="title-container">
       <div class="table-titles">
         <h1 class="subtitle mb-6">All users</h1>
         <p class="regularText">Monitor user stats, reviews, etc.</p>
       </div>
-      <div class="table-actions-container smallText d-flex items-center">
+      <div class="table-actions-container smallText">
         <div class="search-user-container d-flex items-center p-10 mr-10">
           <label for="search-user" class="mr-10"
-            ><span class="material-icons color-background" style="font-size: 20px;">search</span>
+            ><span class="material-symbols-outlined color-background" style="font-size: 20px;">search</span>
           </label>
           <input
             id="search-user"
@@ -23,54 +23,105 @@
 
         <div class="filter-container">
           <button
+            #filterButton
             class="filter-btn color-secondary-300 smallText d-flex items-center p-10"
             (click)="openFilter()"
           >
-            <span class="material-icons color-secondary-300" style="font-size: 20px;">filter_list</span> Filter
+            <span class="material-symbols-outlined color-secondary-300" style="font-size: 20px;">filter_list</span> Filter
           </button>
           @if (showFilter) {
-          <div class="filter-modal py-20 px-24 d-flex flex-col">
-            <label>Status:</label>
-            <select class="color-background" [(ngModel)]="initialStatus">
-              <option value="">All</option>
-              <option value="created">Created</option>
-              <option value="purchased">Purchased</option>
-              <option value="pending">Pending</option>
-              <option value="unverified">Unverified</option>
-              <option value="banned">Banned</option>
-            </select>
-            <label class="mt-10">% Strat. Followed:</label>
-            <div
-              class="percentage-input d-flex items-center justify-between p-10"
-            >
-              <input
-                id="min-strat"
-                type="number"
-                [(ngModel)]="initialMinStrat"
-                placeholder="Min %"
-                class="search-box color-background smallText"
-              />
-              <label for="min-strat">min %</label>
+          <div #filterModal class="filter-modal">
+
+            <div class="filter-modal-content">
+              <label>Status:</label>
+              <select class="color-background px-8 py-10" [(ngModel)]="initialStatus">
+                <option value="" disabled selected>Select status</option>
+                <option value="">All</option>
+                <option value="created">Created</option>
+                <option value="active">Active</option>
+                <option value="banned">Banned</option>
+              </select>
+            </div>
+            
+            <div class="filter-modal-content">
+              <label>Number Strategies: <span class="smallText ml-10">{{ initialStrategies === 0 ? 'All' : initialStrategies }}</span></label>
+              <div class="slider-container">
+                <input
+                  type="range"
+                  min="0"
+                  max="8"
+                  step="1"
+                  [(ngModel)]="initialStrategies"
+                  class="slider"
+                />
+                <div class="slider-labels d-flex justify-between mt-8">
+                  <span class="smallText">0</span>
+                  <span class="smallText">8</span>
+                </div>
+              </div>
             </div>
 
-            <div
-              class="percentage-input d-flex items-center justify-between p-10"
-            >
-              <input
-                id="max-strat"
-                type="number"
-                [(ngModel)]="initialMaxStrat"
-                placeholder="Max %"
-                class="search-box color-background smallText"
-              />
-              <label for="max-strat">max %</label>
+            <div class="filter-modal-content">
+              <label>Number Trading Accounts: <span class="smallText ml-10">{{ initialTradingAccounts === 0 ? 'All' : initialTradingAccounts }}</span></label>
+              <div class="slider-container">
+                <input
+                  type="range"
+                  min="0"
+                  max="6"
+                  step="1"
+                  [(ngModel)]="initialTradingAccounts"
+                  class="slider"
+                />
+                <div class="slider-labels d-flex justify-between mt-8">
+                  <span class="smallText">0</span>
+                  <span class="smallText">6</span>
+                </div>
+              </div>
             </div>
-            <button
-              class="filter-btn p-10 bg-primary-400 color-bg-black inputText"
-              (click)="apply()"
-            >
-              Apply
-            </button>
+
+             <div class="filter-modal-content">
+               <label class="mt-4 d-flex items-center justify-between">
+                 <span>% Strat. Followed:</span>
+                 <span class="smallText ml-4">{{ stratFollowedRange }}</span>
+               </label>
+               <div class="percentage-input-row">
+                  <div class="percentage-input d-flex items-center justify-between p-10">
+                    <input
+                      id="min-strat"
+                      type="number"
+                      [(ngModel)]="initialMinStrat"
+                      placeholder="Min %"
+                      class="search-box color-background smallText"
+                    />
+                    <label for="min-strat">min %</label>
+                  </div>
+    
+                  <div class="percentage-input d-flex items-center justify-between p-10">
+                    <input
+                      id="max-strat"
+                      type="number"
+                      [(ngModel)]="initialMaxStrat"
+                      placeholder="Max %"
+                      class="search-box color-background smallText"
+                    />
+                    <label for="max-strat">max %</label>
+                  </div>
+               </div>
+             </div>
+            <div class="filter-actions">
+              <button
+                class="filter-btn p-10 bg-primary-400 color-bg-black inputText"
+                (click)="apply()"
+              >
+                Apply
+              </button>
+              <button
+                class="filter-btn p-10 color-secondary-300 inputText"
+                (click)="resetFilters()"
+              >
+                Reset
+              </button>
+            </div>
           </div>
           }
         </div>
@@ -83,31 +134,41 @@
             <th class="regularText py-18">User</th>
             <th class="regularText py-18">Status</th>
             <th class="regularText py-18">% Strat. Followed</th>
-            <th class="regularText py-18">Net P&L</th>
-            <th class="regularText py-18">Best Trade</th>
+            <th class="regularText py-18">Strategies</th>
+            <th class="regularText py-18">Trading Accounts</th>
           </tr>
         </thead>
         <tbody>
           @for (user of paginatedUsers; track $index) {
-          <tr>
+          <tr class="user-row">
             <td class="smallText d-flex items-center">
+              @if (hasAccounts(user.id)) {
+                <button 
+                  class="expand-btn"
+                  (click)="toggleExpand(user.id)"
+                  [attr.aria-expanded]="isExpanded(user.id)"
+                >
+                  <span 
+                    class="material-symbols-outlined expand-icon"
+                    [class.expanded]="isExpanded(user.id)"
+                  >
+                    keyboard_arrow_down
+                  </span>
+                </button>
+              }
               <span class="avatar smallText"
                 >{{ onlyNameInitials(user) }}
               </span>
-              <p style="width: 100%">
+              <p style="width: 80%">
                 {{ `${user.firstName.split(" ")[0]} ${user.lastName.split(" ")[0]}` }}
               </p>
             </td>
             <td>
               <span
                 class="status py-8 px-4 smallText d-flex items-center justify-center"
-                [ngClass]="statusClass(user.status)"
+                [ngClass]="statusClass(user)"
               >
-                {{
-                  user.status
-                    ? user.status.charAt(0).toUpperCase() + user.status.slice(1)
-                    : ""
-                }}
+                {{ getDisplayStatus(user) }}
               </span>
             </td>
             <td>
@@ -130,22 +191,55 @@
             </td>
             <td>
               <span class="d-flex items-center justify-center">{{
-                user.netPnl ? formatCurrency(user.netPnl) : "-"
+                user.strategies ? user.strategies : "0"
               }}</span>
             </td>
             <td>
               <span class="d-flex items-center justify-center">{{
-                  user.best_trade ? formatCurrency(user.best_trade) : "-"
+                  user.trading_accounts ? user.trading_accounts : "0"
               }}</span>
             </td>
           </tr>
+          
+          @if (isExpanded(user.id) && hasAccounts(user.id)) {
+            <tr class="account-rows-container">
+              <td colspan="5" class="account-cells-wrapper">
+                <div class="accounts-scroll-wrapper">
+                  <table class="accounts-table">
+                    <thead>
+                      <tr>
+                        <th class="regularText py-18">Account ID</th>
+                        <th class="regularText py-18">Broker</th>
+                        <th class="regularText py-18">Server</th>
+                        <th class="regularText py-18">Net P&L</th>
+                        <th class="regularText py-18">Profit</th>
+                        <th class="regularText py-18">Best Trade</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (account of getUserAccounts(user.id); track account.id) {
+                        <tr class="account-row">
+                          <td class="smallText">{{ account.accountID || account.id }}</td>
+                          <td class="smallText">{{ account.broker || '-' }}</td>
+                          <td class="smallText">{{ account.server || '-' }}</td>
+                          <td class="smallText">{{ formatCurrency(account.netPnl ?? 0) }}</td>
+                          <td class="smallText">{{ formatCurrency(account.profit ?? 0) }}</td>
+                          <td class="smallText">{{ formatCurrency(account.bestTrade ?? 0) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          }
           }
         </tbody>
       </table>
     </div>
   </div>
   <div
-    class="pagination-controls d-flex justify-between items-center mt-10 regularText"
+    class="pagination-controls regularText"
   >
     <div class="page-controls d-flex justify-between items-center">
       <div class="side-controls d-flex items-center">
@@ -154,14 +248,14 @@
           (click)="prevPage()"
           [disabled]="currentPage === 1"
         >
-          <span class="material-icons" style="font-size: 18px;">chevron_left</span>
+          <span class="material-symbols-outlined" style="font-size: 18px;">chevron_left</span>
         </button>
         <button
           class="regularText"
           (click)="goToPage(1)"
           [disabled]="currentPage === 1"
         >
-          <span class="material-icons" style="font-size: 18px;">first_page</span>
+          <span class="material-symbols-outlined" style="font-size: 18px;">first_page</span>
         </button>
       </div>
 
@@ -172,20 +266,20 @@
           (click)="goToPage(totalPages)"
           [disabled]="currentPage === totalPages"
         >
-          <span class="material-icons" style="font-size: 18px;">last_page</span>
+          <span class="material-symbols-outlined" style="font-size: 18px;">last_page</span>
         </button>
         <button
           class="regularText"
           (click)="nextPage()"
           [disabled]="currentPage === totalPages"
         >
-          <span class="material-icons" style="font-size: 18px;">chevron_right</span>
+          <span class="material-symbols-outlined" style="font-size: 18px;">chevron_right</span>
         </button>
       </div>
     </div>
-    <div class="d-flex items-center">
-      <div class="d-flex justify-between items-center mt-10">
-        <label for="page-input" class="regularText mr-10 pb-2"
+    <div class="pagination-items-container">
+      <div class="go-to-page-container">
+        <label for="page-input" class="regularText"
           >Go to page</label
         >
         <input
@@ -201,7 +295,7 @@
       </div>
 
       <select
-        class="color-secondary-300 smallText mt-10 ml-20"
+        class="color-secondary-300 smallText"
         [(ngModel)]="itemsPerPage"
         (change)="goToPage(1)"
       >

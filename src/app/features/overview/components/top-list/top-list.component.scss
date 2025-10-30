@@ -1,3 +1,8 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
 .config-row {
   width: 100%;
   border-bottom: 0.5px solid
@@ -5,32 +10,70 @@
       --miscellaneous-alert-menu-action-sheet-separators,
       rgba(128, 128, 128, 0.55)
     );
+  padding: 12px 0;
+  min-height: 100%;
 }
 
 .top-container {
-  flex: auto;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+  align-items: center;
+  width: 100%;
+  min-width: 300px;  // Minimum width before horizontal scroll
 }
 
 .user-info {
-  flex: 1;
+  display: flex;
+  align-items: center;
   gap: 0px;
   min-width: 0;
+  overflow: visible;
 }
 
-.user-info p {
+.avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #3a3f47;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.user-name {
   margin: 0;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
+  min-width: fit-content;
 }
 
-.top-container > p {
-  flex: 0 0 auto;
-  margin: 0;
-  text-align: right;
-  min-width: 70px;
-  font-size: 12px;
+.trades-info,
+.profit-info {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  justify-content: flex-end;
+}
+
+.trades-info .value,
+.profit-info .value {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.trades-info .label,
+.profit-info .label {
+  font-size: 14px;
+  color: #9aa3ab;
+  line-height: 1.2;
 }
 
 .deactivated {

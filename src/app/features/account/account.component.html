@@ -7,13 +7,15 @@
 
 <div class="btn-group d-flex align-center mb-24">
   @for (item of tabs; track $index) {
-  <button
-    [class.active]="selectedIndex === $index"
-    class="p-10 regularText"
-    (click)="selectTypeData($index)"
-  >
-    {{ item.label }}
-  </button>
+  @if (!(item.label === 'Plan Management' && user?.isAdmin)) {
+    <button
+      [class.active]="selectedIndex === $index"
+      class="p-10 regularText"
+      (click)="selectTypeData($index)"
+    >
+      {{ item.label }}
+    </button>
+  }
   }
 </div>
 
@@ -21,7 +23,7 @@
 <app-profile-details></app-profile-details>
 }
 
-@if (selectedIndex === 1) {
+@if (selectedIndex === 1 && user && !user.isAdmin) {
 <app-plan-settings [planDetails]="selectedPlanDetails"></app-plan-settings>
 }
 

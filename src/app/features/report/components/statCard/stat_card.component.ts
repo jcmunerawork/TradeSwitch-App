@@ -37,6 +37,12 @@ export class statCardComponent {
             this.title.toLowerCase().includes('position')) {
           return this.numberFormatter.formatInteger(this.value);
         }
+        if (this.title.toLowerCase().includes('users')) {
+          return this.numberFormatter.formatInteger(this.value);
+        }
+        if (this.title.toLowerCase().includes('subscriptions')) {
+          return this.numberFormatter.formatInteger(this.value);
+        }
         return this.numberFormatter.formatNumber(this.value);
       default:
         // Auto-detect format based on title
@@ -55,6 +61,10 @@ export class statCardComponent {
           return this.numberFormatter.formatInteger(this.value);
         } else if (this.title.toLowerCase().includes('active') && 
                    this.title.toLowerCase().includes('position')) {
+          return this.numberFormatter.formatInteger(this.value);
+        } else if (this.title.toLowerCase().includes('users')) {
+          return this.numberFormatter.formatInteger(this.value);
+        } else if (this.title.toLowerCase().includes('subscriptions')) {
           return this.numberFormatter.formatInteger(this.value);
         } else {
           return this.numberFormatter.formatNumber(this.value);

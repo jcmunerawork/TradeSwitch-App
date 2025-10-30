@@ -60,6 +60,23 @@ thead th {
   width: 8px;
 }
 
+.create-user-btn {
+  width: fit-content;
+  padding: 12px 20px;
+  background-color: #9bf526;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #222325;
+  font-weight: 500;
+  font-size: 14px;
+
+  &:hover {
+    background-color: #468506;
+  }
+}
+
 .table-scroll-container::-webkit-scrollbar-thumb {
   background: #222b39;
   border-radius: 6px;
@@ -92,6 +109,18 @@ tbody tr {
   background: rgba(73, 84, 134, 0.15);
   color: #b5b4fd;
 }
+.banned {
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
+}
+.created {
+  background: rgba(158, 196, 242, 0.15);
+  color: #9fc2ff;
+}
+.active {
+  background: rgba(155, 245, 38, 0.15);
+  color: #9bf526;
+}
 
 .filter-btn {
   height: fit-content;
@@ -99,6 +128,7 @@ tbody tr {
   border: none;
   cursor: pointer;
   text-decoration: none;
+  width: 100%;
 }
 
 // .green {
@@ -238,4 +268,18 @@ tbody tr {
   border-radius: 0.375rem;
   background: rgba(158, 196, 242, 0.1);
   border: none;
+  color: #9ec4f2;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #232939;
+  }
+}
+
+.container-buttons-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
 }

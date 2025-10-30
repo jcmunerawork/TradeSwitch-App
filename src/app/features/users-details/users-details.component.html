@@ -1,5 +1,5 @@
 <div class="main-titles color-background d-flex flex-col mb-50">
-  <h1 class="titleText mb-32">Users</h1>
+  <h1 class="titleText mb-16">Users</h1>
   <h3 class="regularText">
     View and manage user accounts with full visibility and control.
   </h3>
@@ -8,6 +8,7 @@
   <app-users-table
     [users]="usersData"
     (userSelected)="selectedUser = $event"
+    (userCreated)="loadUsersData()"
   ></app-users-table>
 </div>
 <app-loading-popup [visible]="loading"></app-loading-popup>
@@ -17,7 +18,6 @@
   (close)="selectedUser = null"
   (ban)="onBan($event)"
   (unban)="onUnban($event)"
-  (setPassword)="onSetPassword($event)"
   (sendResetLink)="onSendResetLink($event)"
   (logoutEverywhere)="onLogoutEverywhere($event)"
 >

@@ -2,12 +2,14 @@ import { Injectable } from '@angular/core';
 import { MaxDailyTradesConfig, StrategyState, ConfigurationOverview } from '../models/strategy.model';
 import { StrategyOperationsService } from '../../../shared/services/strategy-operations.service';
 import { AppContextService } from '../../../shared/context';
+import { AuthService } from '../../../shared/services/auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
   constructor(
     private strategyOperationsService: StrategyOperationsService,
-    private appContext: AppContextService
+    private appContext: AppContextService,
+    private authService: AuthService
   ) {}
 
   // ===== CONFIGURATION-OVERVIEW (colección de metadatos) =====
@@ -85,6 +87,9 @@ export class SettingsService {
       if (newStrategy) {
         this.appContext.addStrategy({ ...newStrategy, id: overviewId });
       }
+      
+      // 4. Actualizar conteos del usuario
+      await this.authService.updateUserCounts(userId);
       
       this.appContext.setLoading('strategies', false);
       return overviewId;
@@ -192,6 +197,20 @@ export class SettingsService {
 
   // Marcar una estrategia como deleted (soft delete)
   async markStrategyAsDeleted(strategyId: string): Promise<void> {
-    return this.strategyOperationsService.markStrategyAsDeleted(strategyId);
+    // 1. Obtener el userId de la estrategia antes de marcarla como eliminada
+    const strategy = await this.getConfigurationOverview(strategyId);
+    if (!strategy) {
+      throw new Error('Strategy not found');
+    }
+    
+    const userId = strategy.userId;
+    
+    // 2. Marcar la estrategia como eliminada
+    await this.strategyOperationsService.markStrategyAsDeleted(strategyId);
+    
+    // 3. Actualizar conteos del usuario
+    if (userId) {
+      await this.authService.updateUserCounts(userId);
+    }
   }
 }

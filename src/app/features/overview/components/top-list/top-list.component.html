@@ -1,14 +1,18 @@
-<div
-  class="config-row d-flex flex-col py-12 justify-between regularText color-background"
->
-  <div class="top-container d-flex items-center justify-between">
-    <div class="user-info d-flex items-center">
+<div class="config-row regularText color-background">
+  <div class="top-container">
+    <div class="user-info">
       <span class="avatar">{{ onlyNameInitials(user) }}</span>
       <p class="user-name">
         {{ `${user.firstName.split(" ")[0]} ${user.lastName.split(" ")[0]}` }}
       </p>
     </div>
-    <p>{{ user.number_trades }} trades</p>
-    <p>{{ user.profit | currency }} profit</p>
+    <div class="trades-info">
+      <span class="value">{{ user.number_trades }}</span>
+      <span class="label">trades</span>
+    </div>
+    <div class="profit-info">
+      <span class="value">{{ formatProfit(user.profit) }}</span>
+      <span class="label">profit</span>
+    </div>
   </div>
 </div>

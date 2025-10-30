@@ -5,17 +5,19 @@ import { FormsModule } from '@angular/forms';
 import { User } from '../../../overview/models/overview';
 import { EventEmitter } from '@angular/core';
 import { Timestamp } from 'firebase/firestore';
+import { CreateUserRolePopupComponent } from '../create-user-role-popup/create-user-role-popup.component';
 
 @Component({
   selector: 'app-users-table',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CreateUserRolePopupComponent],
   templateUrl: './users-table.component.html',
   styleUrls: ['./users-table.component.scss'],
 })
 export class UsersTableComponent {
   @Input() users: User[] = [];
   @Output() userSelected = new EventEmitter<User>();
+  @Output() userCreated = new EventEmitter<void>();
 
   initialMinStrat = 0;
   initialMaxStrat = 100;
@@ -24,6 +26,8 @@ export class UsersTableComponent {
   itemsPerPage: number = 10;
   sortField: 'firstName' | 'lastName' = 'firstName';
   sortAsc: boolean = true;
+
+  showCreateUserPopup = false;
 
   private _searchTerm = '';
   get searchTerm(): string {
@@ -50,10 +54,6 @@ export class UsersTableComponent {
         matchesMaxStrat = true;
       }
 
-      if (this.showFilter) {
-        return matchesSearch;
-      }
-
       return matchesSearch && matchesMinStrat && matchesMaxStrat;
     });
 
@@ -78,8 +78,34 @@ export class UsersTableComponent {
     return Math.ceil(this.filteredUsers.length / this.itemsPerPage);
   }
 
-  statusClass(status: string) {
-    return status;
+  statusClass(user: User): string {
+    // Si el status es banned, retornar banned
+    if (String(user.status) === 'banned') {
+      return 'banned';
+    }
+    
+    // Verificar si todos los valores están en 0
+    const allValuesZero = 
+      (user.trading_accounts ?? 0) === 0 &&
+      (user.strategies ?? 0) === 0 &&
+      (user.strategy_followed ?? 0) === 0 &&
+      (user.netPnl ?? 0) === 0 &&
+      (user.profit ?? 0) === 0 &&
+      (user.number_trades ?? 0) === 0 &&
+      (user.total_spend ?? 0) === 0;
+    
+    // Si todos los valores están en 0, retornar created
+    if (allValuesZero) {
+      return 'created';
+    }
+    
+    // Si no todos están en 0, retornar active
+    return 'active';
+  }
+  
+  getDisplayStatus(user: User): string {
+    const status = this.statusClass(user);
+    return status.charAt(0).toUpperCase() + status.slice(1);
   }
 
   returnClass(returnValue: number) {
@@ -102,6 +128,12 @@ export class UsersTableComponent {
 
   applyFilters() {
     this.goToPage(1);
+  }
+
+  resetFilters() {
+    this.initialMinStrat = 0;
+    this.initialMaxStrat = 100;
+    this.applyFilters();
   }
 
   goToPage(page: number) {
@@ -128,5 +160,21 @@ export class UsersTableComponent {
 
   emitUser(user: User) {
     this.userSelected.emit(user);
+  }
+
+  onOpenCreateUser() {
+    this.showCreateUserPopup = true;
+  }
+
+  onCloseCreateUser() {
+    this.showCreateUserPopup = false;
+  }
+
+  onSelectRole(role: 'user' | 'admin') {
+    // No cerrar el popup aquí; el componente interno cambia a step 'form'.
+  }
+
+  onPopupCreated() {
+    this.userCreated.emit();
   }
 }

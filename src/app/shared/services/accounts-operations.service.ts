@@ -125,13 +125,28 @@ export class AccountsOperationsService {
   /**
    * Eliminar cuenta
    */
-  async deleteAccount(accountId: string): Promise<void> {
+  async deleteAccount(accountId: string): Promise<string | null> {
     if (!this.db) {
       console.warn('Firestore not available in SSR');
-      return;
+      return null;
     }
+    
+    // Obtener el userId antes de eliminar la cuenta
     const accountDoc = doc(this.db, 'accounts', accountId);
+    const accountSnap = await getDoc(accountDoc);
+    
+    if (!accountSnap.exists()) {
+      throw new Error('Account not found');
+    }
+    
+    const accountData = accountSnap.data() as AccountData;
+    const userId = accountData.userId || null;
+    
+    // Eliminar la cuenta
     await deleteDoc(accountDoc);
+    
+    // Retornar el userId para poder actualizar los conteos
+    return userId;
   }
 
   /**
@@ -161,6 +176,26 @@ export class AccountsOperationsService {
         isValid: false,
         message: 'Error validating account uniqueness'
       };
+    }
+  }
+
+  /**
+   * Obtener el número total de cuentas de trading de un usuario
+   */
+  async getAllLengthUserAccounts(userId: string): Promise<number> {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return 0;
+    }
+
+    try {
+      const accountsCollection = collection(this.db, 'accounts');
+      const q = query(accountsCollection, where('userId', '==', userId));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.size;
+    } catch (error) {
+      console.error('Error getting accounts count:', error);
+      return 0;
     }
   }
 

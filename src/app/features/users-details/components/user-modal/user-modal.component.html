@@ -25,19 +25,7 @@
       </div>
       <div class="user-item">
         <p class="user-item-label">Country</p>
-        <p>United States</p>
-      </div>
-      <div class="user-item">
-        <p class="user-item-label">City</p>
-        <p>Omaha</p>
-      </div>
-      <div class="user-item">
-        <p class="user-item-label">Region</p>
-        <p>NE</p>
-      </div>
-      <div class="user-item">
-        <p class="user-item-label">Postal code</p>
-        <p>68102</p>
+        <p>{{ countryFromPhone }}</p>
       </div>
     </div>
   </div>
@@ -74,10 +62,6 @@
         <p>${{ user.total_spend ? user.total_spend.toFixed(2) : "0.00" }}</p>
       </div>
       <div class="user-item">
-        <p class="user-item-label">AOV</p>
-        <p>${{ aov }}</p>
-      </div>
-      <div class="user-item">
         <p class="user-item-label">Last active</p>
         <p>{{ today | date : "MMMM d, yyyy" }}</p>
       </div>
@@ -93,7 +77,6 @@
       <div class="user-item">
         <p class="user-item-label">ban</p>
         <div>
-          <input [(ngModel)]="usernameToBan" placeholder="Username" />
           <input [(ngModel)]="banReason" placeholder="Reason" />
           <div class="ban-btns d-flex items-center justify-between">
             <button
@@ -103,28 +86,12 @@
               Ban
             </button>
             <button
-              class="btn color-background"
+              class="btn"
               (click)="unban.emit(usernameToBan)"
             >
               Unban
             </button>
           </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="section d-flex flex-col items-start">
-    <div class="user-info d-flex flex-col items-start">
-      <div class="user-item">
-        <p class="user-item-label">New password</p>
-        <div>
-          <input #passwordInput type="password" placeholder="New password" />
-          <button
-            class="password-btn btn color-background"
-            (click)="setPassword.emit(passwordInput.value)"
-          >
-            Set New Password
-          </button>
         </div>
       </div>
     </div>
@@ -136,7 +103,7 @@
         <p class="user-item-label">Password reset</p>
         <div class="d-flex flex-col" style="width: 60%; gap: 10px">
           <button
-            class="btn custom-btn color-background"
+            class="btn custom-btn"
             (click)="sendResetLink.emit(user.email)"
           >
             Send Reset Link
@@ -157,7 +124,7 @@
         <p class="user-item-label">Session</p>
         <div class="d-flex flex-col" style="width: 48%; gap: 10px">
           <button
-            class="btn custom-btn color-background"
+            class="btn custom-btn"
             (click)="logoutEverywhere.emit(user.id)"
           >
             Log Out Everywhere

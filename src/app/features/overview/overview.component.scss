@@ -1,30 +1,301 @@
-.stats-card-container {
-  min-width: 71.3125rem;
+.title-container {
   display: flex;
-  gap: 24px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  align-items: flex-start;
-  box-sizing: border-box;
-  scrollbar-width: none;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
 
-  -ms-overflow-style: none;
-  .stat-card {
-    min-width: 16.5625rem;
-    flex: 0 0 auto;
+@media (max-width: 768px) {
+  .title-container {
+    align-items: flex-start;
   }
 }
 
-.stats-card-container::-webkit-scrollbar {
+.export-data-btn {
+  display: flex;
+  align-items:  center;
+  gap: 4px;
+  background: #9EC4F21A;
+  border: 0px transparent;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #9EC4F2;
+  font-size: 16px;
+  font-weight: 300;
+  font-family: 'SF Pro Display', Arial, sans-serif;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: #dee9fb
+  }
+
+  @media (max-width: 768px) {
+    padding: 6px 8px;
+    font-size: 14px;
+  }
+
+  @media (max-width: 480px) {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+  }
+}
+
+.export-button-desktop {
+  display: flex;
+  width: auto;
+
+  @media (max-width: 480px) {
+    display: none;
+  }
+}
+
+.export-button-mobile {
   display: none;
 }
 
-app-trade-switch-table {
-  width: 63%;
+/* Ensure the mobile export button is visible under 480px, overriding the generic hide */
+@media (max-width: 480px) {
+  .export-button-mobile {
+    margin-top: 12px;
+    display: flex !important;
+  }
 }
 
-.top-10 {
-  width: 35%;
+.export-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  font-family: 'SF Pro Display', Arial, sans-serif;
+  overflow-y: auto;
+  padding: 16px;
+  height: 100vh;
+
+  @media (max-width: 480px) {
+    width: 100vw;
+    height: 100vh;
+    padding: 16px 16px;
+    align-items: center;
+    justify-content: flex-start;
+    overflow-y: auto;
+  }
+}
+
+.export-modal {
+  width: 560px;
+  max-width: 94vw;           // expand to nearly full width on small screens
+  background: #1b1e23;
+  border: 1px solid #3a3f47;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+  padding: 16px;
+  color: #e4e7ec;
+  max-height: 90vh;          // cap at viewport height
+  overflow-y: auto;          // scroll inside modal when content overflows
+}
+
+.modal-title {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-label {
+  font-size: 12px;
+  color: #cfd8dc;
+}
+
+.date-range-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #121417;
+  border: 1px solid #3a3f47;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.date-range-inline input[type="date"] {
+  background: transparent;
+  border: none;
+  color-scheme: dark;
+  color: #e4e7ec;
+  outline: none;
+}
+
+.dash { color: #848a92; }
+.hint-text { font-size: 11px; color: #9aa3ab; }
+.error-text { font-size: 12px; color: #ff6b6b; }
+
+// Faux select input for range (single input style)
+.date-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #121417;
+  border: 1px solid #3a3f47;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  position: relative;
+  color: #cfd8dc;
+}
+.date-select .placeholder { color: #848a92; }
+.date-select .chevron { color: #9aa3ab; font-size: 18px; }
+
+.date-dropdown {
+  position: relative;
+  margin-top: 8px;
+  background: #1b1e23;
+  border: 1px solid #3a3f47;
+  border-radius: 10px;
+  padding: 10px;
+  max-height: 70vh;          // ensure the calendar area is scrollable if needed
+  overflow-y: auto;
+}
+
+.click-guard { height: 0; }
+
+// Single calendar styles
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 4px 10px 4px;
+}
+.calendar-header .nav {
+  background: transparent;
+  border: none;
+  color: #cfd8dc;
+  cursor: pointer;
+}
+.month-label { font-weight: 600; }
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.calendar-grid .dow {
+  text-align: center;
+  color: #9aa3ab;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.day {
+  height: 36px;
+  border-radius: 10px;
+  background: transparent;
+  color: #e4e7ec;
+  border: none;
+  cursor: pointer;
+}
+.day.outside { color: #5e6670; }
+.day.in-range {
+  background: #2a3a52;
+}
+.day.in-range:hover { background: #334864; }
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.btn-cancel {
+  background: transparent;
+  color: #e4e7ec;
+  border: 1px solid #848a92;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.btn-export {
+  background: #9bf526;
+  color: #0b0d10;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.stats-card-container {
+  width: 100%;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 16px;
+  align-items: stretch;
+  justify-content: flex-start;
+  margin-bottom: 24px;
+  overflow: visible !important; // Asegurar que no haya scroll
+
+  .stat-card {
+    flex: 1 1 0; // Se distribuyen uniformemente en el espacio disponible
+    min-width: fit-content; // Sin ancho mínimo fijo
+    width: auto; // Ancho automático
+    height: auto;
+    flex-shrink: 1; // Pueden comprimirse si es necesario
+    overflow: hidden; // Evitar que el contenido se desborde
+    text-overflow: ellipsis; // Truncar texto si es necesario
+  }
+
+  // Responsive adjustments - solo ajustar gap
+  @media (max-width: 768px) {
+    gap: 12px;
+  }
+
+  @media (max-width: 480px) {
+    gap: 8px;
+  }
+}
+
+app-trade-switch-table {
+  display: flex;        
+  flex: 1;                // Share space equally with top-10
+  min-width: 0;           // Allow shrinking below content size
+  height: 100%;           // take full height to match stretch
+  min-width: 50%;
+
+  @media (max-width: 1024px) {
+    width: 100%;
+  }
+}
+
+.middle-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: stretch;     // stretch children to the tallest one
+  margin-bottom: 4px;
+  width: 100%;
+  max-width: 100%;
+
+  @media (max-width: 1024px) {
+    flex-direction: column-reverse;
+    gap: 12px;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+}
+
+.top-10 {       // take full height based on tallest sibling
+  display: flex;           // enable internal layout to fill
+  flex-direction: column;
   border-radius: 8px;
   border: 0.5px solid #2f2f2f;
   background: radial-gradient(
@@ -32,19 +303,61 @@ app-trade-switch-table {
     rgba(81, 134, 228, 0.1) 0%,
     rgba(81, 134, 228, 0.01) 100%
   );
+  flex: 1;                 // Share space equally with table
+  min-width: 0;            // Allow flex item to shrink below content size
+  padding: 24px;
+  height: 100%;            // fill parent height
+  min-height: -webkit-fill-available;
   
   .top-10-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    flex-direction: row;
     margin-bottom: 24px;
-    gap: 16px;
+    gap: 12px;
+    width: 100%;
+    flex-shrink: 0;        // Prevent header from shrinking
+  }
+
+  .top-10-list {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: auto;  // Enable horizontal scroll when content is too wide
+    min-width: 0;      // Allow shrinking
+  }
+
+  @media (max-width: 1024px) {
+    width: 100%;            // Full width when in column layout
+    height: fit-content;
+    flex-direction: column;
+    justify-content: flex-start;
+    overflow-y: auto;
   }
 }
 
 .view-users-btn {
-  width: 36%;
+  width: fit-content;
   height: fit-content;
   border-radius: 6px;
   border: none;
   cursor: pointer;
   text-align: center;
   text-decoration: none;
+  padding: 10px 12px;
+  background: #9bf526;
+  transition: all 0.2s ease;
+
+  @media (max-width: 1024px) {
+    width: 100%;
+  }
+
+  &:hover {
+    background: #468506;
+  }
 }
+

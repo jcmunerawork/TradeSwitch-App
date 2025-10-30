@@ -1,7 +1,7 @@
 
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable, map, shareReplay, tap } from 'rxjs';
 
 export interface Country {
   name: {
@@ -31,11 +31,24 @@ export interface CountryOption {
 })
 export class CountryService {
   private apiUrl = 'https://restcountries.com/v3.1/all?fields=idd,flags,name';
+  private cachedCountries: CountryOption[] | null = null;
+  private inFlight$?: Observable<CountryOption[]>;
 
   constructor(private http: HttpClient) {}
 
   getCountries(): Observable<CountryOption[]> {
-    return this.http.get<Country[]>(this.apiUrl).pipe(
+    if (this.cachedCountries) {
+      return new Observable<CountryOption[]>((subscriber) => {
+        subscriber.next(this.cachedCountries as CountryOption[]);
+        subscriber.complete();
+      });
+    }
+
+    if (this.inFlight$) {
+      return this.inFlight$;
+    }
+
+    this.inFlight$ = this.http.get<Country[]>(this.apiUrl).pipe(
       map(countries => 
         countries
           .filter(country => country.idd && country.idd.root && country.idd.suffixes)
@@ -46,8 +59,14 @@ export class CountryService {
             dialCode: this.formatDialCode(country.idd.root, country.idd.suffixes[0])
           }))
           .sort((a, b) => a.name.localeCompare(b.name))
-      )
+      ),
+      tap(list => {
+        this.cachedCountries = list;
+      }),
+      shareReplay(1)
     );
+
+    return this.inFlight$;
   }
 
   private extractCountryCode(countryName: string): string {

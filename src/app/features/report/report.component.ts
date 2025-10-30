@@ -54,6 +54,8 @@ import { PlanLimitationModalData } from '../../shared/interfaces/plan-limitation
 import { PlanLimitationModalComponent } from '../../shared/components/plan-limitation-modal/plan-limitation-modal.component';
 import { StrategyCardData } from '../../shared/components/strategy-card/strategy-card.interface';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
+import { PluginHistoryService, PluginHistory } from '../../shared/services/plugin-history.service';
+import { TimezoneService } from '../../shared/services/timezone.service';
 
 @Component({
   selector: 'app-report',
@@ -144,7 +146,9 @@ export class ReportComponent implements OnInit {
     private strategySvc: SettingsService,
     private router: Router,
     private planLimitationsGuard: PlanLimitationsGuard,
-    private appContext: AppContextService
+    private appContext: AppContextService,
+    private pluginHistoryService: PluginHistoryService,
+    private timezoneService: TimezoneService
   ) {}
 
   ngAfterViewInit() {
@@ -177,6 +181,9 @@ export class ReportComponent implements OnInit {
     this.listenGroupedTrades();
     this.fetchUserRules();
     this.checkUserAccess();
+    
+    // Cargar datos de todas las cuentas
+    this.loadAllAccountsData();
   }
 
   private subscribeToContextData() {
@@ -761,13 +768,13 @@ export class ReportComponent implements OnInit {
     if (this.user) {
       const updatedUser = {
         ...this.user,
-        best_trade: getBestTrade(this.accountHistory),
-        netPnl: this.stats?.netPnl ?? 0,
+        // TODO: revisar uso anterior de best_trade, ahora pertenece a AccountData
+        // TODO: revisar uso anterior de netPnl, ahora pertenece a AccountData
         lastUpdated: new Date().getTime() as unknown as Timestamp,
-        number_trades: this.stats?.totalTrades ?? 0,
+        // TODO: revisar uso anterior de number_trades, ahora pertenece a AccountData
         strategy_followed: percentage,
-        profit: this.stats?.netPnl ?? 0,
-        total_spend: getTotalSpend(this.accountHistory),
+        // TODO: revisar uso anterior de profit, ahora pertenece a AccountData
+        // TODO: revisar uso anterior de total_spend, ahora pertenece a AccountData
       };
 
       const actualYear = new Date().getFullYear();
@@ -779,12 +786,12 @@ export class ReportComponent implements OnInit {
 
       const monthlyReport = {
         id: this.user?.id,
-        best_trade: getBestTrade(this.accountHistory),
-        netPnl: this.stats?.netPnl ?? 0,
-        number_trades: this.stats?.totalTrades ?? 0,
-        profit: this.stats?.netPnl ?? 0,
+        // TODO: revisar uso anterior de best_trade, ahora pertenece a AccountData
+        // TODO: revisar uso anterior de netPnl, ahora pertenece a AccountData
+        // TODO: revisar uso anterior de number_trades, ahora pertenece a AccountData
+        // TODO: revisar uso anterior de profit, ahora pertenece a AccountData
         strategy_followed: percentage,
-        total_spend: getTotalSpend(this.accountHistory),
+        // TODO: revisar uso anterior de total_spend, ahora pertenece a AccountData
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear(),
       };
@@ -1251,6 +1258,315 @@ export class ReportComponent implements OnInit {
     this.planLimitationModal.showModal = false;
   }
 
+  // ===== MÉTODOS DE CARGA DE TODAS LAS CUENTAS =====
+
+  /**
+   * Cargar datos de todas las cuentas del usuario
+   */
+  async loadAllAccountsData() {
+    if (!this.user?.id || this.accountsData.length === 0) {
+      return;
+    }
+
+    try {
+      // Cargar datos de todas las cuentas en paralelo
+      const loadPromises = this.accountsData.map(account => 
+        this.loadAccountData(account)
+      );
+      
+      await Promise.all(loadPromises);
+      
+      // Calcular métricas globales del usuario
+      await this.calculateAndUpdateUserMetrics();
+      
+      // Calcular strategy_followed basado en todas las cuentas
+      await this.calculateAndUpdateStrategyFollowed();
+      
+    } catch (error) {
+      console.error('Error loading all accounts data:', error);
+    }
+  }
+
+  /**
+   * Cargar datos de una cuenta específica
+   */
+  private async loadAccountData(account: AccountData): Promise<void> {
+    try {
+      // Obtener userKey
+      const userKey = await this.reportService.getUserKey(
+        account.emailTradingAccount,
+        account.brokerPassword,
+        account.server
+      ).toPromise();
+
+      if (!userKey) {
+        console.warn(`No se pudo obtener userKey para cuenta ${account.accountID}`);
+        return;
+      }
+
+      // Obtener trading history
+      const tradingHistory = await this.reportService.getHistoryData(
+        account.accountID,
+        userKey,
+        account.accountNumber
+      ).toPromise();
+
+      // Obtener balance data
+      const balanceData = await this.reportService.getBalanceData(
+        account.accountID,
+        userKey,
+        account.accountNumber
+      ).toPromise();
+
+      // Guardar en localStorage
+      this.saveAccountDataToLocalStorage(account.accountID, {
+        accountHistory: tradingHistory || [],
+        balanceData: balanceData,
+        lastUpdated: Date.now()
+      });
+
+    } catch (error) {
+      console.error(`Error loading data for account ${account.accountID}:`, error);
+    }
+  }
+
+  /**
+   * Calcular y actualizar métricas globales del usuario
+   */
+  private async calculateAndUpdateUserMetrics(): Promise<void> {
+    if (!this.user?.id) return;
+
+    try {
+      // Recopilar todos los trades de todas las cuentas
+      const allTrades: any[] = [];
+      let globalProfitFactor = 0;
+
+      for (const account of this.accountsData) {
+        const accountData = this.loadAccountDataFromLocalStorage(account.accountID);
+        if (accountData && accountData.accountHistory) {
+          allTrades.push(...accountData.accountHistory);
+        }
+      }
+
+      if (allTrades.length > 0) {
+        // Calcular profit_factor global (usando la misma lógica que en la ventana)
+        globalProfitFactor = this.calculateProfitFactor(allTrades);
+
+        // Calcular best_trade global (mejor trade de todas las cuentas)
+        const bestTrade = this.calculateGlobalBestTrade(allTrades);
+
+        // Actualizar usuario en Firebase con las métricas globales
+        const updatedUser = {
+          ...this.user,
+          profit: globalProfitFactor, // profit = profit_factor
+          best_trade: bestTrade, // best_trade = mejor trade de todas las cuentas
+          lastUpdated: new Date().getTime() as unknown as Timestamp
+        };
+
+        await this.userService.createUser(updatedUser as unknown as User);
+      }
+
+    } catch (error) {
+      console.error('Error calculating user metrics:', error);
+    }
+  }
+
+  /**
+   * Calcular el mejor trade global de todas las cuentas
+   */
+  private calculateGlobalBestTrade(allTrades: any[]): number {
+    if (!allTrades || allTrades.length === 0) return 0;
+
+    // Normalizar trades
+    const normalizedTrades = allTrades.map(trade => ({
+      ...trade,
+      pnl: trade.pnl ?? 0
+    }));
+
+    // Encontrar el trade con mayor ganancia o pérdida absoluta
+    const bestTrade = normalizedTrades.reduce((best, trade) => {
+      const currentAbs = Math.abs(trade.pnl);
+      const bestAbs = Math.abs(best);
+      return currentAbs > bestAbs ? trade.pnl : best;
+    }, 0);
+
+    return Math.round(bestTrade * 100) / 100;
+  }
+
+  /**
+   * Calcular porcentaje de ganancia
+   */
+  private calculateWinPercent(trades: any[]): number {
+    if (trades.length === 0) return 0;
+    const winningTrades = trades.filter(trade => trade.pnl > 0).length;
+    return Math.round((winningTrades / trades.length) * 100 * 100) / 100;
+  }
+
+  /**
+   * Calcular profit factor
+   */
+  private calculateProfitFactor(trades: any[]): number {
+    const totalGains = trades
+      .filter(t => t.pnl > 0)
+      .reduce((sum, t) => sum + t.pnl, 0);
+    
+    const totalLosses = Math.abs(trades
+      .filter(t => t.pnl < 0)
+      .reduce((sum, t) => sum + t.pnl, 0));
+
+    if (totalLosses === 0) {
+      return totalGains > 0 ? 999.99 : 0;
+    }
+
+    return Math.round((totalGains / totalLosses) * 100) / 100;
+  }
+
+  /**
+   * Guardar datos de cuenta en localStorage
+   */
+  private saveAccountDataToLocalStorage(accountID: string, data: any): void {
+    try {
+      const key = `tradeSwitch_reportData_${accountID}`;
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (error) {
+      console.error('Error saving account data to localStorage:', error);
+    }
+  }
+
+
+  /**
+   * Calcular y actualizar strategy_followed en el usuario
+   * NUEVA LÓGICA: Verifica cada trade individual y si el plugin estuvo activo en el momento exacto del trade (con hora)
+   */
+  private async calculateAndUpdateStrategyFollowed(): Promise<void> {
+    if (!this.user?.id) return;
+
+    try {
+      // 1. Obtener plugin history del usuario primero
+      const pluginHistoryArray = await this.pluginHistoryService.getPluginUsageHistory(this.user.id);
+      
+      if (pluginHistoryArray.length === 0) {
+        // No hay plugin history, asumir 0%
+        const updatedUser = {
+          ...this.user,
+          strategy_followed: 0,
+          lastUpdated: new Date().getTime() as unknown as Timestamp
+        };
+        await this.userService.createUser(updatedUser as unknown as User);
+        return;
+      }
+
+      const pluginHistory = pluginHistoryArray[0];
+
+      // 2. Contar trades con plugin activo vs total de trades (validando hora exacta)
+      let totalTrades = 0;
+      let tradesWithActivePlugin = 0;
+
+      for (const account of this.accountsData) {
+        const accountData = this.loadAccountDataFromLocalStorage(account.accountID);
+        if (accountData && accountData.accountHistory) {
+          for (const trade of accountData.accountHistory) {
+            if (trade.createdDate) {
+              totalTrades++;
+              // Convertir fecha del trade a UTC (con hora completa)
+              const tradeDate = this.timezoneService.convertTradeDateToUTC(trade.createdDate);
+              
+              // Verificar si el plugin estaba activo en el momento exacto de este trade
+              if (this.wasPluginActiveAtTime(tradeDate, pluginHistory)) {
+                tradesWithActivePlugin++;
+              }
+            }
+          }
+        }
+      }
+
+      if (totalTrades === 0) {
+        // No hay trades, porcentaje es 0
+        const updatedUser = {
+          ...this.user,
+          strategy_followed: 0,
+          lastUpdated: new Date().getTime() as unknown as Timestamp
+        };
+        await this.userService.createUser(updatedUser as unknown as User);
+        return;
+      }
+
+      // 3. Calcular porcentaje: (trades con plugin activo / total trades) * 100
+      const strategyFollowedPercent = totalTrades > 0 
+        ? Math.round((tradesWithActivePlugin / totalTrades) * 100 * 10) / 10
+        : 0;
+
+      // 4. Actualizar usuario en Firebase
+      const updatedUser = {
+        ...this.user,
+        strategy_followed: strategyFollowedPercent,
+        lastUpdated: new Date().getTime() as unknown as Timestamp
+      };
+
+      await this.userService.createUser(updatedUser as unknown as User);
+
+    } catch (error) {
+      console.error('Error calculating strategy_followed:', error);
+    }
+  }
+
+  /**
+   * Verificar si el plugin estaba activo en un momento específico (con hora exacta)
+   * @param tradeDate Fecha y hora del trade en UTC
+   * @param pluginHistory Plugin history con dateActive y dateInactive
+   */
+  private wasPluginActiveAtTime(tradeDate: Date, pluginHistory: PluginHistory): boolean {
+    if (!pluginHistory.dateActive || !pluginHistory.dateInactive) {
+      return false;
+    }
+
+    const dateActive = pluginHistory.dateActive;
+    const dateInactive = pluginHistory.dateInactive;
+    
+    // Obtener timestamp del trade en UTC
+    const tradeTimestamp = tradeDate.getTime();
+    
+    // Si dateActive tiene más elementos que dateInactive, está activo desde la última fecha activa hasta ahora
+    if (dateActive.length > dateInactive.length) {
+      const lastActiveDate = this.timezoneService.convertToUTC(dateActive[dateActive.length - 1]);
+      const lastActiveTimestamp = lastActiveDate.getTime();
+      
+      // El trade debe ser >= a la última fecha/hora activa
+      return tradeTimestamp >= lastActiveTimestamp;
+    }
+    
+    // Si tienen la misma cantidad, hay pares de activación/desactivación
+    // Verificar si el timestamp del trade está dentro de algún rango activo [dateActive[i], dateInactive[i])
+    for (let i = 0; i < dateActive.length; i++) {
+      const activeDate = this.timezoneService.convertToUTC(dateActive[i]);
+      const inactiveDate = this.timezoneService.convertToUTC(dateInactive[i]);
+      
+      const activeTimestamp = activeDate.getTime();
+      const inactiveTimestamp = inactiveDate.getTime();
+      
+      // El trade debe estar >= activeTimestamp y < inactiveTimestamp (rango [active, inactive))
+      if (tradeTimestamp >= activeTimestamp && tradeTimestamp < inactiveTimestamp) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Cargar datos de cuenta desde localStorage
+   */
+  private loadAccountDataFromLocalStorage(accountID: string): any {
+    try {
+      const key = `tradeSwitch_reportData_${accountID}`;
+      const data = localStorage.getItem(key);
+      return data ? JSON.parse(data) : null;
+    } catch (error) {
+      console.error('Error loading account data from localStorage:', error);
+      return null;
+    }
+  }
+
   // ===== MÉTODOS DE REFRESH =====
 
   /**
@@ -1281,10 +1597,12 @@ export class ReportComponent implements OnInit {
     // Limpiar datos guardados de la cuenta actual del contexto
     this.appContext.clearTradingHistoryForAccount(this.currentAccount.accountID);
     
-    // NO limpiar localStorage - solo actualizar el JSON existente
-    // El refresh modifica el JSON existente, no crea uno nuevo
-    
-    // Cargar datos frescos desde la API
-    this.fetchUserKey(this.currentAccount);
+    // Cargar datos frescos de la cuenta actual
+    this.loadAccountData(this.currentAccount).then(() => {
+      // Después de cargar, recalcular métricas globales del usuario
+      this.calculateAndUpdateUserMetrics();
+      // Recalcular strategy_followed
+      this.calculateAndUpdateStrategyFollowed();
+    });
   }
 }
