@@ -200,6 +200,7 @@ export interface CalendarDay {
   followedStrategy: boolean;
   tradeWinPercent: number;
   strategyName?: string | null; // Nombre de la estrategia seguida en este día
+  isCurrentMonth: boolean; // Indica si el día pertenece al mes actual
 }
 
 export interface ReportState {

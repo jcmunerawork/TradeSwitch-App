@@ -69,7 +69,7 @@
         padding: 0.7rem 1rem;
         width: 100%;
         transition: background 0.2s;
-        font-size: 1.08rem;
+        font-size: 1rem;
         font-weight: 500;
         gap: 14px;
         
@@ -115,20 +115,14 @@
       
       .user {
         justify-content: center;
-        
-        .avatar {
-          margin-right: 0;
-        }
+        gap: 0; // Sin gap en modo minimizado
       }
       
       .settings,
       .logout {
         justify-content: center;
         padding: 0.1rem 0.4rem;
-        
-        span:first-child {
-          margin-right: 0;
-        }
+        gap: 0; // Sin gap en modo minimizado
       }
     }
   }
@@ -143,17 +137,20 @@
       display: flex;
       align-items: center;
       margin-bottom: 1rem;
+      gap: 0.625rem; // 10px gap consistente
 
       .avatar {
-        width: 2rem;
-        height: 2rem;
+        width: 24px; // Mismo tamaño que los iconos
+        height: 24px; // Mismo tamaño que los iconos
         background: #283046;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-right: 0.7rem;
         font-weight: bold;
+        flex-shrink: 0; // Evitar que el avatar se encoja
+        font-size: 0.75rem; // Ajustar tamaño de las iniciales
+        margin: 0; // Eliminar cualquier margen
       }
     }
     
@@ -165,6 +162,12 @@
       text-decoration: none;
       font-size: 1rem;
       font-weight: 500;
+      gap: 0.625rem; // 10px gap consistente entre icono y texto
+      
+      .material-symbols-outlined {
+        width: 24px; // Ancho fijo para alinear iconos
+        flex-shrink: 0; // Evitar que el icono se encoja
+      }
     }
 
     .settings {

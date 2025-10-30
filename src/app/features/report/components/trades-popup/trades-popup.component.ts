@@ -117,12 +117,12 @@ export class TradesPopupComponent {
       if (strategy.dateActive && strategy.dateActive.length > 0) {
         // Revisar cada período de activación de esta estrategia
         for (let i = 0; i < strategy.dateActive.length; i++) {
-          const activeDate = new Date(strategy.dateActive[i].seconds * 1000);
+          const activeDate = new Date(strategy.dateActive[i]);
           let inactiveDate: Date;
           
           // Si hay fecha de desactivación correspondiente, usarla
           if (strategy.dateInactive && strategy.dateInactive.length > i) {
-            inactiveDate = new Date(strategy.dateInactive[i].seconds * 1000);
+            inactiveDate = new Date(strategy.dateInactive[i]);
           } else {
             // No hay fecha de desactivación, verificar si está activa actualmente
             // Si dateActive tiene más elementos que dateInactive, está activa

@@ -90,13 +90,13 @@
     </div>
     @if (userName) {
     <a class="settings" style="font-weight: 500;" routerLink="/account">
-      <span class="material-symbols-outlined mr-10" style="font-size: 24px;">settings</span>
+      <span class="material-symbols-outlined" style="font-size: 24px;">settings</span>
       @if (!isSidebarMinimized) {
         <span>Account Settings</span>
       }
     </a>
     <a class="logout" (click)="logout()">
-      <span class="material-symbols-outlined mr-10" style="font-size: 20px;">logout</span>
+      <span class="material-symbols-outlined" style="font-size: 24px;">logout</span>
       @if (!isSidebarMinimized) {
         <span>Log out</span>
       }
