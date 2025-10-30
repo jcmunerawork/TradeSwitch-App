@@ -94,16 +94,19 @@ export class CalendarComponent {
   }
 
   /**
-   * Convertir Timestamp de Firestore a Date
+   * Convertir Timestamp de Firestore o ISO 8601 string a Date
    */
   private convertFirestoreTimestamp(timestamp: any): Date {
-    if (timestamp && typeof timestamp === 'object' && 'seconds' in timestamp) {
-      // Es un Timestamp de Firestore
-      return new Date(timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000);
-    } else {
-      // Es un string o Date normal
+    // Si es string ISO 8601 (formato prioritario)
+    if (typeof timestamp === 'string') {
       return new Date(timestamp);
     }
+    // Fallback: Firestore Timestamp (legacy)
+    if (timestamp && typeof timestamp === 'object' && 'seconds' in timestamp) {
+      return new Date(timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000);
+    }
+    // Fallback final
+    return new Date(timestamp);
   }
 
   /**

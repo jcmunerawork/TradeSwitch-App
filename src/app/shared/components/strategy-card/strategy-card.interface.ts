@@ -11,6 +11,6 @@ export interface StrategyCardData {
   updated_at: any; // Timestamp de Firebase
   userId: string;
   configurationId: string;
-  dateActive?: any[]; // Array de fechas cuando se activó la estrategia
-  dateInactive?: any[]; // Array de fechas cuando se desactivó la estrategia
+  dateActive?: string[]; // ISO 8601 strings - Array de fechas cuando se activó la estrategia
+  dateInactive?: string[]; // ISO 8601 strings - Array de fechas cuando se desactivó la estrategia
 }
