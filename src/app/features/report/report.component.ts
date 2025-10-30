@@ -673,6 +673,8 @@ export class ReportComponent implements OnInit {
       
       // Cargar datos de la primera cuenta
       this.loadSavedReportData(this.currentAccount.accountID);
+      // Lanzar carga completa de todas las cuentas y actualizar métricas por cuenta
+      this.loadAllAccountsData();
     } else {
       // Si no hay cuentas en el contexto, iniciar loading y cargarlas
       this.startLoading();
@@ -715,6 +717,8 @@ export class ReportComponent implements OnInit {
         // Iniciar loading interno y cargar datos de la primera cuenta
         this.startInternalLoading();
         this.loadSavedReportData(this.currentAccount.accountID);
+        // Lanzar carga completa de todas las cuentas y actualizar métricas por cuenta
+        this.loadAllAccountsData();
       }
     }).catch((error) => {
       console.error('Error fetching user accounts:', error);
@@ -1281,6 +1285,9 @@ export class ReportComponent implements OnInit {
       
       // Calcular strategy_followed basado en todas las cuentas
       await this.calculateAndUpdateStrategyFollowed();
+
+      // NUEVO: Calcular y actualizar métricas por cuenta (netPnl, profit factor y bestTrade)
+      await this.calculateAndUpdateAccountsMetrics();
       
     } catch (error) {
       console.error('Error loading all accounts data:', error);
@@ -1603,6 +1610,52 @@ export class ReportComponent implements OnInit {
       this.calculateAndUpdateUserMetrics();
       // Recalcular strategy_followed
       this.calculateAndUpdateStrategyFollowed();
+      // Recalcular métricas de la cuenta activa
+      this.calculateAndUpdateAccountsMetrics([this.currentAccount!]);
     });
+  }
+
+  /**
+   * Calcular y actualizar métricas por cuenta (AccountData)
+   * - netPnl: suma de pnl
+   * - profit: profit factor de la cuenta
+   * - bestTrade: mayor |pnl|
+   * Si no hay users/cuentas cargadas, no hace nada
+   */
+  private async calculateAndUpdateAccountsMetrics(targetAccounts?: AccountData[]): Promise<void> {
+    const accounts = targetAccounts || this.accountsData;
+    if (!accounts || accounts.length === 0) return;
+
+    try {
+      for (const account of accounts) {
+        const local = this.loadAccountDataFromLocalStorage(account.accountID);
+        const trades = Array.isArray(local?.accountHistory) ? local.accountHistory : [];
+
+        if (trades.length === 0) {
+          await this.userService.updateAccount(account.id, {
+            ...account,
+            netPnl: 0,
+            profit: 0,
+            bestTrade: 0,
+          } as AccountData);
+          continue;
+        }
+
+        // Normalizar PnL
+        const normalized = trades.map((t: any) => ({ ...t, pnl: t.pnl ?? 0 }));
+        const netPnl = calculateNetPnl(normalized);
+        const profitFactor = this.calculateProfitFactor(normalized);
+        const bestTrade = this.calculateGlobalBestTrade(normalized); // reutilizamos el cálculo de mejor trade
+
+        await this.userService.updateAccount(account.id, {
+          ...account,
+          netPnl: Math.round(netPnl * 100) / 100,
+          profit: Math.round(profitFactor * 100) / 100,
+          bestTrade: Math.round(bestTrade * 100) / 100,
+        } as AccountData);
+      }
+    } catch (error) {
+      console.error('Error updating account metrics:', error);
+    }
   }
 }

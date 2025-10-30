@@ -186,7 +186,7 @@
     </div>
     <h3 class="empty-title">No trading accounts found</h3>
     <p class="empty-description">You need to add a trading account before creating strategies.</p>
-    <button class="create-first-btn" (click)="navigateToTradingAccounts()">
+    <button class="create-first-btn" [disabled]="accountsData && accountsData.length >= 8" (click)="navigateToTradingAccounts()">
       Add Trading Account
     </button>
   </div>

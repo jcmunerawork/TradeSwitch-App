@@ -46,6 +46,14 @@ export class Overview {
   calculatedRevenue = 0;
   paidSubscriptions = 0;
 
+  // Loading granular por sección
+  private loadingStates = {
+    users: false,
+    cards: false,
+    revenue: false,
+    subscriptions: false,
+  };
+
   // Export modal state
   showExportModal = false;
   exportStartDate: string = '';
@@ -104,17 +112,16 @@ export class Overview {
       this.subscriptionsData = data.subscriptions as any;
     });
 
-    // Suscribirse a los estados de carga
-    this.appContext.isLoading$.subscribe(loading => {
-      this.loading = loading.overview;
-    });
+    // No usamos el loading global del contexto aquí; control fino local
   }
 
   async loadConfig() {
     this.loading = true;
+    this.loadingStates = { users: false, cards: false, revenue: false, subscriptions: false };
     await this.getUsersData();
     await this.calculateRevenue();
     this.getOverviewSubscriptionData();
+    this.checkAllLoaded();
   }
 
   async getUsersData() {
@@ -129,16 +136,20 @@ export class Overview {
           // Calcular nuevos usuarios basándose en la fecha actual
           this.calculateNewUsers();
           this.filterTop10Users();
-          this.loading = false;
+          this.loadingStates.users = true;
+          this.loadingStates.cards = true; // top users y métricas listas
+          this.checkAllLoaded();
         } else {
-          this.loading = false;
+          this.loadingStates.users = true;
+          this.loadingStates.cards = true;
+          this.checkAllLoaded();
           console.warn('No config');
         }
       })
       .catch((err) => {
-        this.loading = false;
-
-        console.error('Error to get the config', err);
+        this.loadingStates.users = true;
+        this.loadingStates.cards = true;
+        this.checkAllLoaded();
       });
   }
 
@@ -149,12 +160,17 @@ export class Overview {
         if (docSnap && !docSnap.empty && docSnap.docs.length > 0) {
           const data = docSnap.docs[0].data() as overviewSubscriptionData;
           this.subscriptionsData = data;
+          this.loadingStates.subscriptions = true;
+          this.checkAllLoaded();
         } else {
           console.warn('No config');
+          this.loadingStates.subscriptions = true;
+          this.checkAllLoaded();
         }
       })
       .catch((err) => {
-        this.loading = false;
+        this.loadingStates.subscriptions = true;
+        this.checkAllLoaded();
 
         console.error('Error to get the config', err);
       });
@@ -202,6 +218,8 @@ export class Overview {
       
       if (plans.length === 0) {
         this.calculatedRevenue = 0;
+        this.loadingStates.revenue = true;
+        this.checkAllLoaded();
         return;
       }
 
@@ -246,9 +264,13 @@ export class Overview {
 
       this.calculatedRevenue = totalRevenue;
       this.paidSubscriptions = paidUsersCount;
+      this.loadingStates.revenue = true;
+      this.checkAllLoaded();
     } catch (error) {
       console.error('Error calculando revenue:', error);
       this.calculatedRevenue = 0;
+      this.loadingStates.revenue = true;
+      this.checkAllLoaded();
     }
   }
 
@@ -257,6 +279,13 @@ export class Overview {
       .filter((user) => user.profit > 0)
       .sort((a, b) => b.profit - a.profit)
       .slice(0, 10);
+  }
+
+  private checkAllLoaded() {
+    const allLoaded = this.loadingStates.users && this.loadingStates.cards && this.loadingStates.revenue && this.loadingStates.subscriptions;
+    if (allLoaded) {
+      this.loading = false;
+    }
   }
 
   // ===== Export Data by Date =====

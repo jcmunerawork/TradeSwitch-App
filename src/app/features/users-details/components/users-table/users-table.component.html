@@ -2,7 +2,7 @@
   class="table-container color-background d-flex flex-col justify-between p-24"
 >
   <div class="d-flex flex-col">
-    <div class="d-flex justify-between items-center mb-24">
+    <div class="d-flex justify-between items-center mb-24 table-header">
       <div class="table-titles">
         <h1 class="subtitle mb-6">Users information</h1>
         <p class="regularText">Monitor user info, contact, etc.</p>
@@ -173,64 +173,43 @@
     (selectRole)="onSelectRole($event)"
     (created)="onPopupCreated()"
   ></app-create-user-role-popup>
-  <div
-    class="pagination-controls d-flex justify-between items-center mt-10 regularText"
-  >
-    <div class="page-controls d-flex justify-between items-center">
+  <div class="pagination-controls d-flex justify-between items-center mt-10 regularText">
+    <div class="pagination-group page-nav">
       <div class="side-controls d-flex items-center">
-        <button
-          class="regularText"
-          (click)="prevPage()"
-          [disabled]="currentPage === 1"
-        >
+        <button class="regularText" (click)="prevPage()" [disabled]="currentPage === 1">
           <span class="material-symbols-outlined" style="font-size: 18px;">chevron_left</span>
         </button>
-        <button
-          class="regularText"
-          (click)="goToPage(1)"
-          [disabled]="currentPage === 1"
-        >
+        <button class="regularText" (click)="goToPage(1)" [disabled]="currentPage === 1">
           <span class="material-symbols-outlined" style="font-size: 18px;">first_page</span>
         </button>
       </div>
-
-      <span>Page {{ currentPage }} of {{ totalPages }}</span>
+      <span class="page-of">Page {{ currentPage }} of {{ totalPages }}</span>
       <div class="side-controls d-flex items-center">
-        <button
-          class="regularText"
-          (click)="goToPage(totalPages)"
-          [disabled]="currentPage === totalPages"
-        >
+        <button class="regularText" (click)="goToPage(totalPages)" [disabled]="currentPage === totalPages">
           <span class="material-symbols-outlined" style="font-size: 18px;">last_page</span>
         </button>
-        <button
-          class="regularText"
-          (click)="nextPage()"
-          [disabled]="currentPage === totalPages"
-        >
+        <button class="regularText" (click)="nextPage()" [disabled]="currentPage === totalPages">
           <span class="material-symbols-outlined" style="font-size: 18px;">chevron_right</span>
         </button>
       </div>
     </div>
-    <div class="d-flex items-center">
-      <div class="d-flex justify-between items-center mt-10">
-        <label for="page-input" class="regularText mr-10 pb-2"
-          >Go to page</label
-        >
-        <input
-          id="page-input"
-          class="page-input p-8 smallText color-background"
-          type="number"
-          [min]="1"
-          [max]="totalPages"
-          [(ngModel)]="currentPage"
-          (change)="goToPage(currentPage)"
-          style="width: 4rem"
-        />
-      </div>
 
+    <div class="pagination-group goto">
+      <label for="page-input" class="regularText mr-10 pb-2">Go to page</label>
+      <input
+        id="page-input"
+        class="page-input p-8 smallText color-background"
+        type="number"
+        [min]="1"
+        [max]="totalPages"
+        [(ngModel)]="currentPage"
+        (change)="goToPage(currentPage)"
+      />
+    </div>
+
+    <div class="pagination-group per-page">
       <select
-        class="color-secondary-300 smallText mt-10 ml-20"
+        class="color-secondary-300 smallText"
         [(ngModel)]="itemsPerPage"
         (change)="goToPage(1)"
       >

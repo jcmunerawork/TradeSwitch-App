@@ -119,6 +119,9 @@ export class AccountsOperationsService {
       accountNumber: accountData.accountNumber,
       balance: accountData.balance,
       initialBalance: accountData.initialBalance,
+      netPnl: accountData.netPnl,
+      profit: accountData.profit,
+      bestTrade: accountData.bestTrade,
     });
   }
 

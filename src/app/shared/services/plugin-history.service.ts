@@ -49,13 +49,11 @@ export class PluginHistoryService {
 
         try {
             // NUEVA LÓGICA: Buscar por document ID = plugin_{userId}
-            console.log('🔌 Buscando plugin para el usuario:', userId);
             const pluginDocId = `plugin_${userId}`;
             const docRef = doc(this.db, 'plugin_history', pluginDocId);
             const docSnap = await getDoc(docRef);
 
             if (!docSnap.exists()) {
-                console.log('⚠️ No se encontró plugin para el usuario:', userId);
                 return [];
             }
 

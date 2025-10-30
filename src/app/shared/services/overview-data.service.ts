@@ -1,5 +1,5 @@
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { getFirestore, collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, query, where, orderBy, limit, startAfter, doc, getDoc } from 'firebase/firestore';
 import { isPlatformBrowser } from '@angular/common';
 
 @Injectable({
@@ -50,6 +50,72 @@ export class OverviewDataService {
     } catch (error) {
       console.error('Error getting users data:', error);
       return null;
+    }
+  }
+
+  /**
+   * Paginación de usuarios para la tabla de Overview
+   * Ordena por subscription_date desc (fallback: lastUpdated desc)
+   */
+  async getUsersPage(pageSize: number, startAfterDocId?: string) {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return { docs: [], lastDocId: undefined };
+    }
+
+    try {
+      const usersCol = collection(this.db, 'users');
+      let qRef: any = query(usersCol, orderBy('subscription_date', 'desc'), limit(pageSize));
+      if (startAfterDocId) {
+        const cursor = await getDoc(doc(this.db, 'users', startAfterDocId));
+        if (cursor.exists()) {
+          qRef = query(usersCol, orderBy('subscription_date', 'desc'), startAfter(cursor), limit(pageSize));
+        }
+      }
+      const snapshot = await getDocs(qRef);
+      const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+      return { docs: snapshot.docs, lastDocId: lastDoc?.id };
+    } catch (error) {
+      console.error('Error getting users page:', error);
+      return { docs: [], lastDocId: undefined };
+    }
+  }
+
+  /**
+   * Paginación de cuentas por usuario para la tabla (si se requiere desplegar cuentas)
+   */
+  async getUserAccountsPage(userId: string, pageSize: number, startAfterAccountId?: string) {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return { docs: [], lastDocId: undefined };
+    }
+
+    try {
+      const accountsCol = collection(this.db, 'accounts');
+      let qRef: any = query(
+        accountsCol,
+        where('userId', '==', userId),
+        orderBy('accountID', 'desc'),
+        limit(pageSize)
+      );
+      if (startAfterAccountId) {
+        const cursor = await getDoc(doc(this.db, 'accounts', startAfterAccountId));
+        if (cursor.exists()) {
+          qRef = query(
+            accountsCol,
+            where('userId', '==', userId),
+            orderBy('accountID', 'desc'),
+            startAfter(cursor),
+            limit(pageSize)
+          );
+        }
+      }
+      const snapshot = await getDocs(qRef);
+      const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+      return { docs: snapshot.docs, lastDocId: lastDoc?.id };
+    } catch (error) {
+      console.error('Error getting user accounts page:', error);
+      return { docs: [], lastDocId: undefined };
     }
   }
 

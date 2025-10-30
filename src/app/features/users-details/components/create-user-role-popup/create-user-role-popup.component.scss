@@ -11,6 +11,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   width: 560px;
+  max-width: 90vw; /* Responsive width */
   background: #181a1d;
   border: 0.5px solid #4a4a4a;
   border-radius: 12px;
@@ -118,10 +119,12 @@
 .roles {
   gap: 16px;
   margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap; /* allow wrapping on small screens */
 }
 
 .role-card {
-  flex: 1;
+  flex: 1 1 240px; /* grow and shrink with a sensible base */
   background: radial-gradient(ellipse 36% 42% at top center, rgba(81, 134, 228, 0.1) 0%, rgba(81, 134, 228, 0.01) 100%), #111314;
   border: 1px solid #2f343a;
   border-radius: 12px;
@@ -148,4 +151,21 @@
   background: #9bf526;
   color: #0b0b0c;
   border: none;
+}
+
+/* Stack role cards and reduce paddings on very small screens */
+@media (max-width: 480px) {
+  .role-popup { padding: 16px; }
+  .roles { gap: 12px; }
+  .role-card { flex: 1 1 100%; }
+}
+
+/* Stack labels over inputs on narrow screens */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .error-text { grid-column: 1 / -1; }
+  .form-row label { margin-bottom: 6px; }
 }

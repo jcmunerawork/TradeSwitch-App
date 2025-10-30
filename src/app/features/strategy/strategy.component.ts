@@ -1326,7 +1326,12 @@ export class Strategy implements OnInit, OnDestroy {
 
   // Navegar a trading accounts
   navigateToTradingAccounts() {
-    this.router.navigate(['/trading-accounts']);
+    const accountsCount = this.accountsData?.length || 0;
+    if (accountsCount >= 8) {
+      return; // botón ya estará deshabilitado; no hacer nada
+    }
+    // Redirigir a Plan Management en Account
+    this.router.navigate(['/account'], { queryParams: { tab: 'plan' } });
   }
 
   // Strategy guide modal methods
