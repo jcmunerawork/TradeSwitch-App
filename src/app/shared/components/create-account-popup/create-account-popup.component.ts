@@ -148,6 +148,9 @@ export class CreateAccountPopupComponent implements OnChanges {
       accountID: this.newAccount.accountID,
       accountNumber: this.newAccount.accountNumber,
       initialBalance: this.newAccount.initialBalance,
+      netPnl: this.accountToEdit.netPnl || 0,
+      profit: this.accountToEdit.profit || 0,
+      bestTrade: this.accountToEdit.bestTrade || 0,
     };
     
     // Update in Firebase
@@ -258,6 +261,9 @@ export class CreateAccountPopupComponent implements OnChanges {
       accountNumber: this.newAccount.accountNumber,
       initialBalance: this.newAccount.initialBalance,
       createdAt: Timestamp.now(),
+      netPnl: 0,
+      profit: 0,
+      bestTrade: 0,
     };
   }
 

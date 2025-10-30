@@ -20,7 +20,7 @@ export class TopListComponent {
     number_trades: 0,
     phoneNumber: '',
     profit: 0,
-    status: UserStatus.PURCHASED,
+    status: UserStatus.CREATED,
     strategy_followed: 0,
     subscription_date: 0,
     tokenId: '',
@@ -28,6 +28,8 @@ export class TopListComponent {
     total_spend: 0,
     isAdmin: false,
     lastUpdated: 0,
+    trading_accounts: 0,
+    strategies: 0,
   };
 
   constructor() {}
@@ -37,5 +39,14 @@ export class TopListComponent {
       user.firstName.charAt(0).toUpperCase() +
       user.lastName.charAt(0).toUpperCase()
     );
+  }
+
+  formatProfit(profit: number): string {
+    if (profit === 0) return '$0';
+    if (Math.abs(profit) < 1000) {
+      return `$${profit.toFixed(2)}`;
+    }
+    const k = profit / 1000;
+    return `$${k.toFixed(1)}K`;
   }
 }

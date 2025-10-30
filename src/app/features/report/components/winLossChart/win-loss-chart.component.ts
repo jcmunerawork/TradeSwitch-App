@@ -166,7 +166,7 @@ export class WinLossChartComponent implements OnInit, OnChanges, OnDestroy {
         custom: ({ series, seriesIndex, dataPointIndex, w }: any) => {
           const percentage = w.globals.seriesPercent[seriesIndex];
           const isWin = seriesIndex === 0; // Ahora el índice 0 es Win
-          const color = isWin ? '#9BF526' : '#EC221F';
+          const color = isWin ? '#468506' : '#EC221F';
           
           // Usar los valores monetarios reales en lugar del porcentaje
           const moneyValue = isWin ? this.winLossData.winValue : this.winLossData.lossValue;

@@ -34,5 +34,7 @@ export interface User {
   lastUpdated: number;
   tokenId: string;
   total_spend: number;
+  trading_accounts: number;
+  strategies: number;
   isAdmin: boolean;
 }

@@ -11,6 +11,8 @@ import { UserModalComponent } from './components/user-modal/user-modal.component
 import { AuthService } from '../auth/service/authService';
 import { AppContextService } from '../../shared/context';
 import { AlertService } from '../../shared/services/alert.service';
+import { ReasonsService } from '../../shared/services/reasons.service';
+import { serverTimestamp } from 'firebase/firestore';
 
 @Component({
   selector: 'app-users-details',
@@ -33,7 +35,8 @@ export class UsersDetails {
     private userManagementService: UserManagementService,
     private userSvc: AuthService,
     private appContext: AppContextService,
-    private alertService: AlertService
+    private alertService: AlertService,
+    private reasonsService: ReasonsService
   ) {}
 
   loading = false;
@@ -72,7 +75,7 @@ export class UsersDetails {
     this.getUsersData();
   }
 
-  private loadUsersData() {
+  loadUsersData() {
     this.getUsersData();
   }
 
@@ -87,37 +90,77 @@ export class UsersDetails {
     }
   }
 
-  onBan(event: { username: string; reason: string }) {
-    if (event.username === this.selectedUser?.firstName) {
-      this.userSvc.createUser({
-        ...this.selectedUser,
-        status: UserStatus.BANNED,
-      });
-    } else {
-      this.alertService.showInfo('Use the firstName as Username to ban the user', 'Ban User');
-    }
+  async onBan(event: { username: string; reason: string }) {
+    if (!this.selectedUser) return;
+    this.loading = true;
+    const userId = String(this.selectedUser.id);
+    this.reasonsService
+      .createReason(userId, event?.reason || '')
+      .then(() => this.userManagementService.updateUser(userId, { status: UserStatus.BANNED }))
+      .then(async () => {
+        await this.getUsersData();
+        const refreshed = await this.userManagementService.getUserById(userId);
+        if (refreshed) this.selectedUser = refreshed;
+        this.alertService.showSuccess('User banned successfully', 'Ban User');
+      })
+      .catch((err) => {
+        console.error('Error banning user', err);
+        this.alertService.showError('Error banning user', 'Ban User');
+      })
+      .finally(() => (this.loading = false));
   }
 
-  onUnban(username: string) {
-    if (username === this.selectedUser?.firstName) {
-      this.userSvc.createUser({
-        ...this.selectedUser,
-        status: UserStatus.PURCHASED,
-      });
-    } else {
-      this.alertService.showInfo('Use the firstName as Username to unban the user', 'Unban User');
-    }
-  }
-
-  onSetPassword(newPassword: string) {
-    // Handle set password logic here
+  async onUnban(username: string) {
+    if (!this.selectedUser) return;
+    this.loading = true;
+    const userId = String(this.selectedUser.id);
+    this.userManagementService
+      .updateUser(userId, { status: UserStatus.ACTIVE })
+      .then(async () => {
+        const openReason = await this.reasonsService.getOpenLatestReason(userId);
+        if (openReason?.id) {
+          await this.reasonsService.updateReason(userId, openReason.id, { dateUnban: serverTimestamp() } as any);
+        }
+      })
+      .then(async () => {
+        await this.getUsersData();
+        const refreshed = await this.userManagementService.getUserById(userId);
+        if (refreshed) this.selectedUser = refreshed;
+        this.alertService.showSuccess('User unbanned successfully', 'Unban User');
+      })
+      .catch((err) => {
+        console.error('Error unbanning user', err);
+        this.alertService.showError('Error unbanning user', 'Unban User');
+      })
+      .finally(() => (this.loading = false));
   }
 
   onSendResetLink(email: string) {
-    // Handle send reset link logic here
+    if (!email) {
+      this.alertService.showInfo('Email is required', 'Password reset');
+      return;
+    }
+    this.loading = true;
+    this.userSvc
+      .sendPasswordReset(email)
+      .then(() => this.alertService.showSuccess('Reset link sent', 'Password reset'))
+      .catch((err) => {
+        console.error('Error sending reset link', err);
+        this.alertService.showError('Error sending reset link', 'Password reset');
+      })
+      .finally(() => (this.loading = false));
   }
 
   onLogoutEverywhere(userId: string) {
-    // Handle logout everywhere logic here
+    if (!userId) return;
+    this.loading = true;
+    this.userSvc
+      .deleteLinkToken(userId as any)
+      .then(() => this.alertService.showSuccess('Firebase token revoked', 'Logout everywhere'))
+      .catch((err) => {
+        console.error('Error revoking token', err);
+        this.alertService.showError('Error revoking token', 'Logout everywhere');
+      })
+      .finally(() => (this.loading = false));
   }
 }

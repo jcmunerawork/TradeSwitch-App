@@ -5,11 +5,13 @@ import { catchError, from, map, of, switchMap, take, tap } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { getAuth } from 'firebase/auth';
 import { setUserData } from '../features/auth/store/user.actions';
+import { ReasonsService } from '../shared/services/reasons.service';
 
 export const authGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
   const authService = inject(AuthService);
   const store = inject(Store);
+  const reasonsService = inject(ReasonsService);
 
   return authService.isAuthenticated().pipe(
     take(1),
@@ -25,15 +27,22 @@ export const authGuard: CanActivateFn = (route, state) => {
       }
 
       return from(authService.getUserData(user.uid)).pipe(
-        tap((userData) => {
+        switchMap((userData) => {
           if (userData.status === 'banned') {
-            alert('You are banned, call support');
-            router.navigate(['/login']);
-            throw new Error('User banned');
+            return from(reasonsService.getOpenLatestReason(user.uid)).pipe(
+              tap((reason) => {
+                const message = reason?.reason
+                  ? `You are banned: ${reason.reason}`
+                  : 'You are banned, call support';
+                alert(message);
+                router.navigate(['/login']);
+              }),
+              map(() => false)
+            );
           }
           store.dispatch(setUserData({ user: userData }));
+          return of(true);
         }),
-        map(() => true),
         catchError(() => {
           router.navigate(['/login']);
           return of(false);

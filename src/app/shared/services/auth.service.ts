@@ -197,9 +197,16 @@ export class AuthService {
     this.appContext.setError('user', null);
     try {
       const userData = await this.usersOperationsService.getUserData(uid);
-      this.appContext.setCurrentUser(userData);
+      
+      // Actualizar conteos de trading_accounts y strategies
+      await this.updateUserCounts(uid);
+      
+      // Obtener nuevamente los datos actualizados después de actualizar los conteos
+      const updatedUserData = await this.usersOperationsService.getUserData(uid);
+      
+      this.appContext.setCurrentUser(updatedUserData);
       this.appContext.setLoading('user', false);
-      return userData;
+      return updatedUserData;
     } catch (error) {
       this.appContext.setLoading('user', false);
       this.appContext.setError('user', 'Error al obtener datos del usuario');
@@ -227,6 +234,12 @@ export class AuthService {
     try {
       await this.accountsOperationsService.createAccount(account);
       this.appContext.addAccount(account);
+      
+      // Actualizar conteos del usuario
+      if (account.userId) {
+        await this.updateUserCounts(account.userId);
+      }
+      
       this.appContext.setLoading('accounts', false);
     } catch (error) {
       this.appContext.setLoading('accounts', false);
@@ -255,7 +268,14 @@ export class AuthService {
   async checkAccountIdExists(accountID: string, currentUserId: string): Promise<boolean> { return this.accountsOperationsService.checkAccountIdExists(accountID, currentUserId); }
   async checkAccountExists(broker: string, server: string, accountID: string, currentUserId: string): Promise<boolean> { return this.accountsOperationsService.checkAccountExists(broker, server, accountID, currentUserId); }
   async updateAccount(accountId: string, accountData: AccountData): Promise<void> { return this.accountsOperationsService.updateAccount(accountId, accountData); }
-  async deleteAccount(accountId: string): Promise<void> { return this.accountsOperationsService.deleteAccount(accountId); }
+  async deleteAccount(accountId: string): Promise<void> {
+    const userId = await this.accountsOperationsService.deleteAccount(accountId);
+    
+    // Actualizar conteos del usuario después de eliminar la cuenta
+    if (userId) {
+      await this.updateUserCounts(userId);
+    }
+  }
 
   // Verificar si un email de usuario ya está registrado
   async getUserByEmail(email: string): Promise<User | null> {
@@ -288,6 +308,25 @@ export class AuthService {
         accounts: [],
         strategies: []
       };
+    }
+  }
+
+  /**
+   * Actualizar los conteos de trading_accounts y strategies del usuario
+   */
+  async updateUserCounts(userId: string): Promise<void> {
+    try {
+      const [tradingAccountsCount, strategiesCount] = await Promise.all([
+        this.accountsOperationsService.getAllLengthUserAccounts(userId),
+        this.strategyOperationsService.getAllLengthConfigurationsOverview(userId)
+      ]);
+
+      await this.updateUser(userId, {
+        trading_accounts: tradingAccountsCount,
+        strategies: strategiesCount
+      });
+    } catch (error) {
+      console.error('Error updating user counts:', error);
     }
   }
 }

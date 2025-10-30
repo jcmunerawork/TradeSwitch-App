@@ -105,22 +105,33 @@
 .ban-btn {
   width: 100%;
 
-  padding: 10px;
+  padding: 10px 20px;
   color: #9bf526;
   border-radius: 6px;
   border: 1px solid #9bf526;
   background: rgba(188, 254, 99, 0.1);
   cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #468506;
+  }
 }
 
 .btn {
   width: 100%;
-
-  padding: 10px;
+  padding: 10px 20px;
   border-radius: 6px;
   background: transparent;
   border: 1px solid var(--White, #eaf2f8);
   cursor: pointer;
+  color: #eaf2f8;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #848a92;
+    color: #848a92;
+  }
 }
 
 .custom-btn {

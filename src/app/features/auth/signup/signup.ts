@@ -229,6 +229,8 @@ export class SignupComponent implements OnInit {
       lastUpdated: new Date().getTime(),
       total_spend: 0,
       isAdmin: false,
+      trading_accounts: 0,
+      strategies: 0,
     };
   }
 

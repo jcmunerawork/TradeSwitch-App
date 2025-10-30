@@ -106,8 +106,6 @@ export class UsersOperationsService {
         ...userData,
         lastUpdated: new Date().getTime()
       }, { merge: true });
-      
-      console.log('Usuario actualizado exitosamente:', userId);
     } catch (error) {
       console.error('Error actualizando usuario:', error);
       throw error;

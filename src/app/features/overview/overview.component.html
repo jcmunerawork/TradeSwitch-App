@@ -1,11 +1,137 @@
-<div class="main-titles color-background d-flex flex-col mb-50">
-  <h1 class="titleText mb-32">The Overview</h1>
+<div class="main-titles color-background d-flex flex-col mb-32">
+  <div class="title-container">
+    <h1 class="titleText mb-16">The Overview</h1>
+
+    <div class="export-button-desktop">
+      <button class="export-data-btn" (click)="openExportModal()">
+        <span>Export Data</span>
+        <span class="material-symbols-outlined">call_made</span>
+      </button>
+        @if (showExportModal) {
+        <div class="export-overlay">
+          <div class="export-modal">
+            <h3 class="modal-title">Export Data by Date</h3>
+            <div class="field-group">
+              <label class="field-label">Select Date Range</label>
+              <div class="date-select" (click)="$event.stopPropagation(); showDateDropdown = !showDateDropdown">
+                <span class="placeholder" *ngIf="!exportStartDate && !exportEndDate">Select Date Range</span>
+                <span class="value" *ngIf="exportStartDate && !exportEndDate">{{ exportStartDate }}</span>
+                <span class="value" *ngIf="exportStartDate && exportEndDate">{{ exportStartDate }} — {{ exportEndDate }}</span>
+                <span class="chevron material-symbols-outlined">expand_more</span>
+              </div>
+              @if (showDateDropdown) {
+                <div class="date-dropdown" (click)="$event.stopPropagation()">
+                  <div class="calendar-header">
+                    <button class="nav" (click)="prevMonth()"><span class="material-symbols-outlined">chevron_left</span></button>
+                    <div class="month-label">{{ monthLabel }}</div>
+                    <button class="nav" (click)="nextMonth()"><span class="material-symbols-outlined">chevron_right</span></button>
+                  </div>
+                  <div class="calendar-grid">
+                    <div class="dow">S</div>
+                    <div class="dow">M</div>
+                    <div class="dow">T</div>
+                    <div class="dow">W</div>
+                    <div class="dow">T</div>
+                    <div class="dow">F</div>
+                    <div class="dow">S</div>
+                    @for (week of weeks; track $index) {
+                      @for (cell of week; track cell.date) {
+                        <button 
+                          class="day"
+                          [class.outside]="!cell.inMonth"
+                          [class.in-range]="isSelected(cell.date)"
+                          (click)="onDayPick(cell.date)"
+                        >{{ cell.date.getDate() }}</button>
+                      }
+                    }
+                  </div>
+                  <div class="hint-text">Pick start then end. Only start = that day.</div>
+                </div>
+              }
+              <div class="click-guard" (click)="showDateDropdown=false"></div>
+              @if (exportError) {
+                <div class="error-text">{{ exportError }}</div>
+              }
+              <div class="hint-text">If empty, all data will be exported.</div>
+            </div>
+  
+            <div class="actions">
+              <button class="btn-cancel" (click)="closeExportModal()">Cancel</button>
+              <button class="btn-export" (click)="exportDataAsCSV()">Export Data</button>
+            </div>
+          </div>
+        </div>
+        }
+    </div>
+  </div>
   <h3 class="regularText">
     Visualize the TradeSwitch metrics in the last 30 days.
   </h3>
+
+  <div class="export-button-mobile">
+    <button class="export-data-btn" (click)="openExportModal()">
+      <span>Export Data</span>
+      <span class="material-symbols-outlined">call_made</span>
+    </button>
+      @if (showExportModal) {
+      <div class="export-overlay">
+        <div class="export-modal">
+          <h3 class="modal-title">Export Data by Date</h3>
+          <div class="field-group">
+            <label class="field-label">Select Date Range</label>
+            <div class="date-select" (click)="$event.stopPropagation(); showDateDropdown = !showDateDropdown">
+              <span class="placeholder" *ngIf="!exportStartDate && !exportEndDate">Select Date Range</span>
+              <span class="value" *ngIf="exportStartDate && !exportEndDate">{{ exportStartDate }}</span>
+              <span class="value" *ngIf="exportStartDate && exportEndDate">{{ exportStartDate }} — {{ exportEndDate }}</span>
+              <span class="chevron material-symbols-outlined">expand_more</span>
+            </div>
+            @if (showDateDropdown) {
+              <div class="date-dropdown" (click)="$event.stopPropagation()">
+                <div class="calendar-header">
+                  <button class="nav" (click)="prevMonth()"><span class="material-symbols-outlined">chevron_left</span></button>
+                  <div class="month-label">{{ monthLabel }}</div>
+                  <button class="nav" (click)="nextMonth()"><span class="material-symbols-outlined">chevron_right</span></button>
+                </div>
+                <div class="calendar-grid">
+                  <div class="dow">S</div>
+                  <div class="dow">M</div>
+                  <div class="dow">T</div>
+                  <div class="dow">W</div>
+                  <div class="dow">T</div>
+                  <div class="dow">F</div>
+                  <div class="dow">S</div>
+                  @for (week of weeks; track $index) {
+                    @for (cell of week; track cell.date) {
+                      <button 
+                        class="day"
+                        [class.outside]="!cell.inMonth"
+                        [class.in-range]="isSelected(cell.date)"
+                        (click)="onDayPick(cell.date)"
+                      >{{ cell.date.getDate() }}</button>
+                    }
+                  }
+                </div>
+                <div class="hint-text">Pick start then end. Only start = that day.</div>
+              </div>
+            }
+            <div class="click-guard" (click)="showDateDropdown=false"></div>
+            @if (exportError) {
+              <div class="error-text">{{ exportError }}</div>
+            }
+            <div class="hint-text">If empty, all data will be exported.</div>
+          </div>
+
+          <div class="actions">
+            <button class="btn-cancel" (click)="closeExportModal()">Cancel</button>
+            <button class="btn-export" (click)="exportDataAsCSV()">Export Data</button>
+          </div>
+        </div>
+      </div>
+      }
+  </div>
 </div>
 
-<div class="d-flex stats-card-container mb-24">
+<div class="stats-card-container">
   <app-stat-card
     class="stat-card"
     title="Users"
@@ -18,25 +144,33 @@
   ></app-stat-card>
   <app-stat-card
     class="stat-card"
-    title="Revenue Generated"
-    [value]="subscriptionsData?.revenue"
+    title="Paid subscriptions"
+    [value]="paidSubscriptions"
+  ></app-stat-card>
+  <app-stat-card
+    class="stat-card"
+    title="Month revenue"
+    [value]="calculatedRevenue"
+    formatType="currency"
   ></app-stat-card>
 </div>
-<div class="middle-container justify-between d-flex mb-24">
+<div class="middle-container">
   <app-trade-switch-table [users]="usersData"></app-trade-switch-table>
-  <div class="top-10 d-flex flex-col p-30">
-    <div class="mb-20 d-flex justify-between items-center">
+  <div class="top-10">
+    <div class="top-10-header">
       <h2 class="subtitle color-background">Top 10 performing users</h2>
       <a
         routerLink="/users"
-        class="view-users-btn p-10 bg-primary-400 color-bg-black inputText"
+        class="view-users-btn color-bg-black inputText"
       >
-        View all users
+        View all users 
       </a>
     </div>
-    @for (user of topUsers; track $index) {
-    <app-top-list [user]="user"></app-top-list>
-    }
+    <div class="top-10-list">
+      @for (user of topUsers; track $index) {
+      <app-top-list [user]="user"></app-top-list>
+      }
+    </div>
   </div>
 </div>
 <app-loading-popup [visible]="loading"></app-loading-popup>

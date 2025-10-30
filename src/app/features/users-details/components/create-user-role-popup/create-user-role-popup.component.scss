@@ -1,0 +1,171 @@
+.role-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 950;
+}
+
+.role-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 560px;
+  max-width: 90vw; /* Responsive width */
+  background: #181a1d;
+  border: 0.5px solid #4a4a4a;
+  border-radius: 12px;
+  padding: 20px;
+  z-index: 1000;
+  font-family: "SF Pro Display";
+  max-height: 85vh;
+  overflow: hidden;
+}
+
+.create-user-form-container { 
+  padding: 16px;
+  border-radius: 12px;
+  border-radius: 12px;
+  backdrop-filter: blur(4px);
+  font-family: "SF Pro Display";
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+  max-height: calc(85vh - 20px);
+  overflow-y: auto;
+}
+
+.create-user-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.form-row label { color: #e4e7ec; }
+.error-text { color: #ef4444; font-size: 12px; grid-column: 2 / -1; margin-top: -6px; }
+.optional-title { color: #e4e7ec; margin: 12px 0 4px 0; }
+
+.timezone-select {
+  background: transparent;
+  color: #e4e7ec;
+  border: 1px solid #434343;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.actions { gap: 10px; margin-top: 10px; }
+.btn { border-radius: 8px; padding: 8px 14px; border: 1.5px solid #e4e7ec; background: transparent; color: #e4e7ec; transition: all 0.2s ease; }
+.btn.primary { background: #9bf526; color: #0b0b0c; border: none; &:hover { background: #468506; } }
+.btn.cancel { background: transparent; &:hover { color: #4a4a4a; border-color: #4a4a4a; } }
+
+.overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 1100;
+}
+.overlay-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #1c1f22;
+  border: 1px solid #3a3f46;
+  border-radius: 12px;
+  padding: 18px;
+  max-width: 300px;
+  color: #e4e7ec;
+  z-index: 1110;
+  box-shadow: 0 10px 32px rgba(0,0,0,0.5);
+  font-family: "SF Pro Display";
+}
+.overlay-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+.overlay-text { color: #c0c6cc; margin-bottom: 14px; }
+.overlay-actions { display: flex; gap: 12px; }
+.btn.danger { background: #ef4444; color: #0b0b0c; border: none; &:hover { background: #b91c1c; } }
+.btn.success { background: #9bf526; color: #0b0b0c; border: none; &:hover { background: #468506; } }
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.popup-header .title {
+  color: #e4e7ec;
+  margin: 0;
+}
+
+.close-btn {
+  background: transparent;
+  color: #90a4ae;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.roles {
+  gap: 16px;
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap; /* allow wrapping on small screens */
+}
+
+.role-card {
+  flex: 1 1 240px; /* grow and shrink with a sensible base */
+  background: radial-gradient(ellipse 36% 42% at top center, rgba(81, 134, 228, 0.1) 0%, rgba(81, 134, 228, 0.01) 100%), #111314;
+  border: 1px solid #2f343a;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: border 0.2s, transform 0.1s;
+}
+
+.role-card:hover { border-color: #4b5563; transform: translateY(-1px); }
+
+.role-card h4 { color: #e4e7ec; margin: 0 0 6px 0; }
+.role-card p { color: #9aa5b1; font-size: 12px; min-height: 40px; }
+
+.select {
+  margin-top: 12px;
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  color: #e4e7ec;
+  border: 1px solid #4a4a4a;
+}
+
+.select.primary {
+  background: #9bf526;
+  color: #0b0b0c;
+  border: none;
+}
+
+/* Stack role cards and reduce paddings on very small screens */
+@media (max-width: 480px) {
+  .role-popup { padding: 16px; }
+  .roles { gap: 12px; }
+  .role-card { flex: 1 1 100%; }
+}
+
+/* Stack labels over inputs on narrow screens */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .error-text { grid-column: 1 / -1; }
+  .form-row label { margin-bottom: 6px; }
+}

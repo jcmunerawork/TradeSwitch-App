@@ -11,12 +11,6 @@
   <div class="chart-content d-flex justify-center items-center">
     <div class="chart-wrapper">
       <!-- Texto y número por fuera cuando no hay datos -->
-      @if (!values || values.length === 0) {
-      <div class="no-data-overlay">
-        <div class="no-data-text">No Data</div>
-        <div class="no-data-value">0</div>
-      </div>
-      }
       
       <apx-chart
         [series]="chartOptions.series"
@@ -30,7 +24,7 @@
         [stroke]="chartOptions.stroke"
       ></apx-chart>
     </div>
-    
+
     <!-- Labels debajo del círculo solo cuando hay datos -->
     @if (values && values.length > 0) {
     <div class="chart-labels-overlay">

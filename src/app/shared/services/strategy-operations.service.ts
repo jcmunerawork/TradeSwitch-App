@@ -541,6 +541,41 @@ export class StrategyOperationsService {
   }
 
   /**
+   * Obtener el número total de estrategias de un usuario (solo no eliminadas)
+   */
+  async getAllLengthConfigurationsOverview(userId: string): Promise<number> {
+    if (!this.db) {
+      console.warn('Firestore not available in SSR');
+      return 0;
+    }
+
+    try {
+      // Obtener todas las estrategias del usuario
+      const overviewQuery = query(
+        collection(this.db, 'configuration-overview'),
+        where('userId', '==', userId)
+      );
+      
+      const overviewSnapshot = await getDocs(overviewQuery);
+      
+      let count = 0;
+      overviewSnapshot.forEach((doc) => {
+        const data = doc.data() as ConfigurationOverview;
+        // Solo contar las que no estén marcadas como deleted (deleted !== true)
+        // Las que tienen deleted === false o no tienen el campo deleted se cuentan
+        if (data.deleted === undefined || data.deleted === false) {
+          count++;
+        }
+      });
+      
+      return count;
+    } catch (error) {
+      console.error('Error getting strategies count:', error);
+      return 0;
+    }
+  }
+
+  /**
    * Generar ID único para configuration-overview
    */
   private generateOverviewId(): string {

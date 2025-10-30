@@ -17,5 +17,8 @@ export interface AccountData {
   accountNumber: number;
   initialBalance?: number;
   balance?: number;
+  netPnl?: number;
+  profit?: number;
+  bestTrade?: number;
   createdAt: Timestamp;
 }

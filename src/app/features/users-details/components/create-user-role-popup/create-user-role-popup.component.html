@@ -1,0 +1,119 @@
+@if (visible) {
+<div class="role-popup-backdrop" (click)="step === 'role' ? close.emit() : onCancel()"></div>
+<div class="role-popup" (click)="$event.stopPropagation()">
+  @if (step === 'role') {
+  <div class="popup-header d-flex items-center justify-between">
+    <h3 class="title">Select user role</h3>
+    <button class="close-btn" (click)="step === 'role' ? close.emit() : onCancel()">×</button>
+  </div>
+
+  <div class="roles d-flex">
+    <div class="role-card" (click)="onSelect('user')">
+      <h4>Create User</h4>
+      <p>Standard user with access to trading tools, strategies, and dashboards</p>
+      <button class="select primary">Select role</button>
+    </div>
+
+    <div class="role-card" (click)="onSelect('admin')">
+      <h4>Create Admin</h4>
+      <p>Full access to manage users, settings, and platform configurations</p>
+      <button class="select">Select role</button>
+    </div>
+  </div>
+  }
+
+  @if (step === 'form') {
+  <div class="create-user-form-container">
+    <div class="popup-header d-flex items-center justify-between">
+      <h3 class="title">Create User</h3>
+      <button class="close-btn" (click)="onCancel()">×</button>
+    </div>
+  
+    <form [formGroup]="form" class="create-user-form">
+      <div class="form-row">
+        <label>First name*</label>
+        <app-text-input formControlName="firstName" placeholder="John"></app-text-input>
+        @if(form.get('firstName')?.touched && form.get('firstName')?.invalid){
+          <small class="error-text">First name is required (min 2 chars)</small>
+        }
+      </div>
+      <div class="form-row">
+        <label>Last name*</label>
+        <app-text-input formControlName="lastName" placeholder="Doe"></app-text-input>
+        @if(form.get('lastName')?.touched && form.get('lastName')?.invalid){
+          <small class="error-text">Last name is required (min 2 chars)</small>
+        }
+      </div>
+      <div class="form-row">
+        <label>Email*</label>
+        <app-text-input formControlName="email" placeholder="johndoe@email.com" type="email"></app-text-input>
+        @if(form.get('email')?.touched && form.get('email')?.invalid){
+          <small class="error-text">Invalid email format</small>
+        }
+      </div>
+      <div class="form-row">
+        <label>Password*</label>
+        <app-password-input formControlName="password" [label]="''" [showValidation]="true" [userEmail]="form.get('email')?.value || ''" [userName]="form.get('firstName')?.value || ''"></app-password-input>
+      </div>
+  
+      <div class="form-row">
+        <label>Birthday*</label>
+        <app-birthday-input [label]="''" formControlName="birthday" placeholder="YYYY-MM-DD"></app-birthday-input>
+        @if(form.get('birthday')?.touched && form.get('birthday')?.invalid){
+          <small class="error-text">You must be 18 years or older</small>
+        }
+      </div>
+
+      <div class="form-row">
+        <label>Phone number</label>
+        <app-phone-input [label]="''" formControlName="phoneNumber" placeholder="+1 302 555 0107"></app-phone-input>
+        @if(form.get('phoneNumber')?.touched && form.get('phoneNumber')?.invalid){
+          <small class="error-text">Enter a valid phone number</small>
+        }
+      </div>
+  
+    <div class="actions d-flex justify-end">
+      <button type="button" class="btn cancel" (click)="onCancel()">Cancel</button>
+      <button type="button" class="btn primary" (click)="submitCreateUser()">Create user</button>
+    </div>
+    </form>
+  </div>
+  }
+</div>
+
+@if (step === 'form' && showCreateConfirm) {
+  <div class="overlay-backdrop" (click)="$event.stopPropagation()"></div>
+  <div class="overlay-modal">
+    <div class="overlay-title">Create {{ role === 'admin' ? 'admin' : 'user' }}?</div>
+    <p class="overlay-text">Do you want to create this account now?</p>
+    <div class="overlay-actions">
+      <button class="btn cancel" (click)="keepEditingCreate()">Continue editing</button>
+      <button class="btn success" (click)="confirmCreate()">Yes, create</button>
+    </div>
+  </div>
+}
+
+@if (step === 'form' && showCancelConfirm) {
+  <div class="overlay-backdrop" (click)="$event.stopPropagation()"></div>
+  <div class="overlay-modal">
+    <div class="overlay-title">Cancel {{ role === 'admin' ? 'admin' : 'user' }} creation?</div>
+    <p class="overlay-text">If you leave now, the information you’ve entered will not be saved.</p>
+    <div class="overlay-actions">
+      <button class="btn cancel" (click)="keepEditing()">Continue editing</button>
+      <button class="btn danger" (click)="confirmCancel()">Yes, cancel</button>
+    </div>
+  </div>
+}
+
+@if (step === 'form' && showSuccess) {
+  <div class="overlay-backdrop" (click)="$event.stopPropagation()"></div>
+  <div class="overlay-modal">
+    <div class="overlay-title">User created successfully</div>
+    <p class="overlay-text">The new user has been added to your team and can now access their account.</p>
+    <div class="overlay-actions">
+      <button class="btn cancel" (click)="successCreateAnother()">Create another user</button>
+      <button class="btn success" (click)="successGoToList()">Go to user list</button>
+    </div>
+  </div>
+}
+}
