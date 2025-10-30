@@ -1,5 +1,9 @@
 .win-loss-chart-container {
-  background: #1f1f20;
+  background: radial-gradient(
+    ellipse 36% 42% at top center,
+    rgba(81, 134, 228, 0.1) 0%,
+    rgba(81, 134, 228, 0.01) 100%
+  );
   border-radius: 8px;
   border: 1px solid #424242;
   height: 100%;

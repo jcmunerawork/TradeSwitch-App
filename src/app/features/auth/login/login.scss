@@ -2,8 +2,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  min-height: 100vh;
+  background: radial-gradient(
+    ellipse 36% 42% at top center,
+    rgba(81, 134, 228, 0.1) 0%,
+    rgba(81, 134, 228, 0.01) 100%
+  );
+  position: fixed;
+  top: 0;
+  left: 0;
+  overflow-y: auto;
 }
 
 .login-wrapper {
@@ -44,9 +53,9 @@
     flex-direction: row;
     width: 100%;
     font-size: 14px;
-    gap: 0px;
-    justify-content: space-around;
-    align-items: start;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
   }
 
   .signup-link a {

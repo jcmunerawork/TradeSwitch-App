@@ -619,6 +619,7 @@ export class CalendarComponent {
         followedStrategy: followedStrategy,
         tradeWinPercent: Math.round(tradeWinPercent),
         strategyName: strategyName,
+        isCurrentMonth: currentDay.getMonth() === month && currentDay.getFullYear() === year,
       });
 
       currentDay.setDate(currentDay.getDate() + 1);

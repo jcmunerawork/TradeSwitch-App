@@ -212,6 +212,40 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
   }
+  
+  // Días fuera del mes actual - sin contenido, solo borde
+  &.outside-month {
+    background: transparent;
+    border: 2px solid #424242;
+    padding: 6px; // Reducir padding para compensar el borde de 2px (8px - 2px = 6px)
+    
+    @media (max-width: 1024px) {
+      padding: 2px; // 4px - 2px = 2px (border de 1px original + 1px extra = padding reducido en 2px)
+    }
+    
+    @media (max-width: 768px) {
+      padding: 0px; // 2px - 2px = 0px
+    }
+    
+    @media (max-width: 480px) {
+      padding: 0px; // Ya es mínimo
+    }
+    
+    @media (max-width: 360px) {
+      padding: 0px; // 2px - 2px = 0px
+    }
+    
+    &:hover {
+      background: transparent;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    &.positive-cell,
+    &.negative-cell {
+      background: transparent;
+    }
+  }
 }
 
 .positive-cell {
@@ -526,6 +560,13 @@
 .calendar-main {
   flex: 1;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  
+  @media (max-width: 1024px) {
+    gap: 0px;
+  }
 }
 
 // Weekly summary styles
@@ -548,6 +589,36 @@
   flex: 0 0 120px;
   margin: 1px;
   box-sizing: border-box;
+  
+  // Fondo verde para semanas positivas
+  &.week-positive {
+    background: radial-gradient(
+      ellipse 36% 42% at top center,
+      rgba(188, 254, 99, 0.16) 0%,
+      rgba(188, 254, 99, 0.01) 100%
+    ),
+    #1f1f20;
+  }
+  
+  // Fondo rojo para semanas negativas
+  &.week-negative {
+    background: radial-gradient(
+      ellipse 60% 80% at top center,
+      rgba(254, 99, 102, 0.12) 0%,
+      rgba(254, 99, 102, 0.04) 70%,
+      rgba(16, 16, 16, 0.9) 100%
+    ),
+    rgba(16, 16, 16, 0.9);
+  }
+  
+  // Fondo azul para semanas neutrales (0)
+  &.week-neutral {
+    background: radial-gradient(
+      ellipse 36% 42% at top center,
+      rgba(81, 134, 228, 0.1) 0%,
+      rgba(81, 134, 228, 0.01) 100%
+    );
+  }
 }
 
 .week-header {
@@ -572,11 +643,11 @@
   font-weight: 700;
   
   &.positive {
-    color: #14ae5c;
+    color: #9BF526; // Verde para valores positivos
   }
   
-  &.negative {
-    color: #ec221f;
+  &.neutral {
+    color: #ffffff; // Blanco para valores 0 o negativos
   }
 }
 
@@ -639,6 +710,36 @@
   flex-direction: column;
   justify-content: space-between;
   font-family: "SF Pro Display", Arial, sans-serif;
+  
+  // Fondo verde para semanas positivas
+  &.week-positive {
+    background: radial-gradient(
+      ellipse 36% 42% at top center,
+      rgba(188, 254, 99, 0.16) 0%,
+      rgba(188, 254, 99, 0.01) 100%
+    ),
+    #1f1f20;
+  }
+  
+  // Fondo rojo para semanas negativas
+  &.week-negative {
+    background: radial-gradient(
+      ellipse 60% 80% at top center,
+      rgba(254, 99, 102, 0.12) 0%,
+      rgba(254, 99, 102, 0.04) 70%,
+      rgba(16, 16, 16, 0.9) 100%
+    ),
+    rgba(16, 16, 16, 0.9);
+  }
+  
+  // Fondo azul para semanas neutrales (0)
+  &.week-neutral {
+    background: radial-gradient(
+      ellipse 36% 42% at top center,
+      rgba(81, 134, 228, 0.1) 0%,
+      rgba(81, 134, 228, 0.01) 100%
+    );
+  }
   
   @media (max-width: 768px) {
     padding: 6px;

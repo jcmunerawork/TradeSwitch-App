@@ -1,12 +1,22 @@
 .signup-container {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  width: 100%;
+  width: 100vw;
+  min-height: 100vh;
   height: 100%;
   max-width: 100%;
   overflow-x: hidden;
+  overflow-y: auto;
   box-sizing: border-box;
+  background: radial-gradient(
+    ellipse 36% 42% at top center,
+    rgba(81, 134, 228, 0.1) 0%,
+    rgba(81, 134, 228, 0.01) 100%
+  );
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
 .signup-wrapper {
@@ -22,10 +32,16 @@
   
   @media (max-width: 540px) {
     padding: 20px 16px;
+    min-height: auto;
+    padding-top: 40px;
+    padding-bottom: 40px;
   }
   
   @media (max-width: 400px) {
     padding: 16px 12px;
+    min-height: auto;
+    padding-top: 30px;
+    padding-bottom: 30px;
   }
 }
 

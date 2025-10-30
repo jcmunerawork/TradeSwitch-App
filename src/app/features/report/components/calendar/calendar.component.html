@@ -60,10 +60,12 @@
             active: cell.tradesCount > 0,
             'positive-cell': cell.tradesCount > 0 && cell.followedStrategy,
             'negative-cell': cell.tradesCount > 0 && !cell.followedStrategy,
-            'clickable': cell.tradesCount > 0
+            'clickable': cell.tradesCount > 0,
+            'outside-month': !cell.isCurrentMonth
           }"
           (click)="onDayClick(cell)"
         >
+          @if (cell.isCurrentMonth) {
           <div class="cell-header">
             @if (cell.tradesCount > 0) {
             <div
@@ -95,16 +97,22 @@
             </div>
           </div>
           }
+          }
         </div>
         }
         
         <!-- Weekly Summary Card for this week - Desktop -->
-        <div class="week-summary-card desktop-only">
+        <div class="week-summary-card desktop-only" 
+          [ngClass]="{
+            'week-positive': getWeekTotal(week) > 0,
+            'week-negative': getWeekTotal(week) < 0,
+            'week-neutral': getWeekTotal(week) === 0
+          }">
           <div class="week-header">
             <h4 class="week-title">Week {{ $index + 1 }}</h4>
           </div>
           <div class="week-content">
-            <div class="week-total" [ngClass]="getWeekTotal(week) >= 0 ? 'positive' : 'negative'">
+            <div class="week-total" [ngClass]="getWeekTotal(week) > 0 ? 'positive' : 'neutral'">
               {{ formatCurrency(getWeekTotal(week)) }}
             </div>
             <div class="week-days">
@@ -120,12 +128,17 @@
   <!-- Weekly Summary Grid - Mobile -->
   <div class="weekly-summary-grid mobile-only">
     @for (week of calendar; track $index) {
-    <div class="week-summary-card-mobile">
+    <div class="week-summary-card-mobile"
+      [ngClass]="{
+        'week-positive': getWeekTotal(week) > 0,
+        'week-negative': getWeekTotal(week) < 0,
+        'week-neutral': getWeekTotal(week) === 0
+      }">
       <div class="week-header">
         <h4 class="week-title">Week {{ $index + 1 }}</h4>
       </div>
       <div class="week-content">
-        <div class="week-total" [ngClass]="getWeekTotal(week) >= 0 ? 'positive' : 'negative'">
+        <div class="week-total" [ngClass]="getWeekTotal(week) > 0 ? 'positive' : 'neutral'">
           {{ formatCurrency(getWeekTotal(week)) }}
         </div>
         <div class="week-days">
