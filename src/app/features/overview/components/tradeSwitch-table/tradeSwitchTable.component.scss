@@ -259,7 +259,7 @@ table {
 // Tabla principal de usuarios - asegurar que mantiene su ancho completo
 .table-scroll-container > table {
   width: 100%;
-  min-width: 100%;         // Min width only for scroll, doesn't expand container
+  min-width: max-content;  // Allow table to expand beyond container for horizontal scroll
 }
 
 thead th {
@@ -268,6 +268,15 @@ thead th {
   top: -2px;
   z-index: 10;
   border-bottom: 1px solid #444;
+  white-space: nowrap;
+  
+  &:first-child,
+  &:last-child {
+    width: 28px;
+    min-width: 28px;
+    max-width: 28px;
+    padding: 0;
+  }
 }
 
 .table-scroll-container::-webkit-scrollbar {
@@ -284,6 +293,15 @@ td {
   text-align: left;
 }
 
+// Solo aplicar a la tabla principal, no a la tabla interna
+table:not(.accounts-table) .user-row td:first-child,
+table:not(.accounts-table) .user-row td:last-child {
+  width: 28px;
+  min-width: 28px;
+  max-width: 28px;
+  padding: 0;
+}
+
 tbody tr {
   border-bottom: 1px solid #2e3440;
 }
@@ -295,13 +313,16 @@ tbody tr {
     padding: 0;
     border: none;
     width: 100%;
+    max-width: 100%;
   }
 }
 
 .account-cells-wrapper {
   padding: 0 !important;
   width: 100%;
+  max-width: 100%;
   overflow: hidden; // Evitar que afecte el layout de la tabla principal
+  box-sizing: border-box;
 }
 
 .accounts-scroll-wrapper {
@@ -332,7 +353,8 @@ tbody tr {
 
 .accounts-table {
   width: 100%; // Usar 100% para que ocupe todo el espacio disponible
-  table-layout: fixed; // Forzar distribución fija de columnas iguales
+  min-width: 100%;
+  table-layout: auto; // Cambiar a auto para que se ajuste al contenido
   white-space: nowrap; // Evitar que el texto se corte en múltiples líneas
   border-collapse: collapse;
   display: table; // Asegurar que se comporte como tabla
@@ -348,7 +370,6 @@ tbody tr {
       font-weight: 500;
       white-space: nowrap;
       font-size: 14px;
-      width: calc(100% / 6); // Dividir el ancho en 6 partes iguales (6 columnas)
       overflow: hidden;
       text-overflow: ellipsis;
     }
@@ -363,11 +384,21 @@ tbody tr {
         color: #cfd8dc;
         white-space: nowrap;
         font-size: 14px;
-        width: calc(100% / 6); // Dividir el ancho en 6 partes iguales (6 columnas)
         overflow: hidden;
         text-overflow: ellipsis;
+        // Asegurar que las celdas de la tabla interna no se vean afectadas por los estilos de la tabla principal
+        width: auto !important;
+        min-width: auto !important;
+        max-width: none !important;
       }
     }
+  }
+  
+  // Asegurar que los headers de la tabla interna tampoco se vean afectados
+  thead th {
+    width: auto !important;
+    min-width: auto !important;
+    max-width: none !important;
   }
 }
 
@@ -375,7 +406,7 @@ tbody tr {
   background: transparent;
   border: none;
   cursor: pointer;
-  margin-right: 4px;
+  margin-right: -2px;
   display: flex;
   align-items: center;
   justify-content: center;

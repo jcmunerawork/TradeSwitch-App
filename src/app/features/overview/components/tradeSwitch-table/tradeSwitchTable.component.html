@@ -131,17 +131,19 @@
       <table class="regularText">
         <thead>
           <tr>
+            <th class="regularText py-8"></th>
             <th class="regularText py-18">User</th>
             <th class="regularText py-18">Status</th>
             <th class="regularText py-18">% Strat. Followed</th>
             <th class="regularText py-18">Strategies</th>
             <th class="regularText py-18">Trading Accounts</th>
+            <th class="regularText py-8"></th>
           </tr>
         </thead>
         <tbody>
           @for (user of paginatedUsers; track $index) {
           <tr class="user-row">
-            <td class="smallText d-flex items-center">
+            <td>
               @if (hasAccounts(user.id)) {
                 <button 
                   class="expand-btn"
@@ -156,6 +158,8 @@
                   </span>
                 </button>
               }
+            </td>
+            <td class="smallText d-flex items-center">
               <span class="avatar smallText"
                 >{{ onlyNameInitials(user) }}
               </span>
@@ -203,7 +207,7 @@
           
           @if (isExpanded(user.id) && hasAccounts(user.id)) {
             <tr class="account-rows-container">
-              <td colspan="5" class="account-cells-wrapper">
+              <td colspan="7" class="account-cells-wrapper">
                 <div class="accounts-scroll-wrapper">
                   <table class="accounts-table">
                     <thead>
