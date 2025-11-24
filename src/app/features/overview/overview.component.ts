@@ -383,28 +383,64 @@ export class Overview {
       return true; // no dates -> export all
     });
 
+    if (filtered.length === 0) {
+      this.exportError = 'No users found for the selected date range.';
+      return;
+    }
+
     const rows: string[] = [];
-    // Header
+    // Header - matching the table columns and additional useful data
     rows.push([
-      'User ID', 'First Name', 'Last Name', 'Email', 'Status', 'Strategies', 'Trading Accounts', '% Strat Followed', 'Net PnL', 'Profit', 'Best Trade', 'Subscription Date'
+      'User ID',
+      'First Name',
+      'Last Name',
+      'Email',
+      'Phone Number',
+      'Status',
+      '% Strategy Followed',
+      'Strategies',
+      'Trading Accounts',
+      'Net P&L',
+      'Profit',
+      'Best Trade',
+      'Number of Trades',
+      'Total Spend',
+      'Subscription Date',
+      'Last Updated'
     ].join(','));
 
     // Data
     for (const u of filtered) {
-      const subDate = u.subscription_date ? new Date(u.subscription_date).toISOString() : '';
+      // Calculate status like in the table component
+      const displayStatus = this.getDisplayStatus(u);
+      
+      // Format subscription date
+      const subDate = u.subscription_date 
+        ? new Date(u.subscription_date).toISOString().split('T')[0] 
+        : '';
+      
+      // Format last updated date
+      const lastUpdatedDate = u.lastUpdated 
+        ? new Date(u.lastUpdated).toISOString().split('T')[0] 
+        : '';
+
       rows.push([
         `${u.id ?? ''}`,
         this.escapeCsv(u.firstName ?? ''),
         this.escapeCsv(u.lastName ?? ''),
         this.escapeCsv(u.email ?? ''),
-        `${u.status ?? ''}`,
+        this.escapeCsv(u.phoneNumber ?? ''),
+        displayStatus,
+        u.strategy_followed !== undefined ? `${u.strategy_followed}` : '',
         `${u.strategies ?? 0}`,
         `${u.trading_accounts ?? 0}`,
-        `${u.strategy_followed ?? 0}`,
         `${u.netPnl ?? 0}`,
         `${u.profit ?? 0}`,
         `${u.best_trade ?? 0}`,
+        `${u.number_trades ?? 0}`,
+        `${u.total_spend ?? 0}`,
         subDate,
+        lastUpdatedDate,
       ].join(','));
     }
 
@@ -413,12 +449,45 @@ export class Overview {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    const filename = this.exportStartDate || this.exportEndDate ? `export_${Date.now()}.csv` : 'export_all.csv';
+    const dateRange = this.exportStartDate && this.exportEndDate 
+      ? `${this.exportStartDate}_to_${this.exportEndDate}`
+      : this.exportStartDate 
+        ? this.exportStartDate
+        : 'all';
+    const filename = `users_export_${dateRange}_${Date.now()}.csv`;
     link.setAttribute('download', filename);
     link.click();
     URL.revokeObjectURL(url);
 
     this.closeExportModal();
+  }
+
+  /**
+   * Get display status for a user (matching the table component logic)
+   */
+  private getDisplayStatus(user: User): string {
+    // Si el status es banned, retornar banned
+    if (String(user.status) === 'banned') {
+      return 'Banned';
+    }
+    
+    // Verificar si todos los valores están en 0
+    const allValuesZero = 
+      (user.trading_accounts ?? 0) === 0 &&
+      (user.strategies ?? 0) === 0 &&
+      (user.strategy_followed ?? 0) === 0 &&
+      (user.netPnl ?? 0) === 0 &&
+      (user.profit ?? 0) === 0 &&
+      (user.number_trades ?? 0) === 0 &&
+      (user.total_spend ?? 0) === 0;
+    
+    // Si todos los valores están en 0, retornar created
+    if (allValuesZero) {
+      return 'Created';
+    }
+    
+    // Si no todos están en 0, retornar active
+    return 'Active';
   }
 
   private escapeCsv(value: string): string {

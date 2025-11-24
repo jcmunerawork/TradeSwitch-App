@@ -87,8 +87,12 @@ thead th {
 
 th,
 td {
-  padding: 10px 14px;
+  padding: 10px 8px;
   text-align: left;
+  vertical-align: middle;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 tbody tr {
