@@ -111,6 +111,46 @@ export interface AppContextState {
   };
 }
 
+/**
+ * Global application context service for managing shared state.
+ *
+ * This service provides a centralized state management system using Angular signals
+ * and RxJS observables. It manages user data, accounts, strategies, plans, trading
+ * history, and API caching across the entire application.
+ *
+ * Features:
+ * - User state management (current user, authentication status)
+ * - Account management (CRUD operations)
+ * - Strategy management (CRUD operations, activation)
+ * - Plan management (user plan, global plans, limits)
+ * - Trading history per account (with localStorage persistence)
+ * - API caching (TradeLocker data, general API cache)
+ * - Report data management
+ * - Overview data management (for admins)
+ * - Loading states per component
+ * - Error states per component
+ * - Computed signals for derived data
+ *
+ * State Management:
+ * - Signals: For reactive UI updates (Angular signals)
+ * - Observables: For RxJS-based subscriptions
+ * - BehaviorSubject: Internal state management
+ * - localStorage: Persistence for trading history
+ *
+ * Caching:
+ * - TradeLocker data: 5-minute TTL
+ * - General API cache: 10-minute TTL
+ * - Automatic cache eviction (20% oldest entries when max size reached)
+ *
+ * Relations:
+ * - TradeLockerApiService: Fetches trading data
+ * - All feature modules: Consume and update context data
+ * - localStorage: Persists trading history
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

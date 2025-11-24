@@ -2,6 +2,39 @@ import { Component, Input, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, FormsModule, ReactiveFormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 
+/**
+ * Reusable text input component with Angular Forms integration.
+ *
+ * This component provides a customizable text input that integrates with
+ * Angular Reactive Forms and Template-driven Forms through ControlValueAccessor.
+ * It supports labels, placeholders, validation states, and disabled states.
+ *
+ * Features:
+ * - Angular Forms integration (ControlValueAccessor)
+ * - Customizable label and placeholder
+ * - Support for different input types (text, email, password, etc.)
+ * - Required field indicator
+ * - Disabled state support
+ * - Touch state tracking
+ * - Validation error display
+ *
+ * Usage:
+ * <app-text-input
+ *   formControlName="email"
+ *   label="Email"
+ *   placeholder="Enter your email"
+ *   type="email"
+ *   [required]="true">
+ * </app-text-input>
+ *
+ * Relations:
+ * - Used in forms throughout the application
+ * - Integrates with Angular Reactive Forms and Template-driven Forms
+ *
+ * @component
+ * @selector app-text-input
+ * @standalone true
+ */
 @Component({
   selector: 'app-text-input',
   standalone: true,

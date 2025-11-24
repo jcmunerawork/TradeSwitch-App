@@ -7,6 +7,26 @@ interface BalanceData {
   accountId: string;
 }
 
+/**
+ * Service for caching account balance data.
+ *
+ * This service provides caching for account balances with a 5-minute expiration.
+ * It uses both in-memory cache and localStorage for persistence across page reloads.
+ * Includes an Observable for real-time balance updates.
+ *
+ * Features:
+ * - In-memory and localStorage caching
+ * - 5-minute cache expiration
+ * - Observable for balance changes
+ * - Automatic cache cleanup
+ *
+ * Used in:
+ * - StrategyComponent: Caching balances for risk calculations
+ * - TradingAccountsComponent: Caching account balances
+ *
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

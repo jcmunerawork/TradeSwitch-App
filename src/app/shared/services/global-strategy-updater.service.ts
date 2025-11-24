@@ -2,6 +2,26 @@ import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { StrategyDaysUpdaterService } from './strategy-days-updater.service';
 
+/**
+ * Service for global strategy updates.
+ *
+ * This service provides a high-level interface for updating strategy active
+ * days. It acts as a wrapper around StrategyDaysUpdaterService, providing
+ * convenient methods for updating all strategies or a single strategy.
+ *
+ * Features:
+ * - Update all strategies for a user
+ * - Update single strategy by ID
+ * - Error handling and logging
+ *
+ * Relations:
+ * - StrategyDaysUpdaterService: Performs the actual updates
+ * - Used by components that need to refresh strategy days active
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

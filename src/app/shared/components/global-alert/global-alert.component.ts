@@ -4,6 +4,31 @@ import { Subscription } from 'rxjs';
 import { AlertService, AlertConfig } from '../../services/alert.service';
 import { AlertPopupComponent } from '../../pop-ups/alert-popup/alert-popup.component';
 
+/**
+ * Global alert component that displays alerts throughout the application.
+ *
+ * This component subscribes to the AlertService and displays alert dialogs
+ * whenever an alert is triggered anywhere in the application. It provides
+ * a centralized way to show user notifications.
+ *
+ * Features:
+ * - Subscribes to AlertService alert stream
+ * - Displays alerts using AlertPopupComponent
+ * - Handles alert close and confirm actions
+ * - Automatic cleanup on component destroy
+ *
+ * Usage:
+ * Should be included in the root app component template to enable global
+ * alert functionality throughout the application.
+ *
+ * Relations:
+ * - AlertService: Source of alert notifications
+ * - AlertPopupComponent: Displays the actual alert UI
+ *
+ * @component
+ * @selector app-global-alert
+ * @standalone true
+ */
 @Component({
   selector: 'app-global-alert',
   standalone: true,

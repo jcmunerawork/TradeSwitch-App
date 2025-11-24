@@ -3,18 +3,33 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
+/**
+ * Interface for TradeLocker API credentials.
+ *
+ * @interface TradeLockerCredentials
+ */
 export interface TradeLockerCredentials {
   email: string;
   password: string;
   server: string;
 }
 
+/**
+ * Interface for TradeLocker token response.
+ *
+ * @interface TradeLockerTokenResponse
+ */
 export interface TradeLockerTokenResponse {
   accessToken: string;
   tokenType: string;
   expiresIn: number;
 }
 
+/**
+ * Interface for TradeLocker account data.
+ *
+ * @interface TradeLockerAccount
+ */
 export interface TradeLockerAccount {
   accountId: string;
   accountName: string;
@@ -23,6 +38,38 @@ export interface TradeLockerAccount {
   server: string;
 }
 
+/**
+ * Service for interacting with the TradeLocker API.
+ *
+ * This service provides methods to authenticate with TradeLocker, fetch
+ * account balances, trading history, and instrument details. It handles
+ * JWT token management and API communication.
+ *
+ * Features:
+ * - JWT token authentication
+ * - Token refresh
+ * - Account validation
+ * - Account balance fetching
+ * - Trading history retrieval
+ * - Instrument details fetching
+ * - All instruments listing
+ * - User key generation
+ *
+ * API Endpoints:
+ * - Base URL: https://demo.tradelocker.com/backend-api
+ * - Auth: /auth/jwt/token, /auth/jwt/refresh
+ * - Trade: /trade/accounts/{accountId}/state, /trade/accounts/{accountId}/ordersHistory
+ * - Instruments: /trade/instruments/{tradableInstrumentId}, /trade/accounts/{accountId}/instruments
+ *
+ * Relations:
+ * - Used by ReportService for fetching trading data
+ * - Used by CreateAccountPopupComponent for account validation
+ * - Used by TradingAccountsComponent for balance fetching
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

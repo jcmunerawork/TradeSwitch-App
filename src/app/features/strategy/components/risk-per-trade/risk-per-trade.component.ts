@@ -18,6 +18,32 @@ import { AppContextService } from '../../../../shared/context';
 import { AuthService } from '../../../auth/service/authService';
 import { ReportService } from '../../../report/service/report.service';
 
+/**
+ * Component for configuring the maximum risk per trade rule.
+ *
+ * This component allows users to set the maximum amount of risk that can be
+ * taken per trade. It supports multiple configuration options:
+ * - Review type: MAX (maximum allowed) or FIXED (fixed amount)
+ * - Number type: PERCENTAGE or MONEY
+ * - Percentage type: INITIAL_B (initial balance), ACTUAL_B (actual balance), or NULL
+ *
+ * Features:
+ * - Toggle rule active/inactive
+ * - Currency selection dropdown
+ * - Percentage or money amount input
+ * - Real-time balance fetching from API
+ * - Calculated amount display
+ *
+ * Relations:
+ * - Store (NgRx): Reads and updates riskPerTrade configuration
+ * - AppContextService: Gets report data and balance
+ * - AuthService: Gets authentication tokens
+ * - ReportService: Fetches account balance
+ *
+ * @component
+ * @selector app-risk-per-trade
+ * @standalone true
+ */
 @Component({
   selector: 'app-risk-per-trade',
   templateUrl: './risk-per-trade.component.html',

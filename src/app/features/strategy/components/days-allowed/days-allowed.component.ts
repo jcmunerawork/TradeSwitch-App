@@ -17,6 +17,27 @@ import {
 } from '../../store/strategy.actions';
 import { CommonModule } from '@angular/common';
 
+/**
+ * Component for configuring the days allowed for trading rule.
+ *
+ * This component allows users to select which days of the week trading is
+ * permitted. It displays buttons for each day (Monday through Sunday) that
+ * can be toggled on/off.
+ *
+ * Features:
+ * - Toggle rule active/inactive
+ * - Day buttons for each day of the week
+ * - Visual feedback for selected days
+ * - Syncs with NgRx store
+ *
+ * Relations:
+ * - Store (NgRx): Reads and updates daysAllowed configuration
+ * - SettingsService: Strategy service (injected but not directly used)
+ *
+ * @component
+ * @selector app-days-allowed
+ * @standalone true
+ */
 @Component({
   selector: 'app-days-allowed',
   templateUrl: './days-allowed.component.html',

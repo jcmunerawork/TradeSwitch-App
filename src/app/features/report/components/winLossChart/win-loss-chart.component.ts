@@ -4,6 +4,29 @@ import { NgApexchartsModule } from 'ng-apexcharts';
 import { GroupedTradeFinal } from '../../models/report.model';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
+/**
+ * Component for displaying win/loss ratio as a donut chart.
+ *
+ * This component displays a donut chart showing the percentage and monetary value
+ * of winning vs losing trades. The chart is responsive and adjusts donut size
+ * based on screen width.
+ *
+ * Features:
+ * - Donut chart visualization using ApexCharts
+ * - Win/loss percentage calculation
+ * - Win/loss monetary value calculation
+ * - Responsive design with adaptive donut size
+ * - Custom tooltips showing monetary values and percentages
+ * - Handles empty data state
+ *
+ * Relations:
+ * - NgApexchartsModule: Chart rendering
+ * - NumberFormatterService: Value formatting
+ *
+ * @component
+ * @selector app-win-loss-chart
+ * @standalone true
+ */
 @Component({
   selector: 'app-win-loss-chart',
   templateUrl: './win-loss-chart.component.html',

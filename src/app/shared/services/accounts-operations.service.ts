@@ -3,6 +3,40 @@ import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, d
 import { isPlatformBrowser } from '@angular/common';
 import { AccountData } from '../../features/auth/models/userModel';
 
+/**
+ * Service for trading account operations in Firebase.
+ *
+ * This service provides CRUD operations for trading accounts, including
+ * creation, retrieval, updates, and deletion. It also includes validation
+ * methods to check for duplicate emails and account IDs.
+ *
+ * Features:
+ * - Create trading account
+ * - Get user accounts
+ * - Get all accounts
+ * - Check if email exists (for validation)
+ * - Check if account ID exists (for validation)
+ * - Update account
+ * - Delete account (returns userId for cache invalidation)
+ *
+ * Account Validation:
+ * - Checks for duplicate email addresses across users
+ * - Checks for duplicate account IDs across users
+ * - Excludes current user's accounts from duplicate checks
+ *
+ * Data Structure:
+ * - Stored in: `accounts/{accountId}`
+ * - Contains: Account credentials, broker info, balance, trading stats
+ *
+ * Relations:
+ * - Used by AuthService for account management
+ * - Used by TradingAccountsComponent for account operations
+ * - Used by CreateAccountPopupComponent for account creation
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

@@ -6,6 +6,27 @@ import { MaxDailyTradesConfig, RuleType } from '../../models/strategy.model';
 import { setMaxDailyTradesConfig } from '../../store/strategy.actions';
 import { CommonModule } from '@angular/common';
 
+/**
+ * Component for configuring the maximum daily trades rule.
+ *
+ * This component allows users to set the maximum number of trades that can be
+ * executed per day. It includes increment/decrement buttons and ensures the
+ * minimum value is 1.
+ *
+ * Features:
+ * - Toggle rule active/inactive
+ * - Number input with validation (minimum 1)
+ * - Increment/decrement buttons
+ * - Syncs with NgRx store
+ *
+ * Relations:
+ * - Store (NgRx): Reads and updates maxDailyTrades configuration
+ * - SettingsService: Strategy service (injected but not directly used)
+ *
+ * @component
+ * @selector app-max-daily-trades
+ * @standalone true
+ */
 @Component({
   selector: 'app-max-daily-trades',
   templateUrl: './max-daily-trades.component.html',

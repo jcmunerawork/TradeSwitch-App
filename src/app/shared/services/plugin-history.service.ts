@@ -14,6 +14,11 @@ import { Observable, from } from 'rxjs';
 import { firebaseApp } from '../../firebase/firebase.init';
 import { TimezoneService } from './timezone.service';
 
+/**
+ * Interface for plugin history data.
+ *
+ * @interface PluginHistory
+ */
 export interface PluginHistory {
     id: string;
     isActive: boolean;
@@ -23,6 +28,37 @@ export interface PluginHistory {
     dateInactive: string[];
 }
 
+/**
+ * Service for managing plugin activation history.
+ *
+ * This service tracks when the trading plugin was activated and deactivated
+ * for users. It's used to determine if trades were executed while the plugin
+ * was active, which is essential for strategy adherence calculations.
+ *
+ * Features:
+ * - Get plugin usage history for a user
+ * - Determine if plugin is currently active based on dates
+ * - Real-time listener for plugin history changes
+ * - Timezone-aware date comparisons
+ *
+ * Plugin Status Logic:
+ * - If `dateActive` has more elements than `dateInactive`: plugin is active
+ * - If same count: compare last dates (last active > last inactive = active)
+ * - Uses UTC conversion for accurate date comparisons
+ *
+ * Data Structure:
+ * - Stored in: `plugin_history/plugin_{userId}`
+ * - Contains: activation/deactivation date arrays
+ *
+ * Relations:
+ * - Used by CalendarComponent for strategy adherence checks
+ * - Used by ReportComponent for determining if trades followed strategies
+ * - TimezoneService: For accurate date comparisons
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
     providedIn: 'root'
 })

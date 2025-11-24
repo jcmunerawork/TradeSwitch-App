@@ -3,6 +3,11 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map, shareReplay, tap } from 'rxjs';
 
+/**
+ * Interface for country data from REST Countries API.
+ *
+ * @interface Country
+ */
 export interface Country {
   name: {
     common: string;
@@ -19,6 +24,11 @@ export interface Country {
   };
 }
 
+/**
+ * Interface for formatted country option.
+ *
+ * @interface CountryOption
+ */
 export interface CountryOption {
   code: string;
   name: string;
@@ -26,6 +36,39 @@ export interface CountryOption {
   dialCode: string;
 }
 
+/**
+ * Service for fetching and managing country data.
+ *
+ * This service fetches country data from the REST Countries API and formats
+ * it for use in phone number inputs. It includes country codes, flags, and
+ * dial codes, with caching to avoid repeated API calls.
+ *
+ * Features:
+ * - Fetch all countries from REST Countries API
+ * - Format countries with codes, names, flags, and dial codes
+ * - Cache countries data in memory
+ * - Share replay for multiple subscribers
+ * - Filter countries with valid dial codes
+ * - Sort countries alphabetically
+ * - Map special country names to ISO codes
+ *
+ * API:
+ * - Source: https://restcountries.com/v3.1/all
+ * - Fields: idd (dial codes), flags, name
+ *
+ * Caching:
+ * - Caches countries after first fetch
+ * - Uses shareReplay for multiple subscribers
+ * - Prevents duplicate API calls
+ *
+ * Relations:
+ * - Used by PhoneInputComponent for country selection
+ * - Used by UserModalComponent for country detection
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

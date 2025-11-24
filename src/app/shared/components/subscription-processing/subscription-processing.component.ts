@@ -3,6 +3,11 @@ import { CommonModule } from '@angular/common';
 import { SubscriptionService } from '../../services/subscription-service';
 import { UserStatus } from '../../../features/overview/models/overview';
 
+/**
+ * Interface for subscription processing configuration.
+ *
+ * @interface SubscriptionProcessingConfig
+ */
 export interface SubscriptionProcessingConfig {
   paymentId: string;
   userId: string;
@@ -10,6 +15,39 @@ export interface SubscriptionProcessingConfig {
   planName?: string;
 }
 
+/**
+ * Component for displaying subscription payment processing status.
+ *
+ * This component shows a processing screen while a subscription payment is
+ * being verified. It polls the subscription status and displays success
+ * or error states based on the payment result.
+ *
+ * Features:
+ * - Payment status polling (every 2 seconds)
+ * - Success state display
+ * - Error state display with retry option
+ * - Timeout handling (30 seconds)
+ * - Context-aware messaging (signup vs plan-change)
+ * - Go back functionality
+ *
+ * Status States:
+ * - processing: Payment is being verified
+ * - success: Payment confirmed (PURCHASED status)
+ * - error: Payment failed or timeout
+ *
+ * Polling:
+ * - Checks subscription status every 2 seconds
+ * - Stops when status changes or timeout occurs
+ * - Supports retry on error
+ *
+ * Relations:
+ * - SubscriptionService: Checks subscription status
+ * - Used in signup and plan change flows
+ *
+ * @component
+ * @selector app-subscription-processing
+ * @standalone true
+ */
 @Component({
   selector: 'app-subscription-processing',
   standalone: true,

@@ -7,6 +7,24 @@ import { EventEmitter } from '@angular/core';
 import { Timestamp } from 'firebase/firestore';
 import { AccountData } from '../../../auth/models/userModel';
 
+/**
+ * Component for displaying account deletion confirmation modal.
+ *
+ * This component requires the user to type the account name exactly
+ * to confirm deletion, providing an extra safety measure against accidental deletions.
+ *
+ * Features:
+ * - Account name input validation
+ * - Confirm and cancel actions
+ * - Event emitters for parent component handling
+ *
+ * Relations:
+ * - AccountsTableComponent: Uses this component for deletion confirmation
+ *
+ * @component
+ * @selector app-show-confirmation
+ * @standalone true
+ */
 @Component({
   selector: 'app-show-confirmation',
   standalone: true,

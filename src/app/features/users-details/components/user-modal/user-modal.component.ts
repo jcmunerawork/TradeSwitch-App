@@ -5,6 +5,37 @@ import { CommonModule } from '@angular/common';
 import { Timestamp } from 'firebase/firestore';
 import { CountryOption } from '../../../../shared/services/countryService';
 
+/**
+ * Component for displaying detailed user information in a modal.
+ *
+ * This component shows comprehensive user details including personal information,
+ * trading statistics, account metrics, and provides action buttons for administrative
+ * operations. It includes phone number normalization and country detection from
+ * phone numbers.
+ *
+ * Features:
+ * - Display user personal information (name, email, phone, birthday)
+ * - Show trading statistics (profit, net PnL, trades, spend)
+ * - Calculate and display average order value (AOV)
+ * - Phone number country detection
+ * - Ban user with reason input
+ * - Unban user
+ * - Send password reset link
+ * - Logout user everywhere (revoke tokens)
+ *
+ * Phone Number Handling:
+ * - Normalizes phone numbers with international dial codes
+ * - Detects country from phone number prefix
+ * - Supports fallback country list for detection
+ *
+ * Relations:
+ * - UsersDetails: Parent component that handles ban/unban actions
+ * - CountryService: Provides country options (imported but uses fallback list)
+ *
+ * @component
+ * @selector app-user-modal
+ * @standalone true
+ */
 @Component({
   selector: 'app-user-modal',
   templateUrl: './user-modal.component.html',

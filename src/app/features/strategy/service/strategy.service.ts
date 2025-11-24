@@ -4,8 +4,42 @@ import { StrategyOperationsService } from '../../../shared/services/strategy-ope
 import { AppContextService } from '../../../shared/context';
 import { AuthService } from '../../../shared/services/auth.service';
 
+/**
+ * Service for managing trading strategies.
+ *
+ * This service acts as a facade for strategy operations, providing methods
+ * to create, read, update, and delete strategies. It manages both the
+ * strategy metadata (ConfigurationOverview) and the actual rules (StrategyState).
+ *
+ * The service uses a two-collection approach:
+ * - 'configuration-overview': Stores metadata (name, status, dates)
+ * - 'configurations': Stores actual trading rules
+ *
+ * Responsibilities:
+ * - Creating complete strategies (overview + configuration)
+ * - Fetching strategies with their configurations
+ * - Updating strategy metadata and rules
+ * - Activating/deactivating strategies
+ * - Soft deleting strategies
+ * - Managing user strategy counts
+ *
+ * Relations:
+ * - StrategyOperationsService: Direct Firebase operations
+ * - AppContextService: Global state management
+ * - AuthService: User count updates
+ *
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
+  /**
+   * Constructor for SettingsService.
+   *
+   * @param strategyOperationsService - Service for direct Firebase operations
+   * @param appContext - Application context service for global state
+   * @param authService - Authentication service for user operations
+   */
   constructor(
     private strategyOperationsService: StrategyOperationsService,
     private appContext: AppContextService,

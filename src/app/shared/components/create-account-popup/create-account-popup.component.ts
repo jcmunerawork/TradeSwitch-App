@@ -7,6 +7,46 @@ import { AccountData } from '../../../features/auth/models/userModel';
 import { Timestamp } from 'firebase/firestore';
 import { NumberFormatterService } from '../../utils/number-formatter.service';
 
+/**
+ * Component for creating and editing trading accounts.
+ *
+ * This component provides a modal interface for adding new trading accounts
+ * or editing existing ones. It validates account credentials with TradeLocker
+ * API and handles account creation/update operations.
+ *
+ * Features:
+ * - Create new trading accounts
+ * - Edit existing trading accounts
+ * - Account validation with TradeLocker API
+ * - Formatted balance input with currency formatting
+ * - Confirmation modals (cancel, success)
+ * - Form validation
+ * - Account credential validation
+ *
+ * Account Fields:
+ * - Account name
+ * - Broker
+ * - Email (trading account email)
+ * - Password (broker password)
+ * - Server
+ * - Account ID
+ * - Account number
+ * - Initial balance (formatted currency input)
+ *
+ * Validation:
+ * - Validates account exists in TradeLocker before creation
+ * - Checks account credentials with TradeLocker API
+ * - Form field validation
+ *
+ * Relations:
+ * - AuthService: Creates/updates accounts in Firebase
+ * - TradeLockerApiService: Validates account credentials
+ * - NumberFormatterService: Formats balance input
+ *
+ * @component
+ * @selector app-create-account-popup
+ * @standalone true
+ */
 @Component({
   selector: 'app-create-account-popup',
   standalone: true,

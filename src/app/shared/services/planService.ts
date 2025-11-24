@@ -2,6 +2,11 @@ import { Injectable } from '@angular/core';
 import { getFirestore, collection, query, getDocs, updateDoc, doc, Timestamp, setDoc, orderBy, getDoc, deleteDoc, where, DocumentSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase/firebase.init';
 
+/**
+ * Interface for subscription plan data.
+ *
+ * @interface Plan
+ */
 export interface Plan {
   id: string;
   name: string;
@@ -13,6 +18,36 @@ export interface Plan {
   planPriceId?: string;
 }
 
+/**
+ * Service for managing subscription plans in Firebase.
+ *
+ * This service provides CRUD operations for subscription plans, including
+ * creating, reading, updating, and deleting plans. Plans define the features
+ * and limits available to users (e.g., number of strategies, trading accounts).
+ *
+ * Features:
+ * - Create new plans
+ * - Get all plans
+ * - Get plan by ID
+ * - Update existing plans
+ * - Delete plans
+ * - Query plans by name
+ *
+ * Plan Structure:
+ * - Stored in: `plan/{planId}`
+ * - Contains: name, price, strategies limit, trading accounts limit
+ * - Includes Stripe price ID for payment integration
+ *
+ * Relations:
+ * - Used by AuthService for loading global plans
+ * - Used by PlanSettingsComponent for displaying available plans
+ * - Used by PlanLimitationsGuard for checking plan limits
+ * - Used by AppContextService for caching global plans
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

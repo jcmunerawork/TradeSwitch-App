@@ -1,5 +1,41 @@
 import { Injectable } from '@angular/core';
 
+/**
+ * Service for formatting numbers, currency, and percentages.
+ *
+ * This service provides comprehensive number formatting utilities for displaying
+ * numeric values in various formats throughout the application. It handles
+ * currency formatting, percentage formatting, number formatting with separators,
+ * and input value formatting.
+ *
+ * Features:
+ * - Currency formatting (USD with $ symbol)
+ * - Percentage formatting (with % symbol)
+ * - Number formatting with thousand separators
+ * - Input value formatting (for form inputs)
+ * - Currency value parsing (from formatted strings)
+ * - Integer formatting
+ * - Null/undefined handling
+ * - Decimal place control
+ *
+ * Formatting Methods:
+ * - formatCurrency(): Formats as currency with $ symbol
+ * - formatPercentage(): Formats as percentage with % symbol
+ * - formatNumber(): Formats with thousand separators
+ * - formatCurrencyValue(): Formats currency without $ symbol
+ * - formatPercentageValue(): Formats percentage without % symbol
+ * - formatInteger(): Formats as integer (no decimals)
+ * - formatInputValue(): Formats during typing
+ * - parseCurrencyValue(): Parses formatted currency back to number
+ *
+ * Relations:
+ * - Used by CurrencyFormatPipe, NumberFormatPipe, PercentageFormatPipe
+ * - Used by form components for input formatting
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

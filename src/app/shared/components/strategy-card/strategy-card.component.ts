@@ -10,6 +10,47 @@ import { firebaseApp } from '../../../firebase/firebase.init';
 import { isPlatformBrowser } from '@angular/common';
 import { PLATFORM_ID } from '@angular/core';
 
+/**
+ * Component for displaying a strategy card with details and actions.
+ *
+ * This component displays a single strategy in card format with its
+ * status, statistics, and action buttons. It supports inline name editing,
+ * favorite toggling, and various strategy operations.
+ *
+ * Features:
+ * - Display strategy information (name, status, rules, days active, win rate)
+ * - Inline name editing with Firebase sync
+ * - Favorite toggle
+ * - More options menu (edit, duplicate, delete)
+ * - Customize button
+ * - Active rules calculation from Firebase
+ * - Days active calculation and update
+ * - Status indicators (active/inactive)
+ * - Win rate visualization
+ *
+ * Strategy Information:
+ * - Name: Editable inline
+ * - Status: Active/Inactive indicator
+ * - Rules: Count of active rules
+ * - Days Active: Calculated from creation date
+ * - Win Rate: Percentage display
+ * - Favorite: Star indicator
+ *
+ * Actions:
+ * - Edit: Opens strategy editor
+ * - Favorite: Toggles favorite status
+ * - More Options: Shows menu (edit, duplicate, delete)
+ * - Customize: Opens customization
+ *
+ * Relations:
+ * - StrategyDaysUpdaterService: Updates days active
+ * - NumberFormatterService: Formats win rate percentage
+ * - Used by StrategyComponent for strategy list display
+ *
+ * @component
+ * @selector app-strategy-card
+ * @standalone true
+ */
 @Component({
   selector: 'app-strategy-card',
   standalone: true,

@@ -2,6 +2,49 @@ import { Component, Input, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, FormsModule, ReactiveFormsModule, NG_VALUE_ACCESSOR, Validator, AbstractControl, ValidationErrors, NG_VALIDATORS } from '@angular/forms';
 
+/**
+ * Password input component with validation and strength indicator.
+ *
+ * This component provides a password input field with comprehensive validation
+ * and visual strength feedback. It integrates with Angular Forms and includes
+ * built-in password strength validation.
+ *
+ * Features:
+ * - Angular Forms integration (ControlValueAccessor and Validator)
+ * - Password visibility toggle
+ * - Password strength indicator (weak, medium, strong)
+ * - Real-time validation feedback
+ * - Validation rules:
+ *   - Minimum 8 characters
+ *   - Must contain uppercase letter
+ *   - Must contain lowercase letter
+ *   - Must contain number or symbol
+ *   - Cannot contain user's name or email
+ * - Color-coded strength indicator
+ * - Customizable label and placeholder
+ *
+ * Password Strength:
+ * - Weak: Less than 3 validations pass
+ * - Medium: 3-4 validations pass
+ * - Strong: All 5 validations pass
+ *
+ * Usage:
+ * <app-password-input
+ *   formControlName="password"
+ *   label="Password"
+ *   [showValidation]="true"
+ *   [userEmail]="userEmail"
+ *   [userName]="userName">
+ * </app-password-input>
+ *
+ * Relations:
+ * - Used in registration and password change forms
+ * - Integrates with Angular Reactive Forms
+ *
+ * @component
+ * @selector app-password-input
+ * @standalone true
+ */
 @Component({
   selector: 'app-password-input',
   standalone: true,

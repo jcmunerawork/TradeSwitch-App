@@ -5,6 +5,11 @@ import { NumberFormatterService } from '../../../../shared/utils/number-formatte
 import { GroupedTradeFinal } from '../../models/report.model';
 import { ConfigurationOverview } from '../../../strategy/models/strategy.model';
 
+/**
+ * Interface representing a trade detail for display in the popup.
+ *
+ * @interface TradeDetail
+ */
 export interface TradeDetail {
   openTime: string;
   ticker: string;
@@ -14,6 +19,27 @@ export interface TradeDetail {
   strategyName: string;
 }
 
+/**
+ * Component for displaying trades in a popup modal.
+ *
+ * This component displays detailed information about trades for a selected day,
+ * including trade time, ticker, side (Long/Short), PnL, and strategy compliance.
+ *
+ * Features:
+ * - Displays all trades for a selected calendar day
+ * - Shows trade details: time, ticker, side, PnL
+ * - Indicates if trades followed a strategy
+ * - Color-coded tickers and PnL values
+ * - Formatted currency and percentage values
+ *
+ * Relations:
+ * - CalendarComponent: Receives selected day data
+ * - NumberFormatterService: Value formatting
+ *
+ * @component
+ * @selector app-trades-popup
+ * @standalone true
+ */
 @Component({
   selector: 'app-trades-popup',
   standalone: true,

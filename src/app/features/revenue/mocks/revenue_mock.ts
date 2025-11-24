@@ -10,6 +10,14 @@ import {
   YearlyRevenueData,
 } from '../models/revenue';
 
+/**
+ * Mock data for revenue summary.
+ *
+ * Used for development and testing purposes. Contains aggregated revenue metrics.
+ *
+ * @constant mockRevenueSummary
+ * @type {RevenueSummary}
+ */
 export const mockRevenueSummary: RevenueSummary = {
   grossRevenue: 45750,
   returns: 56,
@@ -18,6 +26,15 @@ export const mockRevenueSummary: RevenueSummary = {
   totalRevenue: 24780,
 };
 
+/**
+ * Mock data for daily revenue.
+ *
+ * Contains daily revenue data for a month (August 2025).
+ * Used for chart visualization in development.
+ *
+ * @constant dailyRevenueMock
+ * @type {DailyRevenueData[]}
+ */
 export const dailyRevenueMock: DailyRevenueData[] = [
   { date: '2025-08-01', grossRevenue: 400 },
   { date: '2025-08-02', grossRevenue: 700 },
@@ -52,6 +69,15 @@ export const dailyRevenueMock: DailyRevenueData[] = [
   { date: '2025-08-31', grossRevenue: 1800 },
 ];
 
+/**
+ * Mock data for monthly revenue.
+ *
+ * Contains monthly revenue data for the year 2025.
+ * Used for chart visualization in development.
+ *
+ * @constant monthlyRevenueMock
+ * @type {MonthlyRevenueData[]}
+ */
 export const monthlyRevenueMock: MonthlyRevenueData[] = [
   { year: 2025, month: 1, grossRevenue: 21000 },
   { year: 2025, month: 2, grossRevenue: 19800 },
@@ -67,6 +93,15 @@ export const monthlyRevenueMock: MonthlyRevenueData[] = [
   { year: 2025, month: 12, grossRevenue: 33000 },
 ];
 
+/**
+ * Mock data for revenue table.
+ *
+ * Contains sample revenue table rows with daily revenue breakdown.
+ * Used for table display in development.
+ *
+ * @constant revenueTableMock
+ * @type {RevenueTableRow[]}
+ */
 export const revenueTableMock: RevenueTableRow[] = [
   {
     date: 'June 23,2025',
@@ -125,6 +160,15 @@ export const revenueTableMock: RevenueTableRow[] = [
   },
 ];
 
+/**
+ * Mock data for orders table.
+ *
+ * Contains sample order rows with order details.
+ * Used for orders table display in development.
+ *
+ * @constant orderTableMock
+ * @type {OrderTableRow[]}
+ */
 export const orderTableMock: OrderTableRow[] = [
   {
     orderId: '#3686',
@@ -173,6 +217,15 @@ export const orderTableMock: OrderTableRow[] = [
   },
 ];
 
+/**
+ * Mock data for subscriptions table.
+ *
+ * Contains sample subscription rows with subscription details.
+ * Used for subscriptions table display in development.
+ *
+ * @constant subscriptionTableMock
+ * @type {SubscriptionTableRow[]}
+ */
 export const subscriptionTableMock: SubscriptionTableRow[] = [
   {
     status: SubscriptionStatus.Active,

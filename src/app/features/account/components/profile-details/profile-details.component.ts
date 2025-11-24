@@ -11,6 +11,33 @@ import { Router } from '@angular/router';
 import { AppContextService } from '../../../../shared/context';
 import { PasswordInputComponent } from '../../../../shared/components/password-input/password-input.component';
 
+/**
+ * Component for managing user profile details.
+ * 
+ * This component allows the user to:
+ * - View and edit personal information (name, last name, email, phone, birthday)
+ * - Change password with validation and reauthentication
+ * - Delete account completely (Firebase data and authentication)
+ * 
+ * Related to:
+ * - AccountComponent: Displayed in "Profile Details" tab
+ * - AuthService: Updates user data and gets current user
+ * - AppContextService: Gets and updates user data in context
+ * - AccountDeletionService: Deletes all user data from Firebase
+ * - Store (NgRx): Updates user state in store
+ * - Firebase Auth: Reauthentication and password change
+ * 
+ * Main flow:
+ * 1. On initialization, subscribes to user data from context
+ * 2. Populates form with user data
+ * 3. Allows updating profile (synchronizes with Firebase, context and store)
+ * 4. Allows changing password (requires reauthentication)
+ * 5. Allows deleting account (deletes Firebase data and authentication)
+ * 
+ * @component
+ * @selector app-profile-details
+ * @standalone true
+ */
 @Component({
   selector: 'app-profile-details',
   imports: [CommonModule, ReactiveFormsModule, PasswordInputComponent],
@@ -57,6 +84,19 @@ export class ProfileDetailsComponent implements OnInit {
     this.subscribeToContextData();
   }
 
+  /**
+   * Subscribes to user data from application context.
+   * 
+   * When user data is received, populates the form
+   * with current information.
+   * 
+   * Related to:
+   * - AppContextService.currentUser$: Observable of current user
+   * - populateForm(): Populates form with user data
+   * 
+   * @private
+   * @memberof ProfileDetailsComponent
+   */
   private subscribeToContextData(): void {
     // Suscribirse a los datos del usuario desde el contexto
     this.appContext.currentUser$.subscribe({
@@ -72,6 +112,15 @@ export class ProfileDetailsComponent implements OnInit {
     });
   }
 
+  /**
+   * Populates profile form with current user data.
+   * 
+   * Updates all form fields with user values
+   * (firstName, lastName, email, phoneNumber, birthday).
+   * 
+   * @private
+   * @memberof ProfileDetailsComponent
+   */
   private populateForm(): void {
     if (this.user) {
       this.profileForm.patchValue({
@@ -84,6 +133,17 @@ export class ProfileDetailsComponent implements OnInit {
     }
   }
 
+  /**
+   * Custom validator to verify that passwords match.
+   * 
+   * Compares newPassword and confirmPassword fields of the form.
+   * If they don't match, sets an error on confirmPassword field.
+   * 
+   * @private
+   * @param form - FormGroup of password form
+   * @returns null if passwords match, error object if they don't match
+   * @memberof ProfileDetailsComponent
+   */
   private passwordMatchValidator(form: FormGroup) {
     const newPassword = form.get('newPassword');
     const confirmPassword = form.get('confirmPassword');
@@ -96,6 +156,24 @@ export class ProfileDetailsComponent implements OnInit {
     return null;
   }
 
+  /**
+   * Updates user profile with form data.
+   * 
+   * This method synchronizes changes in three places:
+   * 1. Firebase: Updates data in database
+   * 2. AppContextService: Updates user in context (source of truth)
+   * 3. Store (NgRx): Updates user state in store
+   * 
+   * Only updates firstName, lastName and birthday (email cannot be changed here).
+   * 
+   * Related to:
+   * - AuthService.updateUser(): Updates data in Firebase
+   * - AppContextService.updateUserData(): Updates context
+   * - Store.dispatch(): Updates NgRx store
+   * 
+   * @async
+   * @memberof ProfileDetailsComponent
+   */
   async onUpdateProfile(): Promise<void> {
     if (this.profileForm.valid && this.user) {
       this.isLoading = true;
@@ -130,6 +208,28 @@ export class ProfileDetailsComponent implements OnInit {
     }
   }
 
+  /**
+   * Changes user password.
+   * 
+   * This method requires reauthentication for security before changing password.
+   * Performs:
+   * 1. Verifies user is authenticated
+   * 2. Reauthenticates user with current password
+   * 3. Updates password in Firebase Auth
+   * 4. Resets form and hides password form
+   * 
+   * Handles specific errors:
+   * - auth/wrong-password: Current password incorrect
+   * - auth/weak-password: New password too weak
+   * - auth/requires-recent-login: Requires signing in again
+   * 
+   * Related to:
+   * - Firebase Auth: reauthenticateWithCredential, updatePassword
+   * - AuthService.getCurrentUser(): Gets current user from Firebase
+   * 
+   * @async
+   * @memberof ProfileDetailsComponent
+   */
   async onChangePassword(): Promise<void> {
     if (this.passwordForm.valid && this.user) {
       this.isLoading = true;
@@ -178,6 +278,13 @@ export class ProfileDetailsComponent implements OnInit {
     }
   }
 
+  /**
+   * Shows or hides password change form.
+   * 
+   * When hidden, resets form and clears success and error messages.
+   * 
+   * @memberof ProfileDetailsComponent
+   */
   togglePasswordForm(): void {
     this.showPasswordForm = !this.showPasswordForm;
     this.passwordChangeMessage = '';
@@ -185,6 +292,20 @@ export class ProfileDetailsComponent implements OnInit {
     this.passwordForm.reset();
   }
 
+  /**
+   * Gets error message for a profile form field.
+   * 
+   * Returns specific error messages based on error type:
+   * - required: Field required
+   * - email: Invalid email
+   * - minlength: Minimum length not reached
+   * 
+   * Only shows errors if field has been touched.
+   * 
+   * @param fieldName - Form field name
+   * @returns Error message or empty string if no error
+   * @memberof ProfileDetailsComponent
+   */
   getFieldError(fieldName: string): string {
     const field = this.profileForm.get(fieldName);
     if (field?.errors && field.touched) {
@@ -201,6 +322,20 @@ export class ProfileDetailsComponent implements OnInit {
     return '';
   }
 
+  /**
+   * Gets error message for a password form field.
+   * 
+   * Returns specific error messages based on error type:
+   * - required: Field required
+   * - minlength: Password must have at least 6 characters
+   * - passwordMismatch: Passwords do not match
+   * 
+   * Only shows errors if field has been touched.
+   * 
+   * @param fieldName - Form field name
+   * @returns Error message or empty string if no error
+   * @memberof ProfileDetailsComponent
+   */
   getPasswordFieldError(fieldName: string): string {
     const field = this.passwordForm.get(fieldName);
     if (field?.errors && field.touched) {
@@ -218,7 +353,12 @@ export class ProfileDetailsComponent implements OnInit {
   }
 
   /**
-   * Muestra el modal de confirmación para eliminar la cuenta
+   * Shows confirmation modal to delete account.
+   * 
+   * This method opens the modal that requests confirmation before
+   * proceeding with account deletion.
+   * 
+   * @memberof ProfileDetailsComponent
    */
   showDeleteAccountModal(): void {
     this.showDeleteModal = true;
@@ -226,7 +366,11 @@ export class ProfileDetailsComponent implements OnInit {
   }
 
   /**
-   * Cancela la eliminación de cuenta
+   * Cancels account deletion process.
+   * 
+   * Hides confirmation modal without performing any action.
+   * 
+   * @memberof ProfileDetailsComponent
    */
   cancelDeleteAccount(): void {
     this.showDeleteModal = false;
@@ -234,7 +378,26 @@ export class ProfileDetailsComponent implements OnInit {
   }
 
   /**
-   * Elimina la cuenta del usuario y todos sus datos asociados
+   * Deletes user account and all associated data.
+   * 
+   * This method performs complete deletion in the following order:
+   * 1. Deletes all user data from Firebase (AccountDeletionService)
+   * 2. Deletes user from Firebase Authentication
+   * 3. Clears local NgRx store
+   * 4. Redirects user to login page
+   * 
+   * Handles specific errors:
+   * - auth/requires-recent-login: Requires signing in again for security
+   * - auth/too-many-requests: Too many attempts, try again later
+   * 
+   * Related to:
+   * - AccountDeletionService.deleteUserData(): Deletes Firebase data
+   * - Firebase Auth deleteUser(): Deletes user from authentication
+   * - Store.dispatch(): Clears user state
+   * - Router.navigate(): Redirects to login
+   * 
+   * @async
+   * @memberof ProfileDetailsComponent
    */
   async confirmDeleteAccount(): Promise<void> {
     if (!this.user) {

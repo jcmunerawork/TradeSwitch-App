@@ -21,6 +21,29 @@ import * as moment from 'moment-timezone';
 import { AlertService } from '../../../../shared/services/alert.service';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
+/**
+ * Component for configuring the trading hours allowed rule.
+ *
+ * This component allows users to set the time window during which trading is
+ * permitted. It includes time pickers for opening and closing times, and a
+ * timezone selector with all available timezones.
+ *
+ * Features:
+ * - Toggle rule active/inactive
+ * - Time pickers for opening and closing times
+ * - Timezone selector with GMT offsets
+ * - Validation: opening time must be before closing time
+ * - Minimum 30-minute difference between times
+ *
+ * Relations:
+ * - Store (NgRx): Reads and updates hoursAllowed configuration
+ * - NgxMaterialTimepickerModule: Time picker UI
+ * - AlertService: Shows validation warnings
+ *
+ * @component
+ * @selector app-hours-allowed
+ * @standalone true
+ */
 @Component({
   selector: 'app-hours-allowed',
   templateUrl: './hours-allowed.component.html',

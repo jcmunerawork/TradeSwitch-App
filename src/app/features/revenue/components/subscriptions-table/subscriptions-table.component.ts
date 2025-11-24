@@ -8,6 +8,24 @@ import {
   SubscriptionTableRow,
 } from '../../models/revenue';
 
+/**
+ * Component for displaying subscriptions data in a table format.
+ *
+ * This component provides a paginated and filterable table for subscription data.
+ * It supports filtering by search term, subscription status, and total amount,
+ * as well as sorting and pagination.
+ *
+ * Features:
+ * - Search by subscription name
+ * - Filter by subscription status (Active, Pending, Failed)
+ * - Filter by total amount range (parses currency strings)
+ * - Sort by start date (ascending/descending)
+ * - Pagination
+ *
+ * @component
+ * @selector app-subscriptions-table
+ * @standalone true
+ */
 @Component({
   selector: 'app-subscriptions-table',
   standalone: true,

@@ -10,6 +10,13 @@ import {
 } from './strategy.actions';
 import { Days, RuleType, StrategyState } from '../models/strategy.model';
 
+/**
+ * Initial state for the strategy feature.
+ *
+ * All rules are inactive by default with empty or zero values.
+ *
+ * @constant initialStrategyState
+ */
 export const initialStrategyState: StrategyState = {
   maxDailyTrades: {
     isActive: false,
@@ -50,6 +57,21 @@ export const initialStrategyState: StrategyState = {
   },
 };
 
+/**
+ * Reducer for managing strategy state.
+ *
+ * Handles all strategy-related actions and updates the state accordingly.
+ * Actions handled:
+ * - setMaxDailyTradesConfig: Updates max daily trades rule
+ * - setRiskRewardConfig: Updates risk/reward ratio rule
+ * - setRiskPerTradeConfig: Updates risk per trade rule
+ * - setDaysAllowedConfig: Updates days allowed rule
+ * - setHoursAllowedConfig: Updates trading hours rule
+ * - setAssetsAllowedConfig: Updates assets allowed rule
+ * - resetConfig: Resets entire strategy state
+ *
+ * @reducer strategyReducer
+ */
 export const strategyReducer = createReducer(
   initialStrategyState,
   on(setMaxDailyTradesConfig, (state, { config }) => ({

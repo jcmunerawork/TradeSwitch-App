@@ -2,6 +2,24 @@ import { Injectable } from '@angular/core';
 import { ConfigurationOverview } from '../models/strategy.model';
 import { StrategyState } from '../models/strategy.model';
 
+/**
+ * Service for caching strategy data in memory.
+ *
+ * This service provides a centralized cache for storing complete strategy data
+ * (both overview and configuration) to avoid redundant Firebase queries.
+ * Strategies are cached by their ID for quick access.
+ *
+ * Features:
+ * - In-memory caching of strategies
+ * - Cache size tracking
+ * - Cache clearing functionality
+ *
+ * Used in:
+ * - StrategyComponent: Caching strategies during initialization
+ *
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

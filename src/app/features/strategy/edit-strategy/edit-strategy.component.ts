@@ -33,6 +33,39 @@ import { Instrument } from '../../report/models/report.model';
 import { StrategyCacheService } from '../services/strategy-cache.service';
 import { BalanceCacheService } from '../services/balance-cache.service';
 
+/**
+ * Component for editing trading strategy configurations.
+ *
+ * This component provides a comprehensive interface for editing all aspects
+ * of a trading strategy, including all six trading rules. It supports both
+ * creating new strategies and editing existing ones.
+ *
+ * Features:
+ * - Edit all six trading rules (risk/reward, risk per trade, max daily trades,
+ *   days allowed, hours allowed, assets allowed)
+ * - Strategy name editing
+ * - Save and cancel functionality
+ * - Validation before saving
+ * - Loading states
+ * - Plugin history integration
+ * - Instrument fetching for assets allowed
+ *
+ * Relations:
+ * - EditMaxDailyTradesComponent: Max daily trades rule editor
+ * - EditRiskRewardComponent: Risk/reward ratio rule editor
+ * - EditRiskPerTradeComponent: Risk per trade rule editor
+ * - EditDaysAllowedComponent: Days allowed rule editor
+ * - EditHoursAllowedComponent: Trading hours rule editor
+ * - EditAssetsAllowedComponent: Assets allowed rule editor
+ * - SettingsService: Saving strategy configurations
+ * - StrategyCacheService: Loading strategies from cache
+ * - BalanceCacheService: Getting account balances
+ * - Store (NgRx): Managing strategy state
+ *
+ * @component
+ * @selector app-edit-strategy
+ * @standalone true
+ */
 @Component({
   selector: 'app-edit-strategy',
   imports: [

@@ -19,6 +19,35 @@ import { AppContextService } from '../../../../shared/context/context';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { StripeLoaderPopupComponent } from '../../../../shared/pop-ups/stripe-loader-popup/stripe-loader-popup.component';
 
+/**
+ * Component for managing user subscription plans.
+ * 
+ * This component allows the user to:
+ * - View their current plan and renewal details
+ * - Compare and switch between different available plans
+ * - Validate downgrades before switching to a lower plan
+ * - Manage their subscription through the Stripe portal
+ * - Cancel their current plan
+ * 
+ * Related to:
+ * - AccountComponent: Receives planDetails as Input
+ * - SubscriptionService: Gets and updates user subscriptions
+ * - PlanService: Gets information about available plans
+ * - AuthService: Gets authentication tokens for API calls
+ * - AppContextService: Accesses global plans and user data
+ * - Stripe: Integration for checkout and subscription management portal
+ * 
+ * Main flow:
+ * 1. On initialization, loads user plan and available plans
+ * 2. Builds plan cards from global context data
+ * 3. Calculates renewal dates and remaining days
+ * 4. Handles plan changes with downgrade validation
+ * 5. Integrates with Stripe for payments and subscription management
+ * 
+ * @component
+ * @selector app-plan-settings
+ * @standalone true
+ */
 @Component({
   selector: 'app-plan-settings',
   imports: [CommonModule, LoadingSpinnerComponent, StripeLoaderPopupComponent /*SubscriptionProcessingComponent OrderSummaryComponent*/],
@@ -27,13 +56,23 @@ import { StripeLoaderPopupComponent } from '../../../../shared/pop-ups/stripe-lo
   standalone: true,
 })
 export class PlanSettingsComponent implements OnInit {
+  /** Plan details received from parent component (AccountComponent) */
   @Input() planDetails: PlanDetails | null = null;
 
+  /** Array of available plan cards to display in the interface */
   plansData: PlanCard[] = [];
+  
+  /** Current user plan obtained from the service */
   userPlan: Plan | undefined = undefined;
+  
+  /** Plan renewal date formatted as string */
   renewalDate: string = '';
+  
+  /** Remaining days until next renewal */
   remainingDays: number = 0;
-  isFreePlan: boolean = false; // Para determinar si mostrar N/A
+  
+  /** Flag to determine if user has free plan (shows N/A for renewal) */
+  isFreePlan: boolean = false;
   
   // Estado de carga inicial
   initialLoading: boolean = true;
@@ -80,6 +119,18 @@ export class PlanSettingsComponent implements OnInit {
     private reportSvc: ReportService
   ) {}
 
+  /**
+   * Initializes the component on load.
+   * 
+   * Performs the following actions in order:
+   * 1. Subscribes to changes in global plans from context
+   * 2. Attempts to build plan cards immediately
+   * 3. If no plans are loaded, loads them manually from PlanService
+   * 4. Loads current user plan from SubscriptionService
+   * 
+   * @async
+   * @memberof PlanSettingsComponent
+   */
   async ngOnInit(): Promise<void> {
     this.initialLoading = true;
     
@@ -105,6 +156,26 @@ export class PlanSettingsComponent implements OnInit {
     }
   }
 
+  /**
+   * Loads the current user plan from subscription.
+   * 
+   * This method:
+   * 1. Gets the current user from the store
+   * 2. Finds the user's most recent subscription
+   * 3. Gets the plan associated with the subscription from PlanService
+   * 4. Calculates renewal date and remaining days
+   * 5. If there's no subscription or plan, sets default free plan
+   * 
+   * Related to:
+   * - SubscriptionService.getUserLatestSubscription(): Gets user subscription
+   * - PlanService.getPlanById(): Gets plan details by ID
+   * - calculateRenewalDate(): Calculates renewal date
+   * - setDefaultFreePlan(): Sets free plan if there's no subscription
+   * 
+   * @private
+   * @async
+   * @memberof PlanSettingsComponent
+   */
   private async loadUserPlan(): Promise<void> {
     try {
       // Obtener el usuario actual
@@ -145,6 +216,26 @@ export class PlanSettingsComponent implements OnInit {
   }
 
 
+  /**
+   * Builds the array of plan cards from global context plans.
+   * 
+   * This method transforms plans obtained from AppContextService into
+   * PlanCard objects used to display cards in the interface.
+   * 
+   * For each plan:
+   * - Assigns price and period
+   * - Marks the second plan as "most popular"
+   * - Assigns icons and colors based on position
+   * - Builds the features array (trading accounts, strategies, etc.)
+   * - Defines the CTA button text
+   * 
+   * Related to:
+   * - AppContextService.orderedPlans(): Gets ordered plans
+   * - AppContextService.getPlanLimits(): Gets limits for each plan
+   * 
+   * @private
+   * @memberof PlanSettingsComponent
+   */
   private buildPlansData(): void {
     // Usar planes del contexto global
     const orderedPlans = this.appContext.orderedPlans();
@@ -172,6 +263,22 @@ export class PlanSettingsComponent implements OnInit {
     }));
   }
 
+  /**
+   * Loads plans manually from PlanService if they're not in context.
+   * 
+   * This method runs as a fallback when plans are not available
+   * in the global context. Loads all plans from PlanService and
+   * sets them in the context for future use.
+   * 
+   * Related to:
+   * - PlanService.getAllPlans(): Gets all available plans
+   * - AppContextService.setGlobalPlans(): Sets plans in context
+   * - buildPlansData(): Builds cards after loading
+   * 
+   * @private
+   * @async
+   * @memberof PlanSettingsComponent
+   */
   private async loadPlansManually(): Promise<void> {
     try {
       const plans = await this.planService.getAllPlans();
@@ -182,6 +289,18 @@ export class PlanSettingsComponent implements OnInit {
     }
   }
 
+  /**
+   * Gets current user data from NgRx store.
+   * 
+   * Subscribes to selectUser selector to get current user
+   * and update the component's user property.
+   * 
+   * Related to:
+   * - Store.select(selectUser): NgRx selector to get user
+   * 
+   * @private
+   * @memberof PlanSettingsComponent
+   */
   private getUserData() {
     this.store.select(selectUser).subscribe({
       next: (user) => {
@@ -193,6 +312,24 @@ export class PlanSettingsComponent implements OnInit {
     });
   }
 
+  /**
+   * Sets the free plan as the user's default plan.
+   * 
+   * This method runs when:
+   * - User doesn't have an active subscription
+   * - Plan associated with subscription cannot be found
+   * - An error occurs loading user plan
+   * 
+   * Searches for "Free" plan in global context, or creates a default one
+   * if not available. Sets renewal date as "N/A"
+   * and remaining days to 0.
+   * 
+   * Related to:
+   * - AppContextService.getPlanByName(): Searches for Free plan in context
+   * 
+   * @private
+   * @memberof PlanSettingsComponent
+   */
   private setDefaultFreePlan(): void {
     // Buscar el plan Free en los planes del contexto global
     const freePlan = this.appContext.getPlanByName('Free');
@@ -216,6 +353,23 @@ export class PlanSettingsComponent implements OnInit {
     this.remainingDays = 0;
   }
 
+  /**
+   * Calculates renewal date and remaining days until renewal.
+   * 
+   * This method:
+   * 1. Checks if user has free plan (returns N/A if so)
+   * 2. Converts periodEnd to Date object (handles both Firebase Timestamp and Date)
+   * 3. Formats renewal date in readable format
+   * 4. Calculates remaining days from today until renewal date
+   * 5. If date has passed, sets days to 0
+   * 
+   * Related to:
+   * - loadUserPlan(): Called after getting user subscription
+   * 
+   * @private
+   * @param periodEnd - Subscription period end date (can be Firebase Timestamp or Date)
+   * @memberof PlanSettingsComponent
+   */
   private calculateRenewalDate(periodEnd?: any): void {
     // Si es plan Free, no calcular nada
     if (this.isFreePlan) {
@@ -259,37 +413,100 @@ export class PlanSettingsComponent implements OnInit {
     this.selectedIndex = index;
   }
 
-  // Helper para capitalizar el nombre del plan
+  /**
+   * Gets capitalized current plan name.
+   * 
+   * Helper to display plan name in readable format
+   * (first letter uppercase, rest lowercase).
+   * 
+   * @returns Capitalized plan name or "Free Plan" if no plan
+   * @memberof PlanSettingsComponent
+   */
   getCapitalizedPlanName(): string {
     if (!this.userPlan?.name) return 'Free Plan';
     const name = this.userPlan.name;
     return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
   }
 
-  // Helper para capitalizar cualquier nombre de plan
+  /**
+   * Capitalizes any plan name.
+   * 
+   * Generic helper to format plan names
+   * (first letter uppercase, rest lowercase).
+   * 
+   * @param planName - Plan name to capitalize
+   * @returns Capitalized plan name or empty string if not provided
+   * @memberof PlanSettingsComponent
+   */
   capitalizePlanName(planName: string): string {
     if (!planName) return '';
     return planName.charAt(0).toUpperCase() + planName.slice(1).toLowerCase();
   }
 
-  // Métodos para el nuevo diseño de comparación de planes
+  /**
+   * Checks if a plan is the user's current plan.
+   * 
+   * Compares the provided plan name with the user's current
+   * plan name (case-insensitive comparison).
+   * 
+   * @param planName - Name of plan to check
+   * @returns true if plan is current plan, false otherwise
+   * @memberof PlanSettingsComponent
+   */
   isCurrentPlan(planName: string): boolean {
     if (!this.userPlan) return false;
     return this.userPlan.name.toLowerCase() === planName.toLowerCase();
   }
 
+  /**
+   * Gets the number of trading accounts allowed for a plan.
+   * 
+   * Searches for plan limits in global context and returns
+   * the number of allowed trading accounts.
+   * 
+   * Related to:
+   * - AppContextService.getPlanLimits(): Gets plan limits
+   * 
+   * @param planName - Plan name
+   * @returns Number of trading accounts as string (default "1")
+   * @memberof PlanSettingsComponent
+   */
   getTradingAccounts(planName: string): string {
     // Usar datos del contexto global
     const limits = this.appContext.getPlanLimits(planName);
     return limits ? limits.tradingAccounts.toString() : '1';
   }
 
+  /**
+   * Gets the number of strategies allowed for a plan.
+   * 
+   * Searches for plan limits in global context and returns
+   * the number of allowed strategies.
+   * 
+   * Related to:
+   * - AppContextService.getPlanLimits(): Gets plan limits
+   * 
+   * @param planName - Plan name
+   * @returns Number of strategies as string (default "1")
+   * @memberof PlanSettingsComponent
+   */
   getStrategies(planName: string): string {
     // Usar datos del contexto global
     const limits = this.appContext.getPlanLimits(planName);
     return limits ? limits.strategies.toString() : '1';
   }
 
+  /**
+   * Gets button text based on plan status.
+   * 
+   * Returns:
+   * - "Current plan" if plan is user's current plan
+   * - "Change plan" for all other cases
+   * 
+   * @param planName - Plan name
+   * @returns Corresponding button text
+   * @memberof PlanSettingsComponent
+   */
   getButtonText(planName: string): string {
     // Verificar si el plan de la card es el plan actual del usuario
     const currentPlanName = this.userPlan?.name.toLowerCase();
@@ -304,6 +521,16 @@ export class PlanSettingsComponent implements OnInit {
     return 'Change plan';
   }
 
+  /**
+   * Determines if a plan's button should be disabled.
+   * 
+   * Button is disabled if:
+   * - Plan is user's current plan
+   * 
+   * @param planName - Plan name
+   * @returns true if button should be disabled, false otherwise
+   * @memberof PlanSettingsComponent
+   */
   isButtonDisabled(planName: string): boolean {
     const isCurrentPlanFree = this.userPlan?.name.toLowerCase() === 'free';
     
@@ -315,7 +542,29 @@ export class PlanSettingsComponent implements OnInit {
     return false;
   }
 
-  // Métodos para cambio de plan
+  /**
+   * Handles plan change when user selects a new plan.
+   * 
+   * This method is the main entry point for changing plans.
+   * Performs the following actions:
+   * 1. Checks if selected plan is current plan (does nothing if so)
+   * 2. Validates if it's a downgrade and checks if user has resources exceeding target plan
+   * 3. If downgrade and there are excess resources, shows validation modal
+   * 4. If current plan is FREE and target is also FREE, does nothing
+   * 5. If current plan is FREE, creates Stripe checkout session
+   * 6. If current plan is NOT FREE, opens Stripe portal for management
+   * 
+   * Related to:
+   * - isCurrentPlan(): Checks if it's current plan
+   * - isDowngrade(): Determines if it's a downgrade
+   * - validateDowngrade(): Validates if downgrade is possible
+   * - createCheckoutSession(): Creates checkout session for paid plans
+   * - openStripePortal(): Opens Stripe portal for subscription management
+   * 
+   * @async
+   * @param plan - Selected plan card
+   * @memberof PlanSettingsComponent
+   */
   async onPlanChange(plan: PlanCard): Promise<void> {
     try {
       // Verificar si es el plan actual
@@ -390,6 +639,27 @@ export class PlanSettingsComponent implements OnInit {
     }
   }
 
+  /**
+   * Creates a Stripe checkout session for a new plan.
+   * 
+   * This method runs when user has FREE plan and wants to
+   * switch to a paid plan. Performs:
+   * 1. Gets complete plan from context to obtain planPriceId
+   * 2. Gets Firebase authentication token
+   * 3. Makes POST request to API to create checkout session
+   * 4. Redirects user to Stripe checkout URL
+   * 
+   * Related to:
+   * - AppContextService.getPlanByName(): Gets plan by name
+   * - AuthService.getBearerTokenFirebase(): Gets authentication token
+   * - API: https://api.tradeswitch.io/payments/create-checkout-session
+   * 
+   * @private
+   * @async
+   * @param planName - Selected plan name
+   * @throws Error if planPriceId is not found or session creation fails
+   * @memberof PlanSettingsComponent
+   */
   private async createCheckoutSession(planName: string): Promise<void> {
     try {
       // Obtener el plan completo del contexto para obtener el priceId
@@ -436,6 +706,27 @@ export class PlanSettingsComponent implements OnInit {
     }
   }
 
+  /**
+   * Opens Stripe subscription management portal in a new window.
+   * 
+   * This method runs when user has a paid plan and wants to
+   * manage their subscription. Performs:
+   * 1. Gets Firebase authentication token
+   * 2. Makes POST request to API to create portal session
+   * 3. Opens portal in a new window
+   * 4. Monitors if window closes to hide loader
+   * 5. Has a safety timeout of 8 seconds
+   * 
+   * Related to:
+   * - AuthService.getBearerTokenFirebase(): Gets authentication token
+   * - API: https://api.tradeswitch.io/payments/create-portal-session
+   * - windowCheckInterval: Interval to check if window closed
+   * 
+   * @private
+   * @async
+   * @throws Error if session creation fails or window cannot be opened
+   * @memberof PlanSettingsComponent
+   */
   private async openStripePortal(): Promise<void> {
     try {
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
@@ -494,10 +785,34 @@ export class PlanSettingsComponent implements OnInit {
     }
   }
 
+  /**
+   * Shows processing modal to cancel plan.
+   * 
+   * This method runs when user clicks the cancel plan button.
+   * Shows a confirmation modal.
+   * 
+   * @memberof PlanSettingsComponent
+   */
   onCancelPlan(): void {
     this.showCancelPlanProcessing = true;
   }
 
+  /**
+   * Confirms and executes user plan cancellation.
+   * 
+   * This method:
+   * 1. Gets user's most recent subscription
+   * 2. Updates subscription with CANCELLED status and empty planId
+   * 3. Reloads user plan data
+   * 
+   * Related to:
+   * - SubscriptionService.getUserLatestSubscription(): Gets subscription
+   * - SubscriptionService.updateSubscription(): Updates subscription
+   * - loadUserPlan(): Reloads plan after cancellation
+   * 
+   * @async
+   * @memberof PlanSettingsComponent
+   */
   async confirmCancelPlan(): Promise<void> {
     if (!this.user) {
       return;
@@ -531,10 +846,30 @@ export class PlanSettingsComponent implements OnInit {
     }
   }
 
+  /**
+   * Cancels the plan cancellation process.
+   * 
+   * Hides processing modal without performing any action.
+   * 
+   * @memberof PlanSettingsComponent
+   */
   cancelCancelPlan(): void {
     this.showCancelPlanProcessing = false;
   }
 
+  /**
+   * Opens Stripe portal to manage subscription.
+   * 
+   * Similar to openStripePortal(), but runs from a specific
+   * "Manage Subscription" button. Opens portal in a new window.
+   * 
+   * Related to:
+   * - AuthService.getBearerTokenFirebase(): Gets authentication token
+   * - API: https://api.tradeswitch.io/payments/create-portal-session
+   * 
+   * @async
+   * @memberof PlanSettingsComponent
+   */
   async onManageSubscription(): Promise<void> {
     try {
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
@@ -568,7 +903,20 @@ export class PlanSettingsComponent implements OnInit {
     }
   }
 
-  // Métodos para validación de downgrade
+  /**
+   * Determines if a plan change is a downgrade (change to a lower plan).
+   * 
+   * Compares current plan level with target plan level.
+   * Levels are: Free (1), Starter (2), Pro (3).
+   * 
+   * Related to:
+   * - getPlanLevel(): Gets numeric level of a plan
+   * 
+   * @private
+   * @param targetPlanName - Target plan name
+   * @returns true if it's a downgrade, false otherwise
+   * @memberof PlanSettingsComponent
+   */
   private isDowngrade(targetPlanName: string): boolean {
     if (!this.userPlan) return false;
     
@@ -578,6 +926,19 @@ export class PlanSettingsComponent implements OnInit {
     return targetPlanLevel < currentPlanLevel;
   }
 
+  /**
+   * Gets numeric level of a plan for comparison.
+   * 
+   * Levels are:
+   * - Free: 1
+   * - Starter: 2
+   * - Pro: 3
+   * 
+   * @private
+   * @param planName - Plan name
+   * @returns Numeric level of plan (default 1)
+   * @memberof PlanSettingsComponent
+   */
   private getPlanLevel(planName: string): number {
     const planLevels: { [key: string]: number } = {
       'free': 1,
@@ -587,6 +948,30 @@ export class PlanSettingsComponent implements OnInit {
     return planLevels[planName.toLowerCase()] || 1;
   }
 
+  /**
+   * Validates if user can downgrade to a specific plan.
+   * 
+   * This method checks if user has resources (trading accounts
+   * or strategies) that exceed target plan limits. If so,
+   * downgrade is not allowed until user removes excess resources.
+   * 
+   * Performs:
+   * 1. Gets target plan limits
+   * 2. Loads current user data (accounts and strategies)
+   * 3. Calculates how many resources must be deleted
+   * 4. Determines if downgrade is possible
+   * 
+   * Related to:
+   * - getTradingAccounts(): Gets account limit of target plan
+   * - getStrategies(): Gets strategy limit of target plan
+   * - AuthService.getUserDataForValidation(): Gets current user data
+   * 
+   * @private
+   * @async
+   * @param targetPlanName - Target plan name
+   * @returns Object with validation information (canDowngrade, resources to delete, etc.)
+   * @memberof PlanSettingsComponent
+   */
   private async validateDowngrade(targetPlanName: string): Promise<{
     canDowngrade: boolean;
     targetPlan: string;
@@ -630,16 +1015,43 @@ export class PlanSettingsComponent implements OnInit {
     };
   }
 
+  /**
+   * Shows downgrade validation modal.
+   * 
+   * Sets validation data and shows modal that informs
+   * user about resources they must delete before downgrading.
+   * 
+   * @private
+   * @param validationData - Validation data obtained from validateDowngrade()
+   * @memberof PlanSettingsComponent
+   */
   private showDowngradeValidationModal(validationData: any): void {
     this.downgradeValidationData = validationData;
     this.showDowngradeValidation = true;
   }
 
+  /**
+   * Closes downgrade validation modal.
+   * 
+   * Hides modal and clears validation data.
+   * 
+   * @memberof PlanSettingsComponent
+   */
   closeDowngradeValidation(): void {
     this.showDowngradeValidation = false;
     this.downgradeValidationData = null;
   }
 
+  /**
+   * Navigates to resource management pages.
+   * 
+   * This method runs when user wants to delete resources
+   * before downgrading. Currently only shows a console message.
+   * 
+   * TODO: Implement real navigation to resource management pages.
+   * 
+   * @memberof PlanSettingsComponent
+   */
   goToManageResources(): void {
     this.showDowngradeValidation = false;
     this.downgradeValidationData = null;
@@ -649,7 +1061,17 @@ export class PlanSettingsComponent implements OnInit {
     console.log('Please delete excess resources before downgrading your plan.');
   }
 
-  // Métodos para manejar pop-ups de redirección
+  /**
+   * Closes redirect error pop-up.
+   * 
+   * Hides error pop-up, clears message and stops any
+   * active window check interval.
+   * 
+   * Related to:
+   * - windowCheckInterval: Interval that checks if Stripe window closed
+   * 
+   * @memberof PlanSettingsComponent
+   */
   closeRedirectError(): void {
     this.showRedirectError = false;
     this.redirectErrorMessage = '';

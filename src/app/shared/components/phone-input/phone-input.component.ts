@@ -9,6 +9,37 @@ interface CountryCode {
   dialCode: string;
 }
 
+/**
+ * Phone number input component with country code selection.
+ *
+ * This component provides a phone number input field with country code selection
+ * dropdown. It loads countries from CountryService and allows users to select
+ * a country code, which is then combined with the phone number.
+ *
+ * Features:
+ * - Angular Forms integration (ControlValueAccessor)
+ * - Country code dropdown with flags
+ * - Searchable country list
+ * - Default country selection (Colombia, fallback to US)
+ * - Phone number formatting
+ * - Combines dial code with phone number
+ * - Customizable label and placeholder
+ *
+ * Usage:
+ * <app-phone-input
+ *   formControlName="phoneNumber"
+ *   label="Phone Number"
+ *   [required]="true">
+ * </app-phone-input>
+ *
+ * Relations:
+ * - CountryService: Provides country data with dial codes and flags
+ * - Used in registration and profile forms
+ *
+ * @component
+ * @selector app-phone-input
+ * @standalone true
+ */
 @Component({
   selector: 'app-phone-input',
   standalone: true,

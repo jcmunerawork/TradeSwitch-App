@@ -10,6 +10,27 @@ import { SettingsService } from '../../service/strategy.service';
 import { riskReward } from '../../store/strategy.selectors';
 import { setRiskRewardConfig } from '../../store/strategy.actions';
 
+/**
+ * Component for configuring the risk/reward ratio rule.
+ *
+ * This component allows users to set a minimum risk/reward ratio (e.g., "1:2")
+ * that trades must meet. It provides input fields for both parts of the ratio
+ * and includes increment/decrement buttons for the second value.
+ *
+ * Features:
+ * - Toggle rule active/inactive
+ * - Input fields for risk and reward values
+ * - Increment/decrement buttons for reward value
+ * - Syncs with NgRx store
+ *
+ * Relations:
+ * - Store (NgRx): Reads and updates riskReward configuration
+ * - SettingsService: Strategy service (injected but not directly used)
+ *
+ * @component
+ * @selector app-risk-reward-ratio
+ * @standalone true
+ */
 @Component({
   selector: 'app-risk-reward-ratio',
   templateUrl: './risk-reward.component.html',

@@ -3,6 +3,37 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 
+/**
+ * Component for password reset functionality.
+ *
+ * This component provides a modal interface for users to request a password
+ * reset email. It includes form validation, error handling, and success
+ * messaging.
+ *
+ * Features:
+ * - Email input with validation
+ * - Password reset email sending
+ * - Success and error message display
+ * - Loading state management
+ * - Form validation
+ * - Close/back functionality
+ *
+ * Validation:
+ * - Email is required
+ * - Email must be valid format
+ *
+ * Error Handling:
+ * - Handles user-not-found errors
+ * - Handles invalid-email errors
+ * - Generic error messages for other failures
+ *
+ * Relations:
+ * - AuthService: Sends password reset email
+ *
+ * @component
+ * @selector app-forgot-password-popup
+ * @standalone true
+ */
 @Component({
   selector: 'app-forgot-password-popup',
   standalone: true,

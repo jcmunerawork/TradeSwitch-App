@@ -7,6 +7,29 @@ import { setUserData } from '../../features/auth/store/user.actions';
 import { UserStatus } from '../../features/overview/models/overview';
 import { AuthService } from '../../features/auth/service/authService';
 
+/**
+ * Mobile header component for responsive navigation.
+ *
+ * This component provides a mobile-friendly navigation header with a hamburger
+ * menu, user information, and logout functionality. It's designed for smaller
+ * screens where the sidebar is replaced by a collapsible header menu.
+ *
+ * Features:
+ * - Mobile menu toggle (hamburger menu)
+ * - User information display (name, initials, admin status, ban status)
+ * - Logout functionality
+ * - Responsive design for mobile devices
+ * - Menu open/close state management
+ *
+ * Relations:
+ * - AuthService: Handles logout functionality
+ * - Store (NgRx): Gets current user data
+ * - Router: Navigation after logout
+ *
+ * @component
+ * @selector app-mobile-header
+ * @standalone true
+ */
 @Component({
   selector: 'app-mobile-header',
   standalone: true,

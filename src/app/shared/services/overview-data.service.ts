@@ -2,6 +2,34 @@ import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { getFirestore, collection, getDocs, query, where, orderBy, limit, startAfter, doc, getDoc } from 'firebase/firestore';
 import { isPlatformBrowser } from '@angular/common';
 
+/**
+ * Service for fetching overview dashboard data.
+ *
+ * This service provides methods to fetch data for the admin overview dashboard,
+ * including users, subscriptions, monthly reports, strategies, and accounts.
+ * It supports pagination for large datasets.
+ *
+ * Features:
+ * - Get overview subscription data
+ * - Get users data (with pagination)
+ * - Get user accounts (with pagination)
+ * - Get monthly reports data
+ * - Get configuration overview data
+ * - Get accounts data
+ *
+ * Pagination:
+ * - Supports cursor-based pagination
+ * - Orders users by subscription_date (descending)
+ * - Orders accounts by accountID (descending)
+ *
+ * Relations:
+ * - Used by OverviewService for data aggregation
+ * - Used by OverviewComponent for dashboard display
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

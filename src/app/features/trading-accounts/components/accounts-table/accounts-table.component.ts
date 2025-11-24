@@ -11,6 +11,30 @@ import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
+/**
+ * Component for displaying trading accounts in a table format.
+ *
+ * This component provides a filterable and sortable table for trading accounts.
+ * It supports filtering by account name and balance range, sorting by creation date,
+ * and includes functionality for editing and deleting accounts.
+ *
+ * Features:
+ * - Search by account name
+ * - Filter by balance range (with formatted currency inputs)
+ * - Sort by creation date (ascending/descending)
+ * - Edit account functionality
+ * - Delete account with confirmation
+ * - Currency formatting for balances
+ *
+ * Relations:
+ * - ShowConfirmationComponent: Confirmation modal for account deletion
+ * - NumberFormatterService: Currency formatting and parsing
+ * - TradingAccountsComponent: Parent component (receives accounts, emits edit/delete events)
+ *
+ * @component
+ * @selector app-accounts-table
+ * @standalone true
+ */
 @Component({
   selector: 'app-accounts-table',
   standalone: true,

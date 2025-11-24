@@ -21,6 +21,36 @@ import { PlanLimitationModalComponent } from '../../shared/components/plan-limit
 import { PlanBannerComponent } from '../../shared/components/plan-banner/plan-banner.component';
 import { AppContextService } from '../../shared/context';
 
+/**
+ * Main component for managing trading accounts.
+ *
+ * This component provides functionality for viewing, adding, editing, and deleting
+ * trading accounts. It also handles plan limitations, account balance fetching,
+ * and displays plan banners when users approach or reach account limits.
+ *
+ * Features:
+ * - Display all user trading accounts in a table
+ * - Add new trading accounts (with plan limitation checks)
+ * - Edit existing trading accounts
+ * - Delete trading accounts with confirmation
+ * - Fetch and display account balances from API
+ * - Plan limitation detection and warnings
+ * - Plan upgrade prompts
+ *
+ * Relations:
+ * - AccountsTableComponent: Displays accounts in table format
+ * - CreateAccountPopupComponent: Modal for adding/editing accounts
+ * - PlanLimitationModalComponent: Modal for plan upgrade prompts
+ * - PlanBannerComponent: Banner for plan limitation warnings
+ * - AuthService: Account CRUD operations
+ * - ReportService: Fetching account balances and user keys
+ * - PlanLimitationsGuard: Checking plan limitations
+ * - AppContextService: Global state management
+ *
+ * @component
+ * @selector app-trading-accounts
+ * @standalone true
+ */
 @Component({
   selector: 'app-trading-accounts',
   imports: [
@@ -75,6 +105,14 @@ export class TradingAccountsComponent {
   planBannerMessage = '';
   planBannerType = 'info'; // 'info', 'warning', 'success'
 
+  /**
+   * Initializes the component on load.
+   *
+   * Subscribes to context data and store to get user information,
+   * then loads configuration and account data.
+   *
+   * @memberof TradingAccountsComponent
+   */
   ngOnInit(): void {
     // Suscribirse a los datos del contexto
     this.subscribeToContextData();
@@ -85,6 +123,21 @@ export class TradingAccountsComponent {
     });
   }
 
+  /**
+   * Subscribes to data from AppContextService.
+   *
+   * Listens to changes in:
+   * - Current user
+   * - User accounts
+   * - Loading states
+   * - Error states
+   *
+   * Related to:
+   * - AppContextService: Global state management
+   *
+   * @private
+   * @memberof TradingAccountsComponent
+   */
   private subscribeToContextData() {
     // Suscribirse a los datos del usuario
     this.appContext.currentUser$.subscribe(user => {
@@ -109,11 +162,32 @@ export class TradingAccountsComponent {
     });
   }
 
+  /**
+   * Loads initial configuration.
+   *
+   * Fetches user accounts and checks plan limitations.
+   *
+   * @memberof TradingAccountsComponent
+   */
   loadConfig() {
     this.getUserAccounts();
     // this.checkPlanLimitations(); // Comentado temporalmente
   }
 
+  /**
+   * Fetches all trading accounts for the current user.
+   *
+   * Uses AuthService to get accounts from Firebase, then fetches
+   * balance data for each account. Also checks account limitations
+   * after loading.
+   *
+   * Related to:
+   * - AuthService.getUserAccounts(): Fetches accounts from Firebase
+   * - getBalanceForAccounts(): Fetches balances for all accounts
+   * - checkAccountLimitations(): Checks plan limitations
+   *
+   * @memberof TradingAccountsComponent
+   */
   getUserAccounts() {
     this.userSvc
       .getUserAccounts(this.user?.id || '')
@@ -137,6 +211,20 @@ export class TradingAccountsComponent {
       });
   }
 
+  /**
+   * Fetches balance data for all accounts.
+   *
+   * Processes accounts sequentially, fetching user key and balance
+   * for each account. Updates account balance property with real-time
+   * data from the trading API.
+   *
+   * Related to:
+   * - fetchUserKey(): Gets authentication token for each account
+   * - getActualBalance(): Fetches balance from API
+   * - ReportService: API communication
+   *
+   * @memberof TradingAccountsComponent
+   */
   getBalanceForAccounts() {
     // Loading is already active from getUserAccounts, don't set it again
     from(this.usersData)
@@ -156,6 +244,21 @@ export class TradingAccountsComponent {
       });
   }
 
+  /**
+   * Fetches user authentication key for an account.
+   *
+   * Authenticates with trading account credentials and stores the key
+   * in NgRx store, then fetches the actual balance for the account.
+   *
+   * Related to:
+   * - ReportService.getUserKey(): Authenticates and gets token
+   * - Store.dispatch(setUserKey()): Stores token in NgRx
+   * - getActualBalance(): Fetches balance after authentication
+   *
+   * @param account - Trading account data with credentials
+   * @returns Observable that completes when balance is fetched
+   * @memberof TradingAccountsComponent
+   */
   fetchUserKey(account: AccountData) {
     return this.reportSvc
       .getUserKey(
@@ -171,6 +274,20 @@ export class TradingAccountsComponent {
       );
   }
 
+  /**
+   * Fetches actual balance for an account from the trading API.
+   *
+   * Uses the authentication key to fetch balance data and updates
+   * the account's balance property.
+   *
+   * Related to:
+   * - ReportService.getBalanceData(): Fetches balance from API
+   *
+   * @param key - User authentication token
+   * @param account - Account to fetch balance for
+   * @returns Observable that emits the account with updated balance
+   * @memberof TradingAccountsComponent
+   */
   getActualBalance(key: string, account: AccountData) {
     return this.reportSvc
       .getBalanceData(account.accountID, key, account.accountNumber)
@@ -183,6 +300,20 @@ export class TradingAccountsComponent {
       );
   }
 
+  /**
+   * Deletes a trading account.
+   *
+   * Removes the account from Firebase and reloads the account list.
+   * Also checks plan limitations after deletion.
+   *
+   * Related to:
+   * - AuthService.deleteAccount(): Deletes account from Firebase
+   * - loadConfig(): Reloads accounts after deletion
+   * - checkPlanLimitations(): Updates limitation status
+   *
+   * @param account - Account to delete
+   * @memberof TradingAccountsComponent
+   */
   deleteAccount(account: AccountData) {
     this.loading = true;
     this.userSvc
@@ -199,6 +330,19 @@ export class TradingAccountsComponent {
       });
   }
 
+  /**
+   * Handles the add account button click.
+   *
+   * Checks plan limitations before allowing account creation.
+   * If user has reached limit, shows upgrade modal or redirects to plan management.
+   * If within limits, opens the add account modal.
+   *
+   * Related to:
+   * - PlanLimitationsGuard.checkAccountCreationWithModal(): Checks if user can create account
+   * - Router.navigate(): Redirects to plan management if needed
+   *
+   * @memberof TradingAccountsComponent
+   */
   // Add account functionality
   async onAddAccount() {
     if (!this.user?.id) return;
@@ -231,6 +375,14 @@ export class TradingAccountsComponent {
     this.showAddAccountModal = true;
   }
 
+  /**
+   * Handles editing an existing account.
+   *
+   * Opens the account creation modal in edit mode with the account data pre-filled.
+   *
+   * @param account - Account to edit
+   * @memberof TradingAccountsComponent
+   */
   // Edit account functionality
   onEditAccount(account: AccountData) {
     this.editMode = true;
@@ -256,6 +408,19 @@ export class TradingAccountsComponent {
     this.planLimitationModal.showModal = false;
   }
 
+  /**
+   * Checks account limitations and updates button state.
+   *
+   * Determines if the "Add Account" button should be disabled based on
+   * the user's plan and current account count. Also shows plan banners
+   * when approaching or at limits.
+   *
+   * Related to:
+   * - PlanLimitationsGuard.checkUserLimitations(): Gets plan limitations
+   * - checkPlanLimitations(): Shows plan banners
+   *
+   * @memberof TradingAccountsComponent
+   */
   // Check account limitations and update button state
   async checkAccountLimitations() {
     if (!this.user?.id) {
@@ -282,6 +447,18 @@ export class TradingAccountsComponent {
     }
   }
 
+  /**
+   * Checks plan limitations and displays appropriate banners.
+   *
+   * Determines if user needs subscription, is banned/cancelled, or has reached
+   * account limits. Shows warning or info banners accordingly.
+   *
+   * Related to:
+   * - PlanLimitationsGuard.checkUserLimitations(): Gets plan limitations
+   *
+   * @private
+   * @memberof TradingAccountsComponent
+   */
   // Plan detection and banner methods
   private async checkPlanLimitations() {
     if (!this.user?.id) {
@@ -348,6 +525,14 @@ export class TradingAccountsComponent {
     this.showPlanBanner = false;
   }
 
+  /**
+   * Handles account creation event from popup.
+   *
+   * Reloads account list and checks plan limitations after a new account is created.
+   *
+   * @param accountData - Created account data (not used, account already in Firebase)
+   * @memberof TradingAccountsComponent
+   */
   // Popup event handlers
   async onAccountCreated(accountData: any) {
     // Account is already created in Firebase by the popup component
