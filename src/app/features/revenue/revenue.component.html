@@ -6,51 +6,63 @@
   </h3>
 </div>
 
+<!-- First row: Net Revenue and MRR -->
+<div class="d-flex stats-card-container mb-24">
+  <app-stat-card
+    class="stat-card"
+    title="Net Revenue"
+    [value]="netRevenue"
+    formatType="currency"
+  ></app-stat-card>
+  <app-stat-card
+    class="stat-card"
+    title="MRR (Monthly Recurring Revenue)"
+    [value]="mrr"
+    formatType="currency"
+  ></app-stat-card>
+</div>
+
+<!-- Second row: Gross Revenue, Refunds, Active Subscriptions -->
 <div class="d-flex stats-card-container mb-24">
   <app-stat-card
     class="stat-card"
     title="Gross Revenue"
-    [value]="`$${revenueSummary?.grossRevenue ? revenueSummary?.grossRevenue : 0}`"
+    [value]="grossRevenue"
+    formatType="currency"
   ></app-stat-card>
   <app-stat-card
     class="stat-card"
-    title="Returns"
-    [value]="`$${revenueSummary?.returns ? revenueSummary?.returns : 0}`"
+    title="Refunds"
+    [value]="refunds"
+    formatType="currency"
   ></app-stat-card>
   <app-stat-card
     class="stat-card"
-    title="Coupons"
-    [value]="`$${revenueSummary?.coupons ? revenueSummary?.coupons : 0}`"
-  ></app-stat-card>
-  <app-stat-card
-    class="stat-card"
-    title="Net Revenue"
-    [value]="`$${revenueSummary?.netRevenue ? revenueSummary?.netRevenue : 0}`"
-  ></app-stat-card>
-  <app-stat-card
-    class="stat-card"
-    title="Total Revenue"
-    [value]="`$${revenueSummary?.totalRevenue ? revenueSummary?.totalRevenue : 0}`"
+    title="Active Subscriptions"
+    [value]="activeSubscriptions"
+    formatType="number"
   ></app-stat-card>
 </div>
-<div class="middle-container d-flex mb-24">
+
+<!-- Graph commented out for future use -->
+<!-- <div class="middle-container d-flex mb-24">
   <app-revenue-graph
     [dailyData]="revenueDailyData ? revenueDailyData : []"
     [monthlyData]="revenueMonthlyData ? revenueMonthlyData : []"
   ></app-revenue-graph>
-</div>
-
-<app-revenue-table
-  class="mb-24"
-  [revenueRows]="revenueTableData ? revenueTableData : []"
-></app-revenue-table>
+</div> -->
 
 <app-orders-table
   class="mb-24"
-  [orderRows]="orderTableData ? orderTableData : []"
+  [orderRows]="orderTableData"
 ></app-orders-table>
 
 <app-subscriptions-table
-  [subscriptionRows]="subscriptionsTableData ? subscriptionsTableData : []"
+  class="mb-24"
+  [subscriptionRows]="subscriptionsTableData"
 ></app-subscriptions-table>
+
+<app-refunds-table
+  [refundRows]="refundsTableData"
+></app-refunds-table>
 <app-loading-popup [visible]="loading"></app-loading-popup>

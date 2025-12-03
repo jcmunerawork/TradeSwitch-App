@@ -76,20 +76,15 @@ tbody tr {
 
 .status {
   border-radius: 4px;
-  width: 100%;
   width: fit-content;
 }
 
-.Active {
-  background: rgba(20, 174, 92, 0.15);
+.green {
+  background: rgba(0, 200, 83, 0.15);
+  color: #4caf50;
+}
 
-  color: #14ae5c;
-}
-.Pending {
-  background: rgba(255, 149, 0, 0.15);
-  color: #ffc16b;
-}
-.Failed {
+.red {
   background: rgba(255, 59, 48, 0.15);
   color: #ff3b30;
 }
