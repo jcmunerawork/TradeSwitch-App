@@ -13,33 +13,6 @@
     overflow-y: auto;
   }
 }
-.search-box {
-  background-color: transparent;
-  border: none;
-  &:focus {
-    outline: none;
-  }
-  &::placeholder {
-    color: #cfd8dc;
-  }
-}
-
-.search-user-container,
-.percentage-input {
-  border-radius: 6px;
-}
-
-.search-user-container {
-  border: 1px solid var(--White, #eaf2f8);
-}
-
-.percentage-input {
-  border: 0.5px solid #434343;
-}
-
-.percentage-input label {
-  width: 3rem;
-}
 
 table {
   width: 100%;
@@ -84,87 +57,14 @@ tbody tr {
   color: #4caf50;
 }
 
+.yellow {
+  background: rgba(255, 149, 0, 0.15);
+  color: #ffc16b;
+}
+
 .red {
   background: rgba(255, 59, 48, 0.15);
   color: #ff3b30;
-}
-
-.filter-btn {
-  height: fit-content;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.filter-modal {
-  position: absolute;
-  top: 45px;
-  right: 0;
-  background: radial-gradient(
-      ellipse 36% 42% at top center,
-      rgba(81, 134, 228, 0.1) 0%,
-      rgba(81, 134, 228, 0.01) 100%
-    ),
-    #181a1d;
-  border: 0.5px solid #4a4a4a;
-  color: #e4e7ec;
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(53, 53, 53, 0.14);
-  gap: 16px;
-  z-index: 100;
-}
-.filter-modal label {
-  font-weight: 500;
-}
-
-.filter-modal select {
-  background: #181a1d;
-  border: 0.5px solid #434343;
-  border-radius: 6px;
-  padding: 7px;
-}
-
-.filter-modal button {
-  height: fit-content;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-}
-
-.filter-container {
-  position: relative;
-}
-
-.filter-btn {
-  border-radius: 6px;
-  background: rgba(158, 196, 242, 0.1);
-  border: none;
-  gap: 10px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.filter-btn:hover {
-  background: #232939;
-}
-
-.progress-container {
-  width: 100%;
-}
-.progress-bar-bg {
-  width: 100%;
-  height: 7px;
-  border-radius: 6px;
-  background: #202621;
-  position: relative;
-  overflow: hidden;
-}
-
-.progress-bar-fill {
-  height: 100%;
-  border-radius: 6px;
-  background: #9bf526;
-  transition: width 0.2s;
 }
 
 .pagination-controls {
@@ -222,3 +122,4 @@ input[type="number"] {
   background: rgba(158, 196, 242, 0.1);
   border: none;
 }
+

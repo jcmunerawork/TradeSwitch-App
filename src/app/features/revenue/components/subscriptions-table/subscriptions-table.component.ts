@@ -1,12 +1,7 @@
-import { Component, Input, Output } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
 import { FormsModule } from '@angular/forms';
-import {
-  SubscriptionFilter,
-  SubscriptionStatus,
-  SubscriptionTableRow,
-} from '../../models/revenue';
+import { SubscriptionTableRow } from '../../models/revenue';
 
 @Component({
   selector: 'app-subscriptions-table',
@@ -18,69 +13,29 @@ import {
 export class SubscriptionsTableComponent {
   @Input() subscriptionRows: SubscriptionTableRow[] = [];
 
-  showFilter = false;
   currentPage: number = 1;
   itemsPerPage: number = 10;
   sortField: 'startDate' = 'startDate';
   sortAsc: boolean = true;
 
-  subscriptionStatus = SubscriptionStatus;
-
-  filter: SubscriptionFilter = {};
-
-  private _searchTerm = '';
-  get searchTerm(): string {
-    return this._searchTerm;
-  }
-  set searchTerm(val: string) {
-    this._searchTerm = val;
-    this.goToPage(1);
-  }
-
-  get filteredRows(): SubscriptionTableRow[] {
-    let result = this.filterOrderRows(this.subscriptionRows, this.filter);
-
-    result = result.sort((a, b) => {
+  get sortedRows(): SubscriptionTableRow[] {
+    return [...this.subscriptionRows].sort((a, b) => {
       const fieldA = a[this.sortField].toLowerCase();
       const fieldB = b[this.sortField].toLowerCase();
       if (fieldA < fieldB) return this.sortAsc ? -1 : 1;
       if (fieldA > fieldB) return this.sortAsc ? 1 : -1;
       return 0;
     });
-
-    return result;
   }
 
   get paginatedRows(): SubscriptionTableRow[] {
     const start = (this.currentPage - 1) * this.itemsPerPage;
     const end = start + this.itemsPerPage;
-    return this.filteredRows.slice(start, end);
+    return this.sortedRows.slice(start, end);
   }
 
   get totalPages(): number {
-    return Math.ceil(this.filteredRows.length / this.itemsPerPage);
-  }
-
-  statusClass(status: string) {
-    return status;
-  }
-
-  openFilter() {
-    this.showFilter = !this.showFilter;
-  }
-
-  closeFilter() {
-    this.showFilter = false;
-  }
-
-  apply() {
-    this.showFilter = false;
-
-    this.applyFilters();
-  }
-
-  applyFilters() {
-    this.goToPage(1);
+    return Math.ceil(this.sortedRows.length / this.itemsPerPage);
   }
 
   goToPage(page: number) {
@@ -101,40 +56,19 @@ export class SubscriptionsTableComponent {
     this.sortAsc = !this.sortAsc;
   }
 
-  filterOrderRows(
-    rows: SubscriptionTableRow[],
-    filter: SubscriptionFilter
-  ): SubscriptionTableRow[] {
-    const lowerSearch = filter.searchTerm?.toLowerCase() ?? '';
+  getStatusClass(status: string): string {
+    return status.toLowerCase() === 'active' ? 'green' : 'red';
+  }
 
-    return rows.filter((row) => {
-      const matchesSearch =
-        lowerSearch === '' ||
-        row.subscription.toLowerCase().includes(lowerSearch);
+  getStatusText(status: string): string {
+    return status.toLowerCase() === 'active' ? 'Active' : 'N/A';
+  }
 
-      const matchesStatus =
-        filter.status === undefined ||
-        filter.status === null ||
-        filter.status === ('' as SubscriptionStatus) ||
-        row.status === filter.status;
+  getRecurringBillingClass(canceladaAFinalDePeriodo: boolean): string {
+    return canceladaAFinalDePeriodo ? 'green' : 'red';
+  }
 
-      const matchesMinTotal =
-        filter.minTotal === undefined ||
-        filter.minTotal === null ||
-        parseFloat(row.total.replace('$', '').split('/')[0]) >= filter.minTotal;
-
-      const matchesMaxTotal =
-        filter.maxTotal === undefined ||
-        filter.maxTotal === null ||
-        parseFloat(row.total.replace('$', '').split('/')[0]) <= filter.maxTotal;
-
-      if (this.showFilter) {
-        return matchesSearch;
-      }
-
-      return (
-        matchesSearch && matchesStatus && matchesMinTotal && matchesMaxTotal
-      );
-    });
+  getRecurringBillingText(canceladaAFinalDePeriodo: boolean): string {
+    return canceladaAFinalDePeriodo ? 'On' : 'Off';
   }
 }

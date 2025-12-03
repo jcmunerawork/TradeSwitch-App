@@ -1,22 +1,16 @@
 .stats-card-container {
-  min-width: 71.3125rem;
+  width: 100%;
   display: flex;
   gap: 24px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  align-items: flex-start;
-  box-sizing: border-box;
-  scrollbar-width: none;
+  align-items: stretch;
+  justify-content: flex-start;
+  margin-bottom: 24px;
+  overflow: visible;
 
-  -ms-overflow-style: none;
   .stat-card {
-    min-width: 16.5625rem;
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
   }
-}
-
-.stats-card-container::-webkit-scrollbar {
-  display: none;
 }
 
 app-revenue-graph,
