@@ -1,13 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { CanActivate, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { selectUser } from '../features/auth/store/user.selectios';
-import { SubscriptionService } from '../shared/services/subscription-service';
-import { PlanService } from '../shared/services/planService';
-import { UserStatus } from '../features/overview/models/overview';
+import { selectUser } from '../../features/auth/store/user.selectios';
+import { SubscriptionService } from '../../shared/services/subscription-service';
+import { PlanService } from '../../shared/services/planService';
+import { UserStatus } from '../../features/overview/models/overview';
 import { Observable, of, switchMap, catchError } from 'rxjs';
-import { Subscription } from '../shared/services/subscription-service';
-import { AppContextService } from '../shared/context';
+import { Subscription } from '../../shared/services/subscription-service';
+import { AppContextService } from '../../shared/context';
 
 export interface PlanLimitations {
   maxAccounts: number;

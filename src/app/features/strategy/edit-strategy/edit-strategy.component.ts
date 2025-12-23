@@ -28,7 +28,7 @@ import { EditHoursAllowedComponent } from './components/edit-hours-allowed/edit-
 import { AuthService } from '../../auth/service/authService';
 import { AccountData } from '../../auth/models/userModel';
 import { PluginHistoryService, PluginHistory } from '../../../shared/services/plugin-history.service';
-import { AlertService } from '../../../shared/services/alert.service';
+import { AlertService } from '../../../core/services';
 import { Instrument } from '../../report/models/report.model';
 import { StrategyCacheService } from '../services/strategy-cache.service';
 import { BalanceCacheService } from '../services/balance-cache.service';

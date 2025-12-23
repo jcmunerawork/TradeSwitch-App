@@ -17,7 +17,7 @@ import { setUserData } from '../store/user.actions';
 import { User } from '../../overview/models/overview';
 import { UserCredentials } from '../models/userModel';
 import { AppContextService } from '../../../shared/context';
-import { AlertService } from '../../../shared/services/alert.service';
+import { AlertService } from '../../../core/services';
 import { ForgotPasswordPopupComponent } from '../../../shared/pop-ups/forgot-password/forgot-password.component';
 
 @Component({

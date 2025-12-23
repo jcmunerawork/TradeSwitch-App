@@ -10,7 +10,7 @@ import { Timestamp } from 'firebase/firestore';
 import { UserModalComponent } from './components/user-modal/user-modal.component';
 import { AuthService } from '../auth/service/authService';
 import { AppContextService } from '../../shared/context';
-import { AlertService } from '../../shared/services/alert.service';
+import { AlertService } from '../../core/services';
 import { ReasonsService } from '../../shared/services/reasons.service';
 import { serverTimestamp } from 'firebase/firestore';
 

@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { CanActivateFn } from '@angular/router';
 
 // Update the import to match the actual file and exported guard name
-import { authGuard } from './auth-guard-guard';
+import { authGuard } from '../core/guards';
 describe('AuthGuard', () => {
   const executeGuard: CanActivateFn = (...guardParameters) =>
     TestBed.runInInjectionContext(() => authGuard(...guardParameters));

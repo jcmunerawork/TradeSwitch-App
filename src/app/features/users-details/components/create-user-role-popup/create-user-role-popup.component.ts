@@ -10,7 +10,7 @@ import { SubscriptionService, Subscription } from '../../../../shared/services/s
 import { User, UserStatus } from '../../../overview/models/overview';
 import { LinkToken } from '../../../../shared/services/tokens-operations.service';
 import { UserCredentials } from '../../../auth/models/userModel';
-import { AlertService } from '../../../../shared/services/alert.service';
+import { AlertService } from '../../../../core/services';
 
 /**
  * Component for creating new users with role selection (user or admin).

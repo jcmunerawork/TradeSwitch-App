@@ -306,7 +306,9 @@ export class AuthService {
   async getAllAccounts(): Promise<AccountData[] | null> { return this.accountsOperationsService.getAllAccounts(); }
   async checkEmailExists(emailTradingAccount: string, currentUserId: string): Promise<boolean> { return this.accountsOperationsService.checkEmailExists(emailTradingAccount, currentUserId); }
   async checkAccountIdExists(accountID: string, currentUserId: string): Promise<boolean> { return this.accountsOperationsService.checkAccountIdExists(accountID, currentUserId); }
-  async checkAccountExists(broker: string, server: string, accountID: string, currentUserId: string): Promise<boolean> { return this.accountsOperationsService.checkAccountExists(broker, server, accountID, currentUserId); }
+  async checkAccountExists(broker: string, server: string, accountID: string, currentUserId: string, excludeAccountId?: string): Promise<boolean> { 
+    return this.accountsOperationsService.checkAccountExists(broker, server, accountID, currentUserId, excludeAccountId); 
+  }
   async updateAccount(accountId: string, accountData: AccountData): Promise<void> { return this.accountsOperationsService.updateAccount(accountId, accountData); }
   async deleteAccount(accountId: string): Promise<void> {
     const userId = await this.accountsOperationsService.deleteAccount(accountId);

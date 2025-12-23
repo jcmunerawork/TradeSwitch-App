@@ -18,7 +18,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgxMaterialTimepickerModule } from 'ngx-material-timepicker';
 import * as moment from 'moment-timezone';
-import { AlertService } from '../../../../shared/services/alert.service';
+import { AlertService } from '../../../../core/services';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 /**

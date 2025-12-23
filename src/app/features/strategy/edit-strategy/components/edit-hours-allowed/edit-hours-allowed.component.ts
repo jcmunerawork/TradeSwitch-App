@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { AlertService } from '../../../../../shared/services/alert.service';
+import { AlertService } from '../../../../../core/services';
 import { Store } from '@ngrx/store';
 import { SettingsService } from '../../../service/strategy.service';
 import {

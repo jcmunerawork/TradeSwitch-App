@@ -1,10 +1,10 @@
 import { CanActivateFn, Router } from '@angular/router';
-import { AuthService } from '../features/auth/service/authService';
+import { AuthService } from '../../features/auth/service/authService';
 import { inject } from '@angular/core';
 import { catchError, from, map, of, switchMap, take, tap } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { getAuth } from 'firebase/auth';
-import { setUserData } from '../features/auth/store/user.actions';
+import { setUserData } from '../../features/auth/store/user.actions';
 
 /**
  * Redirect guard that handles post-authentication routing.

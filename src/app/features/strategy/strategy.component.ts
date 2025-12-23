@@ -22,11 +22,11 @@ import { selectUserKey } from '../report/store/report.selectors';
 import { GlobalStrategyUpdaterService } from '../../shared/services/global-strategy-updater.service';
 import { allRules } from '../strategy/store/strategy.selectors';
 import { selectNetPnL } from '../report/store/report.selectors';
-import { PlanLimitationsGuard } from '../../guards/plan-limitations.guard';
+import { PlanLimitationsGuard } from '../../core/guards';
 import { AppContextService } from '../../shared/context';
 import { StrategyCacheService } from './services/strategy-cache.service';
 import { BalanceCacheService } from './services/balance-cache.service';
-import { AlertService } from '../../shared/services/alert.service';
+import { AlertService } from '../../core/services';
 
 
 /**

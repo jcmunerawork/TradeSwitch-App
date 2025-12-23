@@ -4,6 +4,9 @@
   "scripts": {
     "ng": "ng",
     "start": "npm run setup-env && ng serve --proxy-config proxy.conf.json",
+    "start:dev": "npm run setup-env && npm run build:server && concurrently \"npm run serve:express\" \"ng serve --proxy-config proxy.conf.json\"",
+    "build:server": "ng build --configuration development",
+    "serve:express": "node dist/Trade-Manager/server/server.mjs",
     "build": "npm run setup-env && ng build",
     "watch": "npm run setup-env && ng build --watch --configuration development",
     "test": "ng test",

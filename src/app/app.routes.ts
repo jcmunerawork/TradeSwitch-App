@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './guards/auth-guard-guard';
-import { redirectGuard } from './guards/redirect-guard.guard';
+import { authGuard, redirectGuard } from './core/guards';
 
 export const routes: Routes = [
   {

@@ -49,7 +49,7 @@ import { getBestTrade, getTotalSpend } from './utils/firebase-data-utils';
 import { Timestamp } from 'firebase/firestore';
 import { initialStrategyState } from '../strategy/store/strategy.reducer';
 import { AccountData } from '../auth/models/userModel';
-import { PlanLimitationsGuard } from '../../guards/plan-limitations.guard';
+import { PlanLimitationsGuard } from '../../core/guards';
 import { PlanLimitationModalData } from '../../shared/interfaces/plan-limitation-modal.interface';
 import { PlanLimitationModalComponent } from '../../shared/components/plan-limitation-modal/plan-limitation-modal.component';
 import { StrategyCardData } from '../../shared/components/strategy-card/strategy-card.interface';
@@ -140,8 +140,11 @@ export class ReportComponent implements OnInit {
   showAccountDropdown = false;
   showReloadButton = false;
   
-  // Balance data from API
+  // Balance data from API (mantener para compatibilidad)
   balanceData: any = null;
+  
+  // Real-time balance from streams
+  realTimeBalance: number | null = null;
   
   // Loading state tracking for complete data loading
   private loadingStates = {
@@ -292,6 +295,31 @@ export class ReportComponent implements OnInit {
     // Suscribirse a las estrategias del usuario
     this.appContext.userStrategies$.subscribe(strategies => {
       this.strategies = strategies;
+    });
+    
+    // Suscribirse a balances en tiempo real
+    this.appContext.accountBalances$.subscribe(balances => {
+      if (this.currentAccount) {
+        const accountId = this.currentAccount.accountID || this.currentAccount.id;
+        const realTimeBalance = balances.get(accountId);
+        
+        if (realTimeBalance !== undefined && realTimeBalance !== null) {
+          this.realTimeBalance = realTimeBalance;
+          
+          // Actualizar balanceData si existe
+          if (this.balanceData) {
+            this.balanceData = {
+              ...this.balanceData,
+              balance: realTimeBalance
+            };
+          } else {
+            // Crear balanceData básico si no existe
+            this.balanceData = {
+              balance: realTimeBalance
+            };
+          }
+        }
+      }
     });
   }
 
