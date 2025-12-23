@@ -1,11 +1,10 @@
 import {
   DailyRevenueData,
   MonthlyRevenueData,
-  OrderStatus,
   OrderTableRow,
+  RefundTableRow,
   RevenueSummary,
   RevenueTableRow,
-  SubscriptionStatus,
   SubscriptionTableRow,
   YearlyRevenueData,
 } from '../models/revenue';
@@ -160,131 +159,112 @@ export const revenueTableMock: RevenueTableRow[] = [
   },
 ];
 
-/**
- * Mock data for orders table.
- *
- * Contains sample order rows with order details.
- * Used for orders table display in development.
- *
- * @constant orderTableMock
- * @type {OrderTableRow[]}
- */
+// Updated to match new OrderTableRow format (date, value, concepto, paid, method, status)
 export const orderTableMock: OrderTableRow[] = [
   {
-    orderId: '#3686',
-    user: 'Andrés Valdes',
-    date: '3 hours ago',
-    status: OrderStatus.Completed,
-    total: 127.0,
-    affiliateReferral: '#532',
-    origin: 'Referral:Tx3funding.com',
+    date: 'Jan 15, 2025',
+    value: 99,
+    concepto: 'Subscription update',
+    paid: true,
+    method: 'Card',
+    status: 'succeeded',
   },
   {
-    orderId: '#3686',
-    user: 'Marvin McKinney',
-    date: '3 hours ago',
-    status: OrderStatus.Pending,
-    total: 127.0,
-    affiliateReferral: null,
-    origin: 'Referral:Tx3funding.com',
+    date: 'Jan 14, 2025',
+    value: 35,
+    concepto: 'Subscription update',
+    paid: true,
+    method: 'Card',
+    status: 'succeeded',
   },
   {
-    orderId: '#3686',
-    user: 'Guy Hawkins',
-    date: '5 hours ago',
-    status: OrderStatus.Completed,
-    total: 127.0,
-    affiliateReferral: '#532',
-    origin: 'Referral:Tx3funding.com',
+    date: 'Jan 13, 2025',
+    value: 99,
+    concepto: 'Subscription update',
+    paid: false,
+    method: 'Card',
+    status: 'pending',
   },
   {
-    orderId: '#3686',
-    user: 'Ralph Edwards',
-    date: '6 hours ago',
-    status: OrderStatus.Cancelled,
-    total: 127.0,
-    affiliateReferral: '#532',
-    origin: 'Referral:Tx3funding.com',
+    date: 'Jan 12, 2025',
+    value: 35,
+    concepto: 'Subscription update',
+    paid: true,
+    method: 'Paypal',
+    status: 'succeeded',
   },
   {
-    orderId: '#3686',
-    user: 'Jenny Wilson',
-    date: '6 hours ago',
-    status: OrderStatus.Failed,
-    total: 127.0,
-    affiliateReferral: '#532',
-    origin: 'Referral:Tx3funding.com',
+    date: 'Jan 11, 2025',
+    value: 99,
+    concepto: 'Subscription update',
+    paid: false,
+    method: 'Card',
+    status: 'failed',
   },
 ];
 
-/**
- * Mock data for subscriptions table.
- *
- * Contains sample subscription rows with subscription details.
- * Used for subscriptions table display in development.
- *
- * @constant subscriptionTableMock
- * @type {SubscriptionTableRow[]}
- */
+// Updated to match new SubscriptionTableRow format
 export const subscriptionTableMock: SubscriptionTableRow[] = [
   {
-    status: SubscriptionStatus.Active,
-    subscription: '#3686 Andrés Valdes',
-    items: 'Pro Model',
-    total: '$157.00/month',
-    startDate: '3 hours ago',
-    trialEnd: '-',
-    nextPayment: 'July 23, 2025',
-    lastOrderDate: '-',
-    endDate: '-',
-    orders: 1,
+    status: 'active',
+    canceladaAFinalDePeriodo: false,
+    valor: 35,
+    item: 'Starter',
+    user: null,
+    startDate: 'Jan 1, 2025',
+    actualPeriodStart: 'Jan 15, 2025',
+    actualPeriodEnd: 'Feb 15, 2025',
   },
   {
-    status: SubscriptionStatus.Pending,
-    subscription: '#3686 Andrés Valdes',
-    items: 'Pro Model',
-    total: '$157.00/month',
-    startDate: '3 hours ago',
-    trialEnd: '-',
-    nextPayment: 'July 23, 2025',
-    lastOrderDate: '-',
-    endDate: '-',
-    orders: 1,
+    status: 'active',
+    canceladaAFinalDePeriodo: false,
+    valor: 99,
+    item: 'Pro',
+    user: 'Juan Camilo González Torres',
+    startDate: 'Dec 20, 2024',
+    actualPeriodStart: 'Jan 20, 2025',
+    actualPeriodEnd: 'Feb 20, 2025',
   },
   {
-    status: SubscriptionStatus.Active,
-    subscription: '#3686 Andrés Valdes',
-    items: 'Pro Model',
-    total: '$157.00/month',
-    startDate: '3 hours ago',
-    trialEnd: '-',
-    nextPayment: 'July 23, 2025',
-    lastOrderDate: '-',
-    endDate: '-',
-    orders: 1,
+    status: 'active',
+    canceladaAFinalDePeriodo: true,
+    valor: 35,
+    item: 'Starter',
+    user: 'María García',
+    startDate: 'Dec 15, 2024',
+    actualPeriodStart: 'Jan 15, 2025',
+    actualPeriodEnd: 'Feb 15, 2025',
   },
   {
-    status: SubscriptionStatus.Failed,
-    subscription: '#3686 Andrés Valdes',
-    items: 'Pro Model',
-    total: '$157.00/month',
-    startDate: '3 hours ago',
-    trialEnd: '-',
-    nextPayment: 'July 23, 2025',
-    lastOrderDate: '-',
-    endDate: '-',
-    orders: 1,
+    status: 'active',
+    canceladaAFinalDePeriodo: false,
+    valor: 99,
+    item: 'Pro',
+    user: 'Carlos Rodríguez',
+    startDate: 'Dec 10, 2024',
+    actualPeriodStart: 'Jan 10, 2025',
+    actualPeriodEnd: 'Feb 10, 2025',
+  },
+];
+
+// Mock data for refunds table (new format)
+export const refundsTableMock: RefundTableRow[] = [
+  {
+    created: 'Jan 10, 2025',
+    amount: 99,
+    destination: 'Card',
+    status: 'Succeeded',
   },
   {
-    status: SubscriptionStatus.Active,
-    subscription: '#3686 Andrés Valdes',
-    items: 'Pro Model',
-    total: '$157.00/month',
-    startDate: '3 hours ago',
-    trialEnd: '-',
-    nextPayment: 'July 23, 2025',
-    lastOrderDate: '-',
-    endDate: '-',
-    orders: 1,
+    created: 'Jan 8, 2025',
+    amount: 35,
+    destination: 'Paypal',
+    status: 'Pending',
+  },
+  {
+    created: 'Jan 5, 2025',
+    amount: 99,
+    destination: 'Card',
+    status: 'Failed',
   },
 ];

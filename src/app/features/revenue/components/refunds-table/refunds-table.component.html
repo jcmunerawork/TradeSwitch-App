@@ -4,7 +4,7 @@
   <div class="d-flex flex-col">
     <div class="d-flex justify-between items-center mb-24">
       <div class="table-titles">
-        <h1 class="subtitle mb-6">Subscriptions</h1>
+        <h1 class="subtitle mb-6">Refunds</h1>
       </div>
       <div class="table-actions-container smallText d-flex items-center">
         <button
@@ -20,47 +20,31 @@
       <table class="regularText">
         <thead>
           <tr>
-            <th class="regularText py-18">Status</th>
-            <th class="regularText py-18">Recurring Billing</th>
+            <th class="regularText py-18">Created at</th>
             <th class="regularText py-18">Amount</th>
-            <th class="regularText py-18">Plan</th>
-            <th class="regularText py-18">User</th>
-            <th class="regularText py-18">Start Date</th>
-            <th class="regularText py-18">Actual Period Start</th>
-            <th class="regularText py-18">Actual Period End</th>
+            <th class="regularText py-18">Destination</th>
+            <th class="regularText py-18">Status</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           @for (row of paginatedRows; track $index) {
           <tr>
+            <td class="smallText" style="width: 10.5rem">
+              <p>
+                {{ row.created }}
+              </p>
+            </td>
+            <td class="smallText">
+              <p>{{ formatCurrency(row.amount) }}</p>
+            </td>
+            <td class="smallText">
+              <p>{{ row.destination }}</p>
+            </td>
             <td class="smallText">
               <p [ngClass]="getStatusClass(row.status)" class="status p-6">
-                {{ getStatusText(row.status) }}
+                {{ row.status }}
               </p>
-            </td>
-            <td class="smallText">
-              <p [ngClass]="getRecurringBillingClass(row.canceladaAFinalDePeriodo)" class="status p-6">
-                {{ getRecurringBillingText(row.canceladaAFinalDePeriodo) }}
-              </p>
-            </td>
-            <td class="smallText">
-              <p>${{ row.valor }}/month</p>
-            </td>
-            <td class="smallText">
-              <p>{{ row.item }}</p>
-            </td>
-            <td class="smallText">
-              <p>{{ row.user || 'N/A' }}</p>
-            </td>
-            <td class="smallText">
-              <p>{{ row.startDate }}</p>
-            </td>
-            <td class="smallText">
-              <p>{{ row.actualPeriodStart }}</p>
-            </td>
-            <td class="smallText">
-              <p>{{ row.actualPeriodEnd }}</p>
             </td>
           </tr>
           }

@@ -21,14 +21,46 @@ export enum SubscriptionStatus {
   Failed = 'Failed',
 }
 
-/**
- * Interface representing a summary of revenue data.
- *
- * Contains aggregated revenue metrics including gross revenue, returns, coupons,
- * net revenue, and total revenue.
- *
- * @interface RevenueSummary
- */
+// API Response Interfaces
+export interface OrderApiItem {
+  date: number; // timestamp
+  value: number;
+  concepto: string;
+  status: string;
+  paid: boolean;
+  method: string;
+}
+
+export interface SubscriptionApiItem {
+  status: string;
+  canceladaAFinalDePeriodo: boolean;
+  valor: number;
+  item: string;
+  user: string | null;
+  startDate: number; // timestamp
+  actualPeriodStart: number; // timestamp
+  actualPeriodEnd: number; // timestamp
+}
+
+export interface RefundApiItem {
+  created: number; // timestamp
+  amount: number;
+  destination: string;
+  status: string; // pending, requires_action, succeeded, failed, or canceled
+}
+
+export interface RevenueApiResponse {
+  grossRevenue: number;
+  refunds: number;
+  netRevenue: number;
+  activeSubscriptions: number;
+  mrr: number;
+  currency: string;
+  orders: OrderApiItem[];
+  refundsTable: RefundApiItem[];
+  subscriptions: SubscriptionApiItem[];
+}
+
 export interface RevenueSummary {
   grossRevenue: number;
   returns: number;
@@ -57,13 +89,13 @@ export interface RevenueTableRow {
   totalSales: number;
 }
 
-/**
- * Interface representing daily revenue data.
- *
- * Used for chart visualization showing revenue trends by day.
- *
- * @interface DailyRevenueData
- */
+export interface RefundTableRow {
+  created: string; // formatted date
+  amount: number;
+  destination: string;
+  status: string; // formatted status
+}
+
 export interface DailyRevenueData {
   date: string;
   grossRevenue: number;
@@ -103,43 +135,25 @@ export interface YearlyRevenueData {
  * @interface OrderTableRow
  */
 export interface OrderTableRow {
-  orderId: string;
-  user: string;
-  date: string;
-  status: OrderStatus;
-  total: number;
-  affiliateReferral: string | null;
-  origin: string;
+  date: string; // formatted date
+  value: number; // amount
+  concepto: string;
+  paid: boolean;
+  method: string;
+  status: string;
 }
 
-/**
- * Interface representing a row in the subscriptions table.
- *
- * Contains subscription information including status, subscription details,
- * items, total, dates, and order count.
- *
- * @interface SubscriptionTableRow
- */
 export interface SubscriptionTableRow {
-  status: SubscriptionStatus;
-  subscription: string;
-  items: string;
-  total: string;
-  startDate: string;
-  trialEnd: string;
-  nextPayment: string;
-  lastOrderDate: string;
-  endDate: string;
-  orders: number;
+  status: string;
+  canceladaAFinalDePeriodo: boolean;
+  valor: number;
+  item: string;
+  user: string | null;
+  startDate: string; // formatted date
+  actualPeriodStart: string; // formatted date
+  actualPeriodEnd: string; // formatted date
 }
 
-/**
- * Interface representing filter criteria for revenue table.
- *
- * Used to filter revenue data by search term, order count, gross revenue, and total sales.
- *
- * @interface RevenueFilter
- */
 export interface RevenueFilter {
   searchTerm?: string;
   minOrders?: number;

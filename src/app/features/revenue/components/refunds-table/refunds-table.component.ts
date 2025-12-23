@@ -1,43 +1,28 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { OrderTableRow } from '../../models/revenue';
+import { RefundTableRow } from '../../models/revenue';
+import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
-/**
- * Component for displaying orders data in a table format.
- *
- * This component provides a paginated and filterable table for order data.
- * It supports filtering by search term, order status, and total amount,
- * as well as sorting and pagination.
- *
- * Features:
- * - Search by order ID or user name
- * - Filter by order status (Completed, Pending, Cancelled, Failed)
- * - Filter by total amount range
- * - Sort by date (ascending/descending)
- * - Pagination
- *
- * @component
- * @selector app-orders-table
- * @standalone true
- */
 @Component({
-  selector: 'app-orders-table',
+  selector: 'app-refunds-table',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './orders-table.component.html',
-  styleUrls: ['./orders-table.component.scss'],
+  templateUrl: './refunds-table.component.html',
+  styleUrls: ['./refunds-table.component.scss'],
 })
-export class OrdersTableComponent {
-  @Input() orderRows: OrderTableRow[] = [];
+export class RefundsTableComponent {
+  @Input() refundRows: RefundTableRow[] = [];
 
   currentPage: number = 1;
   itemsPerPage: number = 10;
-  sortField: 'date' = 'date';
+  sortField: 'created' = 'created';
   sortAsc: boolean = true;
 
-  get sortedRows(): OrderTableRow[] {
-    return [...this.orderRows].sort((a, b) => {
+  private numberFormatter = new NumberFormatterService();
+
+  get sortedRows(): RefundTableRow[] {
+    return [...this.refundRows].sort((a, b) => {
       const fieldA = a[this.sortField].toLowerCase();
       const fieldB = b[this.sortField].toLowerCase();
       if (fieldA < fieldB) return this.sortAsc ? -1 : 1;
@@ -46,7 +31,7 @@ export class OrdersTableComponent {
     });
   }
 
-  get paginatedRows(): OrderTableRow[] {
+  get paginatedRows(): RefundTableRow[] {
     const start = (this.currentPage - 1) * this.itemsPerPage;
     const end = start + this.itemsPerPage;
     return this.sortedRows.slice(start, end);
@@ -74,11 +59,16 @@ export class OrdersTableComponent {
     this.sortAsc = !this.sortAsc;
   }
 
-  getPaidClass(paid: boolean): string {
-    return paid ? 'green' : 'red';
+  formatCurrency(value: number | null | undefined): string {
+    return this.numberFormatter.formatCurrency(value);
   }
 
-  getPaidText(paid: boolean): string {
-    return paid ? 'Paid' : 'Not paid';
+  getStatusClass(status: string): string {
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus === 'succeeded') return 'green';
+    if (lowerStatus === 'pending' || lowerStatus === 'requires action') return 'yellow';
+    if (lowerStatus === 'failed' || lowerStatus === 'canceled') return 'red';
+    return '';
   }
 }
+
