@@ -1,13 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { CanActivate, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { selectUser } from '../features/auth/store/user.selectios';
-import { SubscriptionService } from '../shared/services/subscription-service';
-import { PlanService } from '../shared/services/planService';
-import { UserStatus } from '../features/overview/models/overview';
+import { selectUser } from '../../features/auth/store/user.selectios';
+import { SubscriptionService } from '../../shared/services/subscription-service';
+import { PlanService } from '../../shared/services/planService';
+import { UserStatus } from '../../features/overview/models/overview';
 import { Observable, of, switchMap, catchError } from 'rxjs';
-import { Subscription } from '../shared/services/subscription-service';
-import { AppContextService } from '../shared/context';
+import { Subscription } from '../../shared/services/subscription-service';
+import { AppContextService } from '../../shared/context';
 
 export interface PlanLimitations {
   maxAccounts: number;
@@ -39,6 +39,39 @@ export interface ModalData {
   onSecondaryAction?: () => void;
 }
 
+/**
+ * Guard and service for checking user plan limitations and feature access.
+ *
+ * This guard/service provides comprehensive plan limitation checking for features
+ * like account creation, strategy creation, and report access. It validates
+ * subscription status, plan limits, and provides modal data for blocked features.
+ *
+ * Features:
+ * - Route guard for plan-limited features
+ * - Check account creation limits
+ * - Check strategy creation limits
+ * - Check report access
+ * - Validate subscription status (active, banned, cancelled)
+ * - Generate modal data for upgrade/blocked scenarios
+ * - Integration with AppContextService for plan data
+ *
+ * Plan Status Validation:
+ * - Active: User has valid subscription
+ * - Banned: User account is banned
+ * - Cancelled: Subscription cancelled
+ * - Needs Subscription: User needs to purchase a plan
+ *
+ * Relations:
+ * - SubscriptionService: Gets user subscription data
+ * - PlanService: Gets plan details and limits
+ * - AppContextService: Accesses cached plan data
+ * - Store (NgRx): Gets current user
+ * - Router: Navigation for upgrade flows
+ *
+ * @guard
+ * @service
+ * @injectable
+ */
 @Injectable({
   providedIn: 'root'
 })

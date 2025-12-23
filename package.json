@@ -4,6 +4,9 @@
   "scripts": {
     "ng": "ng",
     "start": "npm run setup-env && ng serve --proxy-config proxy.conf.json",
+    "start:dev": "npm run setup-env && npm run build:server && concurrently \"npm run serve:express\" \"ng serve --proxy-config proxy.conf.json\"",
+    "build:server": "ng build --configuration development",
+    "serve:express": "node dist/Trade-Manager/server/server.mjs",
     "build": "npm run setup-env && ng build",
     "watch": "npm run setup-env && ng build --watch --configuration development",
     "test": "ng test",
@@ -52,7 +55,9 @@
     "ng-apexcharts": "^2.0.0",
     "ng2-charts": "^8.0.0",
     "ngx-material-timepicker": "^13.1.1",
+    "pdfkit": "^0.17.2",
     "rxjs": "~7.8.0",
+    "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"

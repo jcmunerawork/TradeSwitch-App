@@ -17,18 +17,64 @@ import {
   groupOrdersByPosition,
 } from '../utils/normalization-utils';
 
+/**
+ * Service for managing report data and API interactions.
+ *
+ * This service acts as an intermediary between the ReportComponent and external services,
+ * handling data fetching, transformation, and context updates for trading reports.
+ *
+ * Responsibilities:
+ * - Fetching trading history from TradeLocker API
+ * - Fetching account balance data
+ * - Fetching instrument details
+ * - Updating monthly reports
+ * - Managing loading states in AppContextService
+ *
+ * Relations:
+ * - TradeLockerApiService: Direct API communication
+ * - MonthlyReportsService: Monthly report data management
+ * - AppContextService: Global state and loading management
+ *
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({ providedIn: 'root' })
 export class ReportService {
+  /**
+   * Constructor for ReportService.
+   *
+   * @param tradeLockerApiService - Service for TradeLocker API interactions
+   * @param monthlyReportsService - Service for monthly report management
+   * @param appContext - Application context service for global state
+   */
   constructor(
     private tradeLockerApiService: TradeLockerApiService,
     private monthlyReportsService: MonthlyReportsService,
     private appContext: AppContextService
   ) {}
 
+  /**
+   * Updates a monthly report in the database.
+   *
+   * @param monthlyReport - The monthly report data to update
+   * @returns Promise that resolves when the update is complete
+   * @memberof ReportService
+   */
   async updateMonthlyReport(monthlyReport: MonthlyReport) {
     return this.monthlyReportsService.updateMonthlyReport(monthlyReport);
   }
 
+  /**
+   * Gets user authentication key from TradeLocker API.
+   *
+   * Authenticates user credentials and returns an access token for API requests.
+   *
+   * @param email - Trading account email
+   * @param password - Trading account password
+   * @param server - Trading server name
+   * @returns Observable that emits the user key (access token)
+   * @memberof ReportService
+   */
   getUserKey(
     email: string,
     password: string,
@@ -37,6 +83,31 @@ export class ReportService {
     return this.tradeLockerApiService.getUserKey(email, password, server);
   }
 
+  /**
+   * Fetches trading history data for an account.
+   *
+   * Retrieves order history from TradeLocker API, transforms it into GroupedTradeFinal objects,
+   * and updates the application context with the processed data.
+   *
+   * Process:
+   * 1. Sets loading state in AppContextService
+   * 2. Fetches order history from API
+   * 3. Transforms array data to historyTrade objects
+   * 4. Groups orders by position using groupOrdersByPosition
+   * 5. Updates AppContextService with grouped trades
+   * 6. Clears loading state
+   *
+   * Related to:
+   * - arrayToHistoryTrade(): Transforms API array to historyTrade
+   * - groupOrdersByPosition(): Groups trades by position
+   * - AppContextService.updateReportHistory(): Updates global state
+   *
+   * @param accountId - Trading account ID
+   * @param accessToken - User authentication token
+   * @param accNum - Account number
+   * @returns Observable that emits an array of GroupedTradeFinal objects
+   * @memberof ReportService
+   */
   getHistoryData(
     accountId: string,
     accessToken: string,
@@ -70,6 +141,28 @@ export class ReportService {
       );
   }
 
+  /**
+   * Fetches account balance data from TradeLocker API.
+   *
+   * Retrieves comprehensive balance information including available funds, margin requirements,
+   * daily trading statistics, and open position data.
+   *
+   * Process:
+   * 1. Sets loading state in AppContextService
+   * 2. Fetches balance data from API
+   * 3. Maps array data to BalanceData interface
+   * 4. Updates AppContextService with balance data
+   * 5. Clears loading state
+   *
+   * Related to:
+   * - AppContextService.updateReportBalance(): Updates global balance state
+   *
+   * @param accountId - Trading account ID
+   * @param accessToken - User authentication token
+   * @param accNum - Account number
+   * @returns Observable that emits BalanceData object
+   * @memberof ReportService
+   */
   getBalanceData(
     accountId: string,
     accessToken: string,
@@ -160,6 +253,19 @@ export class ReportService {
       );
   }
 
+  /**
+   * Fetches detailed information about a trading instrument.
+   *
+   * Retrieves instrument metadata including lot size, name, currency, and trading specifications.
+   * Used primarily for calculating accurate PnL and displaying instrument names.
+   *
+   * @param accessToken - User authentication token
+   * @param tradableInstrumentId - Unique identifier for the instrument
+   * @param routeId - Route ID for the instrument
+   * @param accNum - Account number
+   * @returns Observable that emits InstrumentDetails object
+   * @memberof ReportService
+   */
   getInstrumentDetails(
     accessToken: string,
     tradableInstrumentId: string,
@@ -178,6 +284,18 @@ export class ReportService {
       );
   }
 
+  /**
+   * Fetches all available trading instruments for an account.
+   *
+   * Retrieves a list of all instruments that can be traded on the account,
+   * including basic information like ID, name, and routes.
+   *
+   * @param accessToken - User authentication token
+   * @param accNum - Account number
+   * @param accountId - Trading account ID
+   * @returns Observable that emits an array of Instrument objects
+   * @memberof ReportService
+   */
   getAllInstruments(
     accessToken: string,
     accNum: number,

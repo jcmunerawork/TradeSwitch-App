@@ -20,6 +20,28 @@ import {
 } from '../../store/strategy.actions';
 import { CommonModule } from '@angular/common';
 
+/**
+ * Component for configuring the assets allowed for trading rule.
+ *
+ * This component allows users to select which trading instruments/assets are
+ * permitted for trading. It includes a searchable dropdown for selecting
+ * instruments and displays selected assets as removable chips.
+ *
+ * Features:
+ * - Toggle rule active/inactive
+ * - Searchable dropdown for instrument selection
+ * - Display selected assets as chips
+ * - Remove asset functionality
+ * - Syncs with NgRx store
+ *
+ * Relations:
+ * - Store (NgRx): Reads and updates assetsAllowed configuration
+ * - SettingsService: Strategy service (injected but not directly used)
+ *
+ * @component
+ * @selector app-assets-allowed
+ * @standalone true
+ */
 @Component({
   selector: 'app-assets-allowed',
   templateUrl: './assets-allowed.component.html',

@@ -4,6 +4,35 @@ import { isPlatformBrowser } from '@angular/common';
 import { MonthlyReport } from '../../features/report/models/report.model';
 import { newDataId } from '../../features/report/utils/firebase-data-utils';
 
+/**
+ * Service for managing monthly trading reports in Firebase.
+ *
+ * This service provides CRUD operations for monthly trading reports that
+ * aggregate trading statistics by month. Reports are used for historical
+ * analysis and performance tracking.
+ *
+ * Features:
+ * - Update monthly report
+ * - Get monthly report by ID
+ * - Get all monthly reports
+ * - Get monthly reports by user ID
+ * - Get monthly report by user, month, and year
+ * - Delete monthly report
+ *
+ * Report Structure:
+ * - Stored in: `monthly_reports/{reportId}`
+ * - Report ID format: Generated using `newDataId()` utility
+ * - Contains: Monthly aggregated trading statistics
+ *
+ * Relations:
+ * - Used by ReportService for saving monthly summaries
+ * - Used by ReportComponent for historical data
+ * - Uses `newDataId` utility for unique ID generation
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

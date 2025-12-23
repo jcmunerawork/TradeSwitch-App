@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, effect } from '@angular/core';
+import { Injectable, signal, computed } from '@angular/core';
 import { BehaviorSubject, Observable, combineLatest, map, distinctUntilChanged } from 'rxjs';
 import { User } from '../../features/overview/models/overview';
 import { AccountData } from '../../features/auth/models/userModel';
@@ -111,6 +111,46 @@ export interface AppContextState {
   };
 }
 
+/**
+ * Global application context service for managing shared state.
+ *
+ * This service provides a centralized state management system using Angular signals
+ * and RxJS observables. It manages user data, accounts, strategies, plans, trading
+ * history, and API caching across the entire application.
+ *
+ * Features:
+ * - User state management (current user, authentication status)
+ * - Account management (CRUD operations)
+ * - Strategy management (CRUD operations, activation)
+ * - Plan management (user plan, global plans, limits)
+ * - Trading history per account (with localStorage persistence)
+ * - API caching (TradeLocker data, general API cache)
+ * - Report data management
+ * - Overview data management (for admins)
+ * - Loading states per component
+ * - Error states per component
+ * - Computed signals for derived data
+ *
+ * State Management:
+ * - Signals: For reactive UI updates (Angular signals)
+ * - Observables: For RxJS-based subscriptions
+ * - BehaviorSubject: Internal state management
+ * - localStorage: Persistence for trading history
+ *
+ * Caching:
+ * - TradeLocker data: 5-minute TTL
+ * - General API cache: 10-minute TTL
+ * - Automatic cache eviction (20% oldest entries when max size reached)
+ *
+ * Relations:
+ * - TradeLockerApiService: Fetches trading data
+ * - All feature modules: Consume and update context data
+ * - localStorage: Persists trading history
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })
@@ -198,6 +238,9 @@ export class AppContextService {
     balanceData: null,
     monthlyReports: []
   });
+  
+  // Signal para balances en tiempo real por accountId
+  public accountBalances = signal<Map<string, number>>(new Map());
   
   // Signals para datos de overview
   public overviewData = signal<{
@@ -305,6 +348,18 @@ export class AppContextService {
     map(state => state.reportData),
     distinctUntilChanged()
   );
+  
+  // Observable para balances en tiempo real (usando toSignal pattern)
+  public accountBalances$ = this.state$.pipe(
+    map(() => this.accountBalances()),
+    distinctUntilChanged((prev, curr) => {
+      if (prev.size !== curr.size) return false;
+      for (const [key, value] of prev) {
+        if (curr.get(key) !== value) return false;
+      }
+      return true;
+    })
+  );
 
   public overviewData$ = this.state$.pipe(
     map(state => state.overviewData),
@@ -322,21 +377,23 @@ export class AppContextService {
   );
 
   constructor(private tradeLockerApi: TradeLockerApiService) {
+    // COMENTADO: effect() no está disponible en servicios sin contexto de inyección
+    // La sincronización se hace manualmente en los métodos setter de cada signal
     // Sincronizar signals con el estado principal
-    effect(() => {
-      this.updateState({
-        currentUser: this.currentUser(),
-        isAuthenticated: this.isAuthenticated(),
-        userAccounts: this.userAccounts(),
-        userStrategies: this.userStrategies(),
-        userPlan: this.userPlan(),
-        pluginHistory: this.pluginHistory(),
-        globalPlans: this.globalPlans(),
-        planLimits: this.planLimits(),
-        reportData: this.reportData(),
-        overviewData: this.overviewData()
-      });
-    });
+    // effect(() => {
+    //   this.updateState({
+    //     currentUser: this.currentUser(),
+    //     isAuthenticated: this.isAuthenticated(),
+    //     userAccounts: this.userAccounts(),
+    //     userStrategies: this.userStrategies(),
+    //     userPlan: this.userPlan(),
+    //     pluginHistory: this.pluginHistory(),
+    //     globalPlans: this.globalPlans(),
+    //     planLimits: this.planLimits(),
+    //     reportData: this.reportData(),
+    //     overviewData: this.overviewData()
+    //   });
+    // });
   }
 
   // ===== MÉTODOS DE ACTUALIZACIÓN DE ESTADO =====
@@ -397,6 +454,8 @@ export class AppContextService {
 
   setUserAccounts(accounts: AccountData[]): void {
     this.userAccounts.set(accounts);
+    // Sincronizar con el estado principal
+    this.updateState({ userAccounts: accounts });
   }
 
   addAccount(account: AccountData): void {
@@ -712,6 +771,34 @@ export class AppContextService {
   updateReportBalance(balanceData: any): void {
     const currentData = this.reportData();
     this.reportData.set({ ...currentData, balanceData });
+  }
+  
+  /**
+   * Update account balance in real-time
+   */
+  updateAccountBalance(accountId: string, balance: number): void {
+    const currentBalances = new Map(this.accountBalances());
+    currentBalances.set(accountId, balance);
+    this.accountBalances.set(currentBalances);
+    
+    // Also update the account in userAccounts if it exists
+    const accounts = this.userAccounts();
+    const accountIndex = accounts.findIndex(acc => acc.accountID === accountId || acc.id === accountId);
+    if (accountIndex !== -1) {
+      const updatedAccounts = [...accounts];
+      updatedAccounts[accountIndex] = {
+        ...updatedAccounts[accountIndex],
+        balance
+      };
+      this.setUserAccounts(updatedAccounts);
+    }
+  }
+  
+  /**
+   * Get balance for a specific account
+   */
+  getAccountBalance(accountId: string): number {
+    return this.accountBalances().get(accountId) || 0;
   }
 
   updateReportHistory(accountHistory: any[]): void {

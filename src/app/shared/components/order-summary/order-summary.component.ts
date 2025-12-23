@@ -1,6 +1,11 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
+/**
+ * Interface for order details display.
+ *
+ * @interface OrderDetails
+ */
 export interface OrderDetails {
   planName: string;
   price: number;
@@ -21,6 +26,11 @@ export interface OrderDetails {
   total: number;
 }
 
+/**
+ * Interface for order summary configuration.
+ *
+ * @interface OrderSummaryConfig
+ */
 export interface OrderSummaryConfig {
   context: 'signup' | 'plan-change';
   planName: string;
@@ -28,6 +38,39 @@ export interface OrderSummaryConfig {
   userData?: any;
 }
 
+/**
+ * Component for displaying order summary before payment.
+ *
+ * This component shows a detailed summary of the selected plan including
+ * price, features, discounts, taxes, and total. It's used in both signup
+ * and plan change flows to confirm the order before payment.
+ *
+ * Features:
+ * - Display plan details (name, price, features)
+ * - Calculate discounts (10% for new users)
+ * - Calculate taxes (21% VAT)
+ * - Display total amount
+ * - Progress steps indicator
+ * - Context-aware messaging (signup vs plan-change)
+ *
+ * Calculations:
+ * - Discount: 10% of subtotal (applied automatically)
+ * - Taxes: 21% of (subtotal - discount)
+ * - Total: subtotal - discount + taxes
+ *
+ * Plan Features:
+ * - Trading accounts: Varies by plan (Free: 1, Starter: 2, Pro: 6)
+ * - Strategies: Varies by plan (Free: 1, Starter: 3, Pro: 8)
+ * - All plans include: Consistency rules, Trading journal, Live statistics
+ *
+ * Relations:
+ * - Used in signup flow before payment
+ * - Used in plan change flow before payment
+ *
+ * @component
+ * @selector app-order-summary
+ * @standalone true
+ */
 @Component({
   selector: 'app-order-summary',
   standalone: true,

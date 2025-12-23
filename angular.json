@@ -58,7 +58,8 @@
               "process.env.FIREBASE_STORAGE_BUCKET": "process.env.FIREBASE_STORAGE_BUCKET",
               "process.env.FIREBASE_MESSAGING_SENDER_ID": "process.env.FIREBASE_MESSAGING_SENDER_ID",
               "process.env.FIREBASE_APP_ID": "process.env.FIREBASE_APP_ID",
-              "process.env.FIREBASE_MEASUREMENT_ID": "process.env.FIREBASE_MEASUREMENT_ID"
+              "process.env.FIREBASE_MEASUREMENT_ID": "process.env.FIREBASE_MEASUREMENT_ID",
+              "process.env.STREAMS_BACKEND_URL": "process.env.STREAMS_BACKEND_URL"
             }
           },
           "configurations": {

@@ -2,6 +2,27 @@ import { CommonModule } from '@angular/common';
 import { Component, Input, Injectable } from '@angular/core';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
+/**
+ * Component for displaying a statistical card with formatted values.
+ *
+ * This component displays a title and value with automatic formatting based on the format type
+ * or by auto-detecting the format from the title. It also applies color coding for certain metrics.
+ *
+ * Format types:
+ * - 'currency': Formats as currency (e.g., $1,234.56)
+ * - 'percentage': Formats as percentage (e.g., 45.5%)
+ * - 'number': Formats as number or integer based on title
+ *
+ * Color coding:
+ * - Net P&L: Green for positive, red for negative
+ * - Profit Factor: Green if >= 1.0, red if < 1.0
+ * - Trade Win %: Green if >= 50%, red if < 50%
+ * - Avg Win/Loss: Green if >= 1.0, red if < 1.0
+ *
+ * @component
+ * @selector app-stat-card
+ * @standalone true
+ */
 @Component({
   selector: 'app-stat-card',
   templateUrl: './stat_card.component.html',
@@ -17,6 +38,18 @@ export class statCardComponent {
 
   private numberFormatter = new NumberFormatterService();
 
+  /**
+   * Gets the formatted value based on format type or auto-detection.
+   *
+   * If formatType is specified, uses that format. Otherwise, auto-detects format
+   * from the title (e.g., titles containing "P&L" or "profit" use currency format).
+   *
+   * Related to:
+   * - NumberFormatterService: Handles actual formatting
+   *
+   * @returns Formatted value string
+   * @memberof statCardComponent
+   */
   getFormattedValue(): string {
     if (this.value === null || this.value === undefined) {
       return '0';
@@ -72,6 +105,19 @@ export class statCardComponent {
     }
   }
 
+  /**
+   * Gets the CSS color class for the value based on the metric type and value.
+   *
+   * Applies color coding for specific metrics:
+   * - Net P&L: Green (positive) or red (negative)
+   * - Profit Factor: Green (>= 1.0) or red (< 1.0)
+   * - Trade Win %: Green (>= 50%) or red (< 50%)
+   * - Avg Win/Loss: Green (>= 1.0) or red (< 1.0)
+   * - Other metrics: Default background color
+   *
+   * @returns CSS class name for value color
+   * @memberof statCardComponent
+   */
   getValueColorClass(): string {
     if (this.value === null || this.value === undefined) {
       return 'color-background';

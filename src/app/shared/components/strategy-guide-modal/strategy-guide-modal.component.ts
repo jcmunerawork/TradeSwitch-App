@@ -1,6 +1,37 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
+/**
+ * Component for displaying a strategy creation guide modal.
+ *
+ * This component provides a step-by-step guide for new users on how to
+ * create and manage trading strategies. It includes three steps with
+ * images and descriptions, and allows users to skip the guide in the future.
+ *
+ * Features:
+ * - Three-step guide (Create, Select, Edit)
+ * - Step navigation (next/previous)
+ * - Image and description for each step
+ * - "Don't show again" option
+ * - Direct navigation to strategy editing
+ * - Close modal functionality
+ *
+ * Guide Steps:
+ * 1. Create a strategy: Design trading plan with custom rules
+ * 2. Select strategy: Pick strategy for each account
+ * 3. Edit a strategy: Fine-tune rules anytime
+ *
+ * Usage:
+ * Shown to first-time users when they access the strategy page.
+ * Users can opt to not see it again.
+ *
+ * Relations:
+ * - Used by StrategyComponent for first-time user guidance
+ *
+ * @component
+ * @selector app-strategy-guide-modal
+ * @standalone true
+ */
 @Component({
   selector: 'app-strategy-guide-modal',
   standalone: true,

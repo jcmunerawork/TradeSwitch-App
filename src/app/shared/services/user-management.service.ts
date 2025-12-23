@@ -3,6 +3,33 @@ import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, q
 import { isPlatformBrowser } from '@angular/common';
 import { User, UserStatus } from '../../features/overview/models/overview';
 
+/**
+ * Service for managing user data operations (administrative).
+ *
+ * This service provides administrative operations for user management,
+ * including fetching all users, filtering by status, and getting top users.
+ * It's designed for admin interfaces and user management dashboards.
+ *
+ * Features:
+ * - Get all users from Firebase
+ * - Get user by ID
+ * - Update user data
+ * - Delete user
+ * - Get users by status (active, banned, etc.)
+ * - Get top users (ordered by number of trades)
+ *
+ * Usage:
+ * Primarily used by admin components like UsersDetailsComponent for
+ * managing and viewing user data.
+ *
+ * Relations:
+ * - Used by UsersDetailsComponent for user management
+ * - Used by OverviewComponent for user statistics
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

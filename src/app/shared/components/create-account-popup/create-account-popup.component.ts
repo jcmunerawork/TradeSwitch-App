@@ -7,6 +7,46 @@ import { AccountData } from '../../../features/auth/models/userModel';
 import { Timestamp } from 'firebase/firestore';
 import { NumberFormatterService } from '../../utils/number-formatter.service';
 
+/**
+ * Component for creating and editing trading accounts.
+ *
+ * This component provides a modal interface for adding new trading accounts
+ * or editing existing ones. It validates account credentials with TradeLocker
+ * API and handles account creation/update operations.
+ *
+ * Features:
+ * - Create new trading accounts
+ * - Edit existing trading accounts
+ * - Account validation with TradeLocker API
+ * - Formatted balance input with currency formatting
+ * - Confirmation modals (cancel, success)
+ * - Form validation
+ * - Account credential validation
+ *
+ * Account Fields:
+ * - Account name
+ * - Broker
+ * - Email (trading account email)
+ * - Password (broker password)
+ * - Server
+ * - Account ID
+ * - Account number
+ * - Initial balance (formatted currency input)
+ *
+ * Validation:
+ * - Validates account exists in TradeLocker before creation
+ * - Checks account credentials with TradeLocker API
+ * - Form field validation
+ *
+ * Relations:
+ * - AuthService: Creates/updates accounts in Firebase
+ * - TradeLockerApiService: Validates account credentials
+ * - NumberFormatterService: Formats balance input
+ *
+ * @component
+ * @selector app-create-account-popup
+ * @standalone true
+ */
 @Component({
   selector: 'app-create-account-popup',
   standalone: true,
@@ -152,7 +192,10 @@ export class CreateAccountPopupComponent implements OnChanges {
       profit: this.accountToEdit.profit || 0,
       bestTrade: this.accountToEdit.bestTrade || 0,
     };
-    
+
+    console.log('updatedAccountData', updatedAccountData);
+    console.log('this.accountToEdit.id', this.accountToEdit.id);
+
     // Update in Firebase
     await this.authService.updateAccount(this.accountToEdit.id, updatedAccountData);
     
@@ -287,15 +330,18 @@ export class CreateAccountPopupComponent implements OnChanges {
   /**
    * Validates that broker + server + accountId combination is unique across all accounts
    * Returns validation result with appropriate message
+   * When in edit mode, excludes the current account being edited
    */
   private async validateAccountUniqueness(): Promise<{isValid: boolean, message: string}> {
     try {
       // Check if broker + server + accountId combination already exists
+      // If editing, exclude the current account being edited
       const accountExists = await this.authService.checkAccountExists(
         this.newAccount.broker,
         this.newAccount.server,
         this.newAccount.accountID,
-        this.userId
+        this.userId,
+        this.editMode && this.accountToEdit ? this.accountToEdit.id : undefined
       );
       
       if (accountExists) {
@@ -310,6 +356,7 @@ export class CreateAccountPopupComponent implements OnChanges {
         message: ''
       };
     } catch (error) {
+      console.error('Error validating account uniqueness:', error);
       return {
         isValid: false,
         message: 'This account is already registered. Try with another account or delete the existing trade account it is linked to.'

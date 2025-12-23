@@ -7,6 +7,35 @@ import { EventEmitter } from '@angular/core';
 import { Timestamp } from 'firebase/firestore';
 import { CreateUserRolePopupComponent } from '../create-user-role-popup/create-user-role-popup.component';
 
+/**
+ * Component for displaying a filterable and sortable table of users.
+ *
+ * This component displays users in a paginated table with search, filtering,
+ * and sorting capabilities. It also includes functionality to create new users
+ * (both regular users and admins) through a popup component.
+ *
+ * Features:
+ * - Search users by name (first name + last name)
+ * - Filter by strategy followed percentage range
+ * - Sort by first name or last name (ascending/descending)
+ * - Pagination with configurable items per page
+ * - Status classification (banned, created, active)
+ * - Create new user popup (user or admin role)
+ * - User selection for detailed view
+ *
+ * Status Classification:
+ * - "banned": User status is explicitly banned
+ * - "created": All user metrics are zero (newly created account)
+ * - "active": User has activity (non-zero metrics)
+ *
+ * Relations:
+ * - CreateUserRolePopupComponent: Modal for creating new users
+ * - UsersDetails: Parent component that receives selected users
+ *
+ * @component
+ * @selector app-users-table
+ * @standalone true
+ */
 @Component({
   selector: 'app-users-table',
   standalone: true,

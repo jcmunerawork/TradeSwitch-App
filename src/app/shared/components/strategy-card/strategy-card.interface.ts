@@ -1,3 +1,11 @@
+/**
+ * Interface for strategy card display data.
+ *
+ * This interface defines the data structure used by StrategyCardComponent
+ * to display strategy information in card format.
+ *
+ * @interface StrategyCardData
+ */
 export interface StrategyCardData {
   id: string;
   name: string;

@@ -17,6 +17,11 @@ import {
 import { db } from '../../firebase/firebase.init';
 import { UserStatus } from '../../features/overview/models/overview';
 
+/**
+ * Interface for user subscription data.
+ *
+ * @interface Subscription
+ */
 export interface Subscription {
   id?: string;
   planId: string;
@@ -30,6 +35,37 @@ export interface Subscription {
   cancelAtPeriodEnd?: boolean;
 }
 
+/**
+ * Service for managing user subscriptions in Firebase.
+ *
+ * This service provides CRUD operations for user subscriptions, including
+ * creating, reading, updating, and listening to subscription changes.
+ * It manages subscription data in the Firestore subcollection
+ * `users/{userId}/subscription`.
+ *
+ * Features:
+ * - Get user's latest subscription
+ * - Listen to subscription changes in real-time
+ * - Create new subscriptions
+ * - Update existing subscriptions
+ * - Delete subscriptions
+ * - Get subscription by ID
+ * - Get all user subscriptions
+ *
+ * Subscription Structure:
+ * - Stored in: `users/{userId}/subscription/{subscriptionId}`
+ * - Ordered by `created_at` descending
+ * - Only one active subscription per user expected
+ *
+ * Relations:
+ * - Used by AuthService for plan management
+ * - Used by PlanSettingsComponent for subscription display
+ * - Used by PlanLimitationsGuard for plan validation
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

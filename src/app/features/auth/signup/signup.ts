@@ -23,7 +23,7 @@ import { setUserData } from '../store/user.actions';
 import { Store } from '@ngrx/store';
 import { AppContextService } from '../../../shared/context';
 import { StripeLoaderPopupComponent } from '../../../shared/pop-ups/stripe-loader-popup/stripe-loader-popup.component';
-import { AlertService } from '../../../shared/services/alert.service';
+import { AlertService } from '../../../core/services';
 
 @Component({
   selector: 'app-signup',

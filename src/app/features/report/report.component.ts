@@ -49,7 +49,7 @@ import { getBestTrade, getTotalSpend } from './utils/firebase-data-utils';
 import { Timestamp } from 'firebase/firestore';
 import { initialStrategyState } from '../strategy/store/strategy.reducer';
 import { AccountData } from '../auth/models/userModel';
-import { PlanLimitationsGuard } from '../../guards/plan-limitations.guard';
+import { PlanLimitationsGuard } from '../../core/guards';
 import { PlanLimitationModalData } from '../../shared/interfaces/plan-limitation-modal.interface';
 import { PlanLimitationModalComponent } from '../../shared/components/plan-limitation-modal/plan-limitation-modal.component';
 import { StrategyCardData } from '../../shared/components/strategy-card/strategy-card.interface';
@@ -57,6 +57,49 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 import { PluginHistoryService, PluginHistory } from '../../shared/services/plugin-history.service';
 import { TimezoneService } from '../../shared/services/timezone.service';
 
+/**
+ * Main component for displaying trading reports and analytics.
+ *
+ * This component is the central hub for displaying comprehensive trading data including:
+ * - Trading statistics (Net PnL, Win Rate, Profit Factor, etc.)
+ * - PnL charts with monthly/yearly views
+ * - Calendar view of trades with strategy compliance
+ * - Win/Loss ratio visualization
+ * - Account balance information
+ * - Strategy configuration display
+ *
+ * Key Features:
+ * - Fetches trading history from TradeLocker API
+ * - Processes and groups trades by position
+ * - Calculates trading statistics
+ * - Manages multiple trading accounts
+ * - Caches data in localStorage for performance
+ * - Updates monthly reports in Firebase
+ * - Handles plan limitations and access control
+ *
+ * Data Flow:
+ * 1. Component initializes and loads saved data from localStorage
+ * 2. Subscribes to AppContextService for user, accounts, and strategies
+ * 3. Fetches fresh data from API for current account
+ * 4. Processes trades and calculates statistics
+ * 5. Updates NgRx store and AppContextService
+ * 6. Displays data in child components (charts, calendar, stats)
+ *
+ * Relations:
+ * - ReportService: Fetches trading data from API
+ * - AppContextService: Global state management
+ * - Store (NgRx): Local state for report data
+ * - AuthService: User authentication and account management
+ * - SettingsService: Strategy configuration
+ * - CalendarComponent: Calendar view of trades
+ * - PnlGraphComponent: PnL chart visualization
+ * - WinLossChartComponent: Win/loss ratio chart
+ * - statCardComponent: Individual statistic cards
+ *
+ * @component
+ * @selector app-report
+ * @standalone true
+ */
 @Component({
   selector: 'app-report',
   templateUrl: './report.component.html',
@@ -97,8 +140,11 @@ export class ReportComponent implements OnInit {
   showAccountDropdown = false;
   showReloadButton = false;
   
-  // Balance data from API
+  // Balance data from API (mantener para compatibilidad)
   balanceData: any = null;
+  
+  // Real-time balance from streams
+  realTimeBalance: number | null = null;
   
   // Loading state tracking for complete data loading
   private loadingStates = {
@@ -249,6 +295,31 @@ export class ReportComponent implements OnInit {
     // Suscribirse a las estrategias del usuario
     this.appContext.userStrategies$.subscribe(strategies => {
       this.strategies = strategies;
+    });
+    
+    // Suscribirse a balances en tiempo real
+    this.appContext.accountBalances$.subscribe(balances => {
+      if (this.currentAccount) {
+        const accountId = this.currentAccount.accountID || this.currentAccount.id;
+        const realTimeBalance = balances.get(accountId);
+        
+        if (realTimeBalance !== undefined && realTimeBalance !== null) {
+          this.realTimeBalance = realTimeBalance;
+          
+          // Actualizar balanceData si existe
+          if (this.balanceData) {
+            this.balanceData = {
+              ...this.balanceData,
+              balance: realTimeBalance
+            };
+          } else {
+            // Crear balanceData básico si no existe
+            this.balanceData = {
+              balance: realTimeBalance
+            };
+          }
+        }
+      }
     });
   }
 

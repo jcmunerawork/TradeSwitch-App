@@ -1,6 +1,14 @@
 
 import { RuleType } from '../../strategy/models/strategy.model';
 
+/**
+ * Interface representing a historical trade record from the trading API.
+ *
+ * This interface maps the raw array data structure returned by the TradeLocker API
+ * into a structured object with named properties for easier access and manipulation.
+ *
+ * @interface historyTrade
+ */
 export interface historyTrade {
   id: string;
   tradableInstrumentId: string;
@@ -26,6 +34,14 @@ export interface historyTrade {
   strategyId: string;
 }
 
+/**
+ * Interface representing a grouped trade with position information.
+ *
+ * This interface is used for intermediate processing of trades before final grouping.
+ * It contains position-level data including entry/exit prices, PnL, and trade status.
+ *
+ * @interface GroupedTrade
+ */
 export interface GroupedTrade {
   position_Id: string;
   quantity?: number;
@@ -45,6 +61,20 @@ export interface GroupedTrade {
   allTrades?: historyTrade[]; // Todos los trades de esta posición
 }
 
+/**
+ * Interface representing a final processed trade after grouping by position.
+ *
+ * This is the final structure used throughout the application to display trade information.
+ * It includes all original trade data plus calculated fields like PnL and win status.
+ *
+ * Used in:
+ * - ReportComponent: Main component displaying trades
+ * - CalendarComponent: Calendar view of trades
+ * - PnlGraphComponent: PnL chart visualization
+ * - WinLossChartComponent: Win/loss ratio visualization
+ *
+ * @interface GroupedTradeFinal
+ */
 export interface GroupedTradeFinal {
   id: string; // id
   tradableInstrumentId: string; // tradableInstrumentId
@@ -73,6 +103,18 @@ export interface GroupedTradeFinal {
   isWon?: boolean; // isWon
 }
 
+/**
+ * Interface representing account balance and margin data from the trading API.
+ *
+ * Contains comprehensive balance information including available funds, margin requirements,
+ * daily trading statistics, and open position data.
+ *
+ * Used in:
+ * - ReportComponent: Displaying account balance information
+ * - ReportService: Processing balance data from API
+ *
+ * @interface BalanceData
+ */
 export interface BalanceData {
   balance: number, // balance
   projectedBalance: number, // projectedBalance
@@ -102,6 +144,18 @@ export interface BalanceData {
   ordersCount: number // ordersCount - A number of currently placed pending orders
 }
 
+/**
+ * Interface representing detailed information about a trading instrument.
+ *
+ * Contains instrument metadata including currency, lot size, trading hours,
+ * leverage, and market information.
+ *
+ * Used in:
+ * - ReportService: Fetching instrument details for trade processing
+ * - CalendarComponent: Displaying instrument names in calendar view
+ *
+ * @interface InstrumentDetails
+ */
 export interface InstrumentDetails {
   barSource: string; // "BID"
   baseCurrency: string; // "XMR"
@@ -152,6 +206,17 @@ export interface InstrumentDetails {
   type: string; // "CRYPTO"
 }
 
+/**
+ * Interface representing a trading instrument with basic information.
+ *
+ * Contains essential instrument data including ID, name, routes, and market information.
+ * This is a simplified version compared to InstrumentDetails.
+ *
+ * Used in:
+ * - ReportService: Fetching available instruments
+ *
+ * @interface Instrument
+ */
 export interface Instrument {
   barSource: string;
   continuous: boolean;
@@ -177,6 +242,18 @@ export interface Instrument {
   underlierId: number;
 }
 
+/**
+ * Interface representing trading statistics configuration.
+ *
+ * Contains calculated trading metrics including PnL, win rate, profit factor,
+ * and trade counts. Used to display statistical cards in the report view.
+ *
+ * Used in:
+ * - ReportComponent: Displaying trading statistics
+ * - statCardComponent: Individual statistic card display
+ *
+ * @interface StatConfig
+ */
 export interface StatConfig {
   netPnl: number;
   tradeWinPercent: number;
@@ -186,12 +263,35 @@ export interface StatConfig {
   activePositions: number;
 }
 
+/**
+ * Interface representing display configuration for trading rules.
+ *
+ * Contains information about which trading rules are active and should be displayed
+ * in the report interface.
+ *
+ * Used in:
+ * - ReportComponent: Managing rule display configuration
+ *
+ * @interface displayConfigData
+ */
 export interface displayConfigData {
   title: string;
   type: RuleType;
   isActive: boolean;
 }
 
+/**
+ * Interface representing a day in the trading calendar.
+ *
+ * Contains aggregated trade data for a specific day including total PnL,
+ * trade count, win percentage, and strategy compliance information.
+ *
+ * Used in:
+ * - CalendarComponent: Calendar view of trades
+ * - TradesPopupComponent: Displaying trades for a selected day
+ *
+ * @interface CalendarDay
+ */
 export interface CalendarDay {
   date: Date;
   trades: GroupedTradeFinal[];
@@ -203,6 +303,19 @@ export interface CalendarDay {
   isCurrentMonth: boolean; // Indica si el día pertenece al mes actual
 }
 
+/**
+ * Interface representing the NgRx store state for the report module.
+ *
+ * Contains all report-related state including grouped trades, statistics,
+ * and user key for API authentication.
+ *
+ * Used in:
+ * - report.reducer.ts: Reducer managing report state
+ * - report.selectors.ts: Selectors for accessing report state
+ * - report.actions.ts: Actions for updating report state
+ *
+ * @interface ReportState
+ */
 export interface ReportState {
   groupedTrades: GroupedTradeFinal[];
   netPnL: number;
@@ -213,6 +326,18 @@ export interface ReportState {
   userKey: string;
 }
 
+/**
+ * Interface representing a monthly trading report.
+ *
+ * Contains aggregated monthly trading statistics including profit, trades count,
+ * and strategy compliance percentage. Used for storing and displaying monthly summaries.
+ *
+ * Used in:
+ * - ReportService: Updating monthly reports
+ * - MonthlyReportsService: Managing monthly report data
+ *
+ * @interface MonthlyReport
+ */
 export interface MonthlyReport {
   best_trade: string;
   netPnl: number;
@@ -225,6 +350,18 @@ export interface MonthlyReport {
   id: string;
 }
 
+/**
+ * Interface representing plugin usage history record.
+ *
+ * Tracks when the trading plugin was active or inactive, including date ranges
+ * and token requirements. Used to determine strategy compliance for trades.
+ *
+ * Used in:
+ * - CalendarComponent: Determining if trades followed strategies
+ * - PluginHistoryService: Managing plugin history data
+ *
+ * @interface PluginHistoryRecord
+ */
 export interface PluginHistoryRecord {
   isActive: boolean;
   updatedOn: string;

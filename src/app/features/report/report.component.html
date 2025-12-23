@@ -90,7 +90,7 @@
   <app-stat-card
     class="stat-card"
     title="Balance"
-    [value]="balanceData?.balance"
+    [value]="realTimeBalance ?? balanceData?.balance"
     formatType="currency"
   ></app-stat-card>
   <app-stat-card

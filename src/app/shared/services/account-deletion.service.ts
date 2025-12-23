@@ -12,6 +12,47 @@ import {
 } from 'firebase/firestore';
 import { firebaseApp } from '../../firebase/firebase.init';
 
+/**
+ * Service for comprehensive user account deletion.
+ *
+ * This service handles the complete deletion of all user data from Firebase
+ * when a user requests account deletion. It uses batch operations for atomic
+ * deletion of all related data across multiple collections.
+ *
+ * Features:
+ * - Delete all user data atomically (batch operations)
+ * - Delete user accounts
+ * - Delete user strategies (configuration-overview and configurations)
+ * - Delete monthly reports
+ * - Delete plugin history
+ * - Delete link tokens
+ * - Delete user subscriptions
+ * - Delete user document
+ *
+ * Deletion Process:
+ * 1. Collects all user data to delete
+ * 2. Uses Firestore batch for atomic operations
+ * 3. Deletes in order: accounts → strategies → reports → plugin history → tokens → subscriptions → user
+ * 4. Returns success/failure status
+ *
+ * Data Deleted:
+ * - `accounts`: All user trading accounts
+ * - `configuration-overview`: Strategy metadata
+ * - `configurations`: Strategy rules
+ * - `monthly_reports`: Monthly trading reports
+ * - `plugin_history`: Plugin activation history
+ * - `tokens`: Link tokens
+ * - `users/{userId}/subscription`: Subscription subcollection
+ * - `users/{userId}`: User document
+ *
+ * Relations:
+ * - Used by ProfileDetailsComponent for account deletion
+ * - Ensures complete data removal for GDPR compliance
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

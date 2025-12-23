@@ -5,6 +5,28 @@ import { FormsModule } from '@angular/forms';
 import { DailyRevenueData, MonthlyRevenueData } from '../../models/revenue';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
+/**
+ * Component for displaying revenue charts.
+ *
+ * This component displays revenue data in either bar or area chart format,
+ * with support for filtering by day, month, or year. It uses ApexCharts
+ * for visualization and includes interactive tooltips showing percentage changes.
+ *
+ * Features:
+ * - Bar and area chart types
+ * - Filter by day, month, or year
+ * - Interactive tooltips with percentage changes
+ * - Automatic data sorting and formatting
+ * - Gross revenue calculation
+ *
+ * Relations:
+ * - NgApexchartsModule: Chart rendering
+ * - NumberFormatterService: Value formatting
+ *
+ * @component
+ * @selector app-revenue-graph
+ * @standalone true
+ */
 @Component({
   selector: 'app-revenue-graph',
   templateUrl: './revenue-graph.component.html',

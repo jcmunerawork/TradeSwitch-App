@@ -14,6 +14,11 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 
+/**
+ * Interface for ban reason record data.
+ *
+ * @interface BanReasonRecord
+ */
 export interface BanReasonRecord {
   id?: string;
   reason: string;
@@ -21,6 +26,31 @@ export interface BanReasonRecord {
   dateUnban: any | null; // serverTimestamp or null
 }
 
+/**
+ * Service for managing user ban reasons.
+ *
+ * This service handles the creation and tracking of ban reasons for users.
+ * It stores ban records in a subcollection under each user's document,
+ * allowing administrators to track why users were banned and when they
+ * were unbanned.
+ *
+ * Features:
+ * - Create ban reason record
+ * - Update ban reason (e.g., add unban date)
+ * - Get latest open ban reason
+ *
+ * Data Structure:
+ * - Stored in: `users/{userId}/reasons/{reasonId}`
+ * - Tracks: ban reason, ban date, unban date
+ *
+ * Relations:
+ * - Used by UsersDetailsComponent for ban/unban operations
+ * - Used by AuthGuard for checking ban status
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({ providedIn: 'root' })
 export class ReasonsService {
   private isBrowser: boolean;

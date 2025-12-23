@@ -10,10 +10,40 @@ import { Timestamp } from 'firebase/firestore';
 import { UserModalComponent } from './components/user-modal/user-modal.component';
 import { AuthService } from '../auth/service/authService';
 import { AppContextService } from '../../shared/context';
-import { AlertService } from '../../shared/services/alert.service';
+import { AlertService } from '../../core/services';
 import { ReasonsService } from '../../shared/services/reasons.service';
 import { serverTimestamp } from 'firebase/firestore';
 
+/**
+ * Component for managing user details and administrative actions.
+ *
+ * This component provides administrators with tools to view, manage, and perform
+ * administrative actions on users. It displays a table of all users (excluding admins)
+ * and allows viewing detailed user information, banning/unbanning users, sending
+ * password reset links, and logging users out from all devices.
+ *
+ * Features:
+ * - Display all non-admin users in a table
+ * - View detailed user information in a modal
+ * - Ban users with reason tracking
+ * - Unban users and update ban reason records
+ * - Send password reset links
+ * - Revoke Firebase tokens (logout everywhere)
+ * - Admin-only access control
+ *
+ * Relations:
+ * - UsersTableComponent: Displays the user table and handles user selection
+ * - UserModalComponent: Shows detailed user information and action buttons
+ * - UserManagementService: Fetches and updates user data
+ * - AuthService: Handles password reset and token revocation
+ * - ReasonsService: Manages ban reason records
+ * - AppContextService: Provides current user data and loading states
+ * - AlertService: Shows success/error notifications
+ *
+ * @component
+ * @selector app-users-details
+ * @standalone true
+ */
 @Component({
   selector: 'app-users-details',
   imports: [

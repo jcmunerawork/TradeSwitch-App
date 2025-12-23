@@ -13,6 +13,28 @@ import { AppContextService } from '../../shared/context';
 import { PlanService } from '../../shared/services/planService';
 import { SubscriptionService } from '../../shared/services/subscription-service';
 
+/**
+ * Main overview component for displaying dashboard statistics and user data.
+ * 
+ * This component provides a comprehensive dashboard view that includes:
+ * - User statistics and metrics
+ * - Revenue calculations based on subscriptions
+ * - Top 10 users by profit
+ * - Subscription data overview
+ * - CSV export functionality with date range selection
+ * 
+ * Related to:
+ * - OverviewService: Fetches user and subscription data
+ * - AppContextService: Manages global overview data state
+ * - PlanService: Gets plan information for revenue calculation
+ * - SubscriptionService: Gets user subscription data
+ * - TradeSwitchTableComponent: Displays user table with filtering
+ * - TopListComponent: Displays top users list
+ * 
+ * @component
+ * @selector app-overview
+ * @standalone true
+ */
 @Component({
   selector: 'app-overview',
   imports: [
@@ -29,7 +51,18 @@ import { SubscriptionService } from '../../shared/services/subscription-service'
   standalone: true,
 })
 export class Overview {
+  /** Top 10 users sorted by profit */
   topUsers: User[] = [];
+  
+  /**
+   * Constructor for Overview component.
+   * 
+   * @param store - NgRx Store (injected but not currently used)
+   * @param overviewSvc - Service for fetching overview data
+   * @param appContext - Application context service for global state management
+   * @param planService - Service for fetching plan information
+   * @param subscriptionService - Service for fetching subscription data
+   */
   constructor(
     private store: Store, 
     private overviewSvc: OverviewService,
@@ -65,6 +98,18 @@ export class Overview {
   calMonth = 0; // 0-11
   weeks: { date: Date; inMonth: boolean }[][] = [];
 
+  /**
+   * Builds a calendar grid for the export date picker.
+   * 
+   * Creates a 6-week grid (42 days) starting from the Sunday of the week
+   * containing the first day of the specified month. Each day is marked
+   * with whether it belongs to the current month.
+   * 
+   * @private
+   * @param year - Year for the calendar
+   * @param month - Month for the calendar (0-11, where 0 is January)
+   * @memberof Overview
+   */
   private buildCalendar(year: number, month: number) {
     // Start from Sunday of the week containing the 1st of the month
     const firstOfMonth = new Date(year, month, 1);
@@ -85,11 +130,24 @@ export class Overview {
     }
   }
 
+  /**
+   * Gets the formatted month and year label for the calendar.
+   * 
+   * @returns Formatted string like "January 2024"
+   * @memberof Overview
+   */
   get monthLabel(): string {
     const m = new Date(this.calYear, this.calMonth, 1);
     return m.toLocaleString(undefined, { month: 'long', year: 'numeric' });
   }
 
+  /**
+   * Opens the export modal and initializes the calendar to current month.
+   * 
+   * Resets export error and builds the calendar for the current date.
+   * 
+   * @memberof Overview
+   */
   openExportModal() {
     this.showExportModal = true;
     this.exportError = '';
@@ -99,11 +157,31 @@ export class Overview {
     this.buildCalendar(this.calYear, this.calMonth);
   }
 
+  /**
+   * Initializes the component on load.
+   * 
+   * Subscribes to context data and loads all configuration data
+   * including users, revenue, and subscription information.
+   * 
+   * @memberof Overview
+   */
   ngOnInit(): void {
     this.subscribeToContextData();
     this.loadConfig();
   }
 
+  /**
+   * Subscribes to overview data from the application context.
+   * 
+   * Listens to changes in overview data (users and subscriptions)
+   * and updates local component state when data changes.
+   * 
+   * Related to:
+   * - AppContextService.overviewData$: Observable of overview data
+   * 
+   * @private
+   * @memberof Overview
+   */
   private subscribeToContextData() {
     // Suscribirse a los datos de overview desde el contexto
     this.appContext.overviewData$.subscribe(data => {
@@ -115,6 +193,25 @@ export class Overview {
     // No usamos el loading global del contexto aquí; control fino local
   }
 
+  /**
+   * Loads all configuration data for the overview dashboard.
+   * 
+   * Performs the following operations in sequence:
+   * 1. Resets all loading states
+   * 2. Loads user data
+   * 3. Calculates revenue
+   * 4. Loads subscription overview data
+   * 5. Checks if all data is loaded to hide loading indicator
+   * 
+   * Related to:
+   * - getUsersData(): Fetches and processes user data
+   * - calculateRevenue(): Calculates total revenue from subscriptions
+   * - getOverviewSubscriptionData(): Fetches subscription statistics
+   * - checkAllLoaded(): Verifies all data is loaded
+   * 
+   * @async
+   * @memberof Overview
+   */
   async loadConfig() {
     this.loading = true;
     this.loadingStates = { users: false, cards: false, revenue: false, subscriptions: false };
@@ -124,6 +221,21 @@ export class Overview {
     this.checkAllLoaded();
   }
 
+  /**
+   * Fetches user data from Firebase and processes it.
+   * 
+   * Retrieves all users, filters out admin users, calculates new users
+   * for today, and filters top 10 users by profit. Updates loading
+   * states when complete.
+   * 
+   * Related to:
+   * - OverviewService.getUsersData(): Fetches users from Firebase
+   * - calculateNewUsers(): Calculates new users registered today
+   * - filterTop10Users(): Filters and sorts top users by profit
+   * 
+   * @async
+   * @memberof Overview
+   */
   async getUsersData() {
     return this.overviewSvc
       .getUsersData()
@@ -153,6 +265,17 @@ export class Overview {
       });
   }
 
+  /**
+   * Fetches overview subscription data from Firebase.
+   * 
+   * Retrieves subscription statistics including monthly revenue
+   * and user counts. Updates loading state when complete.
+   * 
+   * Related to:
+   * - OverviewService.getOverviewSubscriptionData(): Fetches subscription data
+   * 
+   * @memberof Overview
+   */
   getOverviewSubscriptionData() {
     this.overviewSvc
       .getOverviewSubscriptionData()
@@ -176,6 +299,18 @@ export class Overview {
       });
   }
 
+  /**
+   * Calculates the number of new users registered today.
+   * 
+   * Filters users by subscription_date to find users registered
+   * between start and end of current day. Then calculates growth
+   * percentage.
+   * 
+   * Related to:
+   * - calculateGrowthPercentage(): Calculates percentage of new users
+   * 
+   * @memberof Overview
+   */
   calculateNewUsers() {
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -195,6 +330,16 @@ export class Overview {
     this.calculateGrowthPercentage();
   }
 
+  /**
+   * Calculates the growth percentage of new users.
+   * 
+   * Computes the percentage of new users relative to total users.
+   * Rounds to 1 decimal place. Returns 0 if there are no users.
+   * 
+   * Formula: (newUsers / totalUsers) * 100
+   * 
+   * @memberof Overview
+   */
   calculateGrowthPercentage() {
     const totalUsers = this.usersData.length;
     
@@ -211,6 +356,23 @@ export class Overview {
     this.newUsersGrowthPercentage = Math.round(this.newUsersGrowthPercentage * 10) / 10;
   }
 
+  /**
+   * Calculates total revenue from user subscriptions.
+   * 
+   * This method:
+   * 1. Loads all available plans
+   * 2. Counts users per plan by checking their latest subscription
+   * 3. Calculates revenue for each plan (userCount * planPrice)
+   * 4. Sums total revenue across all plans
+   * 5. Counts users with paid subscriptions (plans with price > 0)
+   * 
+   * Related to:
+   * - PlanService.getAllPlans(): Gets all subscription plans
+   * - SubscriptionService.getUserLatestSubscription(): Gets user's current plan
+   * 
+   * @async
+   * @memberof Overview
+   */
   async calculateRevenue() {
     try {
       // Cargar todos los planes
@@ -274,6 +436,14 @@ export class Overview {
     }
   }
 
+  /**
+   * Filters and sorts users to get top 10 by profit.
+   * 
+   * Filters users with profit > 0, sorts them in descending order
+   * by profit, and takes the first 10 users.
+   * 
+   * @memberof Overview
+   */
   filterTop10Users() {
     this.topUsers = this.usersData
       .filter((user) => user.profit > 0)
@@ -281,6 +451,15 @@ export class Overview {
       .slice(0, 10);
   }
 
+  /**
+   * Checks if all data sections have finished loading.
+   * 
+   * Verifies that users, cards, revenue, and subscriptions data
+   * are all loaded. If all are loaded, hides the main loading indicator.
+   * 
+   * @private
+   * @memberof Overview
+   */
   private checkAllLoaded() {
     const allLoaded = this.loadingStates.users && this.loadingStates.cards && this.loadingStates.revenue && this.loadingStates.subscriptions;
     if (allLoaded) {
@@ -290,6 +469,13 @@ export class Overview {
 
   // ===== Export Data by Date =====
 
+  /**
+   * Closes the export modal and resets all export-related state.
+   * 
+   * Clears export dates, errors, and hides the date dropdown.
+   * 
+   * @memberof Overview
+   */
   closeExportModal() {
     this.showExportModal = false;
     this.exportStartDate = '';
@@ -298,6 +484,14 @@ export class Overview {
     this.showDateDropdown = false;
   }
 
+  /**
+   * Handles date change in export modal.
+   * 
+   * Resets end date if start date is not selected yet (UX requirement).
+   * Clears any export errors.
+   * 
+   * @memberof Overview
+   */
   onExportDateChange() {
     // No hard validation for end-only; UX requires start first
     if (!this.exportStartDate && this.exportEndDate) {
@@ -307,6 +501,13 @@ export class Overview {
     this.exportError = '';
   }
 
+  /**
+   * Navigates to the previous month in the calendar.
+   * 
+   * Updates calendar year and month, then rebuilds the calendar grid.
+   * 
+   * @memberof Overview
+   */
   prevMonth() {
     const d = new Date(this.calYear, this.calMonth - 1, 1);
     this.calYear = d.getFullYear();
@@ -314,6 +515,13 @@ export class Overview {
     this.buildCalendar(this.calYear, this.calMonth);
   }
 
+  /**
+   * Navigates to the next month in the calendar.
+   * 
+   * Updates calendar year and month, then rebuilds the calendar grid.
+   * 
+   * @memberof Overview
+   */
   nextMonth() {
     const d = new Date(this.calYear, this.calMonth + 1, 1);
     this.calYear = d.getFullYear();
@@ -321,6 +529,17 @@ export class Overview {
     this.buildCalendar(this.calYear, this.calMonth);
   }
 
+  /**
+   * Handles day selection in the calendar for date range picker.
+   * 
+   * Implements a two-click date range selection:
+   * - First click: Sets start date
+   * - Second click: Sets end date (if after start) or moves start (if before)
+   * - Third click: Starts new selection
+   * 
+   * @param day - Selected date from calendar
+   * @memberof Overview
+   */
   onDayPick(day: Date) {
     const iso = (d: Date) => this.formatLocalDate(d);
     if (!this.exportStartDate) {
@@ -343,6 +562,16 @@ export class Overview {
     this.exportEndDate = '';
   }
 
+  /**
+   * Checks if a calendar day is within the selected date range.
+   * 
+   * Returns true if the day falls between start and end dates
+   * (inclusive). Handles cases where only start date is selected.
+   * 
+   * @param day - Date to check
+   * @returns true if day is in selected range, false otherwise
+   * @memberof Overview
+   */
   isSelected(day: Date): boolean {
     if (!this.exportStartDate && !this.exportEndDate) return false;
     const time = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
@@ -355,6 +584,26 @@ export class Overview {
     return time >= start && time <= end;
   }
 
+  /**
+   * Exports user data to CSV file with optional date filtering.
+   * 
+   * This method:
+   * 1. Determines date range from selected dates (or exports all if no dates)
+   * 2. Filters users by subscription_date within the range
+   * 3. Generates CSV content with headers and user data
+   * 4. Creates a downloadable blob and triggers download
+   * 5. Closes the export modal
+   * 
+   * CSV includes: User ID, Name, Email, Status, Strategies, Trading Accounts,
+   * Strategy Followed %, Net PnL, Profit, Best Trade, Subscription Date
+   * 
+   * Related to:
+   * - parseLocalDate(): Parses date strings
+   * - escapeCsv(): Escapes special characters in CSV values
+   * - closeExportModal(): Closes modal after export
+   * 
+   * @memberof Overview
+   */
   exportDataAsCSV() {
     // Determine range
     let startTs: number | null = null;
@@ -463,33 +712,16 @@ export class Overview {
   }
 
   /**
-   * Get display status for a user (matching the table component logic)
+   * Escapes special characters in CSV values.
+   * 
+   * Wraps value in quotes if it contains comma, quote, or newline.
+   * Doubles any quotes within the value.
+   * 
+   * @private
+   * @param value - String value to escape
+   * @returns Escaped CSV value
+   * @memberof Overview
    */
-  private getDisplayStatus(user: User): string {
-    // Si el status es banned, retornar banned
-    if (String(user.status) === 'banned') {
-      return 'Banned';
-    }
-    
-    // Verificar si todos los valores están en 0
-    const allValuesZero = 
-      (user.trading_accounts ?? 0) === 0 &&
-      (user.strategies ?? 0) === 0 &&
-      (user.strategy_followed ?? 0) === 0 &&
-      (user.netPnl ?? 0) === 0 &&
-      (user.profit ?? 0) === 0 &&
-      (user.number_trades ?? 0) === 0 &&
-      (user.total_spend ?? 0) === 0;
-    
-    // Si todos los valores están en 0, retornar created
-    if (allValuesZero) {
-      return 'Created';
-    }
-    
-    // Si no todos están en 0, retornar active
-    return 'Active';
-  }
-
   private escapeCsv(value: string): string {
     if (value.includes(',') || value.includes('"') || value.includes('\n')) {
       return '"' + value.replace(/\"/g, '\"\"') + '"';
@@ -497,6 +729,14 @@ export class Overview {
     return value;
   }
 
+  /**
+   * Formats a Date object to YYYY-MM-DD string format.
+   * 
+   * @private
+   * @param d - Date to format
+   * @returns Formatted date string (YYYY-MM-DD)
+   * @memberof Overview
+   */
   private formatLocalDate(d: Date): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -504,6 +744,14 @@ export class Overview {
     return `${y}-${m}-${day}`;
   }
 
+  /**
+   * Parses a YYYY-MM-DD string to a Date object.
+   * 
+   * @private
+   * @param s - Date string in YYYY-MM-DD format
+   * @returns Parsed Date object
+   * @memberof Overview
+   */
   private parseLocalDate(s: string): Date {
     // Expecting YYYY-MM-DD
     const [y, m, d] = s.split('-').map(Number);

@@ -29,6 +29,31 @@ import { selectUser } from '../auth/store/user.selectios';
 import { User } from '../overview/models/overview';
 import { AccountData } from '../auth/models/userModel';
 
+/**
+ * Main component for displaying revenue analytics and data.
+ *
+ * This component displays revenue-related information including:
+ * - Revenue summary statistics (gross revenue, returns, coupons, net revenue)
+ * - Revenue charts (daily and monthly)
+ * - Revenue table with filtering and pagination
+ * - Orders table with filtering and pagination
+ * - Subscriptions table with filtering and pagination
+ *
+ * Currently uses mock data for display. Future implementation will fetch
+ * real data from APIs based on user accounts and access tokens.
+ *
+ * Relations:
+ * - RevenueGraphComponent: Displays revenue charts
+ * - RevenueTableComponent: Displays revenue table
+ * - OrdersTableComponent: Displays orders table
+ * - SubscriptionsTableComponent: Displays subscriptions table
+ * - ReportService: For fetching user keys and historical data (future implementation)
+ * - Store (NgRx): For accessing user data
+ *
+ * @component
+ * @selector app-revenue
+ * @standalone true
+ */
 @Component({
   selector: 'app-revenue',
   imports: [
@@ -61,11 +86,32 @@ export class RevenueComponent {
 
   constructor(private store: Store, private reportService: ReportService) {}
 
+  /**
+   * Initializes the component on load.
+   *
+   * Loads configuration (mock data) and fetches user data from the store.
+   *
+   * @memberof RevenueComponent
+   */
   ngOnInit(): void {
     this.loadConfig();
     this.getUserData();
   }
 
+  /**
+   * Loads configuration data (currently using mock data).
+   *
+   * Initializes all revenue-related data from mock sources:
+   * - Revenue summary
+   * - Daily and monthly revenue data
+   * - Revenue table data
+   * - Orders table data
+   * - Subscriptions table data
+   *
+   * NOTE: In production, this should fetch data from APIs.
+   *
+   * @memberof RevenueComponent
+   */
   loadConfig() {
     this.revenueSummary = mockRevenueSummary;
     this.revenueDailyData = dailyRevenueMock;
@@ -75,6 +121,19 @@ export class RevenueComponent {
     this.subscriptionsTableData = subscriptionTableMock;
   }
 
+  /**
+   * Fetches user data from the NgRx store.
+   *
+   * Subscribes to the selectUser selector to get current user information.
+   * If user has trading accounts, attempts to fetch access token for API calls.
+   * Currently falls back to mock data if no accounts are available.
+   *
+   * Related to:
+   * - Store.select(selectUser): Gets user from NgRx store
+   * - fetchUserKey(): Fetches access token for API calls
+   *
+   * @memberof RevenueComponent
+   */
   getUserData() {
     // Obtener datos del usuario desde el store
     this.store.select(selectUser).subscribe((userState) => {
@@ -95,6 +154,19 @@ export class RevenueComponent {
     });
   }
 
+  /**
+   * Fetches user authentication key for API access.
+   *
+   * Uses ReportService to authenticate with trading account credentials
+   * and obtain an access token. On success, triggers fetching historical data.
+   *
+   * Related to:
+   * - ReportService.getUserKey(): Authenticates and gets access token
+   * - getHistoricalData(): Fetches historical data after authentication
+   *
+   * @param account - Trading account data with credentials
+   * @memberof RevenueComponent
+   */
   fetchUserKey(account: AccountData) {
     this.reportService
       .getUserKey(
@@ -114,6 +186,18 @@ export class RevenueComponent {
       });
   }
 
+  /**
+   * Fetches historical revenue data from the API.
+   *
+   * Currently a placeholder method. In production, this should:
+   * - Use the access token to authenticate API requests
+   * - Fetch historical order and revenue data
+   * - Update orderTableData with real data
+   *
+   * NOTE: This method is not yet fully implemented.
+   *
+   * @memberof RevenueComponent
+   */
   getHistoricalData() {
     if (!this.accessToken || this.accountsData.length === 0) {
       console.warn('No hay accessToken o cuentas disponibles');

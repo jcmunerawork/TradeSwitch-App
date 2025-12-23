@@ -10,6 +10,24 @@ import {
   RevenueTableRow,
 } from '../../models/revenue';
 
+/**
+ * Component for displaying orders data in a table format.
+ *
+ * This component provides a paginated and filterable table for order data.
+ * It supports filtering by search term, order status, and total amount,
+ * as well as sorting and pagination.
+ *
+ * Features:
+ * - Search by order ID or user name
+ * - Filter by order status (Completed, Pending, Cancelled, Failed)
+ * - Filter by total amount range
+ * - Sort by date (ascending/descending)
+ * - Pagination
+ *
+ * @component
+ * @selector app-orders-table
+ * @standalone true
+ */
 @Component({
   selector: 'app-orders-table',
   standalone: true,

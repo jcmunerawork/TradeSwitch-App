@@ -8,6 +8,42 @@ interface DateValue {
   year: string;
 }
 
+/**
+ * Birthday input component with month, day, and year dropdowns.
+ *
+ * This component provides a date input for birthdays using three separate
+ * dropdowns for month, day, and year. It generates valid date ranges and
+ * handles date formatting for form submission.
+ *
+ * Features:
+ * - Angular Forms integration (ControlValueAccessor)
+ * - Three separate dropdowns (month, day, year)
+ * - Year range: 100 years ago to 13 years ago (minimum age validation)
+ * - Day range: 1-31 (adjusts based on month/year)
+ * - Date formatting (YYYY-MM-DD)
+ * - Customizable label
+ * - Touch state tracking
+ *
+ * Date Range:
+ * - Years: Current year - 100 to Current year - 13
+ * - Days: 1-31 (validated based on month)
+ * - Months: January through December
+ *
+ * Usage:
+ * <app-birthday-input
+ *   formControlName="birthday"
+ *   label="Birthday"
+ *   [required]="true">
+ * </app-birthday-input>
+ *
+ * Relations:
+ * - Used in registration and profile forms
+ * - Integrates with Angular Reactive Forms
+ *
+ * @component
+ * @selector app-birthday-input
+ * @standalone true
+ */
 @Component({
   selector: 'app-birthday-input',
   standalone: true,

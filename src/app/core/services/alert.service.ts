@@ -1,6 +1,11 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
+/**
+ * Configuration interface for alert dialogs.
+ *
+ * @interface AlertConfig
+ */
 export interface AlertConfig {
   title: string;
   message: string;
@@ -8,6 +13,31 @@ export interface AlertConfig {
   type?: 'info' | 'warning' | 'error' | 'success';
 }
 
+/**
+ * Service for displaying alert dialogs throughout the application.
+ *
+ * This service provides a centralized way to show alert messages with different
+ * types (info, warning, error, success). It uses RxJS BehaviorSubject to manage
+ * alert state and provides convenience methods for common alert types.
+ *
+ * Features:
+ * - Show alerts with custom title, message, and type
+ * - Convenience methods for error, warning, success, and info alerts
+ * - Observable stream for alert state changes
+ * - Hide alerts programmatically
+ *
+ * Usage:
+ * Components can subscribe to `alert$` observable to display alerts, or use
+ * the convenience methods that automatically show alerts.
+ *
+ * Relations:
+ * - Used by components throughout the application for user notifications
+ * - AlertPopupComponent: Displays the actual alert UI
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

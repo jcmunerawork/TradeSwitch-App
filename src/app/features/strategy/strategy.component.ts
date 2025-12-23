@@ -22,13 +22,56 @@ import { selectUserKey } from '../report/store/report.selectors';
 import { GlobalStrategyUpdaterService } from '../../shared/services/global-strategy-updater.service';
 import { allRules } from '../strategy/store/strategy.selectors';
 import { selectNetPnL } from '../report/store/report.selectors';
-import { PlanLimitationsGuard } from '../../guards/plan-limitations.guard';
+import { PlanLimitationsGuard } from '../../core/guards';
 import { AppContextService } from '../../shared/context';
 import { StrategyCacheService } from './services/strategy-cache.service';
 import { BalanceCacheService } from './services/balance-cache.service';
-import { AlertService } from '../../shared/services/alert.service';
+import { AlertService } from '../../core/services';
 
 
+/**
+ * Main component for managing trading strategies.
+ *
+ * This component provides comprehensive strategy management functionality including:
+ * - Creating, editing, activating, copying, and deleting strategies
+ * - Displaying strategy cards with statistics
+ * - Managing multiple strategies per user
+ * - Plan limitation detection and enforcement
+ * - Strategy guide modal for first-time users
+ * - Caching strategies for performance
+ * - Real-time balance updates for risk calculations
+ *
+ * Key Features:
+ * - Multiple strategy support with active/inactive states
+ * - Strategy caching for fast access
+ * - Balance caching for risk calculations
+ * - Plan limitation checks (max strategies per plan)
+ * - Strategy guide for new users
+ * - Search and filter strategies
+ * - Strategy cards with win rate, active rules, and days active
+ *
+ * Data Flow:
+ * 1. Component initializes and loads user data
+ * 2. Loads all user accounts
+ * 3. Loads all strategies (overview + configuration) into cache
+ * 4. Sets up listeners for context data and report data
+ * 5. Updates strategy cards with real-time data
+ *
+ * Relations:
+ * - SettingsService: CRUD operations for strategies
+ * - StrategyCacheService: Caching strategy data
+ * - BalanceCacheService: Caching account balances
+ * - PlanLimitationsGuard: Checking plan limitations
+ * - AppContextService: Global state management
+ * - ReportService: Fetching account balances
+ * - Store (NgRx): Local state for strategy rules
+ * - EditStrategyComponent: Editing strategy details
+ * - StrategyCardComponent: Displaying strategy cards
+ *
+ * @component
+ * @selector app-strategy
+ * @standalone true
+ */
 @Component({
   selector: 'app-strategy',
   imports: [

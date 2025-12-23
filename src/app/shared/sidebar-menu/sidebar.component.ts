@@ -7,6 +7,38 @@ import { selectUser } from '../../features/auth/store/user.selectios';
 import { setUserData } from '../../features/auth/store/user.actions';
 import { User, UserStatus } from '../../features/overview/models/overview';
 
+/**
+ * Sidebar navigation component for the application.
+ *
+ * This component provides the main navigation sidebar with user information,
+ * menu items, and logout functionality. It dynamically adjusts its width based
+ * on the current route and user state, and manages CSS custom properties for
+ * layout consistency.
+ *
+ * Features:
+ * - User information display (name, initials, admin status, ban status)
+ * - Collapsible sidebar (minimized/expanded states)
+ * - Dynamic width management via CSS custom properties
+ * - Route-based visibility (hidden on login/signup pages)
+ * - Logout functionality
+ * - Dashboard section toggle
+ * - Responsive to route changes
+ *
+ * Width Management:
+ * - Expanded: 230px
+ * - Minimized: 80px
+ * - Hidden: 0px (on login/signup routes)
+ * - Uses CSS custom property: --sidebar-width
+ *
+ * Relations:
+ * - AuthService: Handles logout functionality
+ * - Store (NgRx): Gets current user data
+ * - Router: Monitors route changes for width adjustment
+ *
+ * @component
+ * @selector app-sidebar
+ * @standalone true
+ */
 @Component({
   selector: 'app-sidebar',
   imports: [RouterLink, RouterLinkActive],

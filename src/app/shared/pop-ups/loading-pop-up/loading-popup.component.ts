@@ -1,6 +1,30 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
+/**
+ * Component for displaying a full-screen loading overlay.
+ *
+ * This component provides a modal-style loading indicator that covers the entire
+ * screen with a semi-transparent overlay. It displays a spinner and loading message
+ * to indicate that an operation is in progress.
+ *
+ * Features:
+ * - Full-screen overlay with semi-transparent background
+ * - Animated spinner
+ * - Loading message
+ * - Visibility control via Input property
+ * - Fixed positioning with high z-index
+ *
+ * Usage:
+ * <app-loading-popup [visible]="isLoading"></app-loading-popup>
+ *
+ * Relations:
+ * - Used by components that need to block user interaction during loading
+ *
+ * @component
+ * @selector app-loading-popup
+ * @standalone true
+ */
 @Component({
   selector: 'app-loading-popup',
   standalone: true,

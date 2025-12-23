@@ -17,6 +17,30 @@ import { getMonthlyPnL } from '../../utils/normalization-utils';
 import { FormsModule } from '@angular/forms';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
+/**
+ * Component for displaying PnL (Profit and Loss) chart.
+ *
+ * This component displays an area chart showing cumulative PnL over time.
+ * It supports filtering by year or custom date range, and displays monthly
+ * or dynamic date-based aggregations depending on the selected range.
+ *
+ * Features:
+ * - Area chart visualization using ApexCharts
+ * - Year-based filtering (past 2 years, current year, next 5 years)
+ * - Custom date range filtering
+ * - Monthly aggregation for year view
+ * - Dynamic aggregation (daily/weekly/monthly) for date ranges
+ * - Total profit calculation for filtered data
+ * - Interactive tooltips with percentage changes
+ *
+ * Relations:
+ * - NgApexchartsModule: Chart rendering
+ * - NumberFormatterService: Value formatting
+ *
+ * @component
+ * @selector app-PnL-Graph
+ * @standalone true
+ */
 @Component({
   selector: 'app-PnL-Graph',
   templateUrl: './pnlGraph.component.html',

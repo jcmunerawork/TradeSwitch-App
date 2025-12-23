@@ -5,6 +5,27 @@ import { FormsModule } from '@angular/forms';
 import { RevenueFilter, RevenueTableRow } from '../../models/revenue';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 
+/**
+ * Component for displaying revenue data in a table format.
+ *
+ * This component provides a paginated and filterable table for revenue data.
+ * It supports filtering by search term, order count, gross revenue, and total sales,
+ * as well as sorting and pagination.
+ *
+ * Features:
+ * - Search by date
+ * - Filter by orders, gross revenue, and total sales ranges
+ * - Sort by date (ascending/descending)
+ * - Pagination
+ * - Currency formatting
+ *
+ * Relations:
+ * - NumberFormatterService: Currency formatting
+ *
+ * @component
+ * @selector app-revenue-table
+ * @standalone true
+ */
 @Component({
   selector: 'app-revenue-table',
   standalone: true,

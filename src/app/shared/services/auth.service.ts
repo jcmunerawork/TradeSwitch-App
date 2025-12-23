@@ -21,6 +21,46 @@ import { TokensOperationsService, LinkToken } from './tokens-operations.service'
 import { User } from '../../features/overview/models/overview';
 import { AccountData, UserCredentials } from '../../features/auth/models/userModel';
 
+/**
+ * Authentication service for Firebase Auth and user management.
+ *
+ * This service provides comprehensive authentication functionality including
+ * user registration, login (email/password, Google, Apple), logout, password
+ * reset, and user data management. It also manages user plan subscriptions
+ * and integrates with AppContextService for global state management.
+ *
+ * Features:
+ * - User registration and login (email/password, Google, Apple)
+ * - Logout functionality
+ * - Password reset
+ * - Authentication state observables
+ * - User data CRUD operations
+ * - Account management (trading accounts)
+ * - Strategy management
+ * - Token management (link tokens)
+ * - User plan subscription management
+ * - Global plans loading
+ * - Real-time subscription listener
+ *
+ * Plan Management:
+ * - Listens to user subscription changes
+ * - Updates AppContextService with plan data
+ * - Handles banned, cancelled, and active subscription states
+ * - Loads global plans on authentication
+ *
+ * Relations:
+ * - UsersOperationsService: User data operations
+ * - AccountsOperationsService: Trading account operations
+ * - StrategyOperationsService: Strategy operations
+ * - TokensOperationsService: Link token operations
+ * - SubscriptionService: Subscription management
+ * - PlanService: Plan information
+ * - AppContextService: Global state management
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private isBrowser: boolean;
@@ -266,7 +306,9 @@ export class AuthService {
   async getAllAccounts(): Promise<AccountData[] | null> { return this.accountsOperationsService.getAllAccounts(); }
   async checkEmailExists(emailTradingAccount: string, currentUserId: string): Promise<boolean> { return this.accountsOperationsService.checkEmailExists(emailTradingAccount, currentUserId); }
   async checkAccountIdExists(accountID: string, currentUserId: string): Promise<boolean> { return this.accountsOperationsService.checkAccountIdExists(accountID, currentUserId); }
-  async checkAccountExists(broker: string, server: string, accountID: string, currentUserId: string): Promise<boolean> { return this.accountsOperationsService.checkAccountExists(broker, server, accountID, currentUserId); }
+  async checkAccountExists(broker: string, server: string, accountID: string, currentUserId: string, excludeAccountId?: string): Promise<boolean> { 
+    return this.accountsOperationsService.checkAccountExists(broker, server, accountID, currentUserId, excludeAccountId); 
+  }
   async updateAccount(accountId: string, accountData: AccountData): Promise<void> { return this.accountsOperationsService.updateAccount(accountId, accountData); }
   async deleteAccount(accountId: string): Promise<void> {
     const userId = await this.accountsOperationsService.deleteAccount(accountId);

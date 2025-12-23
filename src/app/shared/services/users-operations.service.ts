@@ -3,6 +3,35 @@ import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } fro
 import { isPlatformBrowser } from '@angular/common';
 import { User } from '../../features/overview/models/overview';
 
+/**
+ * Service for user data operations in Firebase.
+ *
+ * This service provides CRUD operations for user documents in Firestore.
+ * It handles user creation, retrieval, updates, and deletion. It's used
+ * throughout the application for user data management.
+ *
+ * Features:
+ * - Get user data by UID
+ * - Create new user
+ * - Get user by ID
+ * - Get user by email
+ * - Update user data
+ * - Get all users
+ * - Delete user
+ *
+ * User Data Structure:
+ * - Stored in: `users/{userId}`
+ * - Includes: profile data, trading statistics, subscription info
+ *
+ * Relations:
+ * - Used by AuthService for user operations
+ * - Used by ProfileDetailsComponent for profile updates
+ * - Used by various components for user data access
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

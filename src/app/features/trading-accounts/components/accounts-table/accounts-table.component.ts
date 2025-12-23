@@ -10,7 +10,32 @@ import { ShowConfirmationComponent } from '../show-confirmation/show-confirmatio
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
+import { AppContextService } from '../../../../shared/context';
 
+/**
+ * Component for displaying trading accounts in a table format.
+ *
+ * This component provides a filterable and sortable table for trading accounts.
+ * It supports filtering by account name and balance range, sorting by creation date,
+ * and includes functionality for editing and deleting accounts.
+ *
+ * Features:
+ * - Search by account name
+ * - Filter by balance range (with formatted currency inputs)
+ * - Sort by creation date (ascending/descending)
+ * - Edit account functionality
+ * - Delete account with confirmation
+ * - Currency formatting for balances
+ *
+ * Relations:
+ * - ShowConfirmationComponent: Confirmation modal for account deletion
+ * - NumberFormatterService: Currency formatting and parsing
+ * - TradingAccountsComponent: Parent component (receives accounts, emits edit/delete events)
+ *
+ * @component
+ * @selector app-accounts-table
+ * @standalone true
+ */
 @Component({
   selector: 'app-accounts-table',
   standalone: true,
@@ -45,10 +70,15 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
 
   // Balance properties (now handled by parent component)
   private subscriptions: Subscription[] = [];
+  
+  // Real-time balances from streams (usando signal del contexto)
+  // Se inicializa en ngOnInit después de que appContext esté disponible
+  accountBalances: Map<string, number> = new Map();
 
   constructor(
     private router: Router,
-    private numberFormatter: NumberFormatterService
+    private numberFormatter: NumberFormatterService,
+    private appContext: AppContextService
   ) {
     // Initialize inputs as empty to show placeholders
     this.minBalanceInput = '';
@@ -194,8 +224,37 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   ngOnInit() {
-    // Cargar balances para todas las cuentas
-    this.loadAccountBalances();
+    // Inicializar accountBalances con el valor actual del signal
+    this.accountBalances = this.appContext.accountBalances();
+    
+    // Suscribirse a balances en tiempo real del contexto
+    this.subscriptions.push(
+      this.appContext.accountBalances$.subscribe(balances => {
+        this.accountBalances = balances;
+      })
+    );
+    
+    // Cargar balances para todas las cuentas (método antiguo comentado)
+    // this.loadAccountBalances();
+  }
+  
+  /**
+   * Get balance for an account (from real-time streams or account data)
+   */
+  getAccountBalance(account: AccountData): number | undefined {
+    // Obtener balance actualizado del signal
+    const currentBalances = this.appContext.accountBalances();
+    
+    // Primero intentar obtener del balance en tiempo real
+    const realTimeBalance = currentBalances.get(account.accountID) || 
+                           currentBalances.get(account.id);
+    
+    if (realTimeBalance !== undefined && realTimeBalance !== null) {
+      return realTimeBalance;
+    }
+    
+    // Fallback al balance del objeto account
+    return account.balance;
   }
 
   ngOnChanges(changes: SimpleChanges) {

@@ -4,6 +4,42 @@ import { isPlatformBrowser } from '@angular/common';
 import { Timestamp } from 'firebase/firestore';
 import { MaxDailyTradesConfig, StrategyState, ConfigurationOverview } from '../../features/strategy/models/strategy.model';
 
+/**
+ * Service for strategy operations in Firebase.
+ *
+ * This service provides comprehensive CRUD operations for trading strategies,
+ * managing both strategy metadata (configuration-overview) and strategy rules
+ * (configurations). It handles the complete strategy lifecycle.
+ *
+ * Features:
+ * - Configuration Overview Operations:
+ *   - Create, read, update, delete strategy metadata
+ *   - Get all strategies for a user
+ *   - Get active strategies
+ *   - Soft delete strategies (mark as deleted)
+ * - Configuration Operations:
+ *   - Create, read, update strategy rules
+ *   - Get configuration by user ID
+ *   - Update individual rule configurations
+ * - Strategy Management:
+ *   - Activate/deactivate strategies
+ *   - Copy strategies
+ *   - Generate unique strategy IDs
+ *
+ * Data Structure:
+ * - `configuration-overview`: Strategy metadata (name, status, dates, etc.)
+ * - `configurations`: Strategy rules (maxDailyTrades, riskReward, etc.)
+ * - Strategies are linked by `configurationId` field
+ *
+ * Relations:
+ * - Used by StrategyService for strategy operations
+ * - Used by StrategyComponent for strategy management
+ * - Used by EditStrategyComponent for rule updates
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

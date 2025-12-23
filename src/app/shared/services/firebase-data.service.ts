@@ -2,6 +2,34 @@ import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, dele
 import { isPlatformBrowser } from '@angular/common';
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
 
+/**
+ * Generic service for Firebase Firestore operations.
+ *
+ * This service provides generic CRUD operations for any Firestore collection,
+ * making it a utility service for common database operations. It abstracts
+ * away the Firebase API details and provides a simple interface.
+ *
+ * Features:
+ * - Get all documents from a collection
+ * - Get document by ID
+ * - Create document (with or without custom ID)
+ * - Update document
+ * - Delete document
+ * - Query documents by field
+ * - Check if document exists
+ *
+ * Usage:
+ * Useful for simple operations that don't require specialized services.
+ * For complex operations, use specific services (e.g., StrategyOperationsService).
+ *
+ * Relations:
+ * - Used as a utility service throughout the application
+ * - Provides generic database access patterns
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })

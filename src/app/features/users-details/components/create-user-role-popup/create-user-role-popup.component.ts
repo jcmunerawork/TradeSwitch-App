@@ -10,8 +10,50 @@ import { SubscriptionService, Subscription } from '../../../../shared/services/s
 import { User, UserStatus } from '../../../overview/models/overview';
 import { LinkToken } from '../../../../shared/services/tokens-operations.service';
 import { UserCredentials } from '../../../auth/models/userModel';
-import { AlertService } from '../../../../shared/services/alert.service';
+import { AlertService } from '../../../../core/services';
 
+/**
+ * Component for creating new users with role selection (user or admin).
+ *
+ * This component provides a two-step process for creating new users:
+ * 1. Role selection (user or admin)
+ * 2. User registration form with validation
+ *
+ * It handles complete user creation including Firebase Authentication,
+ * user document creation, link token generation, and free subscription assignment.
+ *
+ * Features:
+ * - Two-step wizard (role selection → form)
+ * - Role selection (user or admin)
+ * - Form validation (email, password, phone, birthday, name)
+ * - Email uniqueness check
+ * - Age validation (minimum 18 years)
+ * - Phone number validation
+ * - Email format validation
+ * - Confirmation dialogs before creation
+ * - Success state with options to create another or go to list
+ * - Automatic free subscription assignment
+ *
+ * Validation:
+ * - Email: Must be unique and valid format
+ * - Password: Minimum 8 characters
+ * - Phone: Valid international format (10-15 digits)
+ * - Birthday: User must be at least 18 years old
+ * - Name: Minimum 2 characters for first and last name
+ *
+ * Relations:
+ * - AuthService: Creates user in Firebase Auth and Firestore
+ * - SubscriptionService: Creates free subscription for new users
+ * - TextInputComponent: Form input component
+ * - PasswordInputComponent: Password input with validation
+ * - PhoneInputComponent: Phone number input with country code
+ * - BirthdayInputComponent: Date picker for birthday
+ * - AlertService: Shows error notifications
+ *
+ * @component
+ * @selector app-create-user-role-popup
+ * @standalone true
+ */
 @Component({
   selector: 'app-create-user-role-popup',
   standalone: true,

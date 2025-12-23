@@ -1,5 +1,38 @@
 import { GroupedTrade, GroupedTradeFinal, historyTrade } from '../models/report.model';
 
+/**
+ * Converts an array from the TradeLocker API into a historyTrade object.
+ *
+ * The API returns trade data as arrays where each index corresponds to a specific field.
+ * This function maps the array indices to named properties for easier access.
+ *
+ * Array mapping:
+ * - [0]: id
+ * - [1]: tradableInstrumentId
+ * - [2]: routeId
+ * - [3]: qty
+ * - [4]: side
+ * - [5]: type
+ * - [6]: status
+ * - [7]: filledQty
+ * - [8]: avgPrice
+ * - [9]: price
+ * - [10]: stopPrice
+ * - [11]: validity
+ * - [12]: expireDate
+ * - [13]: createdDate
+ * - [14]: lastModified
+ * - [15]: isOpen
+ * - [16]: positionId
+ * - [17]: stopLoss
+ * - [18]: stopLossType
+ * - [19]: takeProfit
+ * - [20]: takeProfitType
+ * - [21]: strategyId
+ *
+ * @param arr - Array from TradeLocker API containing trade data
+ * @returns historyTrade object with named properties
+ */
 export function arrayToHistoryTrade(arr: any[]): historyTrade {
   // Mapeo según la configuración de la API:
   // 0: id, 1: tradableInstrumentId, 2: routeId, 3: qty, 4: side, 5: type, 6: status, 7: filledQty, 8: avgPrice, 9: price, 10: stopPrice, 11: validity, 12: expireDate, 13: createdDate, 14: lastModified, 15: isOpen, 16: positionId, 17: stopLoss, 18: stopLossType, 19: takeProfit, 20: takeProfitType, 21: strategyId
@@ -30,6 +63,34 @@ export function arrayToHistoryTrade(arr: any[]): historyTrade {
   };
 }
 
+/**
+ * Groups trading orders by position ID and calculates PnL for each position.
+ *
+ * This function processes raw order history and groups orders that belong to the same position
+ * (identified by positionId). It then calculates the PnL for each position by matching
+ * opening and closing orders, and fetches instrument details to ensure accurate calculations.
+ *
+ * Process:
+ * 1. Filters valid orders (status 'Filled' and valid positionId)
+ * 2. Groups orders by positionId
+ * 3. Fetches instrument details for all unique instruments
+ * 4. For each position:
+ *    - Finds opening order (isOpen: 'true')
+ *    - Finds closing order (isOpen: 'false')
+ *    - Calculates PnL based on entry/exit prices and lot size
+ *    - Determines if trade was won or lost
+ * 5. Returns array of GroupedTradeFinal objects
+ *
+ * Related to:
+ * - fetchInstrumentDetails(): Fetches lot size and instrument names
+ * - ReportService.getInstrumentDetails(): API call for instrument data
+ *
+ * @param orders - Array of historyTrade objects to group
+ * @param reportService - ReportService instance for fetching instrument details
+ * @param accessToken - User authentication token
+ * @param accNum - Account number
+ * @returns Promise that resolves to an array of GroupedTradeFinal objects
+ */
 export async function groupOrdersByPosition(orders: historyTrade[], reportService: any, accessToken: string, accNum: number): Promise<GroupedTradeFinal[]> {
   // Filtrar solo trades que no estén cancelados y que tengan status 'Filled' (case insensitive)
   const validOrders = orders.filter(order => {
@@ -148,6 +209,20 @@ export async function groupOrdersByPosition(orders: historyTrade[], reportServic
   return finalTrades;
 }
 
+/**
+ * Fetches instrument details for all unique instruments in the orders.
+ *
+ * This helper function extracts unique instrument combinations (tradableInstrumentId + routeId)
+ * from orders and fetches their details (lot size and name) from the API.
+ * It processes instruments sequentially with a small delay to avoid rate limiting.
+ *
+ * @param orders - Array of historyTrade objects
+ * @param reportService - ReportService instance for API calls
+ * @param accessToken - User authentication token
+ * @param accNum - Account number
+ * @returns Promise that resolves to a Map with instrument keys and their details
+ * @private
+ */
 async function fetchInstrumentDetails(
   orders: historyTrade[],
   reportService: any,
@@ -201,16 +276,44 @@ async function fetchInstrumentDetails(
 }
 
 
+/**
+ * Calculates the total net PnL from an array of trades.
+ *
+ * Sums all PnL values from trades and rounds to the nearest integer.
+ *
+ * @param trades - Array of trade objects with optional pnl property
+ * @returns Total net PnL rounded to nearest integer
+ */
 export function calculateNetPnl(trades: { pnl?: number }[]): number {
   const total = trades.reduce((sum, t) => sum + (t.pnl ?? 0), 0);
   return Math.round(total);
 }
 
+/**
+ * Calculates the percentage of winning trades.
+ *
+ * Counts trades with positive PnL and calculates the percentage
+ * relative to total trades. Returns 0 if there are no trades.
+ *
+ * @param trades - Array of trade objects with optional pnl property
+ * @returns Win percentage rounded to nearest integer (0-100)
+ */
 export function calculateTradeWinPercent(trades: { pnl?: number }[]): number {
   const wins = trades.filter((t) => t.pnl !== undefined && t.pnl > 0).length;
   return trades.length > 0 ? Math.round((wins / trades.length) * 100) : 0;
 }
 
+/**
+ * Calculates the profit factor from an array of trades.
+ *
+ * Profit factor is calculated as: gross profit / gross loss
+ * - If there are no losses, returns 999.99 (infinite profit factor)
+ * - If there are no profits, returns 0
+ * - Otherwise, returns the ratio rounded to 2 decimal places
+ *
+ * @param trades - Array of trade objects with optional pnl property
+ * @returns Profit factor rounded to 2 decimal places
+ */
 export function calculateProfitFactor(trades: { pnl?: number }[]): number {
   const grossProfit = trades
     .filter((t) => (t.pnl ?? 0) > 0)
@@ -229,6 +332,17 @@ export function calculateProfitFactor(trades: { pnl?: number }[]): number {
   return Math.round(profitFactor * 100) / 100;
 }
 
+/**
+ * Calculates the average win/loss ratio.
+ *
+ * Calculates the ratio of average winning trade to average losing trade.
+ * - If there are no losses, returns 999.99 (infinite ratio)
+ * - If there are no wins, returns 0
+ * - Otherwise, returns the ratio rounded to 2 decimal places
+ *
+ * @param trades - Array of trade objects with optional pnl property
+ * @returns Average win/loss ratio rounded to 2 decimal places
+ */
 export function calculateAvgWinLossTrades(trades: { pnl?: number }[]): number {
   const wins = trades.filter((t) => t.pnl !== undefined && t.pnl > 0);
   const losses = trades.filter((t) => t.pnl !== undefined && t.pnl < 0);
@@ -248,10 +362,27 @@ export function calculateAvgWinLossTrades(trades: { pnl?: number }[]): number {
   return avgLoss > 0 ? Math.round((avgWin / avgLoss) * 100) / 100 : 0;
 }
 
+/**
+ * Calculates the total number of trades.
+ *
+ * Simply returns the length of the trades array.
+ *
+ * @param trades - Array of trade objects
+ * @returns Total number of trades
+ */
 export function calculateTotalTrades(trades: any[]): number {
   return trades.length;
 }
 
+/**
+ * Groups trades by month and calculates total PnL per month.
+ *
+ * Processes trades and aggregates PnL values by month (format: "YYYY-MM").
+ * Used for generating monthly PnL charts and reports.
+ *
+ * @param trades - Array of GroupedTrade objects with updatedAt and pnl properties
+ * @returns Object with month keys (YYYY-MM) and total PnL values
+ */
 export function getMonthlyPnL(trades: GroupedTrade[]): {
   [month: string]: number;
 } {

@@ -3,6 +3,33 @@ import { isPlatformBrowser } from '@angular/common';
 import { getFirestore, collection, query, getDocs, updateDoc, doc, Timestamp, where } from 'firebase/firestore';
 import { firebaseApp } from '../../firebase/firebase.init';
 
+/**
+ * Service for updating strategy active days in Firebase.
+ *
+ * This service calculates and updates the number of days a strategy has
+ * been active based on its creation date. It supports updating all user
+ * strategies or a specific strategy.
+ *
+ * Features:
+ * - Update active days for all user strategies
+ * - Update active days for active strategy only
+ * - Update active days for specific strategy
+ * - Calculate days active from creation date
+ *
+ * Days Active Calculation:
+ * - Calculates days from `created_at` timestamp to current date
+ * - Updates `days_active` field in configuration-overview
+ * - Automatically updates `updated_at` timestamp
+ *
+ * Relations:
+ * - Used by GlobalStrategyUpdaterService for batch updates
+ * - Used by StrategyCardComponent for displaying days active
+ * - Updates `configuration-overview` collection
+ *
+ * @service
+ * @injectable
+ * @providedIn root
+ */
 @Injectable({
   providedIn: 'root'
 })
