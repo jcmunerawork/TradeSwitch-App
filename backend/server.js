@@ -8,7 +8,7 @@ import http from 'http';
 // 🔴 IMPORTANTE: Configura estas variables en Render:
 // - TRADELOCKER_STREAMS_URL: https://api-dev.tradelocker.com/streams-api
 // - DEVELOPER_API_KEY: tl-7xUz3A0a2aAReLuGnaU%kmaF
-// - FRONTEND_URL: https://tu-app.vercel.app (tu URL de Vercel)
+// - FRONTEND_URL: https://app.tradeswitch.io (URL base de tu app Angular, sin rutas como /login)
 // ============================================
 
 const TRADELOCKER_STREAMS_URL = process.env.TRADELOCKER_STREAMS_URL || 'https://api-dev.tradelocker.com/streams-api';

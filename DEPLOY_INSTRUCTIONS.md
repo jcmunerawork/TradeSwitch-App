@@ -25,6 +25,7 @@ Esta guía te explica cómo desplegar el backend en Render y el frontend en Verc
 ```bash
 npm install
 ```
+✅ **Nota:** El script `build` ya está agregado al `package.json`, así que Render puede ejecutarlo si es necesario.
 
 **Start Command:**
 ```bash
@@ -42,7 +43,7 @@ npm start
 |----------|-------|-------------|
 | `TRADELOCKER_STREAMS_URL` | `https://api-dev.tradelocker.com/streams-api` | URL de TradeLocker Streams API |
 | `DEVELOPER_API_KEY` | `tl-7xUz3A0a2aAReLuGnaU%kmaF` | API Key de TradeLocker |
-| `FRONTEND_URL` | `https://tu-app.vercel.app` | 🔴 **TU URL DE VERCEL** (para CORS) |
+| `FRONTEND_URL` | `https://app.tradeswitch.io` | 🔴 **URL BASE DE TU APP ANGULAR** (sin /login, solo el dominio) |
 
 **Nota:** `PORT` se asigna automáticamente por Render, no necesitas configurarlo.
 

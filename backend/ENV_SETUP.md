@@ -19,7 +19,7 @@ En el dashboard de Render, agrega estas variables de entorno:
 |----------|-------|
 | `TRADELOCKER_STREAMS_URL` | `https://api-dev.tradelocker.com/streams-api` |
 | `DEVELOPER_API_KEY` | `tl-7xUz3A0a2aAReLuGnaU%kmaF` |
-| `FRONTEND_URL` | `https://tu-app.vercel.app` 🔴 **TU URL DE VERCEL** |
+| `FRONTEND_URL` | `https://app.tradeswitch.io` 🔴 **URL BASE DE TU APP ANGULAR** (sin /login, solo el dominio) |
 
 **Nota:** `PORT` se asigna automáticamente, no necesitas configurarlo.
 
