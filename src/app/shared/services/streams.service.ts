@@ -75,19 +75,18 @@ export class StreamsService implements OnDestroy {
   // ============================================
   // ⚙️ CONFIGURACIÓN - VARIABLES DE ENTORNO
   // ============================================
-  // 🔴 IMPORTANTE: Configura esta variable en Vercel:
   // 
-  // Variable: STREAMS_BACKEND_URL
-  // Valor: URL de tu backend en Render (ej: https://tradeswitch-ws.onrender.com)
+  // DESARROLLO LOCAL:
+  // - Crea un archivo .env en la raíz del proyecto con:
+  //   STREAMS_BACKEND_URL=http://localhost:3000
+  // - O simplemente no lo definas y usará http://localhost:3000 por defecto
   // 
-  // En desarrollo local: http://localhost:3000
-  // En producción: URL que te da Render después del deploy
+  // PRODUCCIÓN (Vercel):
+  // - Ya está configurado en Vercel Dashboard → Settings → Environment Variables
+  // - Variable: STREAMS_BACKEND_URL
+  // - Valor: https://tradeswitch-app.onrender.com
   // 
-  // Cómo configurar en Vercel:
-  // 1. Ve a tu proyecto en Vercel Dashboard
-  // 2. Settings → Environment Variables
-  // 3. Agrega: STREAMS_BACKEND_URL = https://tu-backend.onrender.com
-  // 4. Redeploy la aplicación
+  // El script setup-env.js inyecta esta variable en window.__ENV__ durante el build
   // ============================================
   private readonly STREAMS_API_URL = this.getBackendUrl();
   

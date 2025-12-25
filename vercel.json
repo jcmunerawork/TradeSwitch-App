@@ -1,6 +1,3 @@
 {
-    "buildCommand": "npm run setup-env && npm run build",
-    "env": {
-      "STREAMS_BACKEND_URL": "@streams_backend_url"
-    }
-  }
+  "buildCommand": "npm run setup-env && npm run build"
+}
