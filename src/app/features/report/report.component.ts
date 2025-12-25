@@ -941,27 +941,34 @@ export class ReportComponent implements OnInit {
     accountId: string,
     accNum: number
   ) {
+    // COMENTADO: Balance ahora viene de streams API (tiempo real)
+    // El balance se actualiza automáticamente desde streams a través de AppContextService
     // Solo consultar balance si no existe ya
-    if (this.balanceData === null || this.balanceData === undefined) {
-      this.reportService.getBalanceData(accountId, key, accNum).subscribe({
-        next: (balanceData) => {
-          this.balanceData = balanceData;
-          this.setLoadingState('balanceData', true);
-          // Verificar si todos los datos están listos después de cargar el balance
-          this.checkIfAllDataLoaded();
-        },
-        error: (err) => {
-          console.error('Error fetching balance data:', err);
-          this.setLoadingState('balanceData', true);
-          // Verificar si todos los datos están listos incluso en caso de error
-          this.checkIfAllDataLoaded();
-        },
-      });
-    } else {
-      // Si ya existe balanceData, marcar como cargado
-      this.setLoadingState('balanceData', true);
-      this.checkIfAllDataLoaded();
-    }
+    // if (this.balanceData === null || this.balanceData === undefined) {
+    //   this.reportService.getBalanceData(accountId, key, accNum).subscribe({
+    //     next: (balanceData) => {
+    //       this.balanceData = balanceData;
+    //       this.setLoadingState('balanceData', true);
+    //       // Verificar si todos los datos están listos después de cargar el balance
+    //       this.checkIfAllDataLoaded();
+    //     },
+    //     error: (err) => {
+    //       console.error('Error fetching balance data:', err);
+    //       this.setLoadingState('balanceData', true);
+    //       // Verificar si todos los datos están listos incluso en caso de error
+    //       this.checkIfAllDataLoaded();
+    //     },
+    //   });
+    // } else {
+    //   // Si ya existe balanceData, marcar como cargado
+    //   this.setLoadingState('balanceData', true);
+    //   this.checkIfAllDataLoaded();
+    // }
+    
+    // El balance ahora viene de streams API, marcar como cargado
+    // (se actualizará automáticamente cuando llegue desde streams)
+    this.setLoadingState('balanceData', true);
+    this.checkIfAllDataLoaded();
 
     // Solo hacer petición al trading history (la principal)
     this.reportService
@@ -1389,12 +1396,15 @@ export class ReportComponent implements OnInit {
         account.accountNumber
       ).toPromise();
 
-      // Obtener balance data
-      const balanceData = await this.reportService.getBalanceData(
-        account.accountID,
-        userKey,
-        account.accountNumber
-      ).toPromise();
+      // COMENTADO: Balance ahora viene de streams API (tiempo real)
+      // El balance se actualiza automáticamente desde streams a través de AppContextService
+      // const balanceData = await this.reportService.getBalanceData(
+      //   account.accountID,
+      //   userKey,
+      //   account.accountNumber
+      // ).toPromise();
+      
+      const balanceData = null; // Balance viene de streams
 
       // Guardar en localStorage
       this.saveAccountDataToLocalStorage(account.accountID, {

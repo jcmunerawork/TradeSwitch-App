@@ -334,6 +334,9 @@ export class TradingAccountsComponent implements OnDestroy {
   // }
 
   /**
+   * COMENTADO: Método antiguo para obtener balance de la API
+   * Ahora se usa solo el balance de streams API (tiempo real)
+   * 
    * Fetches balance data for all accounts.
    *
    * Processes accounts sequentially, fetching user key and balance
@@ -347,26 +350,29 @@ export class TradingAccountsComponent implements OnDestroy {
    *
    * @memberof TradingAccountsComponent
    */
-  getBalanceForAccounts() {
-    // Loading is already active from getUserAccounts, don't set it again
-    from(this.usersData)
-      .pipe(concatMap((account) => this.fetchUserKey(account)))
-      .subscribe({
-        next: () => {},
-        complete: () => {
-          this.loading = false; // Only set to false when balances are loaded
-        },
-        error: (err) => {
-          this.loading = false;
-          console.error(
-            'Error en el proceso de actualización de balances',
-            err
-          );
-        },
-      });
-  }
+  // getBalanceForAccounts() {
+  //   // Loading is already active from getUserAccounts, don't set it again
+  //   from(this.usersData)
+  //     .pipe(concatMap((account) => this.fetchUserKey(account)))
+  //     .subscribe({
+  //       next: () => {},
+  //       complete: () => {
+  //         this.loading = false; // Only set to false when balances are loaded
+  //       },
+  //       error: (err) => {
+  //         this.loading = false;
+  //         console.error(
+  //           'Error en el proceso de actualización de balances',
+  //           err
+  //         );
+  //       },
+  //     });
+  // }
 
   /**
+   * COMENTADO: Método antiguo para obtener balance de la API
+   * Ahora se usa solo el balance de streams API (tiempo real)
+   * 
    * Fetches user authentication key for an account.
    *
    * Authenticates with trading account credentials and stores the key
@@ -381,22 +387,25 @@ export class TradingAccountsComponent implements OnDestroy {
    * @returns Observable that completes when balance is fetched
    * @memberof TradingAccountsComponent
    */
-  fetchUserKey(account: AccountData) {
-    return this.reportSvc
-      .getUserKey(
-        account.emailTradingAccount,
-        account.brokerPassword,
-        account.server
-      )
-      .pipe(
-        concatMap((key: string) => {
-          this.store.dispatch(setUserKey({ userKey: key }));
-          return this.getActualBalance(key, account);
-        })
-      );
-  }
+  // fetchUserKey(account: AccountData) {
+  //   return this.reportSvc
+  //     .getUserKey(
+  //       account.emailTradingAccount,
+  //       account.brokerPassword,
+  //       account.server
+  //     )
+  //     .pipe(
+  //       concatMap((key: string) => {
+  //         this.store.dispatch(setUserKey({ userKey: key }));
+  //         return this.getActualBalance(key, account);
+  //       })
+  //     );
+  // }
 
   /**
+   * COMENTADO: Método antiguo para obtener balance de la API
+   * Ahora se usa solo el balance de streams API (tiempo real)
+   * 
    * Fetches actual balance for an account from the trading API.
    *
    * Uses the authentication key to fetch balance data and updates
@@ -410,17 +419,17 @@ export class TradingAccountsComponent implements OnDestroy {
    * @returns Observable that emits the account with updated balance
    * @memberof TradingAccountsComponent
    */
-  getActualBalance(key: string, account: AccountData) {
-    return this.reportSvc
-      .getBalanceData(account.accountID, key, account.accountNumber)
-      .pipe(
-        concatMap((balanceData) => {
-          // Guardar el balance en la cuenta
-          account.balance = balanceData.balance || 0;
-          return [account];
-        })
-      );
-  }
+  // getActualBalance(key: string, account: AccountData) {
+  //   return this.reportSvc
+  //     .getBalanceData(account.accountID, key, account.accountNumber)
+  //     .pipe(
+  //       concatMap((balanceData) => {
+  //         // Guardar el balance en la cuenta
+  //         account.balance = balanceData.balance || 0;
+  //         return [account];
+  //       })
+  //     );
+  // }
 
   /**
    * Deletes a trading account.

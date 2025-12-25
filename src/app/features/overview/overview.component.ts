@@ -712,6 +712,53 @@ export class Overview {
   }
 
   /**
+   * Determines status class for a user.
+   * 
+   * Returns 'banned' if user is banned, 'created' if all values are zero,
+   * or 'active' if user has activity.
+   * 
+   * @param user - User object to determine status for
+   * @returns Status class string ('banned', 'created', or 'active')
+   * @memberof Overview
+   */
+  private statusClass(user: User): string {
+    // Si el status es banned, retornar banned
+    if (String(user.status) === 'banned') {
+      return 'banned';
+    }
+    
+    // Verificar si todos los valores están en 0
+    const allValuesZero = 
+      (user.trading_accounts ?? 0) === 0 &&
+      (user.strategies ?? 0) === 0 &&
+      (user.strategy_followed ?? 0) === 0 &&
+      (user.netPnl ?? 0) === 0 &&
+      (user.profit ?? 0) === 0 &&
+      (user.number_trades ?? 0) === 0 &&
+      (user.total_spend ?? 0) === 0;
+    
+    // Si todos los valores están en 0, retornar created
+    if (allValuesZero) {
+      return 'created';
+    }
+    
+    // Si no todos están en 0, retornar active
+    return 'active';
+  }
+
+  /**
+   * Gets display status string with capitalized first letter.
+   * 
+   * @param user - User object to get status for
+   * @returns Capitalized status string (e.g., "Active", "Created", "Banned")
+   * @memberof Overview
+   */
+  private getDisplayStatus(user: User): string {
+    const status = this.statusClass(user);
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+
+  /**
    * Escapes special characters in CSV values.
    * 
    * Wraps value in quotes if it contains comma, quote, or newline.
