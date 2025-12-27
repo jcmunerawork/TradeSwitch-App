@@ -7,6 +7,7 @@ import { TradeLockerApiService, TradeLockerCredentials, AccountTokenData } from 
 import { AppContextService } from '../context';
 import { AccountData } from '../../features/auth/models/userModel';
 import { LoggerService } from '../../core/services';
+import { StreamsPositionUpdate } from '../../features/report/models/trading-history.model';
 
 /**
  * Interface for AccountStatus message from Streams API (optimized format from backend)
@@ -117,6 +118,10 @@ export class StreamsService implements OnDestroy {
   private balancesSubject = new BehaviorSubject<Map<string, AccountBalanceData>>(new Map());
   public balances$ = this.balancesSubject.asObservable();
   
+  // Position updates observable
+  private positionUpdatesSubject = new Subject<{ accountId: string; update: StreamsPositionUpdate }>();
+  public positionUpdates$ = this.positionUpdatesSubject.asObservable();
+  
   // Cleanup
   private destroy$ = new Subject<void>();
   
@@ -132,7 +137,7 @@ export class StreamsService implements OnDestroy {
   
   /**
    * Suscribirse a cambios en las cuentas del usuario desde el contexto
-   * Inicializa streams automáticamente cuando hay cuentas disponibles
+   * Envía las cuentas al backend para validación antes de conectar
    */
   private subscribeToUserAccounts(): void {
     // Usar el observable del contexto para detectar cambios en las cuentas
@@ -142,11 +147,14 @@ export class StreamsService implements OnDestroy {
       if (accounts && accounts.length > 0) {
         this.logger.info(`User accounts updated: ${accounts.length} account(s) found`, 'StreamsService');
         // Inicializar streams con todas las cuentas disponibles
+        // initializeStreams se encargará de obtener tokens, conectar y enviar cuentas al backend
         this.initializeStreams(accounts).catch(error => {
           this.logger.error('Error initializing streams from account subscription', 'StreamsService', error);
         });
       } else {
-        this.logger.debug('No user accounts available yet, waiting for accounts...', 'StreamsService');
+        this.logger.debug('No user accounts available, sending empty array to backend', 'StreamsService');
+        // Enviar array vacío al backend para desconectar
+        this.sendAccountsToBackend([]);
         // Si no hay cuentas, desconectar streams si estaban conectados
         if (this.socket?.connected) {
           this.disconnect();
@@ -154,12 +162,54 @@ export class StreamsService implements OnDestroy {
       }
     });
   }
+
+  /**
+   * Enviar cuentas al backend para validación
+   * El backend solo conectará a streams si hay al menos una cuenta
+   */
+  private sendAccountsToBackend(accounts: AccountData[]): void {
+    if (!this.socket?.connected) {
+      // Si no hay conexión al backend, conectar primero
+      this.connectToStreams();
+      // Esperar a que se conecte antes de enviar cuentas
+      if (this.socket) {
+        this.socket.once('connect', () => {
+          this.emitAccountsUpdate(accounts);
+        });
+      }
+    } else {
+      // Ya hay conexión, enviar inmediatamente
+      this.emitAccountsUpdate(accounts);
+    }
+  }
+
+  /**
+   * Emitir actualización de cuentas al backend
+   */
+  private emitAccountsUpdate(accounts: AccountData[]): void {
+    if (!this.socket?.connected) {
+      this.logger.warn('Cannot send accounts update: not connected to backend', 'StreamsService');
+      return;
+    }
+
+    // Preparar datos de cuentas (solo información necesaria)
+    const accountsData = accounts.map(acc => ({
+      accountID: acc.accountID,
+      accountNumber: acc.accountNumber,
+      accountName: acc.accountName,
+      emailTradingAccount: acc.emailTradingAccount,
+      server: acc.server
+    }));
+
+    this.logger.info(`Sending ${accountsData.length} account(s) to backend for validation`, 'StreamsService');
+    this.socket.emit('updateAccounts', { accounts: accountsData });
+  }
   
   /**
    * Initialize streams connection for user accounts
    * 
    * This method is called automatically when accounts are available in the context.
-   * It fetches tokens for all accounts and connects to the Streams API.
+   * It fetches tokens for all accounts, connects to the Streams API, and sends accounts to backend.
    */
   async initializeStreams(accounts: AccountData[]): Promise<void> {
     if (!this.isBrowser) {
@@ -172,15 +222,15 @@ export class StreamsService implements OnDestroy {
       return;
     }
     
-    // Si ya hay una conexión activa, no reinicializar a menos que las cuentas hayan cambiado
-    if (this.socket?.connected) {
-      this.logger.debug('Streams already connected, skipping reinitialization', 'StreamsService');
+    // Si ya hay tokens y conexión activa, solo actualizar cuentas en backend
+    if (this.socket?.connected && this.accountTokens.size > 0) {
+      this.logger.debug('Streams already initialized, updating accounts in backend', 'StreamsService');
+      this.sendAccountsToBackend(accounts);
       return;
     }
     
     try {
-      // Get tokens for all accounts using the first account's credentials
-      // The API returns tokens for all accounts associated with the user
+      // PASO 1: Obtener tokens PRIMERO
       const firstAccount = accounts[0];
       const credentials: TradeLockerCredentials = {
         email: firstAccount.emailTradingAccount,
@@ -205,18 +255,19 @@ export class StreamsService implements OnDestroy {
         accountName: acc.accountName
       })));
       
+      // Limpiar tokens y mapeos anteriores
+      this.accountTokens.clear();
+      this.accountIdMapping.clear();
+      
       tokenResponse.data.forEach(tokenData => {
         this.accountTokens.set(tokenData.accountId, tokenData);
         
         // Mapear accountId del token (ej: "L#821923") al accountID de AccountData (ej: "831962")
-        // El accountID en Firebase puede ser solo el número sin el prefijo
-        // Extraer el número del accountId del token (quitar "L#", "D#", etc.)
         const tokenAccountNumber = tokenData.accountId.replace(/^[A-Z]#/, '');
         
         console.log(`🔍 [STREAMS] Intentando mapear token ${tokenData.accountId} (número: ${tokenAccountNumber})`);
         
         // Buscar la cuenta correspondiente en la lista de cuentas
-        // Intentar múltiples estrategias de coincidencia
         const matchingAccount = accounts.find(acc => {
           // 1. Coincidencia exacta
           if (acc.accountID === tokenData.accountId) {
@@ -284,8 +335,21 @@ export class StreamsService implements OnDestroy {
       
       this.logger.info(`Received ${tokenResponse.data.length} account token(s) for ${accounts.length} Firebase account(s)`, 'StreamsService');
       
-      // Connect to Streams API
-      this.connectToStreams();
+      // PASO 2: Conectar al socket (si no está conectado)
+      if (!this.socket?.connected) {
+        this.connectToStreams();
+        // Esperar a que se conecte antes de enviar cuentas
+        if (this.socket) {
+          this.socket.once('connect', () => {
+            this.logger.info('Socket connected after token fetch, sending accounts to backend', 'StreamsService');
+            this.emitAccountsUpdate(accounts);
+          });
+        }
+      } else {
+        // PASO 3: Si ya está conectado, enviar cuentas inmediatamente
+        this.logger.info('Socket already connected, sending accounts to backend immediately', 'StreamsService');
+        this.emitAccountsUpdate(accounts);
+      }
       
     } catch (error) {
       this.logger.error('Error initializing streams', 'StreamsService', error);
@@ -334,31 +398,64 @@ export class StreamsService implements OnDestroy {
       this.subscriptionAttempted = false;
       
       const transport = (this.socket as any)?.io?.engine?.transport?.name;
-      console.log('✅ [STREAMS] Socket conectado exitosamente');
+      console.log('✅ [STREAMS] Socket conectado exitosamente al backend');
       console.log('✅ [STREAMS] Socket ID:', this.socket?.id);
       console.log('✅ [STREAMS] Connected:', this.socket?.connected);
       console.log('✅ [STREAMS] Transport:', transport);
       console.log('✅ [STREAMS] Transport type:', typeof transport);
       
-      this.logger.info('Connected to Streams API', 'StreamsService', { 
+      this.logger.info('Connected to backend Socket.IO', 'StreamsService', { 
         socketId: this.socket?.id,
         connected: this.socket?.connected,
         transport: transport
       });
       
-      // Subscribe after connection (same delay as working JavaScript version)
-      this.subscriptionTimeout = setTimeout(() => {
-        if (this.socket?.connected && this.isConnected && !this.subscriptionAttempted) {
-          console.log('📤 [STREAMS] Intentando suscribirse después del delay de 1000ms...');
-          this.subscribeToAccounts();
+      // Enviar cuentas al backend inmediatamente después de conectar
+      // Solo si ya tenemos tokens (significa que initializeStreams ya se ejecutó)
+      // Si no hay tokens, significa que no hay cuentas o aún no se han obtenido
+      if (this.accountTokens.size > 0) {
+        const accounts = this.appContext.userAccounts();
+        if (accounts && accounts.length > 0) {
+          this.logger.info('Sending accounts to backend after connection (tokens already available)', 'StreamsService');
+          this.emitAccountsUpdate(accounts);
         } else {
-          console.warn('⚠️ [STREAMS] No se puede suscribir - socket desconectado o ya se intentó', {
-            connected: this.socket?.connected,
-            isConnected: this.isConnected,
-            subscriptionAttempted: this.subscriptionAttempted
-          });
+          // Enviar array vacío para que el backend sepa que no hay cuentas
+          this.emitAccountsUpdate([]);
         }
-      }, 1000);
+      } else {
+        this.logger.debug('Socket connected but no tokens available yet, waiting for initializeStreams', 'StreamsService');
+      }
+      
+      // Escuchar estado de conexión a streams desde el backend
+      if (this.socket) {
+        this.socket.on('streamsConnectionStatus', (data: any) => {
+          if (data.connected) {
+            this.logger.info('Streams connection established via backend', 'StreamsService');
+            // Verificar que hay tokens disponibles antes de suscribirse
+            if (this.accountTokens.size === 0) {
+              this.logger.warn('Streams connected but no tokens available yet, waiting...', 'StreamsService');
+              return;
+            }
+            // Subscribe after connection (same delay as working JavaScript version)
+            this.subscriptionTimeout = setTimeout(() => {
+              if (this.socket?.connected && this.isConnected && !this.subscriptionAttempted && this.accountTokens.size > 0) {
+                console.log('📤 [STREAMS] Intentando suscribirse después del delay de 1000ms...');
+                this.subscribeToAccounts();
+              } else {
+                console.warn('⚠️ [STREAMS] No se puede suscribir - socket desconectado, ya se intentó, o no hay tokens', {
+                  connected: this.socket?.connected,
+                  isConnected: this.isConnected,
+                  subscriptionAttempted: this.subscriptionAttempted,
+                  tokensAvailable: this.accountTokens.size
+                });
+              }
+            }, 1000);
+          } else {
+            this.logger.warn('Streams connection not available', 'StreamsService', { reason: data.reason });
+            // No intentar suscribirse si no hay conexión a streams
+          }
+        });
+      }
     });
     
     this.socket.on('disconnect', (reason) => {
@@ -596,8 +693,11 @@ export class StreamsService implements OnDestroy {
     // Handle AccountStatus messages
     if (message.type === 'AccountStatus') {
       this.handleAccountStatus(message as AccountStatusMessage);
+    } else if (message.type === 'Position' || message.type === 'ClosePosition') {
+      // Handle position updates
+      this.handlePositionUpdate(message);
     } else {
-      // Otros tipos de mensajes (Position, ClosePosition, OpenOrder, Property)
+      // Otros tipos de mensajes (OpenOrder, Property)
       // Ya se imprimen en consola en el listener, aquí solo los registramos en el logger
       this.logger.debug(`Message type ${message.type} received (not processed)`, 'StreamsService', message);
     }
@@ -739,6 +839,49 @@ export class StreamsService implements OnDestroy {
       map(balances => balances.get(accountId)?.balance || 0),
       takeUntil(this.destroy$)
     );
+  }
+
+  /**
+   * Handle position updates from streams (Position or ClosePosition messages)
+   */
+  private handlePositionUpdate(message: any): void {
+    try {
+      const accountId = message.accountId || message.account;
+      const positionId = message.positionId || message.id;
+      
+      if (!accountId || !positionId) {
+        this.logger.warn('Position update missing accountId or positionId', 'StreamsService', message);
+        return;
+      }
+
+      // Obtener el accountID real de AccountData usando el mapeo
+      const streamAccountId = accountId.includes('#') ? accountId : `L#${accountId}`;
+      const accountDataId = this.accountIdMapping.get(streamAccountId) || accountId;
+
+      // Crear update object
+      const update: StreamsPositionUpdate = {
+        positionId: positionId,
+        pnl: message.pnl !== undefined ? message.pnl : undefined,
+        isOpen: message.type === 'ClosePosition' ? false : (message.isOpen !== undefined ? message.isOpen : true),
+        lastModified: message.lastModified || message.timestamp || new Date().toISOString()
+      };
+
+      // Emitir actualización
+      this.positionUpdatesSubject.next({
+        accountId: accountDataId,
+        update
+      });
+
+      this.logger.debug('Position update emitted', 'StreamsService', {
+        accountId: accountDataId,
+        positionId,
+        isOpen: update.isOpen,
+        pnl: update.pnl
+      });
+
+    } catch (error) {
+      this.logger.error('Error handling position update', 'StreamsService', error);
+    }
   }
   
   /**

@@ -56,6 +56,9 @@ import { StrategyCardData } from '../../shared/components/strategy-card/strategy
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { PluginHistoryService, PluginHistory } from '../../shared/services/plugin-history.service';
 import { TimezoneService } from '../../shared/services/timezone.service';
+import { TradingHistorySyncService } from './services/trading-history-sync.service';
+import { StreamsService } from '../../shared/services/streams.service';
+import { takeUntil } from 'rxjs/operators';
 
 /**
  * Main component for displaying trading reports and analytics.
@@ -132,6 +135,7 @@ export class ReportComponent implements OnInit {
   user: User | null = null;
   requestYear: number = 0;
   private updateSubscription?: Subscription;
+  private streamsSubscription?: Subscription;
   private loadingTimeout?: any;
   strategies: ConfigurationOverview[] = [];
   
@@ -194,7 +198,9 @@ export class ReportComponent implements OnInit {
     private planLimitationsGuard: PlanLimitationsGuard,
     private appContext: AppContextService,
     private pluginHistoryService: PluginHistoryService,
-    private timezoneService: TimezoneService
+    private timezoneService: TimezoneService,
+    private tradingHistorySync: TradingHistorySyncService,
+    private streamsService: StreamsService
   ) {}
 
   ngAfterViewInit() {
@@ -694,6 +700,7 @@ export class ReportComponent implements OnInit {
 
   ngOnDestroy() {
     this.updateSubscription?.unsubscribe();
+    this.streamsSubscription?.unsubscribe();
     if (this.loadingTimeout) {
       clearTimeout(this.loadingTimeout);
     }
@@ -936,89 +943,248 @@ export class ReportComponent implements OnInit {
       });
   }
 
-  fetchHistoryData(
+  async fetchHistoryData(
     key: string,
     accountId: string,
     accNum: number
   ) {
-    // COMENTADO: Balance ahora viene de streams API (tiempo real)
-    // El balance se actualiza automáticamente desde streams a través de AppContextService
-    // Solo consultar balance si no existe ya
-    // if (this.balanceData === null || this.balanceData === undefined) {
-    //   this.reportService.getBalanceData(accountId, key, accNum).subscribe({
-    //     next: (balanceData) => {
-    //       this.balanceData = balanceData;
-    //       this.setLoadingState('balanceData', true);
-    //       // Verificar si todos los datos están listos después de cargar el balance
-    //       this.checkIfAllDataLoaded();
-    //     },
-    //     error: (err) => {
-    //       console.error('Error fetching balance data:', err);
-    //       this.setLoadingState('balanceData', true);
-    //       // Verificar si todos los datos están listos incluso en caso de error
-    //       this.checkIfAllDataLoaded();
-    //     },
-    //   });
-    // } else {
-    //   // Si ya existe balanceData, marcar como cargado
-    //   this.setLoadingState('balanceData', true);
-    //   this.checkIfAllDataLoaded();
-    // }
-    
     // El balance ahora viene de streams API, marcar como cargado
     // (se actualizará automáticamente cuando llegue desde streams)
     this.setLoadingState('balanceData', true);
     this.checkIfAllDataLoaded();
 
-    // Solo hacer petición al trading history (la principal)
-    this.reportService
-      .getHistoryData(accountId, key, accNum)
-      .subscribe({
-        next: (groupedTrades: GroupedTradeFinal[]) => {
-          // Reemplazar en lugar de acumular para evitar duplicados
-          this.store.dispatch(
-            setGroupedTrades({
-              groupedTrades: groupedTrades,
-            })
-          );
+    if (!this.user?.id) {
+      console.error('User ID not available');
+      this.setLoadingState('historyData', true);
+      this.hasPendingRequests = false;
+      return;
+    }
 
-          // Calcular estadísticas inmediatamente después de recibir los datos
-          this.updateReportStats(this.store, groupedTrades);
+    try {
+      // 1. Primero intentar cargar desde Firebase (rápido)
+      const firebaseData = await this.tradingHistorySync.loadFromFirebase(this.user.id, accountId);
 
-          // Guardar datos en el contexto y localStorage por cuenta DESPUÉS de calcular stats
-          if (this.currentAccount) {
-            // Esperar a que las estadísticas estén calculadas
-            // Guardar en el contexto
-            const contextData = {
-              accountHistory: groupedTrades,
-              stats: this.stats,
-              balanceData: this.balanceData,
-              lastUpdated: Date.now()
-            };
-            this.appContext.setTradingHistoryForAccount(this.currentAccount!.id, contextData);
-            
-            // Guardar datos en localStorage después de recibir respuesta exitosa
-            this.saveDataToStorage();
-            
-            // Marcar history data como cargado DESPUÉS de guardar todo
-            this.setLoadingState('historyData', true);
-            // Marcar que no hay peticiones pendientes
-            this.hasPendingRequests = false;
-          } else {
-            // Si no hay cuenta actual, marcar como cargado inmediatamente
-            this.setLoadingState('historyData', true);
-            this.hasPendingRequests = false;
+      if (firebaseData && Object.keys(firebaseData.positions).length > 0) {
+        // 2. Cargar datos desde Firebase y mostrar inmediatamente
+        this.loadDataFromFirebase(firebaseData);
+        
+        // 3. Verificar si necesita sincronización
+        const needsSync = this.shouldSyncHistory(firebaseData.syncMetadata);
+        
+        if (needsSync) {
+          // Sincronizar en background (no bloquea UI)
+          this.syncHistoryInBackground(key, accountId, accNum);
+        } else {
+          // Ya está actualizado, solo suscribirse a streams
+          this.subscribeToStreamsUpdates(accountId);
+        }
+      } else {
+        // No hay datos en Firebase, hacer sync completo
+        await this.syncHistoryFromAPI(key, accountId, accNum);
+        // Después de sync, suscribirse a streams
+        this.subscribeToStreamsUpdates(accountId);
+      }
+    } catch (error) {
+      console.error('Error in fetchHistoryData:', error);
+      // En caso de error, mostrar valores iniciales
+      this.setInitialValues();
+      this.setLoadingState('historyData', true);
+      this.hasPendingRequests = false;
+    }
+  }
+
+  /**
+   * Load data from Firebase document
+   */
+  private loadDataFromFirebase(firebaseData: any): void {
+    // Convertir posiciones a GroupedTradeFinal
+    const positions = Object.values(firebaseData.positions || {}) as any[];
+    this.accountHistory = positions.map(pos => 
+      this.tradingHistorySync.convertToGroupedTradeFinal(pos)
+    );
+
+    // Cargar métricas
+    const metrics = firebaseData.metrics || {};
+    this.stats = {
+      netPnl: metrics.totalPnL || 0,
+      tradeWinPercent: metrics.percentageTradeWin || 0,
+      profitFactor: metrics.profitFactor || 0,
+      totalTrades: metrics.totalTrades || 0,
+      avgWinLossTrades: metrics.averageWinLossTrades || 0,
+      activePositions: firebaseData.syncMetadata?.openPositions || 0
+    };
+
+    // Actualizar store
+    this.store.dispatch(setGroupedTrades({ groupedTrades: this.accountHistory }));
+    this.store.dispatch(setNetPnL({ netPnL: this.stats.netPnl }));
+    this.store.dispatch(setTradeWin({ tradeWin: this.stats.tradeWinPercent }));
+    this.store.dispatch(setProfitFactor({ profitFactor: this.stats.profitFactor }));
+    this.store.dispatch(setAvgWnL({ avgWnL: this.stats.avgWinLossTrades }));
+    this.store.dispatch(setTotalTrades({ totalTrades: this.stats.totalTrades }));
+
+    // Guardar en contexto y localStorage
+    if (this.currentAccount) {
+      const contextData = {
+        accountHistory: this.accountHistory,
+        stats: this.stats,
+        balanceData: this.balanceData,
+        lastUpdated: Date.now()
+      };
+      this.appContext.setTradingHistoryForAccount(this.currentAccount.id, contextData);
+      this.saveDataToStorage();
+    }
+
+    this.statsProcessed = true;
+    this.chartsRendered = true;
+    this.setLoadingState('historyData', true);
+    this.hasPendingRequests = false;
+  }
+
+  /**
+   * Check if history needs to be synced
+   */
+  private shouldSyncHistory(syncMetadata: any): boolean {
+    if (!syncMetadata) return true;
+    
+    const lastSync = syncMetadata.lastHistorySync || 0;
+    const now = Date.now();
+    const hoursSinceSync = (now - lastSync) / (1000 * 60 * 60);
+    
+    // Sincronizar si pasaron más de 24 horas
+    return hoursSinceSync > 24;
+  }
+
+  /**
+   * Sync history from API in background
+   */
+  private async syncHistoryInBackground(
+    key: string,
+    accountId: string,
+    accNum: number
+  ): Promise<void> {
+    try {
+      if (!this.user?.id) return;
+      
+      const result = await this.tradingHistorySync.syncHistoryFromAPI(
+        this.user.id,
+        accountId,
+        key,
+        accNum
+      );
+
+      if (result.success) {
+        // Recargar datos actualizados desde Firebase
+        const updatedData = await this.tradingHistorySync.loadFromFirebase(this.user.id, accountId);
+        if (updatedData) {
+          this.loadDataFromFirebase(updatedData);
+        }
+      }
+    } catch (error) {
+      console.error('Error syncing history in background:', error);
+    }
+  }
+
+  /**
+   * Sync history from API (full sync)
+   */
+  private async syncHistoryFromAPI(
+    key: string,
+    accountId: string,
+    accNum: number
+  ): Promise<void> {
+    if (!this.user?.id) {
+      this.setInitialValues();
+      this.setLoadingState('historyData', true);
+      this.hasPendingRequests = false;
+      return;
+    }
+
+    try {
+      const result = await this.tradingHistorySync.syncHistoryFromAPI(
+        this.user.id,
+        accountId,
+        key,
+        accNum
+      );
+
+      if (result.success) {
+        // Cargar datos sincronizados
+        const firebaseData = await this.tradingHistorySync.loadFromFirebase(this.user.id, accountId);
+        if (firebaseData) {
+          this.loadDataFromFirebase(firebaseData);
+        } else {
+          this.setInitialValues();
+        }
+      } else {
+        // Error en sync, mostrar valores iniciales
+        this.setInitialValues();
+      }
+    } catch (error) {
+      console.error('Error in syncHistoryFromAPI:', error);
+      this.setInitialValues();
+    }
+
+    this.setLoadingState('historyData', true);
+    this.hasPendingRequests = false;
+  }
+
+  /**
+   * Subscribe to streams position updates
+   */
+  private subscribeToStreamsUpdates(accountId: string): void {
+    // Cancelar suscripción anterior si existe
+    this.streamsSubscription?.unsubscribe();
+
+    // Suscribirse a actualizaciones de posiciones
+    this.streamsSubscription = this.streamsService.positionUpdates$.subscribe({
+      next: async ({ accountId: updateAccountId, update }) => {
+        // Solo procesar si es para la cuenta actual
+        if (updateAccountId === accountId && this.user?.id) {
+          try {
+            const result = await this.tradingHistorySync.updateFromStreams(
+              this.user.id,
+              accountId,
+              update
+            );
+
+            if (result.success) {
+              // Recargar datos actualizados
+              const updatedData = await this.tradingHistorySync.loadFromFirebase(this.user.id, accountId);
+              if (updatedData) {
+                this.loadDataFromFirebase(updatedData);
+              }
+            }
+          } catch (error) {
+            console.error('Error updating from streams:', error);
           }
-        },
-        error: (err) => {
-          console.error('Error fetching history data:', err);
-          this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
-          // Marcar history data como cargado incluso en error
-          this.setLoadingState('historyData', true);
-          // Marcar que no hay peticiones pendientes
-          this.hasPendingRequests = false;
-        },
-      });
+        }
+      },
+      error: (error) => {
+        console.error('Error in streams subscription:', error);
+      }
+    });
+  }
+
+  /**
+   * Set initial values when there's an error or no data
+   */
+  private setInitialValues(): void {
+    this.accountHistory = [];
+    this.stats = {
+      netPnl: 0,
+      tradeWinPercent: 0,
+      profitFactor: 0,
+      totalTrades: 0,
+      avgWinLossTrades: 0,
+      activePositions: 0
+    };
+
+    this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
+    this.store.dispatch(setNetPnL({ netPnL: 0 }));
+    this.store.dispatch(setTradeWin({ tradeWin: 0 }));
+    this.store.dispatch(setProfitFactor({ profitFactor: 0 }));
+    this.store.dispatch(setAvgWnL({ avgWnL: 0 }));
+    this.store.dispatch(setTotalTrades({ totalTrades: 0 }));
   }
 
   updateReportStats(store: Store, groupedTrades: GroupedTradeFinal[]) {
