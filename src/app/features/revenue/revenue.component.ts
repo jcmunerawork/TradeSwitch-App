@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LoadingPopupComponent } from '../../shared/pop-ups/loading-pop-up/loading-popup.component';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import {
   OrderTableRow,
   RefundTableRow,
@@ -17,6 +17,7 @@ import { SubscriptionsTableComponent } from './components/subscriptions-table/su
 import { selectUser } from '../auth/store/user.selectios';
 import { User } from '../overview/models/overview';
 import { AuthService } from '../../shared/services/auth.service';
+import { ConfigService } from '../../core/services/config.service';
 
 @Component({
   selector: 'app-revenue',
@@ -49,6 +50,7 @@ export class RevenueComponent implements OnInit {
 
   loading = false;
   user: User | null = null;
+  private configService = inject(ConfigService);
 
   constructor(
     private store: Store,
@@ -98,7 +100,7 @@ export class RevenueComponent implements OnInit {
     try {
       const bearerToken = await this.authService.getBearerTokenFirebase(this.user.id);
       
-      const response = await fetch('https://api.tradeswitch.io/admin-dashboard/revenue', {
+      const response = await fetch(`${this.configService.apiUrl}/admin-dashboard/revenue`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

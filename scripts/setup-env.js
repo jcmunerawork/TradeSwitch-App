@@ -33,19 +33,15 @@ const envVars = loadEnvFile();
 // También leer variables de process.env (para Vercel/Render)
 // Estas variables tienen prioridad sobre .env
 // Valor por defecto para desarrollo local
-const defaultBackendUrl = 'http://localhost:3000';
+const defaultApiUrl = 'http://localhost:3000/api';
 
-const processEnvVars = {
-  STREAMS_BACKEND_URL: process.env.STREAMS_BACKEND_URL || defaultBackendUrl,
-  // Agregar otras variables de entorno que necesites aquí
-};
+const processEnvApiUrl = process.env.API_URL || defaultApiUrl;
 
 // Combinar variables (process.env tiene prioridad sobre .env)
 // Si no está en process.env ni en .env, usar el valor por defecto
 const allEnvVars = {
-  STREAMS_BACKEND_URL: processEnvVars.STREAMS_BACKEND_URL || envVars.STREAMS_BACKEND_URL || defaultBackendUrl,
-  ...envVars,
-  ...processEnvVars
+  API_URL: processEnvApiUrl || envVars.API_URL || defaultApiUrl,
+  ...envVars
 };
 
 // Crear archivo de configuración para Angular
@@ -84,6 +80,6 @@ fs.writeFileSync(browserEnvPath, browserEnvScript);
 console.log('✅ Environment variables configured');
 console.log('   - Firebase config:', configPath);
 console.log('   - Browser env script:', browserEnvPath);
-if (allEnvVars.STREAMS_BACKEND_URL) {
-  console.log(`   - STREAMS_BACKEND_URL: ${allEnvVars.STREAMS_BACKEND_URL}`);
+if (allEnvVars.API_URL) {
+  console.log(`   - API_URL: ${allEnvVars.API_URL}`);
 }

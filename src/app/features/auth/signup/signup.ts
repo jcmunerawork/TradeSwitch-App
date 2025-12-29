@@ -24,6 +24,7 @@ import { Store } from '@ngrx/store';
 import { AppContextService } from '../../../shared/context';
 import { StripeLoaderPopupComponent } from '../../../shared/pop-ups/stripe-loader-popup/stripe-loader-popup.component';
 import { AlertService } from '../../../core/services';
+import { BackendApiService } from '../../../core/services/backend-api.service';
 
 @Component({
   selector: 'app-signup',
@@ -65,7 +66,8 @@ export class SignupComponent implements OnInit {
     private subscriptionService: SubscriptionService,
     private store: Store,
     private appContext: AppContextService,
-    private alertService: AlertService
+    private alertService: AlertService,
+    private backendApi: BackendApiService
   ) {
     this.signupForm = this.fb.group({
       firstName: ['', [Validators.required, Validators.minLength(2)]],
@@ -118,11 +120,14 @@ export class SignupComponent implements OnInit {
           return;
         }
         
-        // Crear el usuario en Firebase Auth
+        // Crear el usuario en Firebase Auth (para obtener token)
         const userResponse = await this.authService.register(userCredentials);
         const userId = userResponse.user.uid;
         
-        // Crear el token y objeto usuario
+        // Obtener token de Firebase Auth
+        const idToken = await userResponse.user.getIdToken();
+        
+        // Crear el token y objeto usuario (para compatibilidad)
         const token = this.createTokenObject(userId);
         const user: User = await this.createUserObject(userId, token.id);
         
@@ -134,18 +139,28 @@ export class SignupComponent implements OnInit {
           user.status = UserStatus.ACTIVE;
         }
         
-        // Crear usuario y token en Firestore
-        await this.authService.createUser(user as User);
-        await this.authService.createLinkToken(token);
-
-        // Crear suscripción gratuita activa por defecto
-        const freeSubscriptionData: Omit<Subscription, 'id' | 'created_at' | 'updated_at'> = {
-          planId: "Cb1B0tpxdE6AP6eMZDo0",
-          status: UserStatus.ACTIVE,
-          userId: userId,
-        };
-
-        await this.subscriptionService.createSubscription(userId, freeSubscriptionData);
+        // Llamar al backend para crear usuario, token y suscripción
+        // El backend maneja: createUser, createLinkToken, createSubscription
+        try {
+          await this.backendApi.signup({
+            email: userCredentials.email,
+            password: userCredentials.password,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            phoneNumber: user.phoneNumber,
+            birthday: user.birthday,
+            isAdmin: this.isAdminSignup
+          });
+        } catch (error: any) {
+          // Si el backend falla, eliminar el usuario de Firebase Auth
+          console.error('Error creating user in backend:', error);
+          try {
+            await userResponse.user.delete();
+          } catch (deleteError) {
+            console.error('Error deleting Firebase Auth user:', deleteError);
+          }
+          throw error;
+        }
         // Iniciar sesión automáticamente
         const loginResponse = await this.authService.login(userCredentials);
         const userData = await this.authService.getUserData(loginResponse.user.uid);
@@ -409,25 +424,17 @@ export class SignupComponent implements OnInit {
       // Obtener el token de Firebase
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.currentUserId);
 
-      // Crear checkout session
-      const response = await fetch('https://api.tradeswitch.io/payments/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${bearerTokenFirebase}`
-        },
-        body: JSON.stringify({
-          priceId: selectedPlan.planPriceId,
-        })
-      });
+      // Crear checkout session usando backend
+      const response = await this.backendApi.createCheckoutSession(
+        selectedPlan.planPriceId,
+        bearerTokenFirebase
+      );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error creating checkout session: ${response.status} ${response.statusText} - ${errorText}`);
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Error creating checkout session');
       }
 
-      const responseData = await response.json();
-      const checkoutUrl = responseData.body?.url || responseData.url;
+      const checkoutUrl = response.data.url;
       
       if (!checkoutUrl) {
         throw new Error('Checkout URL not found in response');

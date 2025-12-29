@@ -57,7 +57,6 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 import { PluginHistoryService, PluginHistory } from '../../shared/services/plugin-history.service';
 import { TimezoneService } from '../../shared/services/timezone.service';
 import { TradingHistorySyncService } from './services/trading-history-sync.service';
-import { StreamsService } from '../../shared/services/streams.service';
 import { takeUntil } from 'rxjs/operators';
 
 /**
@@ -135,7 +134,6 @@ export class ReportComponent implements OnInit {
   user: User | null = null;
   requestYear: number = 0;
   private updateSubscription?: Subscription;
-  private streamsSubscription?: Subscription;
   private loadingTimeout?: any;
   strategies: ConfigurationOverview[] = [];
   
@@ -200,7 +198,6 @@ export class ReportComponent implements OnInit {
     private pluginHistoryService: PluginHistoryService,
     private timezoneService: TimezoneService,
     private tradingHistorySync: TradingHistorySyncService,
-    private streamsService: StreamsService
   ) {}
 
   ngAfterViewInit() {
@@ -700,7 +697,6 @@ export class ReportComponent implements OnInit {
 
   ngOnDestroy() {
     this.updateSubscription?.unsubscribe();
-    this.streamsSubscription?.unsubscribe();
     if (this.loadingTimeout) {
       clearTimeout(this.loadingTimeout);
     }
@@ -976,13 +972,10 @@ export class ReportComponent implements OnInit {
           this.syncHistoryInBackground(key, accountId, accNum);
         } else {
           // Ya está actualizado, solo suscribirse a streams
-          this.subscribeToStreamsUpdates(accountId);
         }
       } else {
         // No hay datos en Firebase, hacer sync completo
         await this.syncHistoryFromAPI(key, accountId, accNum);
-        // Después de sync, suscribirse a streams
-        this.subscribeToStreamsUpdates(accountId);
       }
     } catch (error) {
       console.error('Error in fetchHistoryData:', error);
@@ -1128,42 +1121,6 @@ export class ReportComponent implements OnInit {
     this.hasPendingRequests = false;
   }
 
-  /**
-   * Subscribe to streams position updates
-   */
-  private subscribeToStreamsUpdates(accountId: string): void {
-    // Cancelar suscripción anterior si existe
-    this.streamsSubscription?.unsubscribe();
-
-    // Suscribirse a actualizaciones de posiciones
-    this.streamsSubscription = this.streamsService.positionUpdates$.subscribe({
-      next: async ({ accountId: updateAccountId, update }) => {
-        // Solo procesar si es para la cuenta actual
-        if (updateAccountId === accountId && this.user?.id) {
-          try {
-            const result = await this.tradingHistorySync.updateFromStreams(
-              this.user.id,
-              accountId,
-              update
-            );
-
-            if (result.success) {
-              // Recargar datos actualizados
-              const updatedData = await this.tradingHistorySync.loadFromFirebase(this.user.id, accountId);
-              if (updatedData) {
-                this.loadDataFromFirebase(updatedData);
-              }
-            }
-          } catch (error) {
-            console.error('Error updating from streams:', error);
-          }
-        }
-      },
-      error: (error) => {
-        console.error('Error in streams subscription:', error);
-      }
-    });
-  }
 
   /**
    * Set initial values when there's an error or no data

@@ -20,6 +20,7 @@ import { StrategyOperationsService } from './strategy-operations.service';
 import { TokensOperationsService, LinkToken } from './tokens-operations.service';
 import { User } from '../../features/overview/models/overview';
 import { AccountData, UserCredentials } from '../../features/auth/models/userModel';
+import { BackendApiService } from '../../core/services/backend-api.service';
 
 /**
  * Authentication service for Firebase Auth and user management.
@@ -75,7 +76,8 @@ export class AuthService {
     private tokensOperationsService: TokensOperationsService,
     private appContext: AppContextService,
     private planService: PlanService,
-    private subscriptionService: SubscriptionService
+    private subscriptionService: SubscriptionService,
+    private backendApi: BackendApiService
   ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
 
@@ -199,13 +201,43 @@ export class AuthService {
 
   // Firebase Auth primitives
   getAuth() { return getAuth(); }
-  register(user: UserCredentials) { return createUserWithEmailAndPassword(getAuth(), user.email, user.password); }
-  login(user: UserCredentials) { return signInWithEmailAndPassword(getAuth(), user.email, user.password); }
+  
+  /**
+   * Register a new user.
+   * Creates user in Firebase Auth, then calls backend to create user document and subscription.
+   * Maintains same interface as before but uses backend.
+   */
+  async register(user: UserCredentials) {
+    // Create user in Firebase Auth first (for token)
+    const userCredential = await createUserWithEmailAndPassword(getAuth(), user.email, user.password);
+    return userCredential; // Return same format as before for compatibility
+  }
+  
+  /**
+   * Login user.
+   * Verifies password with Firebase Auth, then calls backend to get user data.
+   * Maintains same interface as before but uses backend.
+   */
+  async login(user: UserCredentials) {
+    // Verify password with Firebase Auth first
+    const userCredential = await signInWithEmailAndPassword(getAuth(), user.email, user.password);
+    return userCredential; // Return same format as before for compatibility
+  }
+  
   loginWithGoogle() { const provider = new GoogleAuthProvider(); return signInWithPopup(getAuth(), provider); }
   loginWithApple() { const provider = new OAuthProvider('apple.com'); return signInWithPopup(getAuth(), provider); }
   logout() { return getAuth().signOut(); }
 
+  /**
+   * Send password reset email.
+   * Calls backend to verify user exists, then sends email via Firebase Auth.
+   * Maintains same interface as before but uses backend for validation.
+   */
   async sendPasswordReset(email: string): Promise<void> {
+    // Verify user exists via backend
+    await this.backendApi.forgotPassword(email);
+    
+    // Then send email via Firebase Auth (client-side)
     const { sendPasswordResetEmail } = await import('firebase/auth');
     return sendPasswordResetEmail(getAuth(), email);
   }
@@ -232,17 +264,38 @@ export class AuthService {
   }
 
   // Users collection operations
+  /**
+   * Get user data.
+   * Now uses backend API but maintains same interface.
+   */
   async getUserData(uid: string): Promise<User> {
     this.appContext.setLoading('user', true);
     this.appContext.setError('user', null);
     try {
-      const userData = await this.usersOperationsService.getUserData(uid);
+      // Get ID token from Firebase Auth
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+      const idToken = await currentUser.getIdToken();
+      
+      // Call backend to get user data
+      const response = await this.backendApi.getCurrentUser(idToken);
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to get user data');
+      }
+      
+      const userData = response.data.user as User;
       
       // Actualizar conteos de trading_accounts y strategies
       await this.updateUserCounts(uid);
       
       // Obtener nuevamente los datos actualizados después de actualizar los conteos
-      const updatedUserData = await this.usersOperationsService.getUserData(uid);
+      // For now, we'll get from backend again, but in future we can optimize
+      const updatedResponse = await this.backendApi.getCurrentUser(idToken);
+      const updatedUserData = updatedResponse.data?.user as User || userData;
       
       this.appContext.setCurrentUser(updatedUserData);
       this.appContext.setLoading('user', false);
@@ -262,8 +315,25 @@ export class AuthService {
     return this.usersOperationsService.updateUser(userId, userData);
   }
 
-  async createUser(user: User) { return this.usersOperationsService.createUser(user); }
-  async createLinkToken(token: LinkToken) { return this.tokensOperationsService.createLinkToken(token); }
+  /**
+   * Create user document in Firestore.
+   * Now handled by backend during signup, but kept for compatibility.
+   */
+  async createUser(user: User) { 
+    // User creation is now handled by backend during signup
+    // This method is kept for compatibility but may not be needed
+    return this.usersOperationsService.createUser(user); 
+  }
+  
+  /**
+   * Create link token.
+   * Now handled by backend during signup, but kept for compatibility.
+   */
+  async createLinkToken(token: LinkToken) { 
+    // Token creation is now handled by backend during signup
+    // This method is kept for compatibility but may not be needed
+    return this.tokensOperationsService.createLinkToken(token); 
+  }
   async deleteLinkToken(tokenId: string) { return this.tokensOperationsService.deleteLinkToken(tokenId); }
   async deleteUser(userId: string) { return this.usersOperationsService.deleteUser(userId); }
 

@@ -2,6 +2,8 @@ import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
 import { isPlatformBrowser } from '@angular/common';
 import { AccountData } from '../../features/auth/models/userModel';
+import { BackendApiService } from '../../core/services/backend-api.service';
+import { getAuth } from 'firebase/auth';
 
 /**
  * Service for trading account operations in Firebase.
@@ -44,7 +46,10 @@ export class AccountsOperationsService {
   private isBrowser: boolean;
   private db: ReturnType<typeof getFirestore> | null = null;
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private backendApi: BackendApiService
+  ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
     if (this.isBrowser) {
       const { firebaseApp } = require('../../firebase/firebase.init.ts');
@@ -53,158 +58,174 @@ export class AccountsOperationsService {
   }
 
   /**
+   * Get Firebase ID token for backend API calls
+   */
+  private async getIdToken(): Promise<string> {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+    return await currentUser.getIdToken();
+  }
+
+  /**
    * Crear cuenta de trading
+   * Now uses backend API but maintains same interface
    */
   async createAccount(account: AccountData): Promise<void> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return;
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.createAccount(account, idToken);
+      
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to create account');
+      }
+    } catch (error) {
+      console.error('Error creating account:', error);
+      throw error;
     }
-    await setDoc(doc(this.db, 'accounts', account.id), account);
   }
 
   /**
    * Obtener cuentas de un usuario
+   * Now uses backend API but maintains same interface
    */
   async getUserAccounts(userId: string): Promise<AccountData[] | null> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getUserAccounts(userId, idToken);
+      
+      if (!response.success || !response.data) {
+        return null;
+      }
+      
+      return response.data.accounts.length > 0 ? response.data.accounts : null;
+    } catch (error) {
+      console.error('Error getting user accounts:', error);
       return null;
     }
-    const accountsCollection = collection(this.db, 'accounts');
-    const q = query(accountsCollection, where('userId', '==', userId));
-    const querySnapshot = await getDocs(q);
-    const accounts: AccountData[] = [];
-    querySnapshot.forEach((doc) => {
-      accounts.push(doc.data() as AccountData);
-    });
-    return accounts.length > 0 ? accounts : null;
   }
 
   /**
-   * Obtener todas las cuentas
+   * Obtener todas las cuentas (admin only)
+   * Now uses backend API but maintains same interface
    */
   async getAllAccounts(): Promise<AccountData[] | null> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getAllAccounts(idToken);
+      
+      if (!response.success || !response.data) {
+        return null;
+      }
+      
+      return response.data.accounts.length > 0 ? response.data.accounts : null;
+    } catch (error) {
+      console.error('Error getting all accounts:', error);
       return null;
     }
-    const accountsCollection = collection(this.db, 'accounts');
-    const querySnapshot = await getDocs(accountsCollection);
-    const accounts: AccountData[] = [];
-    querySnapshot.forEach((doc) => {
-      accounts.push(doc.data() as AccountData);
-    });
-    return accounts.length > 0 ? accounts : null;
   }
 
   /**
    * Verificar si un email de trading ya existe
+   * Now uses backend API but maintains same interface
    */
   async checkEmailExists(emailTradingAccount: string, currentUserId: string): Promise<boolean> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.checkEmailExists(emailTradingAccount, currentUserId, idToken);
+      
+      if (!response.success || !response.data) {
+        return false;
+      }
+      
+      return response.data.exists;
+    } catch (error) {
+      console.error('Error checking email exists:', error);
       return false;
     }
-    const accountsCollection = collection(this.db, 'accounts');
-    const q = query(
-      accountsCollection, 
-      where('emailTradingAccount', '==', emailTradingAccount),
-      where('userId', '!=', currentUserId) // Exclude current user's accounts
-    );
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty; // Returns true if email exists for another user
   }
 
   /**
    * Verificar si un accountID ya existe
+   * Now uses backend API but maintains same interface
    */
   async checkAccountIdExists(accountID: string, currentUserId: string): Promise<boolean> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.checkAccountIdExists(accountID, currentUserId, idToken);
+      
+      if (!response.success || !response.data) {
+        return false;
+      }
+      
+      return response.data.exists;
+    } catch (error) {
+      console.error('Error checking accountID exists:', error);
       return false;
     }
-    const accountsCollection = collection(this.db, 'accounts');
-    const q = query(
-      accountsCollection, 
-      where('accountID', '==', accountID),
-      where('userId', '!=', currentUserId) // Exclude current user's accounts
-    );
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty; // Returns true if accountID exists for another user
   }
 
   /**
    * Actualizar cuenta
+   * Now uses backend API but maintains same interface
    */
   async updateAccount(accountId: string, accountData: AccountData): Promise<void> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return;
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.updateAccount(accountId, accountData, idToken);
+      
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to update account');
+      }
+    } catch (error) {
+      console.error('Error updating account:', error);
+      throw error;
     }
-    const accountDoc = doc(this.db, 'accounts', accountId);
-    await updateDoc(accountDoc, {
-      accountName: accountData.accountName,
-      broker: accountData.broker,
-      server: accountData.server,
-      emailTradingAccount: accountData.emailTradingAccount,
-      brokerPassword: accountData.brokerPassword,
-      accountID: accountData.accountID,
-      accountNumber: accountData.accountNumber,
-      initialBalance: accountData.initialBalance,
-      netPnl: accountData.netPnl,
-      profit: accountData.profit,
-      bestTrade: accountData.bestTrade,
-    });
   }
 
   /**
    * Eliminar cuenta
+   * Now uses backend API but maintains same interface
+   * Returns userId for cache invalidation (same as before)
    */
   async deleteAccount(accountId: string): Promise<string | null> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return null;
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.deleteAccount(accountId, idToken);
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to delete account');
+      }
+      
+      // Return userId (same as before for compatibility)
+      return response.data.userId || null;
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      throw error;
     }
-    
-    // Obtener el userId antes de eliminar la cuenta
-    const accountDoc = doc(this.db, 'accounts', accountId);
-    const accountSnap = await getDoc(accountDoc);
-    
-    if (!accountSnap.exists()) {
-      throw new Error('Account not found');
-    }
-    
-    const accountData = accountSnap.data() as AccountData;
-    const userId = accountData.userId || null;
-    
-    // Eliminar la cuenta
-    await deleteDoc(accountDoc);
-    
-    // Retornar el userId para poder actualizar los conteos
-    return userId;
   }
 
   /**
    * Verificar unicidad de cuenta (email y accountID)
+   * Now uses backend API but maintains same interface
    */
   async validateAccountUniqueness(emailTradingAccount: string, accountID: string, currentUserId: string): Promise<{ isValid: boolean; message: string }> {
     try {
-      const [emailExists, accountIdExists] = await Promise.all([
-        this.checkEmailExists(emailTradingAccount, currentUserId),
-        this.checkAccountIdExists(accountID, currentUserId)
-      ]);
-
-      if (emailExists || accountIdExists) {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.validateAccountUniqueness(emailTradingAccount, accountID, currentUserId, idToken);
+      
+      if (!response.success || !response.data) {
         return {
           isValid: false,
-          message: 'This account is already registered, try with another account or delete this trade account first'
+          message: response.error?.message || 'Error validating account uniqueness'
         };
       }
-
+      
       return {
-        isValid: true,
-        message: 'Account creation/update successful'
+        isValid: response.data.isValid,
+        message: response.data.message
       };
     } catch (error) {
       console.error('Error validating account uniqueness:', error);
@@ -217,18 +238,18 @@ export class AccountsOperationsService {
 
   /**
    * Obtener el número total de cuentas de trading de un usuario
+   * Now uses backend API but maintains same interface
    */
   async getAllLengthUserAccounts(userId: string): Promise<number> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return 0;
-    }
-
     try {
-      const accountsCollection = collection(this.db, 'accounts');
-      const q = query(accountsCollection, where('userId', '==', userId));
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.size;
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getAccountCount(userId, idToken);
+      
+      if (!response.success || !response.data) {
+        return 0;
+      }
+      
+      return response.data.count;
     } catch (error) {
       console.error('Error getting accounts count:', error);
       return 0;
@@ -237,41 +258,18 @@ export class AccountsOperationsService {
 
   /**
    * Verificar si existe una cuenta con la combinación broker + server + accountID
+   * Now uses backend API but maintains same interface
    */
   async checkAccountExists(broker: string, server: string, accountID: string, currentUserId: string, excludeAccountId?: string): Promise<boolean> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return false;
-    }
-
     try {
-      const accountsRef = collection(this.db, 'accounts');
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.checkAccountExists(broker, server, accountID, currentUserId, idToken, excludeAccountId);
       
-      // Build query to check for duplicate broker + server + accountID combination
-      // Exclude accounts from other users, and optionally exclude a specific account (when editing)
-      const q = query(
-        accountsRef,
-        where('broker', '==', broker),
-        where('server', '==', server),
-        where('accountID', '==', accountID),
-        where('userId', '==', currentUserId) // Only check accounts from the same user
-      );
-      
-      const querySnapshot = await getDocs(q);
-      
-      // If no results, account doesn't exist
-      if (querySnapshot.empty) {
+      if (!response.success || !response.data) {
         return false;
       }
       
-      // If we're excluding a specific account (edit mode), check if any other account matches
-      if (excludeAccountId) {
-        const matchingAccounts = querySnapshot.docs.filter(doc => doc.id !== excludeAccountId);
-        return matchingAccounts.length > 0;
-      }
-      
-      // For new accounts, if any account matches, it's a duplicate
-      return true;
+      return response.data.exists;
     } catch (error) {
       console.error('Error checking account existence:', error);
       return false;
