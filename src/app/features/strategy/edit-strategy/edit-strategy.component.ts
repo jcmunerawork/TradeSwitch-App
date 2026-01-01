@@ -32,6 +32,7 @@ import { AlertService } from '../../../core/services';
 import { Instrument } from '../../report/models/report.model';
 import { StrategyCacheService } from '../services/strategy-cache.service';
 import { BalanceCacheService } from '../services/balance-cache.service';
+import { AppContextService } from '../../../shared/context';
 
 /**
  * Component for editing trading strategy configurations.
@@ -128,7 +129,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     private pluginHistoryService: PluginHistoryService,
     private strategyCacheService: StrategyCacheService,
     private balanceCacheService: BalanceCacheService,
-    private alertService: AlertService
+    private alertService: AlertService,
+    private appContext: AppContextService
   ) {
     this.config$ = this.store.select(allRules);
   }
@@ -209,15 +211,15 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * MÉTODO PRINCIPAL: Cargar estrategia desde cache
+   * MÉTODO PRINCIPAL: Cargar estrategia desde backend
    * FLUJO SIMPLIFICADO:
-   * - Si hay strategyId: Cargar desde cache del componente Strategy
+   * - Si hay strategyId: Cargar desde backend (siempre solicita al backend)
    * - Si no hay strategyId: Inicializar como nueva estrategia
    */
   loadStrategyFromCache() {
     if (this.strategyId) {
-      // Cargar estrategia existente desde cache
-      this.loadExistingStrategyFromCache();
+      // Cargar estrategia existente desde backend (siempre solicita al backend)
+      this.loadStrategyFromBackend();
     } else {
       // Inicializar como nueva estrategia
       this.initializeAsNewStrategy();
@@ -225,66 +227,81 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Cargar estrategia existente desde cache o Firebase
+   * Cargar estrategia directamente desde backend (siempre solicita al backend)
    */
-  loadExistingStrategyFromCache() {
-    if (!this.strategyId) return;
-    
-    // Verificar si el cache está disponible
-    if (!this.strategyCacheService.isCacheLoaded()) {
-      // Si el cache no está disponible, cargar directamente desde Firebase
-      this.loadStrategyFromFirebase();
-      return;
-    }
-
-    // Obtener estrategia del cache
-    const cachedStrategy = this.strategyCacheService.getStrategy(this.strategyId);
-    
-    if (!cachedStrategy) {
-      // Si no está en cache, cargar desde Firebase
-      this.loadStrategyFromFirebase();
-      return;
-    }
-
-    // Actualizar mini card
-    this.currentStrategyName = cachedStrategy.overview.name;
-    this.lastModifiedText = this.formatDate(cachedStrategy.overview.updated_at.toDate());
-    this.isFavorited = false;
-
-    // Cargar balance si es necesario
-    this.loadBalanceAndInitializeWithConfig(cachedStrategy.configuration);
-  }
-
-  /**
-   * Cargar estrategia directamente desde Firebase (fallback cuando cache no está disponible)
-   */
-  async loadStrategyFromFirebase() {
+  async loadStrategyFromBackend() {
     if (!this.strategyId || !this.user?.id) {
       this.initializeAsNewStrategy();
       return;
     }
 
     try {
-      // Cargar estrategia directamente desde Firebase
+      this.initialLoading = true;
+      
+      // Cargar estrategia directamente desde backend
       const strategyData = await this.strategySvc.getStrategyView(this.strategyId);
       
       if (!strategyData || !strategyData.configuration) {
+        console.error('Strategy data not found or missing configuration');
         this.initializeAsNewStrategy();
         return;
       }
 
       // Actualizar mini card
       this.currentStrategyName = strategyData.overview.name;
-      this.lastModifiedText = this.formatDate(strategyData.overview.updated_at.toDate());
+      
+      // Manejar diferentes formatos de updated_at (Firebase Timestamp o objeto con seconds/nanoseconds)
+      const updatedAt = this.parseDate(strategyData.overview.updated_at);
+      this.lastModifiedText = this.formatDate(updatedAt);
       this.isFavorited = false;
 
       // Cargar balance y inicializar con configuración
       this.loadBalanceAndInitializeWithConfig(strategyData.configuration);
       
     } catch (error) {
-      console.error('Error loading strategy from Firebase:', error);
+      console.error('Error loading strategy from backend:', error);
       this.initializeAsNewStrategy();
+    } finally {
+      this.initialLoading = false;
     }
+  }
+
+  /**
+   * Parsear fecha desde diferentes formatos (Firebase Timestamp, objeto con seconds/nanoseconds, o string ISO)
+   */
+  private parseDate(dateValue: any): Date {
+    if (!dateValue) {
+      return new Date();
+    }
+    
+    // Si es un objeto Date, retornarlo directamente
+    if (dateValue instanceof Date) {
+      return dateValue;
+    }
+    
+    // Si tiene método toDate() (Firebase Timestamp)
+    if (typeof dateValue.toDate === 'function') {
+      return dateValue.toDate();
+    }
+    
+    // Si es un objeto con seconds y nanoseconds (formato del backend)
+    if (dateValue.seconds !== undefined) {
+      return new Date(dateValue.seconds * 1000 + (dateValue.nanoseconds || 0) / 1000000);
+    }
+    
+    // Si es una string ISO
+    if (typeof dateValue === 'string') {
+      return new Date(dateValue);
+    }
+    
+    // Si es un número (timestamp)
+    if (typeof dateValue === 'number') {
+      return new Date(dateValue);
+    }
+    
+    // Fallback: fecha actual
+    console.warn('Unknown date format:', dateValue);
+    return new Date();
   }
 
   /**
@@ -314,19 +331,14 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
    * Actualizar balance en background sin bloquear la UI
    */
   private updateBalanceInBackground(account: AccountData) {
-    this.store.select(selectUserKey).pipe().subscribe({
-      next: (userKey) => {
-        if (userKey && userKey !== '') {
-          this.reportSvc.getBalanceData(account.accountID as string, userKey, account.accountNumber as number).subscribe({
-            next: (balance) => {
-              // Actualizar cache con nuevo balance
-              this.balanceCacheService.setBalance(account.accountID, balance);
-            },
-            error: (err) => {
-              console.error('Error fetching balance data in background:', err);
-            },
-          });
-        }
+    // El backend gestiona el accessToken automáticamente
+    this.reportSvc.getBalanceData(account.accountID as string, account.accountNumber as number).subscribe({
+      next: (balance) => {
+        // Actualizar cache con nuevo balance
+        this.balanceCacheService.setBalance(account.accountID, balance);
+      },
+      error: (err) => {
+        console.error('Error fetching balance data in background:', err);
       },
     });
   }
@@ -547,50 +559,77 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   }
 
   loadInstruments(userKey: string, account: AccountData) {
+    // Primero intentar obtener instrumentos del contexto (ya cargados después del login)
+    const cachedInstruments = this.appContext.getInstrumentsForAccount(account.accountID);
+    
+    if (cachedInstruments && cachedInstruments.length > 0) {
+      // Extraer solo los nombres de los instrumentos
+      this.availableInstruments = cachedInstruments.map((instrument: any) => 
+        instrument.name || instrument.localizedName || ''
+      ).filter((name: string) => name);
+      
+      // Guardar instrumentos en localStorage para uso en reglas de estrategia
+      try {
+        const instrumentNames = cachedInstruments
+          .map((instrument: any) => instrument.name || instrument.localizedName)
+          .filter((name: string) => name && name.trim() !== '');
+        localStorage.setItem('tradeswitch_available_instruments', JSON.stringify(instrumentNames));
+      } catch (error) {
+        console.error('   ❌ [LOCALSTORAGE] Error guardando instrumentos en localStorage:', error);
+      }
+      return;
+    }
+    
+    // Si no están en el contexto, cargarlos desde el backend
+    // El backend gestiona el accessToken automáticamente, no es necesario userKey
     this.reportSvc.getAllInstruments(
-      userKey, 
-      account.accountNumber, 
-      account.accountID
+      account.accountID,
+      account.accountNumber
     ).subscribe({
       next: (instruments: Instrument[]) => {
         // Extraer solo los nombres de los instrumentos
         this.availableInstruments = instruments.map(instrument => instrument.name);
+        
+        // Guardar en el contexto para futuras referencias
+        if (instruments.length > 0) {
+          this.appContext.setInstrumentsForAccount(account.accountID, instruments);
+          
+          // Guardar instrumentos en localStorage para uso en reglas de estrategia
+          try {
+            const instrumentNames = instruments
+              .map((instrument: Instrument) => instrument.name || instrument.localizedName)
+              .filter((name: string) => name && name.trim() !== '');
+            localStorage.setItem('tradeswitch_available_instruments', JSON.stringify(instrumentNames));
+          } catch (error) {
+            console.error('   ❌ [LOCALSTORAGE] Error guardando instrumentos en localStorage:', error);
+          }
+        }
       },
       error: (err) => {
-        console.error('Error loading instruments:', err);
+        console.error('   ❌ [API] Error loading instruments:', err);
         this.availableInstruments = [];
       }
     });
   }
 
   getActualBalance() {
-    this.store
-      .select(selectUserKey)
-      .pipe()
-      .subscribe({
-        next: (userKey) => {
-          if (userKey === '') {
-            this.fetchUserKey();
-          } else {
-            // Use the first account's data dynamically
-            if (this.accountsData.length > 0) {
-              const firstAccount = this.accountsData[0];
-              // El servicio ya actualiza el contexto automáticamente
-              this.reportSvc.getBalanceData(firstAccount.accountID as string, userKey, firstAccount.accountNumber as number).subscribe({
-                next: (balance) => {
-                  this.initializeWithConfigAndBalance(initialStrategyState, balance);
-                },
-                error: (err) => {
-                  console.error('Error fetching balance data', err);
-                  this.initializeWithConfigAndBalance(initialStrategyState, 0);
-                },
-              });
-            } else {
-              this.initializeWithConfigAndBalance(initialStrategyState, 0);
-            }
-          }
+    // El backend gestiona el accessToken automáticamente, no es necesario userKey para getBalanceData
+    // Use the first account's data dynamically
+    if (this.accountsData.length > 0) {
+      const firstAccount = this.accountsData[0];
+      // El servicio ya actualiza el contexto automáticamente
+      this.reportSvc.getBalanceData(firstAccount.accountID as string, firstAccount.accountNumber as number).subscribe({
+        next: (balance) => {
+          this.initializeWithConfigAndBalance(initialStrategyState, balance);
+        },
+        error: (err) => {
+          console.error('Error fetching balance data', err);
+          this.initializeWithConfigAndBalance(initialStrategyState, 0);
         },
       });
+    } else {
+      this.initializeWithConfigAndBalance(initialStrategyState, 0);
+    }
   }
 
   /**
@@ -747,8 +786,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
             // Actualizar fecha de modificación en la mini card
             this.lastModifiedText = this.formatDate(new Date());
             
-            // Limpiar cache para forzar recarga
-            this.strategyCacheService.clearCache();
+            // NOTA: updateStrategyView ya llama a reloadAllStrategiesToCache internamente
+            // No es necesario limpiar el cache aquí, ya se recarga automáticamente
             
             this.router.navigate(['/strategy']);
           })
@@ -765,8 +804,10 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         this.strategySvc
           .createStrategyView(this.user.id, this.currentStrategyName, newConfig)
           .then(async (strategyId) => {
-            // Limpiar cache para forzar recarga
-            this.strategyCacheService.clearCache();
+            // Recargar todas las estrategias en cache después de crear
+            if (this.user?.id) {
+              await this.strategySvc.reloadAllStrategiesToCache(this.user.id);
+            }
             
             this.router.navigate(['/strategy']);
           })
@@ -920,7 +961,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   toggleFavorite() {
     this.isFavorited = !this.isFavorited;
     // TODO: Implementar persistencia de favoritos en Firebase
-    console.log('Strategy favorited:', this.isFavorited);
   }
 
   formatDate(date: Date): string {
@@ -978,7 +1018,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           } else {
             // No hay plugin para este usuario
             this.isPluginActive = false;
-            console.log('No plugin found for user');
           }
           
         },

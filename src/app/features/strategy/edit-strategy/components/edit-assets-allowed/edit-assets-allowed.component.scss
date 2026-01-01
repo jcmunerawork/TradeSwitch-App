@@ -68,6 +68,11 @@
   }
 }
 
+.currency-dropdown {
+  position: relative;
+  width: 100%;
+}
+
 .dropdown-toggle {
   border: 1px solid #8e8e93;
   border-radius: 8px;
@@ -82,22 +87,25 @@
   width: 100%;
   max-height: 200px;
   overflow-y: auto;
-  border: 1px solid #ddd;
+  border: 1px solid #8e8e93;
   border-top: none;
   border-radius: 0 0 8px 8px;
   z-index: 1000;
+  background: #18181b;
+  margin-top: 2px;
   
   .dropdown-item {
     padding: 8px 12px;
     cursor: pointer;
     transition: background-color 0.2s;
+    color: #fafafa;
     
     &:hover {
-      background-color: #f0f0f0;
+      background-color: #313131;
     }
     
     &.selected {
-      background-color: #e3f2fd;
+      background-color: #313131;
     }
   }
 }

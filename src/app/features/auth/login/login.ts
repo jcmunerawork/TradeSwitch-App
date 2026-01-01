@@ -122,12 +122,10 @@ export class Login {
 
   signInWithGoogle(): void {
     // TODO: Implement Google sign-in
-    console.log('Google sign-in');
   }
 
   signInWithApple(): void {
     // TODO: Implement Apple sign-in
-    console.log('Apple sign-in');
   }
 
   // Validador personalizado para email

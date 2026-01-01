@@ -1060,7 +1060,6 @@ export class PlanSettingsComponent implements OnInit {
     
     // Navegar a las páginas de gestión de recursos
     // TODO: Implementar navegación a las páginas de gestión de recursos
-    console.log('Please delete excess resources before downgrading your plan.');
   }
 
   /**

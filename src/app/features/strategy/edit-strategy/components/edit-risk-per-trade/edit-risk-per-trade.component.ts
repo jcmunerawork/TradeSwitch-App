@@ -122,7 +122,6 @@ export class EditRiskPerTradeComponent implements OnInit {
   private initializeUserAccounts(): void {
     if (this.userAccounts && this.userAccounts.length > 0) {
       // Las cuentas ya vienen cargadas desde el componente padre
-      console.log('User accounts loaded from parent:', this.userAccounts);
     } else {
       // Si no hay cuentas, cargar desde el servicio (fallback)
       this.loadUserAccounts();
@@ -239,6 +238,7 @@ export class EditRiskPerTradeComponent implements OnInit {
     // Solo cargar el balance actual cuando el usuario seleccione "by actual balance"
     if (type === 'by actual balance') {
       if (this.userAccounts.length > 0) {
+        // Cargar balances directamente desde Firebase (account.balance) sin hacer peticiones a la API
         this.loadActualBalancesForAccounts();
       } else {
         this.loadUserAccounts().then(() => this.loadActualBalancesForAccounts());
@@ -264,35 +264,107 @@ export class EditRiskPerTradeComponent implements OnInit {
       }
       const accounts = await this.authService.getUserAccounts(userId);
       this.userAccounts = accounts || [];
-    } catch {
+      
+      // Si hay cuentas, actualizar los balances desde el backend y guardarlos en Firebase
+      if (this.userAccounts.length > 0 && firebaseUser) {
+        await this.updateAccountBalancesFromBackend();
+      }
+    } catch (error) {
+      console.error('Error loading user accounts:', error);
       this.userAccounts = [];
+    }
+  }
+
+  /**
+   * Actualizar balances de todas las cuentas desde el backend y guardarlos en Firebase
+   */
+  private async updateAccountBalancesFromBackend(): Promise<void> {
+    try {
+      const firebaseUser = this.authService.getAuth().currentUser;
+      if (!firebaseUser) {
+        return;
+      }
+
+      const idToken = await firebaseUser.getIdToken();
+      
+      // Actualizar balances para todas las cuentas en paralelo
+      const balancePromises = this.userAccounts.map(async (account) => {
+        try {
+          if (!account.accountID || account.accountNumber === undefined) {
+            return;
+          }
+
+          // Obtener balance desde el backend
+          const balanceResponse = await this.reportService.getBalanceData(
+            account.accountID,
+            account.accountNumber
+          ).toPromise();
+
+          if (balanceResponse && balanceResponse.balance !== undefined) {
+            const balance = balanceResponse.balance;
+            
+            // Actualizar en el contexto
+            this.appContext.updateAccountBalance(account.accountID, balance);
+            
+            // Actualizar en Firebase
+            const updatedAccount = {
+              ...account,
+              balance: balance
+            };
+            await this.authService.updateAccount(account.id, updatedAccount);
+          }
+        } catch (error) {
+          console.error(`❌ EditRiskPerTradeComponent: Error actualizando balance para cuenta ${account.accountID}:`, error);
+        }
+      });
+
+      await Promise.all(balancePromises);
+    } catch (error) {
+      console.error('❌ EditRiskPerTradeComponent: Error en updateAccountBalancesFromBackend:', error);
     }
   }
 
   async loadActualBalancesForAccounts() {
     try {
       const balances: Record<string, number> = {};
+      
       for (const acc of this.userAccounts) {
         try {
-          // Obtener token de TradeLocker por cuenta (igual que en ReportService)
-          const token = await this.reportService
-            .getUserKey(acc.emailTradingAccount, acc.brokerPassword, acc.server)
-            .toPromise();
-          if (!token) {
-            balances[acc.accountID] = 0;
+          // 1. PRIMERO: Usar el balance desde Firebase (account.balance) - Este es el balance actual guardado
+          if (acc.balance !== undefined && acc.balance !== null && acc.balance >= 0) {
+            balances[acc.accountID] = acc.balance;
             continue;
           }
-          // Con ese token, obtener el balance de la cuenta
+          
+          // 2. SEGUNDO: Intentar obtener el balance desde el contexto (balances en tiempo real)
+          const accountBalances = this.appContext.accountBalances();
+          const balanceFromContext = accountBalances.get(acc.accountID) || 
+                                    accountBalances.get(acc.id);
+          
+          if (balanceFromContext !== undefined && balanceFromContext !== null && balanceFromContext > 0) {
+            balances[acc.accountID] = balanceFromContext;
+            continue;
+          }
+          
+          // 3. Fallback: Hacer petición a la API
           const data = await this.reportService
-            .getBalanceData(acc.accountID, token, acc.accountNumber)
+            .getBalanceData(acc.accountID, acc.accountNumber)
             .toPromise();
-          balances[acc.accountID] = data?.balance || 0;
-        } catch {
+          
+          if (data?.balance) {
+            balances[acc.accountID] = data.balance;
+          } else {
+            balances[acc.accountID] = 0;
+            console.warn(`⚠️ EditRiskPerTradeComponent: No se pudo obtener el balance para cuenta ${acc.accountID}`);
+          }
+        } catch (error) {
+          console.error(`❌ EditRiskPerTradeComponent: Error cargando balance para cuenta ${acc.accountID}:`, error);
           balances[acc.accountID] = 0;
         }
       }
       this.accountActualBalances = balances;
-    } catch {
+    } catch (error) {
+      console.error('❌ EditRiskPerTradeComponent: Error en loadActualBalancesForAccounts:', error);
       this.accountActualBalances = {};
     }
   }
@@ -316,7 +388,26 @@ export class EditRiskPerTradeComponent implements OnInit {
       this.isInitialBalanceConfirmed = true;
       this.isInitialBalanceEditing = false;
     } else if (this.selectedBalanceType === 'by actual balance' && this.selectedAccount) {
-      this.actualBalance = this.accountActualBalances[this.selectedAccount.accountID] || 0;
+      // PRIMERO: Usar el balance desde Firebase (account.balance) - Este es el balance actual guardado
+      if (this.selectedAccount.balance !== undefined && this.selectedAccount.balance !== null && this.selectedAccount.balance >= 0) {
+        this.actualBalance = this.selectedAccount.balance;
+        // Actualizar también en accountActualBalances para consistencia
+        this.accountActualBalances[this.selectedAccount.accountID] = this.selectedAccount.balance;
+      } else {
+        // SEGUNDO: Intentar obtener el balance desde contexto
+        const accountBalances = this.appContext.accountBalances();
+        const balanceFromContext = accountBalances.get(this.selectedAccount.accountID) || 
+                                  accountBalances.get(this.selectedAccount.id);
+        
+        if (balanceFromContext !== undefined && balanceFromContext !== null && balanceFromContext > 0) {
+          this.actualBalance = balanceFromContext;
+          // Actualizar también en accountActualBalances para consistencia
+          this.accountActualBalances[this.selectedAccount.accountID] = balanceFromContext;
+        } else {
+          // Usar el balance cargado previamente
+          this.actualBalance = this.accountActualBalances[this.selectedAccount.accountID] || 0;
+        }
+      }
     }
     this.saveConfiguration();
   }
@@ -447,16 +538,6 @@ export class EditRiskPerTradeComponent implements OnInit {
   // Método legacy para cargar un balance actual (se mantiene por compatibilidad, ahora usamos loadActualBalancesForAccounts)
   async loadActualBalance() {
     try {
-      // Obtener el usuario actual de Firebase directamente
-      const currentUser = this.authService.getAuth().currentUser;
-      if (!currentUser) {
-        this.actualBalance = 0;
-        return;
-      }
-
-      // Obtener el token fresco
-      const accessToken = await currentUser.getIdToken(true); // true = force refresh
-      
       // Obtener las cuentas del usuario desde el contexto
       const userAccounts = this.appContext.userAccounts();
       if (!userAccounts || userAccounts.length === 0) {
@@ -466,10 +547,25 @@ export class EditRiskPerTradeComponent implements OnInit {
 
       const account = userAccounts[0];
       
-      // Hacer la petición al servicio de reportes para obtener el balance
+      // 1. Intentar obtener el balance desde el contexto (balances en tiempo real)
+      const accountBalances = this.appContext.accountBalances();
+      const balanceFromContext = accountBalances.get(account.accountID) || 
+                                accountBalances.get(account.id);
+      
+      if (balanceFromContext !== undefined && balanceFromContext !== null && balanceFromContext > 0) {
+        this.actualBalance = balanceFromContext;
+        return;
+      }
+      
+      // 2. Intentar obtener el balance desde Firebase (account.balance)
+      if (account.balance !== undefined && account.balance !== null && account.balance > 0) {
+        this.actualBalance = account.balance;
+        return;
+      }
+      
+      // 3. Fallback: Hacer petición a la API
       const balanceData = await this.reportService.getBalanceData(
         account.accountID,
-        accessToken,
         account.accountNumber
       ).toPromise();
 
@@ -479,9 +575,10 @@ export class EditRiskPerTradeComponent implements OnInit {
         this.appContext.updateReportBalance(balanceData);
       } else {
         this.actualBalance = 0;
+        console.warn('⚠️ EditRiskPerTradeComponent: No se pudo obtener el balance');
       }
     } catch (error) {
-      console.error('Error loading actual balance:', error);
+      console.error('❌ EditRiskPerTradeComponent: Error loading actual balance:', error);
       this.actualBalance = 0;
     }
   }

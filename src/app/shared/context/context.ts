@@ -242,6 +242,9 @@ export class AppContextService {
   // Signal para balances en tiempo real por accountId
   public accountBalances = signal<Map<string, number>>(new Map());
   
+  // Signal para instrumentos por accountId (accountID de Firebase)
+  public instrumentsByAccount = signal<Map<string, any[]>>(new Map());
+  
   // Signals para datos de overview
   public overviewData = signal<{
     allUsers: User[];
@@ -775,22 +778,115 @@ export class AppContextService {
   
   /**
    * Update account balance in real-time
+   * 
+   * @param accountId - Account ID from backend (can be "D#1492655" format or regular accountID)
+   * @param balance - Balance value (equity from AccountStatus)
    */
+  /**
+   * Update account metrics (netPnl, profit, bestTrade) from backend
+   */
+  updateAccountMetrics(accountId: string, metrics: { netPnl: number; profit: number; bestTrade: number }): void {
+    const currentAccounts = this.userAccounts();
+    const updatedAccounts = currentAccounts.map(account => {
+      if (account.id === accountId) {
+        return {
+          ...account,
+          netPnl: metrics.netPnl,
+          profit: metrics.profit,
+          bestTrade: metrics.bestTrade
+        };
+      }
+      return account;
+    });
+    this.userAccounts.set(updatedAccounts);
+  }
+
+  /**
+   * Establecer instrumentos para una cuenta específica
+   * @param accountId - ID de la cuenta (accountID de Firebase)
+   * @param instruments - Array de instrumentos
+   */
+  setInstrumentsForAccount(accountId: string, instruments: any[]): void {
+    const currentInstruments = new Map(this.instrumentsByAccount());
+    currentInstruments.set(accountId, instruments);
+    this.instrumentsByAccount.set(currentInstruments);
+  }
+
+  /**
+   * Obtener instrumentos para una cuenta específica
+   * @param accountId - ID de la cuenta (accountID de Firebase)
+   * @returns Array de instrumentos o null si no existen
+   */
+  getInstrumentsForAccount(accountId: string): any[] | null {
+    const instruments = this.instrumentsByAccount().get(accountId);
+    return instruments || null;
+  }
+
+  /**
+   * Obtener nombres de instrumentos para una cuenta específica
+   * @param accountId - ID de la cuenta (accountID de Firebase)
+   * @returns Array de nombres de instrumentos
+   */
+  getInstrumentNamesForAccount(accountId: string): string[] {
+    const instruments = this.getInstrumentsForAccount(accountId);
+    if (!instruments || instruments.length === 0) {
+      return [];
+    }
+    return instruments.map((instrument: any) => instrument.name || instrument.localizedName || '').filter((name: string) => name);
+  }
+
   updateAccountBalance(accountId: string, balance: number): void {
     const currentBalances = new Map(this.accountBalances());
-    currentBalances.set(accountId, balance);
+    
+    // The accountId from backend might be in format "D#1492655"
+    // We need to find the matching account in our system
+    const accounts = this.userAccounts();
+    
+    // Try to find account by accountID first
+    let matchingAccount = accounts.find(acc => acc.accountID === accountId);
+    
+    // If not found, try to match by extracting the number part from "D#1492655" format
+    if (!matchingAccount && accountId.includes('#')) {
+      const accountNumber = accountId.split('#')[1];
+      matchingAccount = accounts.find(acc => 
+        acc.accountID === accountNumber || 
+        acc.accountID === accountId ||
+        String(acc.accountNumber) === accountNumber
+      );
+    }
+    
+    // If still not found, try matching by accountNumber
+    if (!matchingAccount) {
+      const accountNumber = parseInt(accountId.replace(/[^0-9]/g, ''));
+      if (!isNaN(accountNumber)) {
+        matchingAccount = accounts.find(acc => acc.accountNumber === accountNumber);
+      }
+    }
+    
+    // Use the matching account's accountID or the original accountId
+    const balanceKey = matchingAccount?.accountID || matchingAccount?.id || accountId;
+    
+    // Update balance in the map
+    currentBalances.set(balanceKey, balance);
+    
+    // Also set with the original accountId in case it's needed
+    if (balanceKey !== accountId) {
+      currentBalances.set(accountId, balance);
+    }
+    
     this.accountBalances.set(currentBalances);
     
     // Also update the account in userAccounts if it exists
-    const accounts = this.userAccounts();
-    const accountIndex = accounts.findIndex(acc => acc.accountID === accountId || acc.id === accountId);
-    if (accountIndex !== -1) {
-      const updatedAccounts = [...accounts];
-      updatedAccounts[accountIndex] = {
-        ...updatedAccounts[accountIndex],
-        balance
-      };
-      this.setUserAccounts(updatedAccounts);
+    if (matchingAccount) {
+      const accountIndex = accounts.findIndex(acc => acc.id === matchingAccount!.id);
+      if (accountIndex !== -1) {
+        const updatedAccounts = [...accounts];
+        updatedAccounts[accountIndex] = {
+          ...updatedAccounts[accountIndex],
+          balance
+        };
+        this.setUserAccounts(updatedAccounts);
+      }
     }
   }
   
@@ -867,8 +963,6 @@ export class AppContextService {
    */
   private async loadUserAccountsIfNeeded(userId: string): Promise<void> {
     // Este método se implementará cuando se integre con AuthService
-    // Por ahora, solo logueamos que necesitamos cargar las cuentas
-    console.log('Loading user accounts for userId:', userId);
   }
 
   /**
@@ -879,27 +973,15 @@ export class AppContextService {
       this.setLoading('tradeLocker', true);
       this.setError('tradeLocker', null);
 
-      // Obtener userKey
-      const userKey = await this.tradeLockerApi.getUserKey(
-        account.emailTradingAccount,
-        account.brokerPassword,
-        account.server
-      ).toPromise();
-
-      if (!userKey) {
-        throw new Error('No se pudo obtener userKey');
-      }
-
+      // El backend gestiona el accessToken automáticamente, no es necesario obtenerlo
       // Obtener balance data
       const balanceData = await this.tradeLockerApi.getAccountBalance(
         account.accountID,
-        userKey,
         1
       ).toPromise();
 
       // Obtener trading history
       const tradingHistory = await this.tradeLockerApi.getTradingHistory(
-        userKey,
         account.accountID,
         1
       ).toPromise();

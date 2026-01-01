@@ -15,7 +15,6 @@
     "setup-env": "node scripts/setup-env.js",
     "commit": "cz",
     "prepare": "husky"
-    
   },
   "prettier": {
     "overrides": [
@@ -69,12 +68,14 @@
     "@angular/cli": "^20.1.4",
     "@angular/compiler-cli": "^20.1.0",
     "@commitizen/cz-conventional-changelog": "^1.2.0",
+    "@types/crypto-js": "^4.2.2",
     "@types/dotenv": "^6.1.1",
     "@types/express": "^5.0.1",
     "@types/jasmine": "~5.1.0",
     "@types/node": "^20.17.19",
     "angular-cli-ghpages": "^2.0.3",
     "commitizen": "^4.3.1",
+    "concurrently": "^9.1.2",
     "husky": "^9.1.7",
     "jasmine-core": "~5.8.0",
     "karma": "~6.4.0",

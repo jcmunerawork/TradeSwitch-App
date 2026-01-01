@@ -40,7 +40,8 @@
       <div class="trades-table-container">
         <div class="trades-table">
           <div class="table-header">
-            <div class="header-cell">Open time</div>
+            <div class="header-cell">Position Opened</div>
+            <div class="header-cell">Position Closed</div>
             <div class="header-cell">Ticker</div>
             <div class="header-cell">Side</div>
             <div class="header-cell">P&L</div>
@@ -50,7 +51,8 @@
 
           <div class="table-body">
             <div class="table-row" *ngFor="let trade of trades">
-              <div class="table-cell time-cell">{{ trade.openTime }}</div>
+              <div class="table-cell time-cell">{{ trade.positionOpened }}</div>
+              <div class="table-cell time-cell">{{ trade.positionClosed }}</div>
               <div class="table-cell ticker-cell">
                 <span class="ticker-badge">{{ trade.ticker }}</span>
               </div>

@@ -1,4 +1,5 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Store } from '@ngrx/store';
 import { SettingsService } from '../../service/strategy.service';
 import {
@@ -62,8 +63,15 @@ export class AssetsAllowedComponent implements OnInit {
   searchTerm: string = '';
 
   dropdownOpen = false;
+  private isBrowser: boolean;
 
-  constructor(private store: Store, private settingsService: SettingsService) {}
+  constructor(
+    private store: Store, 
+    private settingsService: SettingsService,
+    @Inject(PLATFORM_ID) platformId: Object
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+  }
 
   closeDropdown() {
     this.dropdownOpen = false;
@@ -79,12 +87,17 @@ export class AssetsAllowedComponent implements OnInit {
 
   onSearchInput(event: Event) {
     this.searchTerm = (event.target as HTMLInputElement).value;
-    this.dropdownOpen = true;
+    
+    if (this.config.isActive) {
+      this.dropdownOpen = true;
+    }
   }
 
   onSearchFocus() {
     if (this.config.isActive) {
       this.dropdownOpen = true;
+    } else {
+      console.warn('⚠️ AssetsAllowedComponent: No se puede abrir dropdown porque la regla no está activa');
     }
   }
 
@@ -104,16 +117,46 @@ export class AssetsAllowedComponent implements OnInit {
   }
 
   getFilteredSymbols(): string[] {
-    if (!this.searchTerm) {
-      return this.availableSymbolsOptions;
-    }
-    return this.availableSymbolsOptions.filter(symbol => 
-      symbol.toLowerCase().includes(this.searchTerm.toLowerCase())
-    );
+    const filtered = !this.searchTerm
+      ? this.availableSymbolsOptions
+      : this.availableSymbolsOptions.filter(symbol => 
+          symbol.toLowerCase().includes(this.searchTerm.toLowerCase())
+        );
+    
+    return filtered;
   }
 
   ngOnInit(): void {
     this.listenRuleConfiguration();
+    this.loadInstrumentsFromLocalStorage();
+  }
+
+  /**
+   * Carga los instrumentos disponibles desde localStorage
+   * Estos instrumentos se guardan cuando se hace login o se edita una strategy
+   */
+  private loadInstrumentsFromLocalStorage(): void {
+    if (!this.isBrowser) {
+      console.warn('⚠️ AssetsAllowedComponent: No es navegador, no se pueden cargar instrumentos desde localStorage');
+      return;
+    }
+
+    try {
+      const storedInstruments = localStorage.getItem('tradeswitch_available_instruments');
+      
+      if (storedInstruments) {
+        const instruments = JSON.parse(storedInstruments);
+        if (Array.isArray(instruments) && instruments.length > 0) {
+          this.availableSymbolsOptions = instruments;
+        } else {
+          console.warn('⚠️ AssetsAllowedComponent: Los instrumentos en localStorage no son un array válido o están vacíos', instruments);
+        }
+      } else {
+        console.warn('⚠️ AssetsAllowedComponent: No se encontraron instrumentos en localStorage');
+      }
+    } catch (error) {
+      console.error('❌ AssetsAllowedComponent: Error cargando instrumentos desde localStorage:', error);
+    }
   }
 
   addSymbol(symbol: string) {

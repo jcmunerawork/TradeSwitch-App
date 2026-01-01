@@ -115,7 +115,6 @@ export class TradingHistorySyncService {
   async syncHistoryFromAPI(
     userId: string,
     accountId: string,
-    accessToken: string,
     accNum: number
   ): Promise<SyncResult> {
     if (!this.db || !this.isBrowser) {
@@ -130,7 +129,7 @@ export class TradingHistorySyncService {
       let historyTrades: GroupedTradeFinal[] = [];
       
       try {
-        const historyObservable = this.reportService.getHistoryData(accountId, accessToken, accNum);
+        const historyObservable = this.reportService.getHistoryData(accountId, accNum);
         historyTrades = await firstValueFrom(historyObservable);
         
         if (!Array.isArray(historyTrades)) {
@@ -171,7 +170,6 @@ export class TradingHistorySyncService {
       // 3. Obtener nombres de instrumentos únicos
       const instrumentMap = await this.fetchAndCacheInstruments(
         historyTrades,
-        accessToken,
         accNum,
         userId,
         accountId
@@ -324,7 +322,6 @@ export class TradingHistorySyncService {
    */
   private async fetchAndCacheInstruments(
     trades: GroupedTradeFinal[],
-    accessToken: string,
     accNum: number,
     userId: string,
     accountId: string
@@ -359,7 +356,7 @@ export class TradingHistorySyncService {
       try {
         const details: any = await firstValueFrom(
           this.reportService.getInstrumentDetails(
-            accessToken,
+            accountId,
             instrument.tradableInstrumentId,
             instrument.routeId,
             accNum

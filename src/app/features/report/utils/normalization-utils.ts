@@ -87,11 +87,11 @@ export function arrayToHistoryTrade(arr: any[]): historyTrade {
  *
  * @param orders - Array of historyTrade objects to group
  * @param reportService - ReportService instance for fetching instrument details
- * @param accessToken - User authentication token
+ * @param accountId - Account ID (el backend gestiona el accessToken automáticamente)
  * @param accNum - Account number
  * @returns Promise that resolves to an array of GroupedTradeFinal objects
  */
-export async function groupOrdersByPosition(orders: historyTrade[], reportService: any, accessToken: string, accNum: number): Promise<GroupedTradeFinal[]> {
+export async function groupOrdersByPosition(orders: historyTrade[], reportService: any, accountId: string, accNum: number): Promise<GroupedTradeFinal[]> {
   // Filtrar solo trades que no estén cancelados y que tengan status 'Filled' (case insensitive)
   const validOrders = orders.filter(order => {
     const hasValidStatus = order.status && (
@@ -120,7 +120,7 @@ export async function groupOrdersByPosition(orders: historyTrade[], reportServic
   });
   
   // Obtener lotSize de todos los instrumentos únicos ANTES de procesar trades
-  const instrumentDetailsMap = await fetchInstrumentDetails(validOrders, reportService, accessToken, accNum);
+  const instrumentDetailsMap = await fetchInstrumentDetails(validOrders, reportService, accountId, accNum);
   
   // Procesar cada posición para crear un trade final
   const finalTrades: GroupedTradeFinal[] = [];
@@ -218,7 +218,7 @@ export async function groupOrdersByPosition(orders: historyTrade[], reportServic
  *
  * @param orders - Array of historyTrade objects
  * @param reportService - ReportService instance for API calls
- * @param accessToken - User authentication token
+ * @param accountId - Account ID (el backend gestiona el accessToken automáticamente)
  * @param accNum - Account number
  * @returns Promise that resolves to a Map with instrument keys and their details
  * @private
@@ -226,7 +226,7 @@ export async function groupOrdersByPosition(orders: historyTrade[], reportServic
 async function fetchInstrumentDetails(
   orders: historyTrade[],
   reportService: any,
-  accessToken: string,
+  accountId: string,
   accNum: number
 ): Promise<Map<string, { lotSize: number, name: string }>> {
   // Extraer tradableInstrumentId y routeId únicos
@@ -252,14 +252,22 @@ async function fetchInstrumentDetails(
     try {
       // Hacer petición individual para cada instrumento
       const instrumentDetails = await reportService.getInstrumentDetails(
-        accessToken,
+        accountId,
         instrument.tradableInstrumentId,
         instrument.routeId,
         accNum
       ).toPromise();
 
-      const lotSize = instrumentDetails.lotSize;
-      const name = instrumentDetails.name;
+      // Validar que instrumentDetails existe y tiene la estructura esperada
+      if (!instrumentDetails) {
+        console.warn(`⚠️ No instrument details returned for ${key}, using defaults`);
+        instrumentDetailsMap.set(key, { lotSize: 1, name: instrument.tradableInstrumentId });
+        continue;
+      }
+
+      // Extraer lotSize y name con valores por defecto
+      const lotSize = instrumentDetails.lotSize ?? instrumentDetails.d?.lotSize ?? 1;
+      const name = instrumentDetails.name ?? instrumentDetails.d?.name ?? instrument.tradableInstrumentId;
       
       instrumentDetailsMap.set(key, { lotSize, name });
 

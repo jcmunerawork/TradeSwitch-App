@@ -207,8 +207,15 @@ export class CreateAccountPopupComponent implements OnChanges {
   }
 
   onGoToList() {
+    // Close success modal first
     this.showSuccessModal = false;
-    this.close.emit();
+    // Reset form
+    this.resetForm();
+    // Use setTimeout to ensure the success modal closes before emitting close event
+    // This prevents any potential z-index or event propagation issues
+    setTimeout(() => {
+      this.close.emit();
+    }, 0);
   }
 
   // Balance input event handlers
@@ -303,6 +310,7 @@ export class CreateAccountPopupComponent implements OnChanges {
       accountID: this.newAccount.accountID,
       accountNumber: this.newAccount.accountNumber,
       initialBalance: this.newAccount.initialBalance,
+      balance: this.newAccount.initialBalance || 0, // Usar initialBalance como balance inicial
       createdAt: Timestamp.now(),
       netPnl: 0,
       profit: 0,

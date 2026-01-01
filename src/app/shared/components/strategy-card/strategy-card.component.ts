@@ -215,6 +215,15 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
 
   onDelete() {
     this.showOptionsMenu = false;
+    // Debug: Verificar que el ID existe antes de emitir
+    if (!this.strategy.id || this.strategy.id.trim() === '') {
+      console.error('❌ StrategyCard: Cannot delete - strategy.id is empty', {
+        strategy: this.strategy,
+        hasId: !!this.strategy.id,
+        idValue: this.strategy.id
+      });
+      return;
+    }
     this.delete.emit(this.strategy.id);
   }
 

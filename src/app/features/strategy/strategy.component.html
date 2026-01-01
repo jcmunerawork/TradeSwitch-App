@@ -191,6 +191,20 @@
     </button>
   </div>
   }
+  
+  <!-- Caso especial: Hay estrategias pero se borraron todas las cuentas -->
+  @if (accountsData.length === 0 && (userStrategies.length > 0 || activeStrategy)) {
+  <div class="empty-strategies d-flex flex-col align-items-center">
+    <div class="empty-icon">
+      <span class="material-symbols-outlined" style="font-size: 28px;">group_add</span>
+    </div>
+    <h3 class="empty-title">No trading accounts found</h3>
+    <p class="empty-description">You need to add a trading account to use your strategies. Please add a trading account to continue.</p>
+    <button class="create-first-btn" [disabled]="accountsData && accountsData.length >= 8" (click)="navigateToTradingAccounts()">
+      Add Trading Account
+    </button>
+  </div>
+  }
 
   @if (filteredStrategies.length === 0 && searchTerm && userStrategies.length > 0) {
   <div class="empty-strategies d-flex flex-col align-items-center">

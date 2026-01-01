@@ -223,11 +223,14 @@ export class TradingAccountsComponent implements OnDestroy {
             // Streams removido - los balances se actualizarán desde el backend
           } else {
             console.warn('No se obtuvieron tokens para las cuentas');
-            this.loading = false;
           }
-        } catch (error) {
-          console.error('Error obteniendo tokens o inicializando streams:', error);
-          this.loading = false;
+        } catch (error: any) {
+          // Manejar error 404 de manera silenciosa (endpoint puede no estar disponible)
+          if (error?.status === 404 || error?.error?.status === 404) {
+            console.warn('Endpoint de tokens no disponible (404). Los balances se actualizarán desde el backend.');
+          } else {
+            console.error('Error obteniendo tokens o inicializando streams:', error);
+          }
         }
         
         this.loading = false;
@@ -614,6 +617,7 @@ export class TradingAccountsComponent implements OnDestroy {
   async onAccountCreated(accountData: any) {
     // Account is already created in Firebase by the popup component
     // Show loading and reload everything
+    // Note: The popup will be closed when user clicks "Go to list" in success modal
     this.loading = true;
     this.loadConfig(); // Reload accounts
     await this.checkPlanLimitations();
@@ -622,6 +626,7 @@ export class TradingAccountsComponent implements OnDestroy {
   async onAccountUpdated(accountData: any) {
     // Account is already updated in Firebase by the popup component
     // Show loading and reload everything
+    // Note: The popup will be closed when user clicks "Go to list" in success modal
     this.loading = true;
     this.loadConfig(); // Reload accounts
     await this.checkPlanLimitations();

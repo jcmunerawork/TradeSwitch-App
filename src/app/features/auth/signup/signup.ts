@@ -99,7 +99,6 @@ export class SignupComponent implements OnInit {
   }
 
   onChange(): void {
-    console.log('Form changed:', this.signupForm.value);
   }
   async onSubmit(): Promise<void> {
     if (this.signupForm.valid) {
@@ -111,59 +110,44 @@ export class SignupComponent implements OnInit {
         // Crear credenciales del usuario
         const userCredentials = this.createUserCredentialsObject();
         
-        // Verificar que el email no esté ya registrado
-        const existingUser = await this.authService.getUserByEmail(userCredentials.email);
-        
-        if (existingUser) {
-          this.alertService.showError('This email is already registered. Please use a different email or try logging in.', 'Email Already Registered');
-          this.appContext.setLoading('user', false);
-          return;
-        }
-        
-        // Crear el usuario en Firebase Auth (para obtener token)
-        const userResponse = await this.authService.register(userCredentials);
-        const userId = userResponse.user.uid;
-        
-        // Obtener token de Firebase Auth
-        const idToken = await userResponse.user.getIdToken();
-        
-        // Crear el token y objeto usuario (para compatibilidad)
-        const token = this.createTokenObject(userId);
-        const user: User = await this.createUserObject(userId, token.id);
-        
-        // Configurar como admin si corresponde
-        if (this.isAdminSignup) {
-          user.isAdmin = true;
-          user.status = UserStatus.ADMIN;
-        } else {
-          user.status = UserStatus.ACTIVE;
-        }
-        
-        // Llamar al backend para crear usuario, token y suscripción
-        // El backend maneja: createUser, createLinkToken, createSubscription
+        // Verificar que el email no esté ya registrado (opcional, el backend también lo valida)
         try {
-          await this.backendApi.signup({
-            email: userCredentials.email,
-            password: userCredentials.password,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            phoneNumber: user.phoneNumber,
-            birthday: user.birthday,
-            isAdmin: this.isAdminSignup
-          });
-        } catch (error: any) {
-          // Si el backend falla, eliminar el usuario de Firebase Auth
-          console.error('Error creating user in backend:', error);
-          try {
-            await userResponse.user.delete();
-          } catch (deleteError) {
-            console.error('Error deleting Firebase Auth user:', deleteError);
+          const existingUser = await this.authService.getUserByEmail(userCredentials.email);
+          if (existingUser) {
+            this.alertService.showError('This email is already registered. Please use a different email or try logging in.', 'Email Already Registered');
+            this.appContext.setLoading('user', false);
+            return;
           }
-          throw error;
+        } catch (error) {
+          // Si falla la verificación, continuar (el backend también validará)
+          console.warn('Could not verify email existence, continuing with registration');
         }
-        // Iniciar sesión automáticamente
-        const loginResponse = await this.authService.login(userCredentials);
-        const userData = await this.authService.getUserData(loginResponse.user.uid);
+        
+        // Llamar al backend - EL BACKEND HACE TODO:
+        // 1. Crea usuario en Firebase Auth
+        // 2. Crea documento de usuario en Firestore
+        // 3. Crea link token
+        // 4. Crea suscripción inicial (Free)
+        // 5. Hace sign in automático en Firebase Auth
+        const signupResponse = await this.backendApi.signup({
+          email: userCredentials.email,
+          password: userCredentials.password,
+          firstName: this.signupForm.value.firstName,
+          lastName: this.signupForm.value.lastName,
+          phoneNumber: this.signupForm.value.phoneNumber,
+          birthday: this.signupForm.value.birthday,
+          isAdmin: this.isAdminSignup
+        });
+        
+        if (!signupResponse.success || !signupResponse.data) {
+          throw new Error(signupResponse.error?.message || 'Error during registration');
+        }
+        
+        // El backend ya hizo sign in automáticamente, obtener el userId
+        const userId = signupResponse.data.user.uid;
+        
+        // Obtener datos completos del usuario desde el backend
+        const userData = await this.authService.getUserData(userId);
         
         // Actualizar contexto con datos completos del usuario
         this.appContext.setCurrentUser(userData);
@@ -210,11 +194,9 @@ export class SignupComponent implements OnInit {
   }
 
   signInWithGoogle(): void {
-    console.log('Sign in with Google');
   }
 
   signInWithApple(): void {
-    console.log('Sign in with Apple');
   }
 
   private createUserCredentialsObject(): UserCredentials {
@@ -461,7 +443,6 @@ export class SignupComponent implements OnInit {
   }
 
   private handleRegistrationError(error: any): void {
-    console.log('Registration error:', error);
     // Los errores comunes serán manejados por Firebase
   }
 }

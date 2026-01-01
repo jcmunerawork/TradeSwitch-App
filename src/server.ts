@@ -58,7 +58,7 @@ app.use((req, res, next) => {
 if (isMainModule(import.meta.url)) {
   const port = process.env['PORT'] || 4000;
   httpServer.listen(port, () => {
-    console.log(`Node Express server listening on http://localhost:${port}`);
+    // Server started
   });
   
   // Manejar errores del servidor

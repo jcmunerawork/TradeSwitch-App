@@ -58,6 +58,9 @@ export class ConfigService {
 
   private get config(): AppConfig {
     if (!this._config) {
+      const environment = this.getEnvironment();
+      const isProd = environment === 'production';
+      
       this._config = {
         apiUrl: this.getEnvVar('API_URL') || 'http://localhost:3000/api',
         firebase: {
@@ -73,11 +76,11 @@ export class ConfigService {
           baseUrl: 'https://demo.tradelocker.com/backend-api',
         },
         features: {
-          enableAnalytics: this.isProduction,
-          enableErrorTracking: this.isProduction,
-          enableLogging: !this.isProduction,
+          enableAnalytics: isProd,
+          enableErrorTracking: isProd,
+          enableLogging: !isProd,
         },
-        environment: this.getEnvironment(),
+        environment: environment,
       };
     }
     return this._config;
