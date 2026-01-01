@@ -116,14 +116,10 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
     });
 
     result = result.sort((a, b) => {
-      const fieldA =
-        a[this.sortField] instanceof Timestamp
-          ? (a[this.sortField] as Timestamp).toDate().getTime()
-          : String(a[this.sortField]).toLowerCase();
-      const fieldB =
-        b[this.sortField] instanceof Timestamp
-          ? (b[this.sortField] as Timestamp).toDate().getTime()
-          : String(b[this.sortField]).toLowerCase();
+      // Manejar createdAt de manera segura
+      // this.sortField siempre es 'createdAt' según la definición del tipo
+      const fieldA = this.getCreatedAtDate(a).getTime();
+      const fieldB = this.getCreatedAtDate(b).getTime();
 
       if (fieldA < fieldB) return this.sortAsc ? -1 : 1;
       if (fieldA > fieldB) return this.sortAsc ? 1 : -1;
@@ -201,6 +197,104 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
 
   getUserDate(date: number): Date {
     return new Date(date);
+  }
+
+  /**
+   * Convierte createdAt a Date de manera segura
+   * Maneja Timestamp de Firestore, Date, string o number
+   * Siempre devuelve una fecha válida
+   */
+  getCreatedAtDate(account: AccountData): Date {
+    if (!account || !account.createdAt) {
+      return new Date();
+    }
+
+    const createdAt = account.createdAt as any;
+    let date: Date | null = null;
+
+    // Si es un Timestamp de Firestore
+    if (createdAt instanceof Timestamp) {
+      try {
+        date = createdAt.toDate();
+        if (date && !isNaN(date.getTime())) {
+          return date;
+        }
+      } catch (e) {
+        console.warn('Error converting Timestamp to Date:', e);
+      }
+      return new Date();
+    }
+
+    // Si ya es un Date
+    if (createdAt instanceof Date) {
+      if (!isNaN(createdAt.getTime())) {
+        return createdAt;
+      }
+      return new Date();
+    }
+
+    // Si es un objeto con formato Firestore serializado (seconds, nanoseconds)
+    if (createdAt && typeof createdAt === 'object' && 'seconds' in createdAt) {
+      const seconds = createdAt.seconds;
+      if (typeof seconds === 'number' && seconds > 0) {
+        try {
+          date = new Date(seconds * 1000);
+          if (date && !isNaN(date.getTime())) {
+            return date;
+          }
+        } catch (e) {
+          console.warn('Error converting Firestore seconds to Date:', e);
+        }
+      }
+      return new Date();
+    }
+
+    // Si es un string, intentar parsear
+    if (typeof createdAt === 'string') {
+      // Si está vacío, devolver fecha actual
+      if (createdAt.trim() === '') {
+        return new Date();
+      }
+      
+      try {
+        date = new Date(createdAt);
+        // Validar que la fecha sea válida y no sea "Invalid Date"
+        if (date && !isNaN(date.getTime()) && date.toString() !== 'Invalid Date') {
+          return date;
+        }
+      } catch (e) {
+        console.warn('Error parsing date string:', createdAt, e);
+      }
+      return new Date();
+    }
+
+    // Si es un number (timestamp en milisegundos o segundos)
+    if (typeof createdAt === 'number') {
+      // Si es muy pequeño, probablemente está en segundos, convertir a milisegundos
+      const timestamp = createdAt < 10000000000 ? createdAt * 1000 : createdAt;
+      try {
+        date = new Date(timestamp);
+        if (date && !isNaN(date.getTime())) {
+          return date;
+        }
+      } catch (e) {
+        console.warn('Error converting number to Date:', timestamp, e);
+      }
+      return new Date();
+    }
+
+    // Fallback: intentar convertir a Date
+    try {
+      date = new Date(createdAt);
+      if (date && !isNaN(date.getTime()) && date.toString() !== 'Invalid Date') {
+        return date;
+      }
+    } catch (e) {
+      console.warn('Error in fallback date conversion:', e);
+    }
+
+    // Si todo falla, devolver fecha actual
+    return new Date();
   }
 
   deleteAccount(account: AccountData) {

@@ -20,7 +20,6 @@ import { PlanLimitationModalData } from '../../shared/interfaces/plan-limitation
 import { PlanLimitationModalComponent } from '../../shared/components/plan-limitation-modal/plan-limitation-modal.component';
 import { PlanBannerComponent } from '../../shared/components/plan-banner/plan-banner.component';
 import { AppContextService } from '../../shared/context';
-import { StreamsService } from '../../shared/services/streams.service';
 import { TradeLockerApiService, TradeLockerCredentials } from '../../shared/services/tradelocker-api.service';
 
 /**
@@ -75,7 +74,6 @@ export class TradingAccountsComponent implements OnDestroy {
   toDate: string = '';
 
   // Suscripción para limpiar al destruir el componente
-  private balanceUpdateSubscription: Subscription | null = null;
 
   constructor(
     private store: Store,
@@ -84,7 +82,6 @@ export class TradingAccountsComponent implements OnDestroy {
     private router: Router,
     private planLimitationsGuard: PlanLimitationsGuard,
     private appContext: AppContextService,
-    private streamsService: StreamsService,
     private tradeLockerApi: TradeLockerApiService
   ) {}
 
@@ -196,7 +193,6 @@ export class TradingAccountsComponent implements OnDestroy {
    * Related to:
    * - AuthService.getUserAccounts(): Fetches accounts from Firebase
    * - TradeLockerApiService.getAccountTokens(): Gets access tokens
-   * - StreamsService.initializeStreams(): Connects to streams
    * - checkAccountLimitations(): Checks plan limitations
    *
    * @memberof TradingAccountsComponent
@@ -224,18 +220,17 @@ export class TradingAccountsComponent implements OnDestroy {
           );
           
           if (tokenResponse && tokenResponse.data && tokenResponse.data.length > 0) {
-            // Inicializar streams para actualización en tiempo real de balances
-            await this.streamsService.initializeStreams(docSnap);
-            
-            // Suscribirse a actualizaciones de balances para guardar en Firebase
-            this.subscribeToBalanceUpdates();
+            // Streams removido - los balances se actualizarán desde el backend
           } else {
             console.warn('No se obtuvieron tokens para las cuentas');
-            this.loading = false;
           }
-        } catch (error) {
-          console.error('Error obteniendo tokens o inicializando streams:', error);
-          this.loading = false;
+        } catch (error: any) {
+          // Manejar error 404 de manera silenciosa (endpoint puede no estar disponible)
+          if (error?.status === 404 || error?.error?.status === 404) {
+            console.warn('Endpoint de tokens no disponible (404). Los balances se actualizarán desde el backend.');
+          } else {
+            console.error('Error obteniendo tokens o inicializando streams:', error);
+          }
         }
         
         this.loading = false;
@@ -258,49 +253,6 @@ export class TradingAccountsComponent implements OnDestroy {
     }
   }
 
-  /**
-   * Subscribes to balance updates from streams and saves them to Firebase.
-   *
-   * When a balance update is received from streams, it updates the account
-   * balance in Firebase so it can be loaded from there if needed.
-   * 
-   * Only creates one subscription. If a subscription already exists, it is
-   * cleaned up before creating a new one.
-   *
-   * @private
-   * @memberof TradingAccountsComponent
-   */
-  private subscribeToBalanceUpdates() {
-    // Limpiar suscripción anterior si existe
-    if (this.balanceUpdateSubscription) {
-      this.balanceUpdateSubscription.unsubscribe();
-      this.balanceUpdateSubscription = null;
-    }
-    
-    // Crear nueva suscripción
-    this.balanceUpdateSubscription = this.streamsService.balances$.subscribe(balances => {
-      // Actualizar balances de todas las cuentas en Firebase
-      balances.forEach((balanceData, streamAccountId) => {
-        // Buscar la cuenta correspondiente en usersData
-        const account = this.usersData.find(acc => {
-          // Intentar hacer match con el accountId del stream
-          return acc.accountID === streamAccountId || 
-                 acc.accountID?.includes(streamAccountId.replace(/^[A-Z]#/, '')) ||
-                 streamAccountId.includes(acc.accountID?.replace(/^[A-Z]#/, '') || '');
-        });
-        
-        if (account && account.id) {
-          // Actualizar el balance en la cuenta local
-          account.balance = balanceData.balance;
-          
-          // Actualizar el balance en Firebase
-          this.userSvc.updateAccount(account.id, account).catch(error => {
-            console.error(`Error actualizando balance en Firebase para cuenta ${account.id}:`, error);
-          });
-        }
-      });
-    });
-  }
 
   /**
    * Cleanup method called when component is destroyed.
@@ -310,10 +262,7 @@ export class TradingAccountsComponent implements OnDestroy {
    * @memberof TradingAccountsComponent
    */
   ngOnDestroy(): void {
-    if (this.balanceUpdateSubscription) {
-      this.balanceUpdateSubscription.unsubscribe();
-      this.balanceUpdateSubscription = null;
-    }
+    // Cleanup si es necesario
   }
 
   /**
@@ -668,6 +617,7 @@ export class TradingAccountsComponent implements OnDestroy {
   async onAccountCreated(accountData: any) {
     // Account is already created in Firebase by the popup component
     // Show loading and reload everything
+    // Note: The popup will be closed when user clicks "Go to list" in success modal
     this.loading = true;
     this.loadConfig(); // Reload accounts
     await this.checkPlanLimitations();
@@ -676,6 +626,7 @@ export class TradingAccountsComponent implements OnDestroy {
   async onAccountUpdated(accountData: any) {
     // Account is already updated in Firebase by the popup component
     // Show loading and reload everything
+    // Note: The popup will be closed when user clicks "Go to list" in success modal
     this.loading = true;
     this.loadConfig(); // Reload accounts
     await this.checkPlanLimitations();

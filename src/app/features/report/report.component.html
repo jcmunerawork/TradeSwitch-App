@@ -86,38 +86,50 @@
     </button>
   </div>
 } @else {
-<div class="stats-card-container">
-  <app-stat-card
-    class="stat-card"
-    title="Balance"
-    [value]="realTimeBalance ?? undefined"
-    formatType="currency"
-  ></app-stat-card>
-  <app-stat-card
-    class="stat-card"
-    title="Total P&L"
-    [value]="stats?.netPnl ? stats?.netPnl : 0"
-    formatType="currency"
-  ></app-stat-card>
-  <app-stat-card
-    class="stat-card"
-    title="Trade win %"
-    [value]="stats?.tradeWinPercent"
-    formatType="percentage"
-  ></app-stat-card>
-  <app-stat-card
-    class="stat-card"
-    title="Profit Factor"
-    [value]="stats?.profitFactor"
-    formatType="number"
-  ></app-stat-card>
-  <app-stat-card
-    class="stat-card"
-    title="Total trades"
-    [value]="stats?.totalTrades"
-    formatType="number"
-  ></app-stat-card>
-</div>
+<!-- Metrics Section with Loading State -->
+@if (!loadingStates.metricsData) {
+  <!-- Loading State for Metrics - Mostrar ANTES de la sección -->
+  <div class="metrics-loading-container d-flex flex-col align-items-center justify-center p-50 mb-24">
+    <app-loading-spinner 
+      title="Loading metrics..." 
+      description="Fetching your trading statistics.">
+    </app-loading-spinner>
+  </div>
+} @else if (loadingStates.metricsData && stats) {
+  <!-- Mostrar métricas cuando estén cargadas -->
+  <div class="stats-card-container">
+    <app-stat-card
+      class="stat-card"
+      title="Balance"
+      [value]="realTimeBalance ?? undefined"
+      formatType="currency"
+    ></app-stat-card>
+    <app-stat-card
+      class="stat-card"
+      title="Total P&L"
+      [value]="stats?.netPnl ? stats?.netPnl : 0"
+      formatType="currency"
+    ></app-stat-card>
+    <app-stat-card
+      class="stat-card"
+      title="Trade win %"
+      [value]="stats?.tradeWinPercent"
+      formatType="percentage"
+    ></app-stat-card>
+    <app-stat-card
+      class="stat-card"
+      title="Profit Factor"
+      [value]="stats?.profitFactor"
+      formatType="number"
+    ></app-stat-card>
+    <app-stat-card
+      class="stat-card"
+      title="Total trades"
+      [value]="stats?.totalTrades"
+      formatType="number"
+    ></app-stat-card>
+  </div>
+}
 <div class="middle-container d-flex mb-24">
   <app-PnL-Graph
     [values]="accountHistory"
@@ -125,11 +137,28 @@
   ></app-PnL-Graph>
   <app-win-loss-chart [values]="accountHistory"></app-win-loss-chart>
 </div>
-<app-calendar
-  [strategies]="strategies"
-  [groupedTrades]="accountHistory"
-  (strategyFollowedPercentageChange)="onStrategyPercentageChange($event)"
-></app-calendar>
+
+<!-- Calendar Section with Loading State -->
+@if (loadingStates.calendarData && accountHistory && accountHistory.length > 0) {
+  <app-calendar
+    [strategies]="strategies"
+    [groupedTrades]="accountHistory"
+    (strategyFollowedPercentageChange)="onStrategyPercentageChange($event)"
+  ></app-calendar>
+} @else if (!loadingStates.calendarData) {
+  <!-- Loading State for Calendar -->
+  <div class="calendar-loading-container d-flex flex-col align-items-center justify-center p-50">
+    <app-loading-spinner 
+      title="Loading calendar data..." 
+      description="Processing your trading history for calendar view.">
+    </app-loading-spinner>
+  </div>
+} @else {
+  <!-- Empty State for Calendar -->
+  <div class="calendar-empty-container d-flex flex-col align-items-center justify-center p-50">
+    <p class="regularText color-secondary-300">No trading data available for calendar view.</p>
+  </div>
+}
 
 <!-- Plan Limitation Modal -->
 <app-plan-limitation-modal

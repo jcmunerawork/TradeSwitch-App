@@ -18,6 +18,7 @@ import { UserStatus } from '../../../overview/models/overview';
 import { AppContextService } from '../../../../shared/context/context';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { StripeLoaderPopupComponent } from '../../../../shared/pop-ups/stripe-loader-popup/stripe-loader-popup.component';
+import { ConfigService } from '../../../../core/services/config.service';
 
 /**
  * Component for managing user subscription plans.
@@ -112,6 +113,7 @@ export class PlanSettingsComponent implements OnInit {
   private planService = inject(PlanService);
   private authService = inject(AuthService);
   private appContext = inject(AppContextService);
+  private configService = inject(ConfigService);
 
   constructor(
     private store: Store,
@@ -652,7 +654,7 @@ export class PlanSettingsComponent implements OnInit {
    * Related to:
    * - AppContextService.getPlanByName(): Gets plan by name
    * - AuthService.getBearerTokenFirebase(): Gets authentication token
-   * - API: https://api.tradeswitch.io/payments/create-checkout-session
+   * - API: /payments/create-checkout-session (via ConfigService)
    * 
    * @private
    * @async
@@ -673,7 +675,7 @@ export class PlanSettingsComponent implements OnInit {
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
 
       // Crear checkout session
-      const response = await fetch('https://api.tradeswitch.io/payments/create-checkout-session', {
+      const response = await fetch(`${this.configService.apiUrl}/payments/create-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -719,7 +721,7 @@ export class PlanSettingsComponent implements OnInit {
    * 
    * Related to:
    * - AuthService.getBearerTokenFirebase(): Gets authentication token
-   * - API: https://api.tradeswitch.io/payments/create-portal-session
+   * - API: /payments/create-portal-session (via ConfigService)
    * - windowCheckInterval: Interval to check if window closed
    * 
    * @private
@@ -731,7 +733,7 @@ export class PlanSettingsComponent implements OnInit {
     try {
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
 
-      const response = await fetch('https://api.tradeswitch.io/payments/create-portal-session', {
+      const response = await fetch(`${this.configService.apiUrl}/payments/create-portal-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -865,7 +867,7 @@ export class PlanSettingsComponent implements OnInit {
    * 
    * Related to:
    * - AuthService.getBearerTokenFirebase(): Gets authentication token
-   * - API: https://api.tradeswitch.io/payments/create-portal-session
+   * - API: /payments/create-portal-session (via ConfigService)
    * 
    * @async
    * @memberof PlanSettingsComponent
@@ -874,7 +876,7 @@ export class PlanSettingsComponent implements OnInit {
     try {
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
 
-      const response = await fetch('https://api.tradeswitch.io/payments/create-portal-session', {
+      const response = await fetch(`${this.configService.apiUrl}/payments/create-portal-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1058,7 +1060,6 @@ export class PlanSettingsComponent implements OnInit {
     
     // Navegar a las páginas de gestión de recursos
     // TODO: Implementar navegación a las páginas de gestión de recursos
-    console.log('Please delete excess resources before downgrading your plan.');
   }
 
   /**

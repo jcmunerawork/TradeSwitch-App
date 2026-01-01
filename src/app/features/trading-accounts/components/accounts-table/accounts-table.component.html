@@ -246,7 +246,7 @@
             </td>
             <td class="smallText">
               <p>
-                {{ account.createdAt.toDate() | date : "MM/dd/yyyy h:mm a" }}
+                {{ getCreatedAtDate(account) | date : "MM/dd/yyyy h:mm a" }}
               </p>
             </td>
             <!--

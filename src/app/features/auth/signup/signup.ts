@@ -24,6 +24,7 @@ import { Store } from '@ngrx/store';
 import { AppContextService } from '../../../shared/context';
 import { StripeLoaderPopupComponent } from '../../../shared/pop-ups/stripe-loader-popup/stripe-loader-popup.component';
 import { AlertService } from '../../../core/services';
+import { BackendApiService } from '../../../core/services/backend-api.service';
 
 @Component({
   selector: 'app-signup',
@@ -65,7 +66,8 @@ export class SignupComponent implements OnInit {
     private subscriptionService: SubscriptionService,
     private store: Store,
     private appContext: AppContextService,
-    private alertService: AlertService
+    private alertService: AlertService,
+    private backendApi: BackendApiService
   ) {
     this.signupForm = this.fb.group({
       firstName: ['', [Validators.required, Validators.minLength(2)]],
@@ -97,7 +99,6 @@ export class SignupComponent implements OnInit {
   }
 
   onChange(): void {
-    console.log('Form changed:', this.signupForm.value);
   }
   async onSubmit(): Promise<void> {
     if (this.signupForm.valid) {
@@ -109,46 +110,44 @@ export class SignupComponent implements OnInit {
         // Crear credenciales del usuario
         const userCredentials = this.createUserCredentialsObject();
         
-        // Verificar que el email no esté ya registrado
-        const existingUser = await this.authService.getUserByEmail(userCredentials.email);
-        
-        if (existingUser) {
-          this.alertService.showError('This email is already registered. Please use a different email or try logging in.', 'Email Already Registered');
-          this.appContext.setLoading('user', false);
-          return;
+        // Verificar que el email no esté ya registrado (opcional, el backend también lo valida)
+        try {
+          const existingUser = await this.authService.getUserByEmail(userCredentials.email);
+          if (existingUser) {
+            this.alertService.showError('This email is already registered. Please use a different email or try logging in.', 'Email Already Registered');
+            this.appContext.setLoading('user', false);
+            return;
+          }
+        } catch (error) {
+          // Si falla la verificación, continuar (el backend también validará)
+          console.warn('Could not verify email existence, continuing with registration');
         }
         
-        // Crear el usuario en Firebase Auth
-        const userResponse = await this.authService.register(userCredentials);
-        const userId = userResponse.user.uid;
+        // Llamar al backend - EL BACKEND HACE TODO:
+        // 1. Crea usuario en Firebase Auth
+        // 2. Crea documento de usuario en Firestore
+        // 3. Crea link token
+        // 4. Crea suscripción inicial (Free)
+        // 5. Hace sign in automático en Firebase Auth
+        const signupResponse = await this.backendApi.signup({
+          email: userCredentials.email,
+          password: userCredentials.password,
+          firstName: this.signupForm.value.firstName,
+          lastName: this.signupForm.value.lastName,
+          phoneNumber: this.signupForm.value.phoneNumber,
+          birthday: this.signupForm.value.birthday,
+          isAdmin: this.isAdminSignup
+        });
         
-        // Crear el token y objeto usuario
-        const token = this.createTokenObject(userId);
-        const user: User = await this.createUserObject(userId, token.id);
-        
-        // Configurar como admin si corresponde
-        if (this.isAdminSignup) {
-          user.isAdmin = true;
-          user.status = UserStatus.ADMIN;
-        } else {
-          user.status = UserStatus.ACTIVE;
+        if (!signupResponse.success || !signupResponse.data) {
+          throw new Error(signupResponse.error?.message || 'Error during registration');
         }
         
-        // Crear usuario y token en Firestore
-        await this.authService.createUser(user as User);
-        await this.authService.createLinkToken(token);
-
-        // Crear suscripción gratuita activa por defecto
-        const freeSubscriptionData: Omit<Subscription, 'id' | 'created_at' | 'updated_at'> = {
-          planId: "Cb1B0tpxdE6AP6eMZDo0",
-          status: UserStatus.ACTIVE,
-          userId: userId,
-        };
-
-        await this.subscriptionService.createSubscription(userId, freeSubscriptionData);
-        // Iniciar sesión automáticamente
-        const loginResponse = await this.authService.login(userCredentials);
-        const userData = await this.authService.getUserData(loginResponse.user.uid);
+        // El backend ya hizo sign in automáticamente, obtener el userId
+        const userId = signupResponse.data.user.uid;
+        
+        // Obtener datos completos del usuario desde el backend
+        const userData = await this.authService.getUserData(userId);
         
         // Actualizar contexto con datos completos del usuario
         this.appContext.setCurrentUser(userData);
@@ -195,11 +194,9 @@ export class SignupComponent implements OnInit {
   }
 
   signInWithGoogle(): void {
-    console.log('Sign in with Google');
   }
 
   signInWithApple(): void {
-    console.log('Sign in with Apple');
   }
 
   private createUserCredentialsObject(): UserCredentials {
@@ -409,25 +406,17 @@ export class SignupComponent implements OnInit {
       // Obtener el token de Firebase
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.currentUserId);
 
-      // Crear checkout session
-      const response = await fetch('https://api.tradeswitch.io/payments/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${bearerTokenFirebase}`
-        },
-        body: JSON.stringify({
-          priceId: selectedPlan.planPriceId,
-        })
-      });
+      // Crear checkout session usando backend
+      const response = await this.backendApi.createCheckoutSession(
+        selectedPlan.planPriceId,
+        bearerTokenFirebase
+      );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error creating checkout session: ${response.status} ${response.statusText} - ${errorText}`);
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Error creating checkout session');
       }
 
-      const responseData = await response.json();
-      const checkoutUrl = responseData.body?.url || responseData.url;
+      const checkoutUrl = response.data.url;
       
       if (!checkoutUrl) {
         throw new Error('Checkout URL not found in response');
@@ -454,7 +443,6 @@ export class SignupComponent implements OnInit {
   }
 
   private handleRegistrationError(error: any): void {
-    console.log('Registration error:', error);
     // Los errores comunes serán manejados por Firebase
   }
 }

@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map, tap, catchError } from 'rxjs/operators';
+import { map, catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
+import { BackendApiService } from '../../core/services/backend-api.service';
+import { getAuth } from 'firebase/auth';
 
 /**
  * Interface for TradeLocker API credentials.
@@ -56,11 +57,16 @@ export interface TradeLockerAccount {
  * - All instruments listing
  * - User key generation
  *
- * API Endpoints:
- * - Base URL: https://demo.tradelocker.com/backend-api
- * - Auth: /auth/jwt/token, /auth/jwt/refresh
- * - Trade: /trade/accounts/{accountId}/state, /trade/accounts/{accountId}/ordersHistory
- * - Instruments: /trade/instruments/{tradableInstrumentId}, /trade/accounts/{accountId}/instruments
+ * IMPORTANTE: Este servicio NO hace conexiones directas a TradeLocker API.
+ * Todas las llamadas pasan por el backend propio (BackendApiService) que actúa como proxy.
+ * 
+ * Endpoints del backend propio:
+ * - POST /api/v1/tradelocker/auth/token - Obtener JWT token
+ * - POST /api/v1/tradelocker/validate - Validar cuenta
+ * - GET /api/v1/tradelocker/accounts/{accountId}/balance - Obtener balance
+ * - GET /api/v1/tradelocker/accounts/{accountId}/history - Obtener historial
+ * - GET /api/v1/tradelocker/instruments/{id} - Obtener detalles de instrumento
+ * - GET /api/v1/tradelocker/accounts/{accountId}/instruments - Listar instrumentos
  *
  * Relations:
  * - Used by ReportService for fetching trading data
@@ -75,12 +81,25 @@ export interface TradeLockerAccount {
   providedIn: 'root'
 })
 export class TradeLockerApiService {
-  private readonly baseUrl = 'https://demo.tradelocker.com/backend-api';
-  // COMENTADO: URL antigua, ahora se usa stagingBaseUrl para obtener tokens
-  // private readonly baseUrl = 'https://demo.tradelocker.com/backend-api';
-  private readonly stagingBaseUrl = 'https://stg.tradelocker.com/backend-api';
+  // NOTA: Este servicio NO hace conexiones directas a TradeLocker API.
+  // Todas las llamadas pasan por el backend propio que actúa como proxy.
+  // Las URLs de TradeLocker se mantienen solo como referencia/documentación.
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private backendApi: BackendApiService
+  ) {}
+
+  /**
+   * Get Firebase ID token for backend API calls
+   */
+  private async getIdToken(): Promise<string> {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+    return await currentUser.getIdToken();
+  }
 
   /**
    * Get JWT token from TradeLocker
@@ -104,6 +123,7 @@ export class TradeLockerApiService {
 
   /**
    * Get JWT token from TradeLocker Staging API
+   * Now uses backend API but maintains same interface
    * 
    * Uses stagingBaseUrl to validate account credentials.
    * Returns tokens for all accounts of a user (same as getAccountTokens).
@@ -113,20 +133,46 @@ export class TradeLockerApiService {
    * @returns Observable with AccountTokenResponse containing array of account tokens
    */
   getJWTTokenStaging(credentials: TradeLockerCredentials): Observable<AccountTokenResponse> {
-    const tokenUrl = `${this.stagingBaseUrl}/auth/jwt/accounts/tokens`;
-    
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
+    return new Observable(observer => {
+      this.getIdToken().then(idToken => {
+        this.backendApi.getTradeLockerJWTToken(credentials, idToken).then(response => {
+          console.log('🔑 TradeLockerApiService: getJWTTokenStaging backend response:', response);
+          
+          if (!response.success) {
+            const errorMessage = response.error?.message || 'Failed to get JWT token';
+            console.error('❌ TradeLockerApiService: Backend returned error:', errorMessage, response.error);
+            observer.error(new Error(errorMessage));
+            return;
+          }
+          
+          if (!response.data) {
+            console.error('❌ TradeLockerApiService: No data in backend response:', response);
+            observer.error(new Error('No data in backend response'));
+            return;
+          }
+          
+          // El backend devuelve { data: any[] }, así que response.data ya es el objeto con la propiedad data
+          const tokenData = response.data.data || response.data || [];
+          
+          console.log('🔑 TradeLockerApiService: Processed token data:', tokenData);
+          
+          if (!Array.isArray(tokenData)) {
+            console.error('❌ TradeLockerApiService: Token data is not an array:', tokenData);
+            observer.error(new Error(`Invalid response format. Expected array but got: ${typeof tokenData}`));
+            return;
+          }
+          
+          observer.next({ data: tokenData } as AccountTokenResponse);
+          observer.complete();
+        }).catch(error => {
+          console.error('❌ TradeLockerApiService: Error calling backend API:', error);
+          observer.error(error);
+        });
+      }).catch(error => {
+        console.error('❌ TradeLockerApiService: Error getting ID token:', error);
+        observer.error(error);
+      });
     });
-
-    const body = {
-      email: credentials.email,
-      password: credentials.password,
-      server: credentials.server
-    };
-
-    return this.http.post<AccountTokenResponse>(tokenUrl, body, { headers });
   }
   
   /**
@@ -147,27 +193,41 @@ export class TradeLockerApiService {
   // }
 
   refreshToken(accessToken: string): Observable<any> {
-    const refreshUrl = `${this.baseUrl}/auth/jwt/refresh`;
-    
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`
+    return new Observable(observer => {
+      this.getIdToken().then(idToken => {
+        this.backendApi.refreshTradeLockerToken(accessToken, idToken).then(response => {
+          if (response.success && response.data) {
+            observer.next(response.data);
+            observer.complete();
+          } else {
+            observer.error(new Error(response.error?.message || 'Failed to refresh token'));
+          }
+        }).catch(error => {
+          observer.error(error);
+        });
+      }).catch(error => {
+        observer.error(error);
+      });
     });
-    
-    return this.http.post<any>(refreshUrl, { headers });
   }
 
   /**
    * Validate account credentials in TradeLocker
+   * Now uses backend API but maintains same interface
    * 
    * Uses staging API to validate if account exists.
    * Returns true if account exists (token received), false otherwise.
    */
   async validateAccount(credentials: TradeLockerCredentials): Promise<boolean> {
     try {
-      const tokenResponse = await this.getJWTTokenStaging(credentials).toPromise();
-      // La respuesta es AccountTokenResponse con estructura { data: AccountTokenData[] }
-      return !!(tokenResponse && tokenResponse.data && tokenResponse.data.length > 0 && tokenResponse.data[0].accessToken);
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.validateTradeLockerAccount(credentials, idToken);
+      
+      if (!response.success || !response.data) {
+        return false;
+      }
+      
+      return response.data.isValid;
     } catch (error) {
       console.error('Error validating account in TradeLocker:', error);
       return false;
@@ -177,40 +237,93 @@ export class TradeLockerApiService {
   /**
    * COMENTADO: Método antiguo de obtención de balance - ahora se usa Streams API
    * Get account balance from TradeLocker
+   * Now uses backend API but maintains same interface
    * Este método se mantiene como backup pero los balances ahora vienen de streams en tiempo real
    * 
    * Los balances se actualizan automáticamente a través de StreamsService cuando se reciben
    * mensajes AccountStatus del Streams API.
+   * 
+   * NOTA: El backend gestiona el accessToken automáticamente, no es necesario enviarlo.
    */
-  getAccountBalance(accountId: string, userKey: string, accountNumber: number): Observable<any> {
-    const balanceUrl = `${this.baseUrl}/trade/accounts/${accountId}/state`;
-    
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${userKey}`,
-      'accNum': accountNumber.toString()
+  getAccountBalance(accountId: string, accountNumber: number): Observable<any> {
+    return new Observable(observer => {
+      this.getIdToken().then(idToken => {
+        this.backendApi.getTradeLockerAccountBalance(accountId, accountNumber, idToken).then(response => {
+          if (response.success && response.data) {
+            observer.next(response.data);
+            observer.complete();
+          } else {
+            observer.error(new Error(response.error?.message || 'Failed to get account balance'));
+          }
+        }).catch(error => {
+          observer.error(error);
+        });
+      }).catch(error => {
+        observer.error(error);
+      });
     });
-
-    return this.http.get(balanceUrl, { headers });
   }
 
   /**
    * Get trading history from TradeLocker
+   * Now uses backend API but maintains same interface
+   * 
+   * NOTA: El backend gestiona el accessToken automáticamente, no es necesario enviarlo.
    */
-  getTradingHistory(userKey: string, accountId: string, accNum: number): Observable<any> {
-    const historyUrl = `${this.baseUrl}/trade/accounts/${accountId}/ordersHistory`;
-    
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${userKey}`,
-      'accNum': accNum.toString()
+  getTradingHistory(accountId: string, accNum: number): Observable<any> {
+    return new Observable(observer => {
+      this.getIdToken().then(idToken => {
+        this.backendApi.getTradeLockerTradingHistory(accountId, accNum, idToken).then(response => {
+          if (response.success && response.data) {
+            // NUEVO FORMATO: El backend devuelve { success: true, data: { trades: [...] } }
+            // Los trades ya vienen en formato GroupedTradeFinal
+            if (response.data.trades && Array.isArray(response.data.trades)) {
+              // Formato nuevo: devolver directamente los trades
+              observer.next({ trades: response.data.trades });
+            } 
+            // FORMATO ANTIGUO: { d: { ordersHistory: [...] } }
+            else if (response.data.d && response.data.d.ordersHistory) {
+              observer.next(response.data);
+            } 
+            // Si no hay estructura reconocida, devolver vacío
+            else {
+              console.warn(`⚠️ Formato de respuesta no reconocido para account ${accountId}:`, response.data);
+              observer.next({ trades: [] });
+            }
+            observer.complete();
+          } else {
+            // Si es 404, puede ser que la cuenta no tenga historial o no exista
+            const errorMessage = response.error?.message || 'Failed to get trading history';
+            console.warn(`⚠️ Trading history not found for account ${accountId}:`, errorMessage);
+            // Retornar array vacío en lugar de error para 404
+            if (response.error?.message?.includes('404') || response.error?.message?.includes('Not Found')) {
+              observer.next({ trades: [] }); // Estructura nueva vacía
+              observer.complete();
+            } else {
+              observer.error(new Error(errorMessage));
+            }
+          }
+        }).catch(error => {
+          // Manejar 404 específicamente
+          if (error?.status === 404 || error?.statusText === 'Not Found') {
+            console.warn(`⚠️ Trading history endpoint returned 404 for account ${accountId}. Account may not have history or may not exist.`);
+            // Retornar estructura vacía en lugar de error
+            observer.next({ trades: [] });
+            observer.complete();
+          } else {
+            console.error(`❌ Error getting trading history for account ${accountId}:`, error);
+            observer.error(error);
+          }
+        });
+      }).catch(error => {
+        observer.error(error);
+      });
     });
-
-    return this.http.get(historyUrl, { headers });
   }
 
   /**
    * Get user key for API calls
+   * Now uses backend API but maintains same interface
    * 
    * Uses staging API to get user authentication token.
    * Returns the accessToken from the first account in the response.
@@ -220,66 +333,112 @@ export class TradeLockerApiService {
     return this.getJWTTokenStaging(credentials).pipe(
       map(response => {
         // La respuesta es AccountTokenResponse con estructura { data: AccountTokenData[] }
-        if (response && response.data && response.data.length > 0 && response.data[0].accessToken) {
-          return response.data[0].accessToken;
+        console.log('🔑 TradeLockerApiService: getUserKey response:', response);
+        
+        if (!response) {
+          console.error('❌ TradeLockerApiService: No response received');
+          throw new Error('No response received from backend');
         }
-        throw new Error('No access token found in response');
+        
+        if (!response.data) {
+          console.error('❌ TradeLockerApiService: No data in response:', response);
+          throw new Error('No data found in response');
+        }
+        
+        if (!Array.isArray(response.data) || response.data.length === 0) {
+          console.error('❌ TradeLockerApiService: Empty or invalid data array:', response.data);
+          throw new Error(`No accounts found in response. Expected array but got: ${JSON.stringify(response.data)}`);
+        }
+        
+        const firstAccount = response.data[0];
+        console.log('🔑 TradeLockerApiService: First account data:', firstAccount);
+        
+        if (!firstAccount.accessToken) {
+          console.error('❌ TradeLockerApiService: No accessToken in first account:', firstAccount);
+          throw new Error(`No access token found in response. Account data: ${JSON.stringify(firstAccount)}`);
+        }
+        
+        return firstAccount.accessToken;
+      }),
+      catchError(error => {
+        console.error('❌ TradeLockerApiService: Error in getUserKey:', error);
+        return throwError(() => error);
       })
     );
   }
 
   /**
    * Get instrument details
+   * Now uses backend API but maintains same interface
+   * 
+   * NOTA: El backend gestiona el accessToken automáticamente, se pasa accountId en su lugar.
    */
-  getInstrumentDetails(accessToken: string, tradableInstrumentId: string, routeId: string, accNum: number): Observable<any> {
-    const instrumentsUrl = `${this.baseUrl}/trade/instruments/${tradableInstrumentId}`;
-    
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-      'accNum': accNum.toString()
+  getInstrumentDetails(accountId: string, tradableInstrumentId: string, routeId: string, accNum: number): Observable<any> {
+    return new Observable(observer => {
+      this.getIdToken().then(idToken => {
+        this.backendApi.getTradeLockerInstrumentDetails(accountId, tradableInstrumentId, routeId, accNum, idToken).then(response => {
+          if (response.success && response.data) {
+            observer.next(response.data);
+            observer.complete();
+          } else {
+            observer.error(new Error(response.error?.message || 'Failed to get instrument details'));
+          }
+        }).catch(error => {
+          observer.error(error);
+        });
+      }).catch(error => {
+        observer.error(error);
+      });
     });
-
-    const params = {
-      routeId: routeId
-    };
-
-    return this.http.get(instrumentsUrl, { headers, params });
   }
 
   /**
    * Get all instruments for an account
+   * Now uses backend API but maintains same interface
+   * 
+   * NOTA: El backend gestiona el accessToken automáticamente, no es necesario enviarlo.
    */
-  getAllInstruments(accessToken: string, accountId: string, accNum: number): Observable<any> {
-    const instrumentsUrl = `${this.baseUrl}/trade/accounts/${accountId}/instruments`;
-    
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-      'accNum': accNum.toString()
+  getAllInstruments(accountId: string, accNum: number): Observable<any> {
+    return new Observable(observer => {
+      this.getIdToken().then(idToken => {
+        this.backendApi.getTradeLockerAllInstruments(accountId, accNum, idToken).then(response => {
+          if (response.success && response.data) {
+            observer.next(response.data);
+            observer.complete();
+          } else {
+            observer.error(new Error(response.error?.message || 'Failed to get all instruments'));
+          }
+        }).catch(error => {
+          observer.error(error);
+        });
+      }).catch(error => {
+        observer.error(error);
+      });
     });
-
-    return this.http.get(instrumentsUrl, { headers });
   }
 
   /**
    * Get account tokens for Streams API
+   * Now uses backend API but maintains same interface
    * Returns tokens for all accounts of a user
    */
   getAccountTokens(credentials: TradeLockerCredentials): Observable<AccountTokenResponse> {
-    const tokenUrl = `${this.stagingBaseUrl}/auth/jwt/accounts/tokens`;
-    
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
+    return new Observable(observer => {
+      this.getIdToken().then(idToken => {
+        this.backendApi.getTradeLockerAccountTokens(credentials, idToken).then(response => {
+          if (response.success && response.data) {
+            observer.next({ data: response.data.data || [] } as AccountTokenResponse);
+            observer.complete();
+          } else {
+            observer.error(new Error(response.error?.message || 'Failed to get account tokens'));
+          }
+        }).catch(error => {
+          observer.error(error);
+        });
+      }).catch(error => {
+        observer.error(error);
+      });
     });
-
-    const body = {
-      email: credentials.email,
-      password: credentials.password,
-      server: credentials.server
-    };
-
-    return this.http.post<AccountTokenResponse>(tokenUrl, body, { headers });
   }
 
 }

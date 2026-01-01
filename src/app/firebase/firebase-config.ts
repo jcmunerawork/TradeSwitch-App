@@ -9,7 +9,6 @@ try {
   envVars = environmentVars || {};
 } catch (error) {
   // Si no existe el archivo env-vars.ts, usar valores por defecto
-  console.log('No environment variables file found, using defaults');
 }
 
 // Función para obtener variables de entorno

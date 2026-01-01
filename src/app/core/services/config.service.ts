@@ -54,27 +54,37 @@ export class ConfigService {
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
 
-  private config: AppConfig = {
-    apiUrl: this.getEnvVar('API_URL') || 'http://localhost:3000/api',
-    firebase: {
-      apiKey: this.getEnvVar('FIREBASE_API_KEY') || '',
-      authDomain: this.getEnvVar('FIREBASE_AUTH_DOMAIN') || '',
-      projectId: this.getEnvVar('FIREBASE_PROJECT_ID') || '',
-      storageBucket: this.getEnvVar('FIREBASE_STORAGE_BUCKET') || '',
-      messagingSenderId: this.getEnvVar('FIREBASE_MESSAGING_SENDER_ID') || '',
-      appId: this.getEnvVar('FIREBASE_APP_ID') || '',
-      measurementId: this.getEnvVar('FIREBASE_MEASUREMENT_ID') || '',
-    },
-    tradeLocker: {
-      baseUrl: 'https://demo.tradelocker.com/backend-api',
-    },
-    features: {
-      enableAnalytics: this.isProduction,
-      enableErrorTracking: this.isProduction,
-      enableLogging: !this.isProduction,
-    },
-    environment: this.getEnvironment(),
-  };
+  private _config: AppConfig | null = null;
+
+  private get config(): AppConfig {
+    if (!this._config) {
+      const environment = this.getEnvironment();
+      const isProd = environment === 'production';
+      
+      this._config = {
+        apiUrl: this.getEnvVar('API_URL') || 'http://localhost:3000/api',
+        firebase: {
+          apiKey: this.getEnvVar('FIREBASE_API_KEY') || '',
+          authDomain: this.getEnvVar('FIREBASE_AUTH_DOMAIN') || '',
+          projectId: this.getEnvVar('FIREBASE_PROJECT_ID') || '',
+          storageBucket: this.getEnvVar('FIREBASE_STORAGE_BUCKET') || '',
+          messagingSenderId: this.getEnvVar('FIREBASE_MESSAGING_SENDER_ID') || '',
+          appId: this.getEnvVar('FIREBASE_APP_ID') || '',
+          measurementId: this.getEnvVar('FIREBASE_MEASUREMENT_ID') || '',
+        },
+        tradeLocker: {
+          baseUrl: 'https://demo.tradelocker.com/backend-api',
+        },
+        features: {
+          enableAnalytics: isProd,
+          enableErrorTracking: isProd,
+          enableLogging: !isProd,
+        },
+        environment: environment,
+      };
+    }
+    return this._config;
+  }
 
   /**
    * Get API base URL.
@@ -138,7 +148,11 @@ export class ConfigService {
   private getEnvVar(key: string): string | undefined {
     if (this.isBrowser) {
       // In browser, check window or process.env (if available)
-      return (window as any)?.__ENV__?.[key] || undefined;
+      try {
+        return (window as any)?.__ENV__?.[key] || undefined;
+      } catch {
+        return undefined;
+      }
     } else {
       // In server, use process.env
       return process.env[key];
@@ -150,14 +164,19 @@ export class ConfigService {
    */
   private getEnvironment(): 'development' | 'production' | 'staging' {
     if (this.isBrowser) {
-      const hostname = window.location.hostname;
-      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      try {
+        const hostname = window.location?.hostname;
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          return 'development';
+        }
+        if (hostname?.includes('staging')) {
+          return 'staging';
+        }
+        return 'production';
+      } catch {
+        // Fallback if window.location is not available
         return 'development';
       }
-      if (hostname.includes('staging')) {
-        return 'staging';
-      }
-      return 'production';
     }
     
     // Server-side: check NODE_ENV

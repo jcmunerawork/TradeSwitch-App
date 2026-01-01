@@ -89,8 +89,9 @@ export interface GroupedTradeFinal {
   stopPrice: string; // stopPrice
   validity: string; // validity
   expireDate: string; // expireDate
-  createdDate: string; // createdDate
+  createdDate: string; // createdDate - Date when position was opened
   lastModified: string; // lastModified
+  closedDate?: string; // closedDate - Date when position was closed (new field from backend)
   isOpen: boolean; // isOpen
   positionId: string; // positionId
   stopLoss: string; // stopLoss

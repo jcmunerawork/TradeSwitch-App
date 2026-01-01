@@ -198,8 +198,6 @@ export class ProfileDetailsComponent implements OnInit {
             ...updatedData
           }
         });
-        
-        console.log('✅ Profile updated successfully');
       } catch (error) {
         console.error('❌ Error updating profile:', error);
       } finally {

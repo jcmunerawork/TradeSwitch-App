@@ -110,33 +110,52 @@ export class ReportService {
    */
   getHistoryData(
     accountId: string,
-    accessToken: string,
     accNum: number
   ): Observable<GroupedTradeFinal[]> {
     this.appContext.setLoading('report', true);
     this.appContext.setError('report', null);
     
-    return this.tradeLockerApiService.getTradingHistory(accessToken, accountId, accNum)
+    return this.tradeLockerApiService.getTradingHistory(accountId, accNum)
       .pipe(
         switchMap(async (details) => {
-          // Verificar si hay datos válidos
-          if (!details || !details.d || !details.d.ordersHistory) {
-            this.appContext.updateReportHistory([]);
+          // NUEVO FORMATO: El backend devuelve trades ya procesados en formato GroupedTradeFinal
+          if (details && details.trades && Array.isArray(details.trades)) {
+            const groupedTrades = details.trades as GroupedTradeFinal[];
+            // Asegurar que todos los trades tengan los campos requeridos
+            const normalizedTrades = groupedTrades.map(trade => ({
+              ...trade,
+              pnl: trade.pnl ?? 0,
+              isOpen: trade.isOpen ?? false,
+              lastModified: trade.lastModified?.toString() || trade.createdDate?.toString() || Date.now().toString(),
+              positionId: trade.positionId || trade.id || '',
+              instrument: trade.instrument || trade.tradableInstrumentId || '',
+              closedDate: (trade as any).closedDate?.toString() || trade.lastModified?.toString() || undefined // Nuevo campo del backend
+            }));
+            
+            this.appContext.updateReportHistory(normalizedTrades);
             this.appContext.setLoading('report', false);
-            return [];
+            return normalizedTrades;
+          }
+          
+          // FORMATO ANTIGUO: { d: { ordersHistory: [...] } } - necesita transformación
+          if (details && details.d && details.d.ordersHistory) {
+            const historyTrades: historyTrade[] =
+              details.d.ordersHistory.map(arrayToHistoryTrade);
+            
+            // Pasar accountId y accNum a la función (el backend gestiona el accessToken)
+            const groupedTrades = await groupOrdersByPosition(historyTrades, this, accountId, accNum);
+            
+            // Actualizar contexto con los datos del historial
+            this.appContext.updateReportHistory(groupedTrades);
+            this.appContext.setLoading('report', false);
+            
+            return groupedTrades;
           }
 
-          const historyTrades: historyTrade[] =
-            details.d.ordersHistory.map(arrayToHistoryTrade);
-          
-          // Pasar accessToken y accNum a la función
-          const groupedTrades = await groupOrdersByPosition(historyTrades, this, accessToken, accNum);
-          
-          // Actualizar contexto con los datos del historial
-          this.appContext.updateReportHistory(groupedTrades);
+          // Si no hay datos válidos, retornar array vacío
+          this.appContext.updateReportHistory([]);
           this.appContext.setLoading('report', false);
-          
-          return groupedTrades;
+          return [];
         })
       );
   }
@@ -165,13 +184,12 @@ export class ReportService {
    */
   getBalanceData(
     accountId: string,
-    accessToken: string,
     accNum: number
   ): Observable<any> {
     this.appContext.setLoading('report', true);
     this.appContext.setError('report', null);
     
-    return this.tradeLockerApiService.getAccountBalance(accountId, accessToken, accNum)
+    return this.tradeLockerApiService.getAccountBalance(accountId, accNum)
       .pipe(
         map((details) => {
           // Verificar si hay datos válidos
@@ -267,12 +285,12 @@ export class ReportService {
    * @memberof ReportService
    */
   getInstrumentDetails(
-    accessToken: string,
+    accountId: string,
     tradableInstrumentId: string,
     routeId: string,
     accNum: number
   ): Observable<InstrumentDetails> {
-    return this.tradeLockerApiService.getInstrumentDetails(accessToken, tradableInstrumentId, routeId, accNum)
+    return this.tradeLockerApiService.getInstrumentDetails(accountId, tradableInstrumentId, routeId, accNum)
       .pipe(
         map((details) => {
           // Extract all instrument data for calculations
@@ -297,11 +315,10 @@ export class ReportService {
    * @memberof ReportService
    */
   getAllInstruments(
-    accessToken: string,
-    accNum: number,
-    accountId: string
+    accountId: string,
+    accNum: number
   ): Observable<Instrument[]> {
-    return this.tradeLockerApiService.getAllInstruments(accessToken, accountId, accNum)
+    return this.tradeLockerApiService.getAllInstruments(accountId, accNum)
       .pipe(
         map((details) => {
           return details.d.instruments;

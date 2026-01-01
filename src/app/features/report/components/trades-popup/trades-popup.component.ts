@@ -11,7 +11,8 @@ import { ConfigurationOverview } from '../../../strategy/models/strategy.model';
  * @interface TradeDetail
  */
 export interface TradeDetail {
-  openTime: string;
+  positionOpened: string; // Date and time when position was opened
+  positionClosed: string; // Date and time when position was closed
   ticker: string;
   side: 'Long' | 'Short';
   netPnl: number;
@@ -77,17 +78,30 @@ export class TradesPopupComponent {
     console.log(this.selectedDay.trades);
     
     // Convertir trades del día a formato de detalle
-    this.trades = this.selectedDay.trades.map((trade, index) => ({
-      openTime: this.formatTime(new Date(Number(trade.lastModified))),
-      ticker: trade.instrument ?? 'N/A',
-      side: this.determineSide(trade),
-      netPnl: trade.pnl ?? 0,
-      followedStrategy: this.selectedDay?.followedStrategy ?? false,
-      strategyName: this.getStrategyNameForTrade(trade)
-    }));
+    this.trades = this.selectedDay.trades.map((trade, index) => {
+      // Position Opened: usar createdDate (cuando se abrió la posición)
+      const openedDate = trade.createdDate 
+        ? new Date(Number(trade.createdDate))
+        : new Date(Number(trade.lastModified)); // Fallback a lastModified si no hay createdDate
+      
+      // Position Closed: usar closedDate (nuevo campo del backend) o lastModified como fallback
+      const closedDate = (trade as any).closedDate 
+        ? new Date(Number((trade as any).closedDate))
+        : new Date(Number(trade.lastModified)); // Fallback a lastModified si no hay closedDate
+      
+      return {
+        positionOpened: this.formatDateTime(openedDate),
+        positionClosed: this.formatDateTime(closedDate),
+        ticker: trade.instrument ?? 'N/A',
+        side: this.determineSide(trade),
+        netPnl: trade.pnl ?? 0,
+        followedStrategy: this.selectedDay?.followedStrategy ?? false,
+        strategyName: this.getStrategyNameForTrade(trade)
+      };
+    });
 
-    // Ordenar por tiempo (más reciente primero)
-    this.trades.sort((a, b) => b.openTime.localeCompare(a.openTime));
+    // Ordenar por tiempo de cierre (más reciente primero)
+    this.trades.sort((a, b) => b.positionClosed.localeCompare(a.positionClosed));
   }
 
   formatDate(date: Date): string {
@@ -107,6 +121,25 @@ export class TradesPopupComponent {
       minute: '2-digit', 
       second: '2-digit' 
     });
+  }
+
+  /**
+   * Format date and time for position opened/closed display
+   * Format: "MM/DD/YYYY HH:MM:SS"
+   */
+  formatDateTime(date: Date): string {
+    const dateStr = date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    return `${dateStr} ${timeStr}`;
   }
 
   determineSide(trade: GroupedTradeFinal): 'Long' | 'Short' {
@@ -200,8 +233,8 @@ export class TradesPopupComponent {
   }
 
   onSortByTime() {
-    // Implementar lógica de ordenamiento
-    this.trades.sort((a, b) => b.openTime.localeCompare(a.openTime));
+    // Sort by position closed time (most recent first)
+    this.trades.sort((a, b) => b.positionClosed.localeCompare(a.positionClosed));
   }
 
   onFilter() {

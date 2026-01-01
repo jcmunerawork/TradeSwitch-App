@@ -11,6 +11,7 @@ import { User, UserStatus } from '../../../overview/models/overview';
 import { LinkToken } from '../../../../shared/services/tokens-operations.service';
 import { UserCredentials } from '../../../auth/models/userModel';
 import { AlertService } from '../../../../core/services';
+import { BackendApiService } from '../../../../core/services/backend-api.service';
 
 /**
  * Component for creating new users with role selection (user or admin).
@@ -74,7 +75,13 @@ export class CreateUserRolePopupComponent implements OnChanges {
   showSuccess = false;
   showCreateConfirm = false;
 
-  constructor(private fb: FormBuilder, private authService: AuthService, private subscriptionService: SubscriptionService, private alertService: AlertService) {
+  constructor(
+    private fb: FormBuilder, 
+    private authService: AuthService, 
+    private subscriptionService: SubscriptionService, 
+    private alertService: AlertService,
+    private backendApi: BackendApiService
+  ) {
     this.form = this.fb.group({
       firstName: ['', [Validators.required, Validators.minLength(2)]],
       lastName: ['', [Validators.required, Validators.minLength(2)]],
@@ -130,62 +137,48 @@ export class CreateUserRolePopupComponent implements OnChanges {
     try {
       const email = this.form.value.email;
       const password = this.form.value.password;
-      // Crear usuario en Firebase Auth
-      const credentials: UserCredentials = { email, password } as { email: string; password: string };
 
-      const existingUser = await this.authService.getUserByEmail(email);
-      if (existingUser) {
-        this.alertService.showError('This email is already registered. Please use a different email or try logging in.', 'Email Already Registered');
-        return;
+      // Verificar que el email no esté ya registrado (opcional, el backend también lo valida)
+      try {
+        const existingUser = await this.authService.getUserByEmail(email);
+        if (existingUser) {
+          this.alertService.showError('This email is already registered. Please use a different email or try logging in.', 'Email Already Registered');
+          return;
+        }
+      } catch (error) {
+        // Si falla la verificación, continuar (el backend también validará)
+        console.warn('Could not verify email existence, continuing with user creation');
       }
 
-      const userResponse = await this.authService.register(credentials);
-      const userId = userResponse.user.uid;
-
-      // Token
-      const token: LinkToken = {
-        id: email.split('@')[0] + userId.substring(0, 4),
-        userId,
-      } as any;
-
-      // User doc
-      const user: User = {
-        id: userId,
-        email,
-        tokenId: token.id,
+      // Llamar al backend - EL BACKEND HACE TODO:
+      // 1. Crea usuario en Firebase Auth
+      // 2. Crea documento de usuario en Firestore
+      // 3. Crea link token
+      // 4. Crea suscripción inicial (Free)
+      const signupResponse = await this.backendApi.signup({
+        email: email,
+        password: password,
         firstName: this.form.value.firstName,
         lastName: this.form.value.lastName,
         phoneNumber: this.form.value.phoneNumber,
         birthday: this.form.value.birthday,
-        best_trade: 0,
-        netPnl: 0,
-        number_trades: 0,
-        profit: 0,
-        status: this.role === 'admin' ? UserStatus.ADMIN : UserStatus.ACTIVE,
-        strategy_followed: 0,
-        subscription_date: new Date().getTime(),
-        lastUpdated: new Date().getTime(),
-        total_spend: 0,
-        isAdmin: this.role === 'admin' ? true : false,
-        trading_accounts: 0,
-        strategies: 0,
-      };
+        isAdmin: this.role === 'admin'
+      });
 
-      await this.authService.createUser(user as User);
-      await this.authService.createLinkToken(token);
+      if (!signupResponse.success || !signupResponse.data) {
+        throw new Error(signupResponse.error?.message || 'Error creating user');
+      }
 
-      // Crear suscripción Free
-      const freeSubscriptionData: Omit<Subscription, 'id' | 'created_at' | 'updated_at'> = {
-        planId: 'Cb1B0tpxdE6AP6eMZDo0',
-        status: UserStatus.ACTIVE,
-        userId,
-      };
-      await this.subscriptionService.createSubscription(userId, freeSubscriptionData);
+      const userId = signupResponse.data.user.uid;
 
       this.showSuccess = true;
       this.created.emit();
-    } catch (e) {
-      console.error('Error creating user:', e);
+    } catch (e: any) {
+      console.error('❌ CreateUserRolePopup: Error creating user:', e);
+      this.alertService.showError(
+        e.message || 'An error occurred while creating the user. Please try again.',
+        'Error Creating User'
+      );
     }
   }
 
