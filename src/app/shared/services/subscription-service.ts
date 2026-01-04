@@ -89,7 +89,12 @@ export class SubscriptionService {
   /**
    * Obtiene la última suscripción de un usuario (único documento esperado)
    * Now uses backend API but maintains same interface
-   * @param userId ID del usuario
+   * 
+   * Endpoint: GET /api/v1/profile/subscriptions/latest
+   * El endpoint siempre retorna 200, nunca 404.
+   * Cuando no hay suscripción, retorna: { "success": true, "data": { "subscription": null } }
+   * 
+   * @param userId ID del usuario (se mantiene por compatibilidad, pero el endpoint lo obtiene del token)
    * @returns Promise con la suscripción o null si no existe
    */
   async getUserLatestSubscription(userId: string): Promise<Subscription | null> {
@@ -97,14 +102,30 @@ export class SubscriptionService {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.getUserLatestSubscription(userId, idToken);
       
-      if (!response.success || !response.data) {
+      // El endpoint siempre retorna success: true
+      // Si no hay suscripción, data.subscription será null
+      if (!response.success) {
+        console.warn('⚠️ SubscriptionService: Respuesta no exitosa del backend:', response);
+        return null;
+      }
+      
+      // Si data es null o undefined, o subscription es null, retornar null
+      if (!response.data || response.data.subscription === null || response.data.subscription === undefined) {
         return null;
       }
       
       return response.data.subscription as Subscription;
-    } catch (error) {
-      console.error('❌ Error al obtener suscripción del usuario:', error);
-      throw error;
+    } catch (error: any) {
+      // ✅ Manejar todos los errores como "usuario sin suscripción" (caso válido)
+      // El endpoint nunca debería retornar error, pero por si acaso lo manejamos
+      if (error?.status === 404) {
+        console.log('ℹ️ SubscriptionService: Usuario sin suscripción (404), retornando null');
+        return null;
+      }
+      
+      // Cualquier otro error también se trata como "sin suscripción"
+      console.warn('⚠️ SubscriptionService: Error al obtener suscripción, tratando como usuario sin suscripción:', error?.message || error);
+      return null;
     }
   }
 

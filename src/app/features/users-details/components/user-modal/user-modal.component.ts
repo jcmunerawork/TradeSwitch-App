@@ -309,4 +309,51 @@ export class UserModalComponent {
   getUserDate(date: number): Date {
     return new Date(date);
   }
+
+  /**
+   * Format birthday date for display
+   * Handles Date, Timestamp, and string formats
+   */
+  getFormattedBirthday(): string {
+    if (!this.user?.birthday) {
+      return 'Not provided';
+    }
+
+    try {
+      let date: Date;
+
+      // Handle Firestore Timestamp
+      if (this.user.birthday && typeof this.user.birthday === 'object' && 'toDate' in this.user.birthday) {
+        date = (this.user.birthday as any).toDate();
+      }
+      // Handle Date object
+      else if (this.user.birthday instanceof Date) {
+        date = this.user.birthday;
+      }
+      // Handle string or number (timestamp)
+      else {
+        date = new Date(this.user.birthday);
+      }
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+
+      // Format: "2 de junio de 2001" (day de month de year)
+      const months = [
+        'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+      ];
+
+      const day = date.getDate();
+      const month = months[date.getMonth()];
+      const year = date.getFullYear();
+
+      return `${day} de ${month} de ${year}`;
+    } catch (error) {
+      console.error('Error formatting birthday:', error);
+      return 'Invalid date';
+    }
+  }
 }

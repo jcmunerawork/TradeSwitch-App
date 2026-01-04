@@ -804,10 +804,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         this.strategySvc
           .createStrategyView(this.user.id, this.currentStrategyName, newConfig)
           .then(async (strategyId) => {
-            // Recargar todas las estrategias en cache después de crear
-            if (this.user?.id) {
-              await this.strategySvc.reloadAllStrategiesToCache(this.user.id);
-            }
+            // ✅ createStrategyView ya guarda la strategy en cache y localStorage automáticamente
+            // No es necesario recargar todas las strategies
             
             this.router.navigate(['/strategy']);
           })
@@ -931,8 +929,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
     try {
       if (this.strategyId) {
-        // Actualizar nombre en configuration-overview
-        await this.strategySvc.updateConfigurationOverview(this.strategyId, { 
+        // ✅ Usar updateStrategyView para que se actualice automáticamente el cache y localStorage
+        await this.strategySvc.updateStrategyView(this.strategyId, { 
           name: this.editingStrategyName.trim() 
         });
         

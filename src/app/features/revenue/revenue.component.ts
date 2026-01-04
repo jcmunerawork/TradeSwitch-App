@@ -10,14 +10,13 @@ import {
 } from './models/revenue';
 import { Store } from '@ngrx/store';
 import { statCardComponent } from '../report/components/statCard/stat_card.component';
-import { RevenueGraphComponent } from './components/revenueGraph/revenue-graph.component';
 import { RefundsTableComponent } from './components/refunds-table/refunds-table.component';
 import { OrdersTableComponent } from './components/orders-table/orders-table.component';
 import { SubscriptionsTableComponent } from './components/subscriptions-table/subscriptions-table.component';
 import { selectUser } from '../auth/store/user.selectios';
 import { User } from '../overview/models/overview';
 import { AuthService } from '../../shared/services/auth.service';
-import { ConfigService } from '../../core/services/config.service';
+import { BackendApiService } from '../../core/services/backend-api.service';
 
 @Component({
   selector: 'app-revenue',
@@ -26,7 +25,6 @@ import { ConfigService } from '../../core/services/config.service';
     LoadingPopupComponent,
     FormsModule,
     statCardComponent,
-    RevenueGraphComponent,
     RefundsTableComponent,
     OrdersTableComponent,
     SubscriptionsTableComponent,
@@ -50,11 +48,11 @@ export class RevenueComponent implements OnInit {
 
   loading = false;
   user: User | null = null;
-  private configService = inject(ConfigService);
 
   constructor(
     private store: Store,
-    private authService: AuthService
+    private authService: AuthService,
+    private backendApi: BackendApiService
   ) {}
 
   /**
@@ -100,19 +98,19 @@ export class RevenueComponent implements OnInit {
     try {
       const bearerToken = await this.authService.getBearerTokenFirebase(this.user.id);
       
-      const response = await fetch(`${this.configService.apiUrl}/admin-dashboard/revenue`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${bearerToken}`
-        }
+      console.log('📡 RevenueComponent: Fetching revenue data from backend...');
+      const response = await this.backendApi.getRevenueData(bearerToken);
+      
+      console.log('✅ RevenueComponent: Revenue data received:', {
+        success: response.success,
+        hasData: !!response.data
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to fetch revenue data');
       }
 
-      const data: RevenueApiResponse = await response.json();
+      const data: RevenueApiResponse = response.data;
       
       // Update card data
       this.netRevenue = data.netRevenue || 0;
@@ -151,8 +149,15 @@ export class RevenueComponent implements OnInit {
         status: this.formatRefundStatus(refund.status)
       }));
 
-    } catch (error) {
-      console.error('Error fetching revenue data:', error);
+      console.log('✅ RevenueComponent: Data transformed successfully');
+
+    } catch (error: any) {
+      console.error('❌ RevenueComponent: Error fetching revenue data:', error);
+      console.error('❌ RevenueComponent: Error details:', {
+        status: error?.status,
+        message: error?.message,
+        error: error?.error
+      });
     } finally {
       this.loading = false;
     }

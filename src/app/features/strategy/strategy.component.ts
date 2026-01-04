@@ -197,15 +197,26 @@ export class Strategy implements OnInit, OnDestroy {
         // Pequeño delay para asegurar que el componente esté completamente inicializado
         setTimeout(() => {
           const cacheSize = this.strategyCacheService.getCacheSize();
+          const cacheTimestamp = this.strategyCacheService.getCacheTimestamp();
+          const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 minutos
+          const isCacheValid = cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_MAX_AGE);
           const hasStrategies = this.userStrategies && this.userStrategies.length > 0;
           const hasActiveStrategy = this.activeStrategy !== null;
           
-          // Si no hay estrategias en la UI pero hay cuentas, recargar
-          if (this.accountsData.length > 0 && (cacheSize === 0 || (!hasStrategies && !hasActiveStrategy))) {
-            console.log('🔄 StrategyComponent: Cache vacío o sin estrategias detectado al navegar, recargando estrategias...');
-            console.log(`   Cache size: ${cacheSize}, Has strategies: ${hasStrategies}, Has active: ${hasActiveStrategy}, Accounts: ${this.accountsData.length}`);
+          // ✅ Solo recargar si:
+          // 1. Hay cuentas (usuario tiene cuentas configuradas)
+          // 2. Y (cache está vacío O cache expirado O no hay strategies en UI)
+          if (this.accountsData.length > 0 && (cacheSize === 0 || !isCacheValid || (!hasStrategies && !hasActiveStrategy))) {
+            console.log('🔄 StrategyComponent: Cache vacío/expirado o sin estrategias detectado al navegar, recargando estrategias...');
+            console.log(`   Cache size: ${cacheSize}, Cache válido: ${isCacheValid}, Has strategies: ${hasStrategies}, Has active: ${hasActiveStrategy}, Accounts: ${this.accountsData.length}`);
             this.invalidateCacheAndReload();
-          }
+          } else if (cacheSize > 0 && isCacheValid && (!hasStrategies || !hasActiveStrategy)) {
+            // Si el cache es válido pero la UI está vacía, solo recargar desde cache (sin petición al backend)
+            console.log('📦 StrategyComponent: Cache válido pero UI vacía, recargando desde cache...');
+            this.loadAllStrategiesToCache(); // Esto ahora usará el cache si es válido
+          } else {
+            console.log('✅ StrategyComponent: Cache válido y UI actualizada, no se necesita recargar');
+          } 
         }, 300);
       }
     });
@@ -354,17 +365,59 @@ export class Strategy implements OnInit, OnDestroy {
     if (!this.user?.id) return;
 
     try {
-      // NO limpiar el cache aquí si ya tiene datos
-      // Solo limpiar si realmente necesitamos forzar una recarga completa
-      // El cache se mantiene para evitar recargas innecesarias
+      // ✅ OPTIMIZACIÓN: Primero intentar cargar desde cache/localStorage
       const currentCacheSize = this.strategyCacheService.getCacheSize();
+      const cacheTimestamp = this.strategyCacheService.getCacheTimestamp();
+      const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 minutos
+      const isCacheValid = cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_MAX_AGE);
+      
+      // Si el cache tiene datos y es válido, usar el cache en lugar de hacer petición al backend
+      if (currentCacheSize > 0 && isCacheValid) {
+        console.log(`📦 StrategyComponent: Cache válido con ${currentCacheSize} estrategias, cargando desde cache/localStorage...`);
+        
+        // Cargar desde cache
+        const cachedStrategies = this.strategyCacheService.getAllStrategies();
+        const strategiesWithConfigs: Array<{ overview: ConfigurationOverview; configuration: StrategyState }> = [];
+        
+        for (const [strategyId, strategyData] of cachedStrategies.entries()) {
+          strategiesWithConfigs.push({
+            overview: { ...strategyData.overview, id: strategyId } as any,
+            configuration: strategyData.configuration
+          });
+        }
+        
+        // Separar estrategia activa de inactivas (misma lógica que cuando se carga desde backend)
+        const activeStrategyData = strategiesWithConfigs.find(s => s.overview.status === true);
+        if (activeStrategyData) {
+          this.activeStrategy = activeStrategyData.overview;
+        } else {
+          this.activeStrategy = null;
+        }
+        
+        this.userStrategies = strategiesWithConfigs.filter(s => s.overview.status !== true).map(s => s.overview);
+        this.filteredStrategies = [...this.userStrategies];
+        
+        // Cargar datos de las cards y actualizar strategy card si hay estrategia activa
+        await this.loadStrategyCardsData();
+        if (this.activeStrategy) {
+          await this.updateStrategyCardWithActiveStrategy();
+        }
+        
+        // Verificar limitaciones
+        this.checkStrategyLimitations();
+        
+        console.log('✅ StrategyComponent: Estrategias cargadas desde cache/localStorage');
+        return; // Salir temprano, no hacer petición al backend
+      }
+      
+      // Si el cache está vacío o es muy antiguo, cargar desde backend
       if (currentCacheSize === 0) {
         console.log('📦 StrategyComponent: Cache vacío, cargando estrategias desde backend...');
       } else {
-        console.log(`📦 StrategyComponent: Cache tiene ${currentCacheSize} estrategias, verificando si necesita actualización...`);
+        console.log(`📦 StrategyComponent: Cache expirado (${Math.round((Date.now() - (cacheTimestamp || 0)) / 1000 / 60)} min), recargando desde backend...`);
       }
       
-      // 1. Obtener todas las estrategias (overviews)
+      // 1. Obtener todas las estrategias (overviews) desde backend
       const allStrategies = await this.strategySvc.getUserStrategyViews(this.user.id);
       
       if (!allStrategies || allStrategies.length === 0) {
@@ -1396,10 +1449,12 @@ export class Strategy implements OnInit, OnDestroy {
     }
 
     try {
+      // ✅ updateStrategyView ya actualiza el cache y localStorage automáticamente
+      // No es necesario invalidar y recargar todas las strategies
       await this.strategySvc.updateStrategyView(strategyId, { name: newName.trim() });
       
-      // Invalidar cache y recargar estrategias
-      await this.invalidateCacheAndReload();
+      // Solo recargar la UI local si es necesario
+      await this.loadAllStrategiesToCache();
     } catch (error) {
       this.alertService.showError('Error updating strategy name. Please try again.', 'Strategy Name Update Error');
     }

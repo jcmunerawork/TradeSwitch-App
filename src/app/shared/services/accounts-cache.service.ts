@@ -237,5 +237,35 @@ export class AccountsCacheService {
       return null;
     }
   }
+
+  /**
+   * Limpiar datos legacy de localStorage que ya no se usan
+   * Elimina: balance_{accountId}, tradeSwitch_currentAccount, tradeSwitch_accountsData
+   */
+  cleanupLegacyLocalStorage(): void {
+    if (!this.isBrowser) return;
+
+    try {
+      // Eliminar balance_{accountId} (todos los que empiecen con "Balance_" o "balance_")
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('Balance_') || key.startsWith('balance_'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+
+      // Eliminar tradeSwitch_currentAccount y tradeSwitch_accountsData si existen
+      localStorage.removeItem('tradeSwitch_currentAccount');
+      localStorage.removeItem('tradeSwitch_accountsData');
+      
+      if (keysToRemove.length > 0) {
+        console.log(`🧹 Limpiados ${keysToRemove.length} elementos legacy de localStorage`);
+      }
+    } catch (error) {
+      console.warn('Error limpiando localStorage legacy:', error);
+    }
+  }
 }
 

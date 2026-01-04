@@ -63,12 +63,24 @@
           formControlName="birthday"
           class="form-input"
         ></app-birthday-input>
-  
+
+        @if (errorMessage) {
+          <div class="error-message">
+            {{ errorMessage }}
+          </div>
+        }
+
         <button
           type="submit"
           class="submit-button"
+          [disabled]="isLoading"
         >
-          Register
+          @if (isLoading) {
+            <span class="spinner"></span>
+            <span>Loading...</span>
+          } @else {
+            Register
+          }
         </button>
         <!-- 
           <div class="signup-methods-separator">

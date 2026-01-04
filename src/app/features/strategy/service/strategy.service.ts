@@ -118,17 +118,23 @@ export class SettingsService {
       // 2. Crear configuration-overview con el configurationId
       const overviewId = await this.createConfigurationOverviewWithConfigId(userId, name, configurationId, shouldBeActive);
       
-      // 3. Actualizar contexto con la nueva estrategia
+      // 3. Obtener la nueva estrategia completa
       const newStrategy = await this.getConfigurationOverview(overviewId);
-      if (newStrategy) {
-        this.appContext.addStrategy({ ...newStrategy, id: overviewId });
+      if (!newStrategy) {
+        throw new Error('Failed to get created strategy');
       }
       
       // 4. Actualizar conteos del usuario
       await this.authService.updateUserCounts(userId);
       
-      // 5. Recargar todas las estrategias en cache (memoria y localStorage)
-      await this.reloadAllStrategiesToCache(userId);
+      // 5. ✅ OPTIMIZACIÓN: Guardar solo la nueva strategy en cache y localStorage
+      // En lugar de recargar todas las strategies, solo agregamos la nueva
+      this.strategyCacheService.setStrategy(overviewId, newStrategy, configuration);
+      
+      // 6. Actualizar contexto con la nueva estrategia (solo una vez)
+      this.appContext.addStrategy({ ...newStrategy, id: overviewId });
+      
+      console.log('✅ New strategy saved to cache and localStorage:', overviewId);
       
       this.appContext.setLoading('strategies', false);
       return overviewId;
@@ -180,12 +186,12 @@ export class SettingsService {
 
   // Actualizar estrategia completa
   async updateStrategyView(overviewId: string, updates: { name?: string; configuration?: StrategyState; userId?: string }): Promise<void> {
-    // 1. Obtener el userId antes de actualizar
-    const overview = await this.getConfigurationOverview(overviewId);
-    if (!overview || !overview.userId) {
+    // 1. Obtener el userId y la estrategia actual antes de actualizar
+    const currentOverview = await this.getConfigurationOverview(overviewId);
+    if (!currentOverview || !currentOverview.userId) {
       throw new Error('Strategy not found or missing userId');
     }
-    const userId = overview.userId;
+    const userId = currentOverview.userId;
     
     // 2. Actualizar configuration-overview si hay cambios de nombre
     if (updates.name) {
@@ -194,13 +200,53 @@ export class SettingsService {
     
     // 3. Actualizar configuration si hay cambios de reglas
     if (updates.configuration) {
-      if (overview.configurationId) {
-        await this.updateConfigurationById(overview.configurationId, updates.configuration);
+      if (currentOverview.configurationId) {
+        await this.updateConfigurationById(currentOverview.configurationId, updates.configuration);
       }
     }
     
-    // 4. Recargar todas las estrategias en cache (memoria y localStorage)
-    await this.reloadAllStrategiesToCache(userId);
+    // 4. ✅ OPTIMIZACIÓN: Actualizar solo la strategy modificada en cache y localStorage
+    // En lugar de recargar todas las strategies, solo actualizamos la que cambió
+    try {
+      // Obtener la strategy actualizada completa
+      const updatedOverview = await this.getConfigurationOverview(overviewId);
+      if (!updatedOverview) {
+        throw new Error('Failed to get updated strategy overview');
+      }
+      
+      // Obtener la configuración (puede ser la actualizada o la existente)
+      let updatedConfiguration: StrategyState;
+      if (updates.configuration && updatedOverview.configurationId) {
+        // Si se actualizó la configuración, obtener la nueva
+        updatedConfiguration = updates.configuration;
+      } else {
+        // Si no se actualizó, obtener la existente desde cache o backend
+        const existingStrategy = this.strategyCacheService.getStrategy(overviewId);
+        if (existingStrategy) {
+          updatedConfiguration = existingStrategy.configuration;
+        } else if (updatedOverview.configurationId) {
+          const config = await this.getConfigurationById(updatedOverview.configurationId);
+          if (!config) {
+            throw new Error('Failed to get strategy configuration');
+          }
+          updatedConfiguration = config;
+        } else {
+          throw new Error('Strategy has no configuration ID');
+        }
+      }
+      
+      // Actualizar en cache (esto también actualiza localStorage automáticamente)
+      this.strategyCacheService.setStrategy(overviewId, updatedOverview, updatedConfiguration);
+      
+      // Actualizar en el contexto de la aplicación (solo esta strategy)
+      this.appContext.updateStrategy(overviewId, updatedOverview);
+      
+      console.log('✅ Strategy updated in cache and localStorage:', overviewId);
+    } catch (error) {
+      console.error('❌ Error updating strategy in cache, falling back to full reload:', error);
+      // Si falla la actualización individual, hacer recarga completa como fallback
+      await this.reloadAllStrategiesToCache(userId);
+    }
   }
 
   // Obtener todas las estrategias de un usuario
@@ -240,8 +286,34 @@ export class SettingsService {
   async activateStrategyView(userId: string, strategyId: string): Promise<void> {
     await this.strategyOperationsService.activateStrategyView(userId, strategyId);
     
-    // Recargar todas las estrategias en cache (memoria y localStorage)
-    await this.reloadAllStrategiesToCache(userId);
+    // ✅ OPTIMIZACIÓN: Actualizar solo la strategy activada en cache y localStorage
+    try {
+      const updatedOverview = await this.getConfigurationOverview(strategyId);
+      if (updatedOverview) {
+        // Obtener la configuración desde cache o backend
+        const existingStrategy = this.strategyCacheService.getStrategy(strategyId);
+        if (existingStrategy) {
+          // Actualizar solo el overview (el estado de activación cambió)
+          this.strategyCacheService.setStrategy(strategyId, updatedOverview, existingStrategy.configuration);
+          
+          // Actualizar en el contexto
+          this.appContext.activateStrategy(strategyId);
+          
+          console.log('✅ Strategy activation updated in cache and localStorage:', strategyId);
+        } else {
+          // Si no está en cache, recargar solo esta strategy
+          const strategyData = await this.getStrategyView(strategyId);
+          if (strategyData) {
+            this.strategyCacheService.setStrategy(strategyId, strategyData.overview, strategyData.configuration);
+            this.appContext.activateStrategy(strategyId);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error updating strategy activation in cache, falling back to full reload:', error);
+      // Si falla, hacer recarga completa como fallback
+      await this.reloadAllStrategiesToCache(userId);
+    }
   }
 
   // Actualizar fechas de activación/desactivación de estrategias
@@ -277,9 +349,24 @@ export class SettingsService {
       await this.authService.updateUserCounts(userId);
     }
     
-    // 4. Recargar todas las estrategias en cache (memoria y localStorage)
-    if (userId) {
-      await this.reloadAllStrategiesToCache(userId);
+    // 4. ✅ OPTIMIZACIÓN: Remover solo esta strategy del cache y localStorage
+    // En lugar de recargar todas las strategies, solo removemos la eliminada
+    try {
+      // Remover del cache (esto también actualiza localStorage automáticamente)
+      const allStrategies = this.strategyCacheService.getAllStrategies();
+      allStrategies.delete(strategyId);
+      this.strategyCacheService.setAllStrategies(allStrategies);
+      
+      // Remover del contexto
+      this.appContext.removeStrategy(strategyId);
+      
+      console.log('✅ Strategy removed from cache and localStorage:', strategyId);
+    } catch (error) {
+      console.error('❌ Error removing strategy from cache, falling back to full reload:', error);
+      // Si falla, hacer recarga completa como fallback
+      if (userId) {
+        await this.reloadAllStrategiesToCache(userId);
+      }
     }
   }
 

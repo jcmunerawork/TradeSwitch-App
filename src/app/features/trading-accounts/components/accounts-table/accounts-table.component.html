@@ -234,10 +234,11 @@
               </div>
             </td>
             <td class="smallText">
-              <p *ngIf="getAccountBalance(account) !== undefined">
+              <p *ngIf="getAccountBalance(account) !== undefined && !isBalancesLoading()">
                 {{ getAccountBalance(account) | currency : "USD" : "symbol" }}
               </p>
-              <p *ngIf="getAccountBalance(account) === undefined" class="loading-text">
+              <p *ngIf="(getAccountBalance(account) === undefined || isBalancesLoading())" class="loading-text">
+                <span class="spinner"></span>
                 Loading...
               </p>
             </td>

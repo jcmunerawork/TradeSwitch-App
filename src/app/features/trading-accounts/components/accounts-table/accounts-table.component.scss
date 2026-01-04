@@ -371,7 +371,25 @@ th:nth-child(9), td:nth-child(9) { width: 80px; }  // Actions
 .loading-text {
   color: #9ca3af;
   font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   animation: pulse 1.5s ease-in-out infinite;
+  
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(156, 163, 175, 0.3);
+    border-top-color: #9ca3af;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes pulse {

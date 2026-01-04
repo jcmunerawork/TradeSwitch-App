@@ -53,18 +53,26 @@ export interface ModalData {
  * - Check report access
  * - Validate subscription status (active, banned, cancelled)
  * - Generate modal data for upgrade/blocked scenarios
- * - Integration with AppContextService for plan data
+ * - Integration with AppContextService for plan data (used as fallback only)
+ *
+ * Subscription Validation Flow:
+ * 1. Always queries Firebase using backend API endpoint: GET /api/v1/profile/subscriptions/latest
+ *    - This endpoint queries: users/{userId}/subscription in Firebase
+ *    - Backend may also query Stripe internally if needed
+ * 2. Firebase subscription status indicates if user is banned
+ * 3. Even Free plan users have a subscription in Firebase
+ * 4. AppContext is only used as fallback in case of errors
  *
  * Plan Status Validation:
- * - Active: User has valid subscription
- * - Banned: User account is banned
- * - Cancelled: Subscription cancelled
- * - Needs Subscription: User needs to purchase a plan
+ * - Active: User has valid subscription (PURCHASED, CREATED, PROCESSING, ACTIVE)
+ * - Banned: User account is banned (status === BANNED)
+ * - Cancelled: Subscription cancelled (status === CANCELLED)
+ * - Needs Subscription: User needs to purchase a plan (no subscription or inactive)
  *
  * Relations:
- * - SubscriptionService: Gets user subscription data
+ * - SubscriptionService: Gets user subscription data from Firebase via backend API
  * - PlanService: Gets plan details and limits
- * - AppContextService: Accesses cached plan data
+ * - AppContextService: Accesses cached plan data (fallback only)
  * - Store (NgRx): Gets current user
  * - Router: Navigation for upgrade flows
  *
@@ -98,28 +106,22 @@ export class PlanLimitationsGuard implements CanActivate {
 
   /**
    * Check user's plan limitations and return detailed information
+   * 
+   * Validación completa de suscripción:
+   * 1. Consulta Firebase usando el endpoint del backend GET /api/v1/profile/subscriptions/latest
+   *    (Este endpoint consulta Firebase y puede consultar Stripe internamente)
+   * 2. El contexto se usa solo como referencia, pero siempre se valida contra Firebase
+   * 3. El status de Firebase indica si está baneado o no
+   * 4. Incluso el plan Free tiene subscription en Firebase
    */
   async checkUserLimitations(userId: string): Promise<PlanLimitations> {
     try {
-      // Usar primero el contexto global
-      const ctxPlan = this.appContext.userPlan();
-      if (ctxPlan) {
-        const isBanned = (ctxPlan as any).status === UserStatus.BANNED || ctxPlan.isActive === false;
-        const isCancelled = (ctxPlan as any).status === UserStatus.CANCELLED && ctxPlan.planName === 'Free';
-        const isActive = ctxPlan.isActive && !isBanned;
-        return {
-          maxAccounts: ctxPlan.maxAccounts,
-          maxStrategies: ctxPlan.maxStrategies,
-          planName: ctxPlan.planName,
-          isActive,
-          isBanned,
-          isCancelled,
-          needsSubscription: !isActive && !isCancelled && !isBanned
-        };
-      }
-
-      // Fallback: obtener la última suscripción y plan (no debería ocurrir si el contexto está activo)
+      // SIEMPRE consultar Firebase usando el endpoint del backend
+      // Este endpoint consulta: users/{userId}/subscription en Firebase
+      // y puede consultar Stripe internamente si es necesario
       const latestSubscription: Subscription | null = await this.subscriptionService.getUserLatestSubscription(userId);
+      
+      // Si no hay suscripción en Firebase, el usuario no tiene plan
       if (!latestSubscription) {
         return {
           maxAccounts: 0,
@@ -132,29 +134,89 @@ export class PlanLimitationsGuard implements CanActivate {
         };
       }
 
+      // El status de Firebase indica si está baneado o no
       const isBanned = latestSubscription.status === UserStatus.BANNED;
       const isCancelled = latestSubscription.status === UserStatus.CANCELLED;
+      
+      // Verificar si es plan Free (incluso el plan Free tiene subscription en Firebase)
+      const isFreePlan = latestSubscription.planId === 'free' || 
+                        latestSubscription.planId.toLowerCase() === 'free';
+      
+      // Estados activos según el status de Firebase
       const isActive = latestSubscription.status === UserStatus.PURCHASED ||
                        latestSubscription.status === UserStatus.CREATED ||
                        latestSubscription.status === UserStatus.PROCESSING ||
                        latestSubscription.status === UserStatus.ACTIVE;
       
-      if (isBanned || isCancelled || !isActive) {
+      // Si está baneado, bloquear acceso completamente
+      if (isBanned) {
+        return {
+          maxAccounts: 0,
+          maxStrategies: 0,
+          planName: 'Banned',
+          isActive: false,
+          isBanned: true,
+          isCancelled: false,
+          needsSubscription: false // No necesita suscripción porque está baneado
+        };
+      }
+      
+      // Si está cancelado y es plan Free, permitir acceso limitado
+      if (isCancelled && isFreePlan) {
+        return {
+          maxAccounts: 1,
+          maxStrategies: 1,
+          planName: 'Free',
+          isActive: true, // Free plan está activo pero con limitaciones
+          isBanned: false,
+          isCancelled: true,
+          needsSubscription: false // No necesita suscripción porque tiene plan Free
+        };
+      }
+      
+      // Si está cancelado pero no es Free, necesita nueva suscripción
+      if (isCancelled) {
+        return {
+          maxAccounts: 0,
+          maxStrategies: 0,
+          planName: 'Cancelled',
+          isActive: false,
+          isBanned: false,
+          isCancelled: true,
+          needsSubscription: true
+        };
+      }
+      
+      // Si no está activo, necesita suscripción
+      if (!isActive) {
         return {
           maxAccounts: 0,
           maxStrategies: 0,
           planName: 'Inactive Plan',
           isActive: false,
-          isBanned,
-          isCancelled,
+          isBanned: false,
+          isCancelled: false,
           needsSubscription: true
         };
       }
 
-      // Get plan details from Firebase
+      // Obtener detalles del plan desde Firebase
       const plan = await this.planService.getPlanById(latestSubscription.planId);
 
+      // Si el plan no existe, verificar si es plan Free
       if (!plan) {
+        if (isFreePlan) {
+          return {
+            maxAccounts: 1,
+            maxStrategies: 1,
+            planName: 'Free',
+            isActive: true,
+            isBanned: false,
+            isCancelled: false,
+            needsSubscription: false
+          };
+        }
+        
         return {
           maxAccounts: 0,
           maxStrategies: 0,
@@ -166,7 +228,7 @@ export class PlanLimitationsGuard implements CanActivate {
         };
       }
 
-      // Extract limitations from plan
+      // Extraer limitaciones del plan
       const maxAccounts = plan.tradingAccounts || 1;
       const maxStrategies = plan.strategies || 1;
 
@@ -182,6 +244,25 @@ export class PlanLimitationsGuard implements CanActivate {
 
     } catch (error) {
       console.error('Error checking user limitations:', error);
+      
+      // En caso de error, intentar usar el contexto como fallback
+      const ctxPlan = this.appContext.userPlan();
+      if (ctxPlan) {
+        const isBanned = (ctxPlan as any).status === UserStatus.BANNED || ctxPlan.isActive === false;
+        const isCancelled = (ctxPlan as any).status === UserStatus.CANCELLED && ctxPlan.planName === 'Free';
+        const isActive = ctxPlan.isActive && !isBanned;
+        return {
+          maxAccounts: ctxPlan.maxAccounts,
+          maxStrategies: ctxPlan.maxStrategies,
+          planName: ctxPlan.planName,
+          isActive,
+          isBanned,
+          isCancelled,
+          needsSubscription: !isActive && !isCancelled && !isBanned
+        };
+      }
+      
+      // Si no hay contexto, retornar error
       return {
         maxAccounts: 0,
         maxStrategies: 0,

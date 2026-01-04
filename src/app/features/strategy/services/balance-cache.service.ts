@@ -36,36 +36,22 @@ export class BalanceCacheService {
   private balanceSubject = new BehaviorSubject<number>(0);
 
   /**
-   * Obtener balance desde cache o localStorage
+   * Obtener balance desde cache en memoria
+   * Los balances ya se guardan en Firebase/Backend, no es necesario localStorage
    */
   getBalance(accountId: string): number {
-    // 1. Verificar cache en memoria
+    // Verificar cache en memoria
     const cachedBalance = this.balanceCache.get(accountId);
     if (cachedBalance && this.isCacheValid(cachedBalance.timestamp)) {
       return cachedBalance.balance;
-    }
-
-    // 2. Verificar localStorage
-    const localStorageKey = `balance_${accountId}`;
-    const storedBalance = localStorage.getItem(localStorageKey);
-    if (storedBalance) {
-      try {
-        const balanceData: BalanceData = JSON.parse(storedBalance);
-        if (this.isCacheValid(balanceData.timestamp)) {
-          // Actualizar cache en memoria
-          this.balanceCache.set(accountId, balanceData);
-          return balanceData.balance;
-        }
-      } catch (error) {
-        console.warn('Error parsing stored balance:', error);
-      }
     }
 
     return 0; // Valor por defecto
   }
 
   /**
-   * Guardar balance en cache y localStorage
+   * Guardar balance en cache en memoria
+   * Los balances ya se guardan en Firebase/Backend, no es necesario localStorage
    */
   setBalance(accountId: string, balance: number): void {
     const balanceData: BalanceData = {
@@ -76,10 +62,6 @@ export class BalanceCacheService {
 
     // Guardar en cache en memoria
     this.balanceCache.set(accountId, balanceData);
-
-    // Guardar en localStorage
-    const localStorageKey = `balance_${accountId}`;
-    localStorage.setItem(localStorageKey, JSON.stringify(balanceData));
 
     // Emitir cambio
     this.balanceSubject.next(balance);
@@ -100,7 +82,6 @@ export class BalanceCacheService {
     this.balanceCache.forEach((value, key) => {
       if (!this.isCacheValid(value.timestamp)) {
         this.balanceCache.delete(key);
-        localStorage.removeItem(`balance_${key}`);
       }
     });
   }
@@ -110,12 +91,6 @@ export class BalanceCacheService {
    */
   clearAllCache(): void {
     this.balanceCache.clear();
-    // Limpiar localStorage
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('balance_')) {
-        localStorage.removeItem(key);
-      }
-    });
   }
 
   /**

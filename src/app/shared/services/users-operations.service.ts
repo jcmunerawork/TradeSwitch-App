@@ -124,20 +124,58 @@ export class UsersOperationsService {
 
   /**
    * Buscar un usuario por su email
-   * Now uses backend API but maintains same interface
+   * Usa el endpoint GET /api/v1/users/email del backend
+   * 
+   * El backend retorna:
+   * - Si existe: { success: true, data: { user: {...} } }
+   * - Si no existe: { success: true, data: { user: null } }
    */
   async getUserByEmail(email: string): Promise<User | null> {
+    if (!this.isBrowser) {
+      console.warn('Not available in SSR');
+      return null;
+    }
+
     try {
       const idToken = await this.getIdToken();
+      console.log('📡 UsersOperationsService: Searching user by email:', email);
+      
       const response = await this.backendApi.getUserByEmail(email, idToken);
       
-      if (!response.success || !response.data) {
+      console.log('✅ UsersOperationsService: Response received:', {
+        success: response.success,
+        hasUser: !!response.data?.user
+      });
+      
+      if (!response.success) {
+        console.warn('⚠️ UsersOperationsService: Response not successful');
         return null;
       }
       
-      return response.data.user as User;
-    } catch (error) {
-      console.error('Error buscando usuario por email:', error);
+      // El backend retorna { user: null } si no existe, o { user: {...} } si existe
+      if (!response.data || response.data.user === null || response.data.user === undefined) {
+        console.log('✅ UsersOperationsService: User not found (email not registered)');
+        return null;
+      }
+      
+      const user = response.data.user as User;
+      console.log('✅ UsersOperationsService: User found:', user.id);
+      return user;
+    } catch (error: any) {
+      console.error('❌ UsersOperationsService: Error searching user by email:', error);
+      console.error('❌ UsersOperationsService: Error details:', {
+        status: error?.status,
+        message: error?.message,
+        error: error?.error
+      });
+      
+      // Si es un 404, el usuario no existe (esto es válido)
+      if (error?.status === 404) {
+        console.log('✅ UsersOperationsService: User not found (404)');
+        return null;
+      }
+      
+      // Para otros errores, retornar null pero loguear el error
       return null;
     }
   }

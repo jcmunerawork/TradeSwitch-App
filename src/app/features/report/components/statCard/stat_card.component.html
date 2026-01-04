@@ -2,5 +2,12 @@
   <p class="kpi-title regularText color-background">
     {{ title }} <span></span>
   </p>
-  <h2 class="kpi-value titleText" [ngClass]="getValueColorClass()">{{ getFormattedValue() }}</h2>
+  @if (loading) {
+    <div class="kpi-value-loading d-flex align-items-center gap-8">
+      <span class="spinner"></span>
+      <span class="loading-text">Loading...</span>
+    </div>
+  } @else {
+    <h2 class="kpi-value titleText" [ngClass]="getValueColorClass()">{{ getFormattedValue() }}</h2>
+  }
 </div>

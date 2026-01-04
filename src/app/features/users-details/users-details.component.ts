@@ -13,6 +13,10 @@ import { AppContextService } from '../../shared/context';
 import { AlertService } from '../../core/services';
 import { ReasonsService } from '../../shared/services/reasons.service';
 import { serverTimestamp } from 'firebase/firestore';
+import { ToastNotificationService } from '../../shared/services/toast-notification.service';
+import { ToastContainerComponent } from '../../shared/components/toast-container/toast-container.component';
+import { take } from 'rxjs/operators';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * Component for managing user details and administrative actions.
@@ -52,6 +56,7 @@ import { serverTimestamp } from 'firebase/firestore';
     FormsModule,
     UsersTableComponent,
     UserModalComponent,
+    ToastContainerComponent,
   ],
   templateUrl: './users-details.component.html',
   styleUrl: './users-details.component.scss',
@@ -66,7 +71,8 @@ export class UsersDetails {
     private userSvc: AuthService,
     private appContext: AppContextService,
     private alertService: AlertService,
-    private reasonsService: ReasonsService
+    private reasonsService: ReasonsService,
+    private toastService: ToastNotificationService
   ) {}
 
   loading = false;
@@ -110,13 +116,53 @@ export class UsersDetails {
   }
 
   async getUsersData() {
+    this.loading = true;
     try {
+      // Verificar que el usuario actual sea admin antes de hacer la petición
+      const currentUser = await firstValueFrom(
+        this.appContext.currentUser$.pipe(take(1))
+      );
+      
+      if (!currentUser || !currentUser.isAdmin) {
+        console.warn('⚠️ UsersDetails: Current user is not admin, cannot load users');
+        this.loading = false;
+        this.usersData = [];
+        return;
+      }
+      
+      console.log('📡 UsersDetails: Loading users data...');
       const allUsers = await this.userManagementService.getAllUsers();
+      console.log('✅ UsersDetails: All users received:', allUsers.length);
+      
+      // Filtrar usuarios que no son admin
       this.usersData = allUsers.filter((user) => !user.isAdmin);
+      console.log('✅ UsersDetails: Filtered users (non-admin):', this.usersData.length);
+      
       this.loading = false;
-    } catch (error) {
+    } catch (error: any) {
       this.loading = false;
-      console.error('Error getting users data:', error);
+      console.error('❌ UsersDetails: Error getting users data:', error);
+      console.error('❌ UsersDetails: Error details:', {
+        status: error?.status,
+        message: error?.message,
+        error: error?.error
+      });
+      
+      // Si es error 403, el usuario no tiene permisos (no es admin)
+      if (error?.status === 403) {
+        console.warn('⚠️ UsersDetails: Access forbidden - user is not admin');
+        this.usersData = [];
+        // No mostrar error al usuario si no es admin (es esperado)
+        return;
+      }
+      
+      // Para otros errores, mostrar mensaje
+      this.toastService.showBackendError(error, 'Error loading users data');
+      
+      // Si no hay datos, inicializar array vacío
+      if (!this.usersData) {
+        this.usersData = [];
+      }
     }
   }
 
@@ -133,9 +179,10 @@ export class UsersDetails {
         if (refreshed) this.selectedUser = refreshed;
         this.alertService.showSuccess('User banned successfully', 'Ban User');
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error('Error banning user', err);
         this.alertService.showError('Error banning user', 'Ban User');
+        this.toastService.showBackendError(err, 'Error banning user');
       })
       .finally(() => (this.loading = false));
   }
@@ -158,39 +205,52 @@ export class UsersDetails {
         if (refreshed) this.selectedUser = refreshed;
         this.alertService.showSuccess('User unbanned successfully', 'Unban User');
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error('Error unbanning user', err);
         this.alertService.showError('Error unbanning user', 'Unban User');
+        this.toastService.showBackendError(err, 'Error unbanning user');
       })
       .finally(() => (this.loading = false));
   }
 
-  onSendResetLink(email: string) {
+  async onSendResetLink(email: string) {
+    if (!this.selectedUser) return;
+    
     if (!email) {
       this.alertService.showInfo('Email is required', 'Password reset');
       return;
     }
+    
     this.loading = true;
-    this.userSvc
-      .sendPasswordReset(email)
-      .then(() => this.alertService.showSuccess('Reset link sent', 'Password reset'))
-      .catch((err) => {
-        console.error('Error sending reset link', err);
-        this.alertService.showError('Error sending reset link', 'Password reset');
-      })
-      .finally(() => (this.loading = false));
+    const userId = String(this.selectedUser.id);
+    
+    try {
+      await this.userManagementService.sendPasswordResetToUser(userId, email);
+      this.alertService.showSuccess('Reset link sent', 'Password reset');
+    } catch (err: any) {
+      console.error('Error sending reset link', err);
+      this.alertService.showError('Error sending reset link', 'Password reset');
+      this.toastService.showBackendError(err, 'Error sending reset link');
+    } finally {
+      this.loading = false;
+    }
   }
 
-  onLogoutEverywhere(userId: string) {
+  async onLogoutEverywhere(userId: string) {
     if (!userId) return;
     this.loading = true;
-    this.userSvc
-      .deleteLinkToken(userId as any)
-      .then(() => this.alertService.showSuccess('Firebase token revoked', 'Logout everywhere'))
-      .catch((err) => {
-        console.error('Error revoking token', err);
-        this.alertService.showError('Error revoking token', 'Logout everywhere');
-      })
-      .finally(() => (this.loading = false));
+    try {
+      const result = await this.userManagementService.revokeAllUserSessions(userId);
+      const message = result.tokensDeleted 
+        ? `All sessions revoked. ${result.tokensDeleted} token(s) deleted.`
+        : result.message || 'All sessions revoked successfully';
+      this.alertService.showSuccess(message, 'Logout everywhere');
+    } catch (err: any) {
+      console.error('Error revoking all sessions', err);
+      this.alertService.showError('Error revoking sessions', 'Logout everywhere');
+      this.toastService.showBackendError(err, 'Error revoking sessions');
+    } finally {
+      this.loading = false;
+    }
   }
 }

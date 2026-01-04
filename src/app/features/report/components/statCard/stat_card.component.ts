@@ -35,6 +35,7 @@ export class statCardComponent {
   @Input() title!: string;
   @Input() value?: string | number;
   @Input() formatType?: 'currency' | 'percentage' | 'number';
+  @Input() loading: boolean = false;
 
   private numberFormatter = new NumberFormatterService();
 

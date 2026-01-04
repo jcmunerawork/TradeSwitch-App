@@ -36,3 +36,29 @@
     color: #ffffff !important;
   }
 }
+
+.kpi-value-loading {
+  min-height: 2.5rem;
+  align-items: center;
+  
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  
+  .loading-text {
+    color: #9ca3af;
+    font-style: italic;
+    font-size: 0.875rem;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

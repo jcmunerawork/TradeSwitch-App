@@ -351,6 +351,13 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
     return account.balance;
   }
 
+  /**
+   * Check if balances are currently loading
+   */
+  isBalancesLoading(): boolean {
+    return this.appContext.balancesLoading();
+  }
+
   ngOnChanges(changes: SimpleChanges) {
     if (changes['accounts']) {
       // Recargar balances cuando cambien las cuentas
