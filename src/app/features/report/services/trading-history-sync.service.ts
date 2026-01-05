@@ -1,6 +1,5 @@
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { getFirestore, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { firstValueFrom, Observable } from 'rxjs';
 import { ReportService } from '../service/report.service';
 import { GroupedTradeFinal } from '../models/report.model';
@@ -15,30 +14,33 @@ import {
 } from '../models/trading-history.model';
 import { LoggerService } from '../../../core/services';
 import { AlertService } from '../../../core/services';
+import { BackendApiService } from '../../../core/services/backend-api.service';
+import { getAuth } from 'firebase/auth';
 
 /**
- * Service for synchronizing trading history between API, Streams, and Firebase.
+ * Service for synchronizing trading history via backend API.
  * 
  * This service manages the complete lifecycle of trading history data:
- * - Fetches historical data from getHistory API
- * - Caches instrument names to avoid repeated API calls
- * - Stores data in Firebase for persistence
- * - Updates from Streams API in real-time
- * - Calculates aggregated metrics
+ * - Loads trading history from backend (which reads from Firebase)
+ * - Synchronizes historical data from TradeLocker API via backend
+ * - Backend handles: fetching, caching, merging, calculating metrics, and saving to Firebase
+ * - Updates from Streams API in real-time (future: should go through backend)
  * - Handles errors gracefully with fallback values
  * 
  * Features:
- * - Incremental synchronization (only new/updated positions)
- * - Instrument name caching
- * - Preserves createdDate for open positions
- * - Real-time updates from Streams
+ * - All Firebase operations go through backend API
+ * - Backend handles incremental synchronization
+ * - Backend handles instrument name caching
+ * - Backend preserves createdDate for open positions
+ * - Backend calculates aggregated metrics
  * - Robust error handling
  * 
  * Data Structure:
- * - Stored in: `users/{userId}/trading_history/{accountId}`
+ * - Stored in: `users/{userId}/trading_history/{accountId}` (managed by backend)
  * - Contains: positions, metrics, sync metadata, instrument cache
  * 
  * Relations:
+ * - BackendApiService: All Firebase operations
  * - ReportService: Fetches trading history and instrument details
  * - StreamsService: Receives real-time position updates
  * - ReportComponent: Uses this service to load and display data
@@ -52,63 +54,71 @@ import { AlertService } from '../../../core/services';
 })
 export class TradingHistorySyncService {
   private isBrowser: boolean;
-  private db: ReturnType<typeof getFirestore> | null = null;
-  private readonly COLLECTION_NAME = 'trading_history';
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     private reportService: ReportService,
     private logger: LoggerService,
-    private alertService: AlertService
+    private alertService: AlertService,
+    private backendApi: BackendApiService
   ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
-    if (this.isBrowser) {
-      const { firebaseApp } = require('../../../firebase/firebase.init.ts');
-      this.db = getFirestore(firebaseApp);
-    }
   }
 
   /**
-   * Load trading history from Firebase.
+   * Get Firebase ID token for backend API calls
+   */
+  private async getIdToken(): Promise<string> {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+    return await currentUser.getIdToken();
+  }
+
+  /**
+   * Load trading history from backend (which reads from Firebase).
    * Returns null if not found or on error.
    */
   async loadFromFirebase(userId: string, accountId: string): Promise<TradingHistoryDocument | null> {
-    if (!this.db || !this.isBrowser) {
-      this.logger.warn('Firebase not available (SSR)', 'TradingHistorySyncService');
+    if (!this.isBrowser) {
+      this.logger.warn('Not available in SSR', 'TradingHistorySyncService');
       return null;
     }
 
     try {
-      const docRef = doc(this.db, 'users', userId, this.COLLECTION_NAME, accountId);
-      const docSnap = await getDoc(docRef);
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getTradingHistory(accountId, idToken);
 
-      if (docSnap.exists()) {
-        const data = docSnap.data() as TradingHistoryDocument;
-        this.logger.debug('Trading history loaded from Firebase', 'TradingHistorySyncService', {
+      if (response.success && response.data) {
+        const data = response.data as TradingHistoryDocument;
+        this.logger.debug('Trading history loaded from backend', 'TradingHistorySyncService', {
           accountId,
           positionsCount: Object.keys(data.positions || {}).length
         });
         return data;
       } else {
-        this.logger.debug('No trading history found in Firebase', 'TradingHistorySyncService', { accountId });
+        this.logger.debug('No trading history found', 'TradingHistorySyncService', { accountId });
         return null;
       }
     } catch (error) {
-      this.logger.error('Error loading trading history from Firebase', 'TradingHistorySyncService', error);
+      this.logger.error('Error loading trading history from backend', 'TradingHistorySyncService', error);
       return null;
     }
   }
 
   /**
-   * Synchronize historical data from getHistory API.
+   * Synchronize historical data from TradeLocker API to Firebase via backend.
    * 
    * Process:
-   * 1. Fetches history from API (with error handling)
-   * 2. Fetches and caches instrument names
-   * 3. Enriches trades with instrument names
-   * 4. Merges with existing Firebase data
-   * 5. Calculates metrics
-   * 6. Saves to Firebase
+   * 1. Calls backend sync endpoint which handles:
+   *    - Fetching history from TradeLocker API
+   *    - Fetching and caching instrument names
+   *    - Enriching trades with instrument names
+   *    - Merging with existing Firebase data
+   *    - Calculating metrics
+   *    - Saving to Firebase
    * 
    * Returns SyncResult with success status and details.
    */
@@ -117,127 +127,62 @@ export class TradingHistorySyncService {
     accountId: string,
     accNum: number
   ): Promise<SyncResult> {
-    if (!this.db || !this.isBrowser) {
+    if (!this.isBrowser) {
       return {
         success: false,
-        error: 'Firebase not available (SSR)'
+        error: 'Not available in SSR'
       };
     }
 
     try {
-      // 1. Obtener histórico desde API (con manejo de errores)
-      let historyTrades: GroupedTradeFinal[] = [];
-      
-      try {
-        const historyObservable = this.reportService.getHistoryData(accountId, accNum);
-        historyTrades = await firstValueFrom(historyObservable);
-        
-        if (!Array.isArray(historyTrades)) {
-          this.logger.warn('Invalid history data format from API', 'TradingHistorySyncService');
-          historyTrades = [];
-        }
-      } catch (apiError: any) {
-        // Error al obtener datos de la API
-        const errorMessage = apiError?.message || 'Error desconocido';
-        const isAccountNotFound = errorMessage.includes('not found') || 
-                                  errorMessage.includes('404') ||
-                                  errorMessage.includes('Account not found');
-        
-        if (isAccountNotFound) {
-          this.logger.warn('Account not found in API', 'TradingHistorySyncService', { accountId });
-          this.alertService.showWarning(
-            'La cuenta de trading no se encontró en la API. Se mostrarán valores iniciales.',
-            'Cuenta no encontrada'
-          );
-        } else {
-          this.logger.error('Error fetching history from API', 'TradingHistorySyncService', apiError);
-          this.alertService.showError(
-            'No se pudo obtener el historial de trading. Se mostrarán valores iniciales.',
-            'Error al obtener historial'
-          );
-        }
-        
-        // Retornar datos vacíos con valores iniciales
-        return this.createEmptyHistoryResult(userId, accountId);
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.syncTradingHistory(accountId, idToken, false);
+
+      if (response.success && response.data) {
+        const syncResult = response.data;
+        this.logger.info('History sync completed via backend', 'TradingHistorySyncService', {
+          accountId,
+          positionsAdded: syncResult.positionsAdded || 0,
+          positionsUpdated: syncResult.positionsUpdated || 0,
+          metricsUpdated: syncResult.metricsUpdated || false
+        });
+
+        return {
+          success: true,
+          positionsAdded: syncResult.positionsAdded || 0,
+          positionsUpdated: syncResult.positionsUpdated || 0,
+          metricsUpdated: syncResult.metricsUpdated || false
+        };
+      } else {
+        this.logger.error('Backend sync returned unsuccessful response', 'TradingHistorySyncService', response);
+        return {
+          success: false,
+          error: response.error?.message || 'Sync failed'
+        };
       }
-
-      // 2. Si no hay trades, crear estructura vacía
-      if (historyTrades.length === 0) {
-        this.logger.info('No trades found in history', 'TradingHistorySyncService', { accountId });
-        return this.createEmptyHistoryResult(userId, accountId);
-      }
-
-      // 3. Obtener nombres de instrumentos únicos
-      const instrumentMap = await this.fetchAndCacheInstruments(
-        historyTrades,
-        accNum,
-        userId,
-        accountId
-      );
-
-      // 4. Enriquecer trades con nombres de instrumentos
-      const enrichedTrades = this.enrichTradesWithInstrumentNames(historyTrades, instrumentMap);
-
-      // 5. Cargar datos existentes de Firebase
-      const existingData = await this.loadFromFirebase(userId, accountId);
-
-      // 6. Merge: solo añadir posiciones nuevas, preservar createdDate de abiertas
-      const mergedPositions = this.mergePositions(
-        existingData?.positions || {},
-        enrichedTrades,
-        'history'
-      );
-
-      // 7. Calcular métricas (solo trades cerrados)
-      const metrics = this.calculateMetrics(mergedPositions);
-
-      // 8. Guardar en Firebase
-      await this.saveToFirebase(userId, accountId, {
-        accountId,
-        positions: mergedPositions,
-        metrics,
-        syncMetadata: {
-          lastHistorySync: Date.now(),
-          lastStreamSync: existingData?.syncMetadata?.lastStreamSync || 0,
-          lastFullSync: Date.now(),
-          totalPositions: Object.keys(mergedPositions).length,
-          closedPositions: Object.values(mergedPositions).filter(p => !p.isOpen).length,
-          openPositions: Object.values(mergedPositions).filter(p => p.isOpen).length,
-        },
-        instrumentCache: {
-          ...existingData?.instrumentCache,
-          ...instrumentMap
-        }
-      });
-
-      const positionsAdded = Object.keys(mergedPositions).length - (existingData ? Object.keys(existingData.positions).length : 0);
-
-      this.logger.info('History sync completed', 'TradingHistorySyncService', {
-        accountId,
-        positionsAdded,
-        totalPositions: Object.keys(mergedPositions).length
-      });
-
-      return {
-        success: true,
-        positionsAdded: positionsAdded > 0 ? positionsAdded : 0,
-        positionsUpdated: positionsAdded < 0 ? Math.abs(positionsAdded) : 0,
-        metricsUpdated: true
-      };
-
-    } catch (error) {
-      this.logger.error('Error in syncHistoryFromAPI', 'TradingHistorySyncService', error);
-      this.alertService.showError(
-        'Ocurrió un error al sincronizar el historial. Se mostrarán valores iniciales.',
-        'Error de sincronización'
-      );
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Unknown error';
+      const isAccountNotFound = errorMessage.includes('not found') || 
+                                errorMessage.includes('404') ||
+                                errorMessage.includes('Account not found');
       
-      // Crear estructura vacía en caso de error
-      await this.createEmptyHistoryResult(userId, accountId);
+      if (isAccountNotFound) {
+        this.logger.warn('Account not found in API', 'TradingHistorySyncService', { accountId });
+        this.alertService.showWarning(
+          'La cuenta de trading no se encontró en la API. Se mostrarán valores iniciales.',
+          'Cuenta no encontrada'
+        );
+      } else {
+        this.logger.error('Error syncing history from backend', 'TradingHistorySyncService', error);
+        this.alertService.showError(
+          'No se pudo obtener el historial de trading. Se mostrarán valores iniciales.',
+          'Error al obtener historial'
+        );
+      }
       
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: errorMessage
       };
     }
   }
@@ -245,27 +190,24 @@ export class TradingHistorySyncService {
   /**
    * Update trading history from Streams API.
    * 
-   * Process:
-   * 1. Loads current data from Firebase
-   * 2. Updates/creates positions from streams
-   * 3. Preserves createdDate for open positions
-   * 4. Recalculates metrics
-   * 5. Saves to Firebase
+   * Note: Streams updates should be handled by the backend in the future.
+   * For now, this method loads data and processes updates locally, but
+   * the actual persistence should go through the backend.
    */
   async updateFromStreams(
     userId: string,
     accountId: string,
     streamUpdate: StreamsPositionUpdate
   ): Promise<SyncResult> {
-    if (!this.db || !this.isBrowser) {
+    if (!this.isBrowser) {
       return {
         success: false,
-        error: 'Firebase not available (SSR)'
+        error: 'Not available in SSR'
       };
     }
 
     try {
-      // 1. Cargar datos actuales de Firebase
+      // 1. Cargar datos actuales desde el backend
       const currentData = await this.loadFromFirebase(userId, accountId);
       
       if (!currentData) {
@@ -287,19 +229,12 @@ export class TradingHistorySyncService {
       // 3. Recalcular métricas (solo cerrados)
       const metrics = this.calculateMetrics(updatedPositions);
 
-      // 4. Guardar actualización incremental
-      await this.updateInFirebase(userId, accountId, {
-        positions: updatedPositions,
-        metrics,
-        syncMetadata: {
-          ...currentData.syncMetadata,
-          lastStreamSync: Date.now(),
-          lastFullSync: Date.now(),
-          totalPositions: Object.keys(updatedPositions).length,
-          closedPositions: Object.values(updatedPositions).filter(p => !p.isOpen).length,
-          openPositions: Object.values(updatedPositions).filter(p => p.isOpen).length,
-        }
-      });
+      // TODO: In the future, this should call a backend endpoint to update streams data
+      // For now, we trigger a sync which will save the updated data
+      // Note: This is not ideal as it will re-fetch from TradeLocker API
+      // A dedicated streams update endpoint would be better
+      const idToken = await this.getIdToken();
+      await this.backendApi.syncTradingHistory(accountId, idToken, true);
 
       return {
         success: true,
@@ -573,91 +508,50 @@ export class TradingHistorySyncService {
   }
 
   /**
-   * Save trading history to Firebase.
+   * Save trading history via backend (which saves to Firebase).
+   * Note: This method is kept for backward compatibility but syncHistoryFromAPI
+   * now handles saving through the backend endpoint.
    */
   private async saveToFirebase(
     userId: string,
     accountId: string,
     data: TradingHistoryDocument
   ): Promise<void> {
-    if (!this.db || !this.isBrowser) {
-      throw new Error('Firebase not available');
-    }
-
-    try {
-      const docRef = doc(this.db, 'users', userId, this.COLLECTION_NAME, accountId);
-      await setDoc(docRef, data);
-      this.logger.debug('Trading history saved to Firebase', 'TradingHistorySyncService', { accountId });
-    } catch (error) {
-      this.logger.error('Error saving trading history to Firebase', 'TradingHistorySyncService', error);
-      throw error;
-    }
+    // This method is no longer used directly since syncHistoryFromAPI
+    // handles saving through the backend. Kept for backward compatibility.
+    this.logger.debug('saveToFirebase called but saving is handled by backend sync endpoint', 'TradingHistorySyncService', { accountId });
   }
 
   /**
-   * Update trading history in Firebase (partial update).
+   * Update trading history via backend (which updates Firebase).
+   * Note: This method is kept for backward compatibility but updates
+   * should go through the backend sync endpoint.
    */
   private async updateInFirebase(
     userId: string,
     accountId: string,
     updates: Partial<TradingHistoryDocument>
   ): Promise<void> {
-    if (!this.db || !this.isBrowser) {
-      throw new Error('Firebase not available');
-    }
-
-    try {
-      const docRef = doc(this.db, 'users', userId, this.COLLECTION_NAME, accountId);
-      await updateDoc(docRef, updates as any);
-      this.logger.debug('Trading history updated in Firebase', 'TradingHistorySyncService', { accountId });
-    } catch (error) {
-      this.logger.error('Error updating trading history in Firebase', 'TradingHistorySyncService', error);
-      throw error;
-    }
+    // This method is no longer used directly since updates
+    // should go through the backend sync endpoint. Kept for backward compatibility.
+    this.logger.debug('updateInFirebase called but updates should go through backend sync endpoint', 'TradingHistorySyncService', { accountId });
   }
 
   /**
    * Create empty history result with initial values.
+   * Note: Empty history creation is now handled by the backend sync endpoint.
    */
   private async createEmptyHistoryResult(
     userId: string,
     accountId: string
   ): Promise<SyncResult> {
-    const emptyData: TradingHistoryDocument = {
-      accountId,
-      positions: {},
-      metrics: {
-        totalPnL: 0,
-        percentageTradeWin: 0,
-        profitFactor: 0,
-        totalTrades: 0,
-        averageWinLossTrades: 0
-      },
-      syncMetadata: {
-        lastHistorySync: Date.now(),
-        lastStreamSync: 0,
-        lastFullSync: Date.now(),
-        totalPositions: 0,
-        closedPositions: 0,
-        openPositions: 0
-      },
-      instrumentCache: {}
+    // Empty history is now created by the backend when sync is called with no data
+    // Just return success result
+    return {
+      success: true,
+      positionsAdded: 0,
+      metricsUpdated: true
     };
-
-    try {
-      await this.saveToFirebase(userId, accountId, emptyData);
-      return {
-        success: true,
-        positionsAdded: 0,
-        metricsUpdated: true
-      };
-    } catch (error) {
-      this.logger.error('Error creating empty history', 'TradingHistorySyncService', error);
-      return {
-        success: false,
-        error: 'Failed to create empty history'
-      };
-    }
   }
 
   /**

@@ -10,14 +10,13 @@ import {
 } from './models/revenue';
 import { Store } from '@ngrx/store';
 import { statCardComponent } from '../report/components/statCard/stat_card.component';
-import { RevenueGraphComponent } from './components/revenueGraph/revenue-graph.component';
 import { RefundsTableComponent } from './components/refunds-table/refunds-table.component';
 import { OrdersTableComponent } from './components/orders-table/orders-table.component';
 import { SubscriptionsTableComponent } from './components/subscriptions-table/subscriptions-table.component';
 import { selectUser } from '../auth/store/user.selectios';
 import { User } from '../overview/models/overview';
 import { AuthService } from '../../shared/services/auth.service';
-import { ConfigService } from '../../core/services/config.service';
+import { BackendApiService } from '../../core/services/backend-api.service';
 
 @Component({
   selector: 'app-revenue',
@@ -26,7 +25,6 @@ import { ConfigService } from '../../core/services/config.service';
     LoadingPopupComponent,
     FormsModule,
     statCardComponent,
-    RevenueGraphComponent,
     RefundsTableComponent,
     OrdersTableComponent,
     SubscriptionsTableComponent,
@@ -50,17 +48,17 @@ export class RevenueComponent implements OnInit {
 
   loading = false;
   user: User | null = null;
-  private configService = inject(ConfigService);
 
   constructor(
     private store: Store,
-    private authService: AuthService
+    private authService: AuthService,
+    private backendApi: BackendApiService
   ) {}
 
   /**
    * Initializes the component on load.
    *
-   * Loads configuration (mock data) and fetches user data from the store.
+   * Fetches user data from the store and loads revenue data from backend.
    *
    * @memberof RevenueComponent
    */
@@ -72,12 +70,11 @@ export class RevenueComponent implements OnInit {
    * Fetches user data from the NgRx store.
    *
    * Subscribes to the selectUser selector to get current user information.
-   * If user has trading accounts, attempts to fetch access token for API calls.
-   * Currently falls back to mock data if no accounts are available.
+   * Once user is available, fetches revenue data from backend.
    *
    * Related to:
    * - Store.select(selectUser): Gets user from NgRx store
-   * - fetchUserKey(): Fetches access token for API calls
+   * - fetchRevenueData(): Fetches revenue data from backend API
    *
    * @memberof RevenueComponent
    */
@@ -100,19 +97,19 @@ export class RevenueComponent implements OnInit {
     try {
       const bearerToken = await this.authService.getBearerTokenFirebase(this.user.id);
       
-      const response = await fetch(`${this.configService.apiUrl}/admin-dashboard/revenue`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${bearerToken}`
-        }
+      console.log('📡 RevenueComponent: Fetching revenue data from backend...');
+      const response = await this.backendApi.getRevenueData(bearerToken);
+      
+      console.log('✅ RevenueComponent: Revenue data received:', {
+        success: response.success,
+        hasData: !!response.data
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to fetch revenue data');
       }
 
-      const data: RevenueApiResponse = await response.json();
+      const data: RevenueApiResponse = response.data;
       
       // Update card data
       this.netRevenue = data.netRevenue || 0;
@@ -121,61 +118,22 @@ export class RevenueComponent implements OnInit {
       this.refunds = data.refunds || 0;
       this.activeSubscriptions = data.activeSubscriptions || 0;
 
-      // Transform orders data
-      this.orderTableData = data.orders.map(order => ({
-        date: this.formatTimestamp(order.date),
-        value: order.value,
-        concepto: order.concepto,
-        paid: order.paid,
-        method: this.capitalizeFirst(order.method),
-        status: order.status
-      }));
+      // El backend ya formatea todos los datos, usar directamente
+      this.orderTableData = data.orders;
+      this.subscriptionsTableData = data.subscriptions;
+      this.refundsTableData = data.refundsTable;
 
-      // Transform subscriptions data
-      this.subscriptionsTableData = data.subscriptions.map(sub => ({
-        status: sub.status,
-        canceladaAFinalDePeriodo: sub.canceladaAFinalDePeriodo,
-        valor: sub.valor,
-        item: this.capitalizeFirst(sub.item),
-        user: sub.user,
-        startDate: this.formatTimestamp(sub.startDate),
-        actualPeriodStart: this.formatTimestamp(sub.actualPeriodStart),
-        actualPeriodEnd: this.formatTimestamp(sub.actualPeriodEnd)
-      }));
+      console.log('✅ RevenueComponent: Data loaded successfully');
 
-      // Transform refunds data
-      this.refundsTableData = data.refundsTable.map(refund => ({
-        created: this.formatTimestamp(refund.created),
-        amount: refund.amount,
-        destination: this.capitalizeFirst(refund.destination),
-        status: this.formatRefundStatus(refund.status)
-      }));
-
-    } catch (error) {
-      console.error('Error fetching revenue data:', error);
+    } catch (error: any) {
+      console.error('❌ RevenueComponent: Error fetching revenue data:', error);
+      console.error('❌ RevenueComponent: Error details:', {
+        status: error?.status,
+        message: error?.message,
+        error: error?.error
+      });
     } finally {
       this.loading = false;
     }
-  }
-
-  formatTimestamp(timestamp: number): string {
-    const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  }
-
-  capitalizeFirst(str: string): string {
-    if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-  }
-
-  formatRefundStatus(status: string): string {
-    return status
-      .split('_')
-      .map(word => this.capitalizeFirst(word))
-      .join(' ');
   }
 }

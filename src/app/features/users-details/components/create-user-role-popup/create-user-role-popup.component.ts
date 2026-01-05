@@ -138,16 +138,27 @@ export class CreateUserRolePopupComponent implements OnChanges {
       const email = this.form.value.email;
       const password = this.form.value.password;
 
-      // Verificar que el email no esté ya registrado (opcional, el backend también lo valida)
+      // Verificar que el email no esté ya registrado usando el endpoint del backend
+      // El backend retorna { user: {...} } si existe, o { user: null } si no existe
       try {
+        console.log('📡 CreateUserRolePopup: Verifying email availability:', email);
         const existingUser = await this.authService.getUserByEmail(email);
+        
         if (existingUser) {
-          this.alertService.showError('This email is already registered. Please use a different email or try logging in.', 'Email Already Registered');
+          console.warn('⚠️ CreateUserRolePopup: Email already registered');
+          this.alertService.showError(
+            'This email is already registered. Please use a different email or try logging in.', 
+            'Email Already Registered'
+          );
           return;
         }
-      } catch (error) {
-        // Si falla la verificación, continuar (el backend también validará)
-        console.warn('Could not verify email existence, continuing with user creation');
+        
+        console.log('✅ CreateUserRolePopup: Email available, proceeding with user creation');
+      } catch (error: any) {
+        // Si falla la verificación (ej: error de red), continuar
+        // El backend también validará el email duplicado en /auth/signup
+        console.warn('⚠️ CreateUserRolePopup: Could not verify email existence, continuing with user creation:', error);
+        console.warn('⚠️ CreateUserRolePopup: Backend will validate email uniqueness during signup');
       }
 
       // Llamar al backend - EL BACKEND HACE TODO:
@@ -155,6 +166,8 @@ export class CreateUserRolePopupComponent implements OnChanges {
       // 2. Crea documento de usuario en Firestore
       // 3. Crea link token
       // 4. Crea suscripción inicial (Free)
+      // autoLogin: false para evitar que se haga login automático cuando admin crea usuarios
+      // Esto mantiene la sesión del admin activa
       const signupResponse = await this.backendApi.signup({
         email: email,
         password: password,
@@ -162,7 +175,8 @@ export class CreateUserRolePopupComponent implements OnChanges {
         lastName: this.form.value.lastName,
         phoneNumber: this.form.value.phoneNumber,
         birthday: this.form.value.birthday,
-        isAdmin: this.role === 'admin'
+        isAdmin: this.role === 'admin',
+        autoLogin: false // Admin creando usuario: no hacer login automático
       });
 
       if (!signupResponse.success || !signupResponse.data) {

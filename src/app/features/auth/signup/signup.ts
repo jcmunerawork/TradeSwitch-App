@@ -58,6 +58,10 @@ export class SignupComponent implements OnInit {
   showStripeError = false;
   stripeErrorMessage = '';
   
+  // Estados para carga y error del formulario
+  isLoading = false;
+  errorMessage = '';
+  
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
@@ -103,7 +107,9 @@ export class SignupComponent implements OnInit {
   async onSubmit(): Promise<void> {
     if (this.signupForm.valid) {
       try {
-        // Establecer estado de carga
+        // Establecer estado de carga y limpiar error previo
+        this.isLoading = true;
+        this.errorMessage = '';
         this.appContext.setLoading('user', true);
         this.appContext.setError('user', null);
 
@@ -114,7 +120,9 @@ export class SignupComponent implements OnInit {
         try {
           const existingUser = await this.authService.getUserByEmail(userCredentials.email);
           if (existingUser) {
-            this.alertService.showError('This email is already registered. Please use a different email or try logging in.', 'Email Already Registered');
+            this.isLoading = false;
+            this.errorMessage = 'This email is already registered. Please use a different email or try logging in.';
+            this.alertService.showError(this.errorMessage, 'Email Already Registered');
             this.appContext.setLoading('user', false);
             return;
           }
@@ -140,7 +148,7 @@ export class SignupComponent implements OnInit {
         });
         
         if (!signupResponse.success || !signupResponse.data) {
-          throw new Error(signupResponse.error?.message || 'Error during registration');
+          throw signupResponse;
         }
         
         // El backend ya hizo sign in automáticamente, obtener el userId
@@ -159,6 +167,7 @@ export class SignupComponent implements OnInit {
         this.currentUserId = userId;
         
         // Limpiar estado de carga
+        this.isLoading = false;
         this.appContext.setLoading('user', false);
         
         // Guardar datos del usuario para mostrar en la selección de planes
@@ -173,11 +182,9 @@ export class SignupComponent implements OnInit {
         }
         
       } catch (error: any) {
+        this.isLoading = false;
         this.appContext.setLoading('user', false);
         this.appContext.setError('user', 'Error during registration');
-        
-        const errorMessage = error.message || 'An error occurred during registration. Please try again.';
-        this.alertService.showError(errorMessage, 'Registration Error');
         
         this.handleRegistrationError(error);
       }
@@ -443,6 +450,46 @@ export class SignupComponent implements OnInit {
   }
 
   private handleRegistrationError(error: any): void {
-    // Los errores comunes serán manejados por Firebase
+    console.error('Registration error:', error);
+    
+    // Extraer mensaje de error del formato del backend
+    const errorMessage = this.extractErrorMessage(error);
+    const errorDetails = this.extractErrorDetails(error);
+    
+    // Si hay múltiples errores de validación, mostrarlos todos
+    if (errorDetails && errorDetails.length > 0) {
+      this.errorMessage = errorDetails.join(', ');
+    } else {
+      this.errorMessage = errorMessage;
+    }
+    
+    // También mostrar en alerta para compatibilidad
+    this.alertService.showError(this.errorMessage, 'Registration Error');
+  }
+
+  // Función helper para extraer el mensaje de error del formato del backend
+  private extractErrorMessage(error: any): string {
+    // El error puede estar en diferentes ubicaciones dependiendo de cómo Angular maneje la respuesta
+    if (error?.error?.error?.message) {
+      // Formato del backend: error.error.error.message
+      return error.error.error.message;
+    } else if (error?.error?.message) {
+      // Formato alternativo
+      return error.error.message;
+    } else if (error?.message) {
+      // Mensaje genérico de HTTP
+      return error.message;
+    }
+    
+    // Mensaje por defecto
+    return 'An error occurred during registration. Please try again.';
+  }
+
+  // Extraer detalles de validación (array de errores)
+  private extractErrorDetails(error: any): string[] | null {
+    if (error?.error?.error?.details && Array.isArray(error.error.error.details)) {
+      return error.error.error.details;
+    }
+    return null;
   }
 }

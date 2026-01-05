@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
-import { getFirestore, collection, query, getDocs, updateDoc, doc, Timestamp, setDoc, orderBy, getDoc, deleteDoc, where, DocumentSnapshot } from 'firebase/firestore';
-import { db } from '../../firebase/firebase.init';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { BackendApiService } from '../../core/services/backend-api.service';
+import { getAuth } from 'firebase/auth';
 
 /**
  * Interface for subscription plan data.
@@ -52,22 +53,45 @@ export interface Plan {
   providedIn: 'root'
 })
 export class PlanService {
+  private isBrowser: boolean;
+
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private backendApi: BackendApiService
+  ) {
+    this.isBrowser = isPlatformBrowser(this.platformId);
+  }
 
   /**
-   * CREAR: Crear un nuevo plan
+   * Get Firebase ID token for backend API calls
+   */
+  private async getIdToken(): Promise<string> {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+    return await currentUser.getIdToken();
+  }
+
+  /**
+   * CREAR: Crear un nuevo plan (admin only)
    * @param plan Datos del plan a crear
    * @returns Promise con el ID del documento creado
    */
   async createPlan(plan: Plan): Promise<string> {
+    if (!this.isBrowser) {
+      throw new Error('Not available in SSR');
+    }
+
     try {
-      const planData = {
-        ...plan,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.createPlan(plan, idToken);
       
-      await setDoc(doc(db, 'plan', planData.id), planData);
-      return planData.id;
+      if (response.success && response.data?.plan) {
+        return response.data.plan.id;
+      }
+      throw new Error(response.error?.message || 'Failed to create plan');
     } catch (error) {
       console.error('❌ Error al crear plan:', error);
       throw error;
@@ -79,23 +103,18 @@ export class PlanService {
    * @returns Promise con array de todos los planes
    */
   async getAllPlans(): Promise<Plan[]> {
+    if (!this.isBrowser) {
+      return [];
+    }
+
     try {
-      const plansRef = collection(db, 'plan');
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getAllPlans(idToken);
       
-      // Intentar sin orderBy primero para ver si ese es el problema
-      const querySnapshot = await getDocs(plansRef);
-      
-      if (querySnapshot.empty) {
-        console.log('⚠️ No se encontraron planes en la colección "plan"');
-        return [];
+      if (response.success && response.data?.plans) {
+        return response.data.plans as Plan[];
       }
-      
-      const plans = querySnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return { id: doc.id, ...data };
-      });
-      
-      return plans as Plan[];
+      return [];
     } catch (error) {
       console.error('❌ Error al obtener planes:', error);
       return [];
@@ -108,28 +127,42 @@ export class PlanService {
    * @returns Promise con el plan específico
    */
   async getPlanById(id: string): Promise<Plan | undefined> {
-    return getDoc(doc(db, 'plan', id))
-      .then((doc) => ({ id: doc.id, ...doc.data() } as Plan))
-      .catch((error) => {
-        console.error('❌ Error al obtener el plan por ID:', error);
-        return undefined;
-      })
+    if (!this.isBrowser) {
+      return undefined;
+    }
+
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getPlanById(id, idToken);
+      
+      if (response.success && response.data?.plan) {
+        return response.data.plan as Plan;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('❌ Error al obtener el plan por ID:', error);
+      return undefined;
+    }
   }
 
   /**
-   * ACTUALIZAR: Actualizar un plan existente
+   * ACTUALIZAR: Actualizar un plan existente (admin only)
    * @param id ID del plan a actualizar
    * @param plan Datos actualizados del plan
    * @returns Promise que se resuelve cuando se completa la actualización
    */
   async updatePlan(id: string, plan: Partial<Omit<Plan, 'id' | 'createdAt'>>): Promise<void> {
+    if (!this.isBrowser) {
+      throw new Error('Not available in SSR');
+    }
+
     try {
-      const updateData = {
-        ...plan,
-        updatedAt: new Date()
-      };
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.updatePlan(id, plan, idToken);
       
-      await updateDoc(doc(db, 'plan', id), updateData);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to update plan');
+      }
     } catch (error) {
       console.error('❌ Error al actualizar plan:', error);
       throw error;
@@ -137,13 +170,22 @@ export class PlanService {
   }
 
   /**
-   * ELIMINAR: Eliminar un plan
+   * ELIMINAR: Eliminar un plan (admin only)
    * @param id ID del plan a eliminar
    * @returns Promise que se resuelve cuando se completa la eliminación
    */
   async deletePlan(id: string): Promise<void> {
+    if (!this.isBrowser) {
+      throw new Error('Not available in SSR');
+    }
+
     try {
-      await deleteDoc(doc(db, 'plan', id));
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.deletePlan(id, idToken);
+      
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to delete plan');
+      }
     } catch (error) {
       console.error('❌ Error al eliminar plan:', error);
       throw error;
@@ -156,25 +198,19 @@ export class PlanService {
    * @returns Promise con el plan específico o undefined si no se encuentra
    */
   async getPlanByName(name: string): Promise<Plan | undefined> {
+    if (!this.isBrowser) {
+      return undefined;
+    }
+
     try {
-      const plansRef = collection(db, 'plan');
-      const querySnapshot = await getDocs(plansRef);
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.searchPlansByName(name, idToken);
       
-      if (querySnapshot.empty) {
-        return undefined;
+      if (response.success && response.data?.plans) {
+        // Buscar plan con nombre exacto
+        const matchingPlan = response.data.plans.find(plan => plan.name === name);
+        return matchingPlan as Plan | undefined;
       }
-      
-      // Buscar plan con nombre exacto
-      const matchingDoc = querySnapshot.docs.find(doc => {
-        const data = doc.data();
-        return data['name'] === name;
-      });
-      
-      if (matchingDoc) {
-        const data = matchingDoc.data();
-        return { id: matchingDoc.id, ...data } as Plan;
-      }
-      
       return undefined;
     } catch (error) {
       console.error('❌ Error al obtener plan por nombre:', error);
@@ -188,39 +224,18 @@ export class PlanService {
    * @returns Promise con planes que coinciden con la búsqueda
    */
   async searchPlansByName(name: string): Promise<Plan[]> {
-    try {
-      
-      const plansRef = collection(db, 'plan');
-      
-      // Primero obtener todos los planes para debug
-      const allPlansSnapshot = await getDocs(plansRef);
-      
-      if (allPlansSnapshot.empty) {
-        console.log('⚠️ La colección "plan" está vacía');
-        return [];
-      }
-      
-      // Mostrar todos los planes disponibles
-      allPlansSnapshot.docs.forEach((doc, index) => {
-        const data = doc.data();
-      });
-      
-      // Buscar planes que coincidan con el nombre (búsqueda simple)
-      const matchingPlans = allPlansSnapshot.docs.filter(doc => {
-        const data = doc.data();
-        const planName = data['name']?.toLowerCase() || '';
-        const searchName = name.toLowerCase();
-        return planName.includes(searchName) || searchName.includes(planName);
-      });
-      
-      const plans = matchingPlans.map((doc) => {
-        const data = doc.data();
-        console.log('✅ Plan encontrado:', { id: doc.id, name: data['name'] });
-        return { id: doc.id, ...data };
-      });
-      
-      return plans as Plan[];
+    if (!this.isBrowser) {
+      return [];
+    }
 
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.searchPlansByName(name, idToken);
+      
+      if (response.success && response.data?.plans) {
+        return response.data.plans as Plan[];
+      }
+      return [];
     } catch (error) {
       console.error('❌ Error en searchPlansByName:', error);
       return [];
@@ -233,9 +248,13 @@ export class PlanService {
    * @returns Promise que se resuelve con true si existe, false si no
    */
   async planExists(id: string): Promise<boolean> {
+    if (!this.isBrowser) {
+      return false;
+    }
+
     try {
-      const document = await getDoc(doc(db, 'plan', id)) as DocumentSnapshot<Plan>;
-      return document.exists() || false;
+      const plan = await this.getPlanById(id);
+      return plan !== undefined;
     } catch (error) {
       console.error('❌ Error al verificar existencia del plan:', error);
       return false;
@@ -247,10 +266,16 @@ export class PlanService {
    * @returns Promise con el número total de planes
    */
   async getPlansCount(): Promise<number> {
-    return getDocs(query(collection(db, 'plan')))
-      .then((snapshot) => snapshot.docs.length)
-      .catch((error) => {
-        return 0;
-      })
+    if (!this.isBrowser) {
+      return 0;
+    }
+
+    try {
+      const plans = await this.getAllPlans();
+      return plans.length;
+    } catch (error) {
+      console.error('❌ Error al obtener conteo de planes:', error);
+      return 0;
+    }
   }
 }

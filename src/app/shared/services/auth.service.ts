@@ -145,6 +145,10 @@ export class AuthService {
    * - GET /api/v1/tradelocker/balance/{accountId}?accNum={accNum} para cada cuenta
    * - GET /api/v1/tradelocker/instruments/{accountId}?accNum={accNum} para cada cuenta
    */
+  /**
+   * Load account balances using batch endpoint for better performance
+   * Instruments are loaded lazily when needed (not during login)
+   */
   private async loadAccountBalancesOnLogin(userId: string, accounts: AccountData[]): Promise<void> {
     try {
       // Obtener token de Firebase
@@ -154,101 +158,63 @@ export class AuthService {
       const user = authInstance.currentUser;
       
       if (!user) {
-        console.warn('⚠️ AuthService: No hay usuario autenticado para cargar balances e instrumentos');
+        return;
+      }
+      
+      // Filtrar cuentas válidas
+      const validAccounts = accounts.filter(account => 
+        account.accountID && account.accountNumber !== undefined
+      );
+      
+      if (validAccounts.length === 0) {
         return;
       }
       
       const idToken = await user.getIdToken();
       
-      // Cargar balances e instrumentos en paralelo para todas las cuentas
-      const accountPromises = accounts.map(async (account) => {
-        try {
-          if (!account.accountID || account.accountNumber === undefined) {
-            console.warn(`⚠️ AuthService: Cuenta sin accountID o accountNumber, saltando:`, account);
-            return;
-          }
-          
-          // 1. Cargar balance
-          const balanceResponse = await this.backendApi.getTradeLockerBalance(
-            account.accountID,
-            account.accountNumber,
-            idToken
-          );
-          
-          if (balanceResponse.success && balanceResponse.data) {
-            // Extraer el balance (equity) de la respuesta
-            // El backend puede devolver: response.data.equity, response.data.balance, o response.data.d.equity
-            const balance = balanceResponse.data.equity 
-              || balanceResponse.data.balance 
-              || (balanceResponse.data.d && (balanceResponse.data.d.equity || balanceResponse.data.d.balance))
-              || 0;
-            
-            // Actualizar balance en el contexto (account balance)
-            // Usar accountID (Firebase ID) para actualizar el balance
-            if (balance > 0 || balance === 0) { // Incluir 0 como valor válido
-              this.appContext.updateAccountBalance(account.accountID, balance);
-              
-              // Actualizar balance en Firebase también
-              try {
-                const updatedAccount = {
-                  ...account,
-                  balance: balance
-                };
-                await this.accountsOperationsService.updateAccount(account.id, updatedAccount);
-              } catch (error) {
-                console.error(`❌ AuthService: Error actualizando balance en Firebase para cuenta ${account.accountID}:`, error);
-                // No lanzar error, solo loguear - el balance ya está en el contexto
-              }
-            }
-          } else {
-            console.warn(`⚠️ AuthService: Respuesta de balance no exitosa para cuenta ${account.accountID}:`, balanceResponse);
-          }
-          
-          // 2. Cargar instrumentos
-          const instrumentsResponse = await this.backendApi.getTradeLockerAllInstruments(
-            account.accountID,
-            account.accountNumber,
-            idToken
-          );
-          
-          if (instrumentsResponse.success && instrumentsResponse.data) {
-            // Extraer instrumentos de la respuesta
-            // El backend puede devolver: response.data.instruments, response.data.d.instruments, o response.data directamente
-            let instruments = instrumentsResponse.data.instruments 
-              || instrumentsResponse.data.d?.instruments 
-              || (Array.isArray(instrumentsResponse.data) ? instrumentsResponse.data : []);
-            
-            // Guardar instrumentos en el contexto usando accountID (Firebase ID)
-            if (Array.isArray(instruments) && instruments.length > 0) {
-              this.appContext.setInstrumentsForAccount(account.accountID, instruments);
-              
-              // Guardar instrumentos en localStorage para uso en reglas de estrategia
-              if (this.isBrowser) {
-                try {
-                  const instrumentNames = instruments
-                    .map((inst: any) => inst.name || inst.localizedName)
-                    .filter((name: string) => name && name.trim() !== '');
-                  localStorage.setItem('tradeswitch_available_instruments', JSON.stringify(instrumentNames));
-                } catch (error) {
-                  console.error('❌ AuthService: Error guardando instrumentos en localStorage:', error);
-                }
-              }
-            } else {
-              console.warn(`⚠️ AuthService: No se encontraron instrumentos en la respuesta para cuenta ${account.accountID}`);
-              console.warn(`⚠️ AuthService: Estructura completa de la respuesta:`, JSON.stringify(instrumentsResponse.data, null, 2));
-            }
-          } else {
-            console.warn(`⚠️ AuthService: Respuesta de instrumentos no exitosa para cuenta ${account.accountID}:`, instrumentsResponse);
-          }
-        } catch (error) {
-          console.error(`❌ AuthService: Error cargando balance/instrumentos para cuenta ${account.accountID}:`, error);
-          // Continuar con las demás cuentas aunque una falle
-        }
-      });
+      // Preparar datos para batch request
+      const batchAccounts = validAccounts.map(account => ({
+        accountId: account.accountID!,
+        accNum: account.accountNumber!
+      }));
       
-      await Promise.all(accountPromises);
+      // Activar loading state
+      this.appContext.setLoading('balances', true);
+      
+      try {
+        // Llamar al endpoint batch
+        const batchResponse = await this.backendApi.getTradeLockerBalancesBatch(
+          batchAccounts,
+          idToken
+        );
+        
+        if (batchResponse.success && batchResponse.data) {
+          // Procesar resultados del batch
+          batchResponse.data.balances.forEach((result) => {
+            if (result.success && result.balance !== undefined) {
+              // Encontrar la cuenta correspondiente
+              const account = validAccounts.find(
+                acc => acc.accountID === result.accountId
+              );
+              
+              if (account) {
+                // Actualizar balance en el contexto
+                // El backend ya guardó el balance en Firebase, solo actualizamos el contexto
+                this.appContext.updateAccountBalance(account.accountID!, result.balance);
+              }
+            }
+          });
+        }
+      } catch (error) {
+        console.error('❌ AuthService: Error cargando balances en batch:', error);
+        // Continuar aunque falle el batch - los balances se pueden cargar después
+      } finally {
+        // Desactivar loading state
+        this.appContext.setLoading('balances', false);
+      }
     } catch (error) {
       console.error('❌ AuthService: Error cargando balances después del login:', error);
+      this.appContext.setLoading('balances', false);
     }
   }
 
@@ -258,11 +224,13 @@ export class AuthService {
     // Cargar planes globales si no están cargados
     await this.loadGlobalPlansIfNeeded();
     
+    // Usar WebSocket del backend en lugar de Firebase listener
     this.subscriptionUnsubscribe = this.subscriptionService.listenToUserLatestSubscription(
       userId,
       async (subscription) => {
         await this.updateUserPlanFromSubscription(subscription);
-      }
+      },
+      this.accountStatusService
     );
   }
 
@@ -290,8 +258,19 @@ export class AuthService {
 
   private async updateUserPlanFromSubscription(subscription: Subscription | null): Promise<void> {
     try {
+      // Si no hay suscripción, el usuario tiene plan Free por defecto
+      // El plan Free siempre permite 1 cuenta y 1 estrategia
       if (!subscription) {
-        this.appContext.setUserPlan(null);
+        this.appContext.setUserPlan({
+          planId: 'free',
+          planName: 'Free',
+          maxAccounts: 1,
+          maxStrategies: 1,
+          features: [],
+          isActive: true,
+          status: UserStatus.CREATED,
+          price: '0'
+        } as any);
         return;
       }
 
@@ -404,12 +383,15 @@ export class AuthService {
       throw new Error('User not found after login');
     }
     
-    // Obtener token de Firebase Auth y guardarlo en cookie
+    // Obtener token de Firebase Auth y guardarlo en cookie y localStorage
     try {
       const idToken = await currentUser.getIdToken();
       this.sessionCookie.setSessionToken(idToken);
+      // Guardar también en localStorage para verificación rápida
+      if (this.isBrowser) {
+        localStorage.setItem('idToken', idToken);
+      }
     } catch (error) {
-      console.warn('Error saving session token to cookie:', error);
       // Continuar aunque falle guardar la cookie
     }
     
@@ -424,13 +406,181 @@ export class AuthService {
   
   /**
    * Logout user.
-   * Clears session cookie and signs out from Firebase Auth.
+   * Performs a complete logout by clearing all stored data:
+   * - Session cookie
+   * - All localStorage items
+   * - All sessionStorage items
+   * - All cookies
+   * - AppContext user data
+   * - Firebase Auth session
    */
   async logout() {
+    try {
+      
+      // 1. Limpiar cookie de sesión específica
+      this.sessionCookie.clearSessionToken();
+      
+      if (this.isBrowser) {
+        // 2. Limpiar todo el localStorage
+        localStorage.clear();
+        
+        // 3. Limpiar todo el sessionStorage
+        sessionStorage.clear();
+        
+        // 4. Limpiar todas las cookies
+        this.clearAllCookies();
+      }
+      
+      // 5. Limpiar datos del contexto de la aplicación
+      this.appContext.clearUserData();
+      
+      // 6. Cerrar sesión en Firebase Auth
+      await getAuth().signOut();
+    } catch (error) {
+      console.error('❌ AuthService: Error durante logout:', error);
+      // Continuar con el logout incluso si hay un error
+      // Asegurarse de limpiar todo lo posible
+      if (this.isBrowser) {
+        localStorage.clear();
+        sessionStorage.clear();
+        this.clearAllCookies();
+      }
+      this.appContext.clearUserData();
+      throw error;
+    }
+  }
+
+  /**
+   * Clear all cookies from the browser.
+   * This method removes all cookies by setting their expiration date to the past.
+   */
+  private clearAllCookies(): void {
+    if (!this.isBrowser) return;
+
+    try {
+      // Obtener todas las cookies
+      const cookies = document.cookie.split(';');
+      
+      // Eliminar cada cookie estableciendo su fecha de expiración en el pasado
+      for (let cookie of cookies) {
+        const eqPos = cookie.indexOf('=');
+        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+        
+        if (name) {
+          // Eliminar cookie para el path actual
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
+          // También intentar eliminar para otros paths comunes
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=${window.location.hostname}`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.${window.location.hostname}`;
+        }
+      }
+      
+    } catch (error) {
+    }
+  }
+
+  /**
+   * Verificar autenticación antes de operaciones críticas
+   * Llama a /auth/me para verificar que el token es válido
+   * Si el token está por expirar, lo renueva automáticamente
+   * Retorna false si el usuario no está autenticado
+   */
+  async checkAuth(): Promise<boolean> {
+    if (!this.isBrowser) return false;
+
+    try {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      
+      if (!currentUser) {
+        return false;
+      }
+
+      // Obtener token actual
+      const idToken = await currentUser.getIdToken();
+      
+      // Verificar autenticación con el backend
+      const authResult = await this.backendApi.checkAuth(idToken);
+      
+      if (!authResult || !authResult.authenticated) {
+        // Token inválido o expirado, redirigir al login
+        await this.redirectToLogin();
+        return false;
+      }
+
+      // Si el token está por expirar, renovarlo
+      if (authResult.tokenInfo?.isExpiringSoon) {
+        await this.refreshToken();
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error('❌ AuthService: Error verificando autenticación:', error);
+      
+      // Si es un error 401, el token es inválido
+      if (error.status === 401 || error.response?.status === 401) {
+        await this.redirectToLogin();
+        return false;
+      }
+      
+      // Otros errores no bloquean, pero retornamos false
+      return false;
+    }
+  }
+
+  /**
+   * Renovar token de Firebase cuando está por expirar
+   */
+  async refreshToken(): Promise<string | null> {
+    if (!this.isBrowser) return null;
+
+    try {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      
+      if (!currentUser) {
+        await this.redirectToLogin();
+        return null;
+      }
+
+      // Forzar renovación del token
+      const newIdToken = await currentUser.getIdToken(true);
+      
+      // Actualizar token en cookie
+      this.sessionCookie.setSessionToken(newIdToken);
+      
+      // Guardar en localStorage también
+      localStorage.setItem('idToken', newIdToken);
+      
+      return newIdToken;
+    } catch (error) {
+      console.error('❌ AuthService: Error renovando token:', error);
+      await this.redirectToLogin();
+      return null;
+    }
+  }
+
+  /**
+   * Redirigir al login y limpiar datos de sesión
+   */
+  private async redirectToLogin(): Promise<void> {
+    if (!this.isBrowser) return;
+
     // Limpiar cookie de sesión
     this.sessionCookie.clearSessionToken();
+    
+    // Limpiar localStorage
+    localStorage.removeItem('idToken');
+    
     // Cerrar sesión en Firebase Auth
-    return getAuth().signOut();
+    try {
+      await getAuth().signOut();
+    } catch (error) {
+      console.error('Error cerrando sesión:', error);
+    }
+    
+    // Redirigir al login (esto se manejará en el componente o guard)
+    // No redirigimos aquí para evitar dependencias circulares
   }
 
   /**
@@ -466,7 +616,7 @@ export class AuthService {
             const userData = await this.getUserData(currentUser.uid);
             return true;
           } catch (error) {
-            console.warn('Error loading user data after auto-login:', error);
+            // Error loading user data after auto-login, continue
             return true;
           }
         } catch (error) {
@@ -499,7 +649,7 @@ export class AuthService {
               const userData = await this.getUserData(currentUser.uid);
               return true;
             } catch (error) {
-              console.warn('Error loading user data after auto-login:', error);
+              // Error loading user data after auto-login, continue
               return true;
             }
           } catch (error) {
@@ -519,7 +669,6 @@ export class AuthService {
       this.sessionCookie.clearSessionToken();
       return false;
     } catch (error) {
-      console.warn('Error checking session token:', error);
       // Si hay error, limpiar cookie por seguridad
       this.sessionCookie.clearSessionToken();
       return false;
@@ -635,23 +784,13 @@ export class AuthService {
       
       const userData = response.data.user as User;
       
-      // Actualizar conteos de trading_accounts y strategies
-      await this.updateUserCounts(uid);
-      
-      // En lugar de hacer otra petición, actualizar los datos localmente
-      // ya que updateUserCounts solo actualiza los conteos en el backend
-      const updatedUserData: User = {
-        ...userData,
-        trading_accounts: userData.trading_accounts || 0,
-        strategies: userData.strategies || 0
-      };
-      
+      // Los conteos ya vienen del backend en la respuesta, no necesitamos actualizarlos
       // Guardar en caché
-      this.userDataCache.set(uid, { user: updatedUserData, timestamp: Date.now() });
+      this.userDataCache.set(uid, { user: userData, timestamp: Date.now() });
       
-      this.appContext.setCurrentUser(updatedUserData);
+      this.appContext.setCurrentUser(userData);
       this.appContext.setLoading('user', false);
-      return updatedUserData;
+      return userData;
     } catch (error: any) {
       this.appContext.setLoading('user', false);
       this.appContext.setError('user', 'Error al obtener datos del usuario');
@@ -660,7 +799,7 @@ export class AuthService {
       if (error?.status === 429 || (error?.error && error.error.status === 429)) {
         const cached = this.userDataCache.get(uid);
         if (cached) {
-          console.warn('Rate limit exceeded (429) for getCurrentUser, returning cached data');
+          // Rate limit exceeded, returning cached data
           this.appContext.setCurrentUser(cached.user);
           return cached.user;
         }
@@ -740,6 +879,13 @@ export class AuthService {
       // Cargar instrumentos para la nueva cuenta
       if (account.accountID && account.accountNumber !== undefined) {
         try {
+          // Verificar localStorage primero
+          const cachedInstruments = this.getInstrumentsFromLocalStorage(account.accountID);
+          if (cachedInstruments && cachedInstruments.length > 0) {
+            this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
+            return;
+          }
+
           const auth = await import('firebase/auth');
           const { getAuth } = auth;
           const authInstance = getAuth();
@@ -754,12 +900,21 @@ export class AuthService {
             );
             
             if (instrumentsResponse.success && instrumentsResponse.data) {
-              let instruments = instrumentsResponse.data.instruments 
-                || instrumentsResponse.data.d?.instruments 
-                || (Array.isArray(instrumentsResponse.data) ? instrumentsResponse.data : []);
+              // Nuevo formato: response.data es directamente un array de instrumentos
+              let instruments: any[] = [];
+              if (Array.isArray(instrumentsResponse.data)) {
+                instruments = instrumentsResponse.data;
+              } else if (instrumentsResponse.data.instruments && Array.isArray(instrumentsResponse.data.instruments)) {
+                instruments = instrumentsResponse.data.instruments;
+              } else if (instrumentsResponse.data.d?.instruments && Array.isArray(instrumentsResponse.data.d.instruments)) {
+                instruments = instrumentsResponse.data.d.instruments;
+              }
               
-              if (Array.isArray(instruments) && instruments.length > 0) {
+              if (instruments.length > 0) {
+                // Guardar en contexto
                 this.appContext.setInstrumentsForAccount(account.accountID, instruments);
+                // Guardar en localStorage
+                this.saveInstrumentsToLocalStorage(account.accountID, instruments);
               }
             }
           }
@@ -809,12 +964,25 @@ export class AuthService {
     }
   }
 
-  // Verificar si un email de usuario ya está registrado
+  /**
+   * Verificar si un email de usuario ya está registrado
+   * Usa el endpoint GET /api/v1/users/email del backend
+   * 
+   * Retorna:
+   * - User si el email está registrado
+   * - null si el email no está registrado o hay un error
+   */
   async getUserByEmail(email: string): Promise<User | null> {
     try {
-      return await this.usersOperationsService.getUserByEmail(email);
+      const user = await this.usersOperationsService.getUserByEmail(email);
+      
+      if (user) {
+      } else {
+      }
+      
+      return user;
     } catch (error) {
-      console.error('Error checking if email exists:', error);
+      console.error('❌ AuthService: Error checking if email exists:', error);
       return null;
     }
   }
@@ -841,6 +1009,43 @@ export class AuthService {
         strategies: []
       };
     }
+  }
+
+  /**
+   * Guardar instruments en localStorage
+   */
+  private saveInstrumentsToLocalStorage(accountId: string, instruments: any[]): void {
+    if (!this.isBrowser) return;
+    
+    try {
+      const key = `tradeswitch_instruments_${accountId}`;
+      localStorage.setItem(key, JSON.stringify({
+        instruments,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+    }
+  }
+
+  /**
+   * Obtener instruments desde localStorage
+   */
+  private getInstrumentsFromLocalStorage(accountId: string): any[] | null {
+    if (!this.isBrowser) return null;
+    
+    try {
+      const key = `tradeswitch_instruments_${accountId}`;
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.instruments && Array.isArray(parsed.instruments)) {
+          return parsed.instruments;
+        }
+      }
+    } catch (error) {
+    }
+    
+    return null;
   }
 
   /**

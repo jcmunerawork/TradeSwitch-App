@@ -1,6 +1,4 @@
-import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { getFirestore, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { isPlatformBrowser } from '@angular/common';
+import { Injectable } from '@angular/core';
 import { BackendApiService } from '../../core/services/backend-api.service';
 import { getAuth } from 'firebase/auth';
 
@@ -41,19 +39,9 @@ export interface LinkToken {
   providedIn: 'root'
 })
 export class TokensOperationsService {
-  private isBrowser: boolean;
-  private db: ReturnType<typeof getFirestore> | null = null;
-
   constructor(
-    @Inject(PLATFORM_ID) private platformId: Object,
     private backendApi: BackendApiService
-  ) {
-    this.isBrowser = isPlatformBrowser(this.platformId);
-    if (this.isBrowser) {
-      const { firebaseApp } = require('../../firebase/firebase.init.ts');
-      this.db = getFirestore(firebaseApp);
-    }
-  }
+  ) {}
 
   /**
    * Get Firebase ID token for backend API calls

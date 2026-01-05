@@ -37,9 +37,20 @@
         </label>
         <a class="forgot-password" href="#" (click)="$event.preventDefault(); openForgot()">Forgot Your Password?</a>
       </div>
-  
-      <button type="submit" class="login-button">
-        Log In
+
+      @if (errorMessage) {
+        <div class="error-message">
+          {{ errorMessage }}
+        </div>
+      }
+
+      <button type="submit" class="login-button" [disabled]="isLoading">
+        @if (isLoading) {
+          <span class="spinner"></span>
+          <span>Loading...</span>
+        } @else {
+          Log In
+        }
       </button>
   
       

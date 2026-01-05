@@ -7,7 +7,8 @@ import { ConfigService } from '../../core/services/config.service';
 import {
   AccountMetricsEvent,
   PositionClosedEvent,
-  StrategyFollowedUpdateEvent
+  StrategyFollowedUpdateEvent,
+  SubscriptionUpdatedEvent
 } from './metrics-events.interface';
 
 /**
@@ -82,6 +83,10 @@ export class AccountStatusService implements OnDestroy {
   // Subject para trades del calendario en tiempo real
   private calendarTradeSubject = new Subject<{ accountId: string; trade: any }>();
   public calendarTrade$: Observable<{ accountId: string; trade: any }> = this.calendarTradeSubject.asObservable();
+
+  // Subject para actualizaciones de suscripción
+  private subscriptionUpdatedSubject = new Subject<SubscriptionUpdatedEvent>();
+  public subscriptionUpdated$: Observable<SubscriptionUpdatedEvent> = this.subscriptionUpdatedSubject.asObservable();
 
   constructor(
     private appContext: AppContextService,
@@ -195,6 +200,13 @@ export class AccountStatusService implements OnDestroy {
       // Actualizar timestamp cuando llegan datos
       this.lastStreamDataTime = Date.now();
       this.handleStrategyFollowedUpdate(data);
+    });
+
+    // Listen for subscription updates
+    registerHandler('subscription:updated', (data: SubscriptionUpdatedEvent) => {
+      // Actualizar timestamp cuando llegan datos
+      this.lastStreamDataTime = Date.now();
+      this.handleSubscriptionUpdated(data);
     });
 
     // Listen for connection status updates
@@ -536,6 +548,29 @@ export class AccountStatusService implements OnDestroy {
       console.log(`✅ AccountStatusService: Processed strategyFollowedUpdate for ${data.userId}`);
     } catch (error) {
       console.error('❌ AccountStatusService: Error handling strategyFollowedUpdate:', error, data);
+    }
+  }
+
+  /**
+   * Handle subscription updated event from Socket.IO
+   * Emitted when subscription changes (from Stripe webhook or manual update)
+   */
+  private handleSubscriptionUpdated(data: SubscriptionUpdatedEvent): void {
+    try {
+      console.log('💳 AccountStatusService: Received subscription:updated event:', data);
+      
+      // Validate data
+      if (!data || !data.userId) {
+        console.warn('⚠️ AccountStatusService: Invalid subscription:updated data:', data);
+        return;
+      }
+
+      // Emit to subscribers
+      this.subscriptionUpdatedSubject.next(data);
+
+      console.log(`✅ AccountStatusService: Processed subscription:updated for ${data.userId}`);
+    } catch (error) {
+      console.error('❌ AccountStatusService: Error handling subscription:updated:', error, data);
     }
   }
 

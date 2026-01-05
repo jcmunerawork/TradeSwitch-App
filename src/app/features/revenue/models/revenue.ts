@@ -22,31 +22,32 @@ export enum SubscriptionStatus {
 }
 
 // API Response Interfaces
+// Nota: El backend ya formatea las fechas como strings y capitaliza los strings
 export interface OrderApiItem {
-  date: number; // timestamp
+  date: string; // Formato: "Jan 15, 2025"
   value: number;
   concepto: string;
   status: string;
   paid: boolean;
-  method: string;
+  method: string; // Ya capitalizado: "Card", "Stripe", "Paypal"
 }
 
 export interface SubscriptionApiItem {
   status: string;
   canceladaAFinalDePeriodo: boolean;
   valor: number;
-  item: string;
+  item: string; // Ya capitalizado: "Starter", "Pro", "Enterprise"
   user: string | null;
-  startDate: number; // timestamp
-  actualPeriodStart: number; // timestamp
-  actualPeriodEnd: number; // timestamp
+  startDate: string; // Formato: "Jan 1, 2025"
+  actualPeriodStart: string; // Formato: "Jan 15, 2025"
+  actualPeriodEnd: string; // Formato: "Feb 15, 2025"
 }
 
 export interface RefundApiItem {
-  created: number; // timestamp
+  created: string; // Formato: "Jan 10, 2025"
   amount: number;
-  destination: string;
-  status: string; // pending, requires_action, succeeded, failed, or canceled
+  destination: string; // Ya capitalizado: "Card", "Paypal"
+  status: string; // Ya formateado: "Succeeded", "Pending", "Requires Action", "Failed", "Canceled"
 }
 
 export interface RevenueApiResponse {

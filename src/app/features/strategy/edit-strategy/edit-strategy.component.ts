@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { NgIf } from '@angular/common';
 import { allRules } from '../store/strategy.selectors';
@@ -300,7 +300,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     }
     
     // Fallback: fecha actual
-    console.warn('Unknown date format:', dateValue);
     return new Date();
   }
 
@@ -490,6 +489,23 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       try {
         const accounts = await this.authService.getUserAccounts(this.user.id);
         this.accountsData = accounts || [];
+        
+        // Cargar instruments para todas las cuentas si no están en el contexto
+        if (this.accountsData.length > 0) {
+          await this.loadInstrumentsForAllAccounts();
+          
+          // Actualizar availableInstruments con la primera cuenta
+          const firstAccount = this.accountsData[0];
+          if (firstAccount?.accountID) {
+            const cachedInstruments = this.appContext.getInstrumentsForAccount(firstAccount.accountID);
+            if (cachedInstruments && cachedInstruments.length > 0) {
+              this.availableInstruments = cachedInstruments.map((instrument: any) => 
+                instrument.name || instrument.localizedName || ''
+              ).filter((name: string) => name);
+            }
+          }
+        }
+        
         // After loading accounts, try to fetch user key
         await this.fetchUserKeyAsync();
       } catch (error) {
@@ -518,11 +534,11 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       const firstAccount = this.accountsData[0];
       
       try {
-        const key = await this.reportSvc.getUserKey(
+        const key = await firstValueFrom(this.reportSvc.getUserKey(
           firstAccount.emailTradingAccount, 
           firstAccount.brokerPassword, 
           firstAccount.server
-        ).toPromise();
+        ));
         
         this.store.dispatch(setUserKey({ userKey: key || '' }));
         // After getting userKey, load instruments
@@ -558,9 +574,102 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         }
   }
 
+  /**
+   * Guardar instruments en localStorage
+   */
+  private saveInstrumentsToLocalStorage(accountId: string, instruments: any[]): void {
+    try {
+      const key = `tradeswitch_instruments_${accountId}`;
+      localStorage.setItem(key, JSON.stringify({
+        instruments,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+    }
+  }
+
+  /**
+   * Obtener instruments desde localStorage
+   */
+  private getInstrumentsFromLocalStorage(accountId: string): any[] | null {
+    try {
+      const key = `tradeswitch_instruments_${accountId}`;
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.instruments && Array.isArray(parsed.instruments)) {
+          return parsed.instruments;
+        }
+      }
+    } catch (error) {
+    }
+    
+    return null;
+  }
+
+  /**
+   * Cargar instruments para todas las cuentas si no están en el contexto o localStorage
+   */
+  private async loadInstrumentsForAllAccounts(): Promise<void> {
+    if (!this.accountsData || this.accountsData.length === 0) {
+      return;
+    }
+
+    // Cargar instruments para cada cuenta que no los tenga en el contexto o localStorage
+    const loadPromises = this.accountsData.map(async (account) => {
+      if (!account.accountID || account.accountNumber === undefined) {
+        return;
+      }
+
+      // 1. Verificar si ya están cargados en el contexto
+      let cachedInstruments = this.appContext.getInstrumentsForAccount(account.accountID);
+      if (cachedInstruments && cachedInstruments.length > 0) {
+        return;
+      }
+
+      // 2. Verificar localStorage
+      cachedInstruments = this.getInstrumentsFromLocalStorage(account.accountID);
+      if (cachedInstruments && cachedInstruments.length > 0) {
+        // Guardar en el contexto también
+        this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
+        return;
+      }
+
+      // 3. Si no están cargados, cargarlos desde el backend
+      // El backend gestiona el accessToken automáticamente, no es necesario userKey
+      try {
+        const instruments = await firstValueFrom(this.reportSvc.getAllInstruments(
+          account.accountID,
+          account.accountNumber
+        ));
+
+        if (instruments && instruments.length > 0) {
+          // Guardar en el contexto
+          this.appContext.setInstrumentsForAccount(account.accountID, instruments);
+          // Guardar en localStorage
+          this.saveInstrumentsToLocalStorage(account.accountID, instruments);
+        }
+      } catch (error) {
+        console.error(`❌ EditStrategy: Error cargando instruments para cuenta ${account.accountID}:`, error);
+        // No lanzar error, continuar con otras cuentas
+      }
+    });
+
+    await Promise.all(loadPromises);
+  }
+
   loadInstruments(userKey: string, account: AccountData) {
-    // Primero intentar obtener instrumentos del contexto (ya cargados después del login)
-    const cachedInstruments = this.appContext.getInstrumentsForAccount(account.accountID);
+    // 1. Primero intentar obtener instrumentos del contexto
+    let cachedInstruments = this.appContext.getInstrumentsForAccount(account.accountID);
+    
+    // 2. Si no están en el contexto, verificar localStorage
+    if (!cachedInstruments || cachedInstruments.length === 0) {
+      cachedInstruments = this.getInstrumentsFromLocalStorage(account.accountID);
+      if (cachedInstruments && cachedInstruments.length > 0) {
+        // Guardar en el contexto también
+        this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
+      }
+    }
     
     if (cachedInstruments && cachedInstruments.length > 0) {
       // Extraer solo los nombres de los instrumentos
@@ -568,7 +677,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         instrument.name || instrument.localizedName || ''
       ).filter((name: string) => name);
       
-      // Guardar instrumentos en localStorage para uso en reglas de estrategia
+      // Guardar instrumentos en localStorage para uso en reglas de estrategia (formato antiguo para compatibilidad)
       try {
         const instrumentNames = cachedInstruments
           .map((instrument: any) => instrument.name || instrument.localizedName)
@@ -580,7 +689,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       return;
     }
     
-    // Si no están en el contexto, cargarlos desde el backend
+    // 3. Si no están en el contexto ni localStorage, cargarlos desde el backend
     // El backend gestiona el accessToken automáticamente, no es necesario userKey
     this.reportSvc.getAllInstruments(
       account.accountID,
@@ -593,8 +702,10 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         // Guardar en el contexto para futuras referencias
         if (instruments.length > 0) {
           this.appContext.setInstrumentsForAccount(account.accountID, instruments);
+          // Guardar en localStorage con la nueva clave
+          this.saveInstrumentsToLocalStorage(account.accountID, instruments);
           
-          // Guardar instrumentos en localStorage para uso en reglas de estrategia
+          // Guardar instrumentos en localStorage para uso en reglas de estrategia (formato antiguo para compatibilidad)
           try {
             const instrumentNames = instruments
               .map((instrument: Instrument) => instrument.name || instrument.localizedName)
@@ -646,7 +757,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
             await this.fetchUserAccountsAsync();
             this.setupPluginHistoryListener();
           } else {
-            console.warn('User ID not available yet');
           }
           resolve();
         },
@@ -668,7 +778,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           this.fetchUserAccounts();
           this.setupPluginHistoryListener();
         } else {
-          console.warn('User ID not available yet');
         }
       },
       error: (err) => {
@@ -804,10 +913,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         this.strategySvc
           .createStrategyView(this.user.id, this.currentStrategyName, newConfig)
           .then(async (strategyId) => {
-            // Recargar todas las estrategias en cache después de crear
-            if (this.user?.id) {
-              await this.strategySvc.reloadAllStrategiesToCache(this.user.id);
-            }
+            // ✅ createStrategyView ya guarda la strategy en cache y localStorage automáticamente
+            // No es necesario recargar todas las strategies
             
             this.router.navigate(['/strategy']);
           })
@@ -931,8 +1038,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
     try {
       if (this.strategyId) {
-        // Actualizar nombre en configuration-overview
-        await this.strategySvc.updateConfigurationOverview(this.strategyId, { 
+        // ✅ Usar updateStrategyView para que se actualice automáticamente el cache y localStorage
+        await this.strategySvc.updateStrategyView(this.strategyId, { 
           name: this.editingStrategyName.trim() 
         });
         

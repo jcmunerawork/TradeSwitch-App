@@ -133,7 +133,14 @@ export class ReportComponent implements OnInit {
   accountsData: AccountData[] = [];
   accountHistory: GroupedTradeFinal[] = [];
   errorMessage: string | null = null;
-  stats?: StatConfig;
+  stats: StatConfig = {
+    netPnl: 0,
+    tradeWinPercent: 0,
+    profitFactor: 0,
+    avgWinLossTrades: 0,
+    totalTrades: 0,
+    activePositions: 0
+  };
   userKey!: string;
   config!: displayConfigData[];
   loading = false;
@@ -178,13 +185,8 @@ export class ReportComponent implements OnInit {
   // Flag para rastrear si las gráficas están completamente renderizadas
   private chartsRendered = false;
   
-  // Local storage keys
-  private readonly STORAGE_KEYS = {
-    REPORT_DATA: 'tradeSwitch_reportData',
-    ACCOUNTS_DATA: 'tradeSwitch_accountsData',
-    CURRENT_ACCOUNT: 'tradeSwitch_currentAccount',
-    USER_DATA: 'tradeSwitch_userData'
-  };
+  // Los datos de accounts ya están en AppContextService y en tradeswitch_accounts_cache
+  // No es necesario guardarlos en localStorage aquí
 
   // Plan limitation modal
   planLimitationModal: PlanLimitationModalData = {
@@ -307,7 +309,14 @@ export class ReportComponent implements OnInit {
         // Si no hay cuentas, limpiar datos y parar loading
         this.currentAccount = null;
         this.accountHistory = [];
-        this.stats = undefined;
+        this.stats = {
+          netPnl: 0,
+          tradeWinPercent: 0,
+          profitFactor: 0,
+          avgWinLossTrades: 0,
+          totalTrades: 0,
+          activePositions: 0
+        };
         this.balanceData = null;
         this.stopInternalLoading();
       }
@@ -379,7 +388,14 @@ export class ReportComponent implements OnInit {
     
     // Limpiar datos temporales para evitar mostrar valores 0
     this.accountHistory = [];
-    this.stats = undefined;
+    this.stats = {
+      netPnl: 0,
+      tradeWinPercent: 0,
+      profitFactor: 0,
+      avgWinLossTrades: 0,
+      totalTrades: 0,
+      activePositions: 0
+    };
     // NO limpiar balanceData aquí - se mantendrá del localStorage
     
     // Limpiar el store para evitar mostrar datos anteriores
@@ -420,10 +436,10 @@ export class ReportComponent implements OnInit {
     }
 
     try {
-      // Verificar si existe datos guardados para esta cuenta
-      const savedData = this.appContext.loadReportDataFromLocalStorage(account.accountID);
+      // Verificar si hay datos en el contexto en memoria
+      const savedData = this.appContext.getTradingHistoryForAccount(account.id);
       
-      // Si no hay datos guardados, es una cuenta nueva
+      // Si no hay datos en el contexto, es una cuenta nueva o necesita cargarse
       return !savedData || !savedData.accountHistory || !savedData.stats;
     } catch (error) {
       console.error('Error verificando si la cuenta es nueva:', error);
@@ -494,14 +510,13 @@ export class ReportComponent implements OnInit {
     }
 
     try {
-      const reportDataKey = `${this.STORAGE_KEYS.REPORT_DATA}_${this.currentAccount.accountID}`;
-      const savedReportData = localStorage.getItem(reportDataKey);
-      if (savedReportData) {
-        const data = JSON.parse(savedReportData);
-        return data.accountHistory && data.stats && data.balanceData !== null;
+      // Los datos de reporte ya están en Firebase, verificar en el contexto en memoria
+      const savedData = this.appContext.getTradingHistoryForAccount(this.currentAccount.id);
+      if (savedData) {
+        return savedData.accountHistory && savedData.stats && savedData.balanceData !== null;
       }
     } catch (error) {
-      console.error('Error checking localStorage data:', error);
+      console.error('Error checking context data:', error);
     }
 
     return false;
@@ -575,7 +590,34 @@ export class ReportComponent implements OnInit {
     }
         
     try {
-      const savedData = this.appContext.loadReportDataFromLocalStorage(accountID);
+      // 1. Primero intentar cargar desde el contexto en memoria (que se carga desde Firebase/Backend)
+      let savedData = this.appContext.getTradingHistoryForAccount(accountID);
+      
+      // 2. Si no hay datos en el contexto, intentar cargar desde localStorage como fallback
+      if (!savedData || !savedData.accountHistory || !savedData.stats) {
+        console.log('📦 [CACHE] No hay datos en contexto, intentando cargar desde localStorage...');
+        const cachedData = this.loadAccountDataFromLocalStorage(accountID);
+        if (cachedData) {
+          console.log('✅ [CACHE] Datos encontrados en localStorage, usando como fallback');
+          savedData = {
+            accountHistory: cachedData.accountHistory || [],
+            stats: cachedData.stats || null,
+            balanceData: cachedData.balanceData || null,
+            lastUpdated: cachedData.lastUpdated || 0
+          };
+          
+          // Guardar en el contexto para futuras referencias
+          if (savedData.accountHistory && savedData.stats) {
+            this.appContext.setTradingHistoryForAccount(accountID, {
+              accountHistory: savedData.accountHistory,
+              stats: savedData.stats,
+              balanceData: savedData.balanceData,
+              lastUpdated: savedData.lastUpdated || Date.now()
+            });
+          }
+        }
+      }
+      
       if (savedData && savedData.accountHistory && savedData.stats) {
         // Simular tiempo de loading para mostrar el spinner
         setTimeout(() => {
@@ -607,9 +649,10 @@ export class ReportComponent implements OnInit {
             this.setLoadingState('calendarData', true);
           }, 500);
           this.hasPendingRequests = false;
-        }, 800); // Esperar 2 segundos para mostrar loading
+        }, 800); // Esperar 800ms para mostrar loading
       } else {
         // No hay datos guardados, parar loading interno
+        console.warn('⚠️ [CACHE] No hay datos guardados ni en contexto ni en localStorage');
         this.stopInternalLoading();
       }
     } catch (error) {
@@ -624,37 +667,13 @@ export class ReportComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) return;
     
     try {
-      // Solo cargar datos básicos para inicialización
-      // Los datos de reporte se cargarán desde el contexto
-      
-      // Cargar cuentas guardadas (solo para inicialización)
-      const savedAccountsData = localStorage.getItem(this.STORAGE_KEYS.ACCOUNTS_DATA);
-      if (savedAccountsData) {
-        this.accountsData = JSON.parse(savedAccountsData);
-      }
-
-      // Cargar cuenta actual (solo para inicialización)
-      const savedCurrentAccount = localStorage.getItem(this.STORAGE_KEYS.CURRENT_ACCOUNT);
-      if (savedCurrentAccount) {
-        this.currentAccount = JSON.parse(savedCurrentAccount);
-      }
-
-      // Cargar datos de usuario (solo para inicialización)
-      const savedUserData = localStorage.getItem(this.STORAGE_KEYS.USER_DATA);
-      if (savedUserData) {
-        this.user = JSON.parse(savedUserData);
-      }
-
-      if (this.currentAccount) {
-        const savedAccountHistory = localStorage.getItem(`Balance_${this.currentAccount.accountID}`);
-        if (savedAccountHistory) {
-          this.balanceData = JSON.parse(savedAccountHistory);
-        }
-      }
+      // Los datos de accounts ya están en AppContextService (userAccounts$)
+      // Los datos de reporte se cargarán desde el contexto (tradingHistoryByAccount)
+      // No es necesario cargar desde localStorage aquí
+      // El balance se obtiene desde accountMetrics del backend
 
     } catch (error) {
       console.error('Error cargando datos guardados:', error);
-      this.clearSavedData();
     }
   }
 
@@ -662,35 +681,10 @@ export class ReportComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) return;
     
     try {
-      // Guardar datos de reporte usando el contexto
-      if (this.accountHistory.length > 0 && this.stats && this.currentAccount) {
-        const reportData = {
-          accountHistory: this.accountHistory,
-          stats: this.stats,
-          balanceData: this.balanceData,
-          lastUpdated: Date.now()
-        };
-        this.appContext.saveReportDataToLocalStorage(
-          this.currentAccount.accountID,
-          this.currentAccount,
-          reportData
-        );
-      }
-
-      // Guardar cuentas
-      if (this.accountsData.length > 0) {
-        localStorage.setItem(this.STORAGE_KEYS.ACCOUNTS_DATA, JSON.stringify(this.accountsData));
-      }
-
-      // Guardar cuenta actual
-      if (this.currentAccount) {
-        localStorage.setItem(this.STORAGE_KEYS.CURRENT_ACCOUNT, JSON.stringify(this.currentAccount));
-      }
-
-      // Guardar datos de usuario
-      if (this.user) {
-        localStorage.setItem(this.STORAGE_KEYS.USER_DATA, JSON.stringify(this.user));
-      }
+      // Los datos de reporte ya se guardan en Firebase a través del backend
+      // Los datos de accounts ya están en AppContextService y en tradeswitch_accounts_cache
+      // No es necesario guardarlos en localStorage aquí
+      // El componente usa appContext.userAccounts$ que se actualiza automáticamente
     } catch (error) {
       console.error('Error guardando datos:', error);
     }
@@ -701,17 +695,13 @@ export class ReportComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) return;
     
     try {
-      // Limpiar datos de reporte para la cuenta actual usando el contexto
-      if (this.currentAccount) {
-        this.appContext.clearReportDataFromLocalStorage(this.currentAccount.accountID);
-      }
-      localStorage.removeItem(this.STORAGE_KEYS.ACCOUNTS_DATA);
-      localStorage.removeItem(this.STORAGE_KEYS.CURRENT_ACCOUNT);
-      localStorage.removeItem(this.STORAGE_KEYS.USER_DATA);
+      // Los datos de reporte ya están en Firebase
+      // Los datos de accounts ya están en AppContextService y en tradeswitch_accounts_cache
+      // No es necesario limpiar localStorage aquí
     } catch (error) {
       console.error('Error limpiando datos guardados:', error);
     }
-  }
+  } 
 
   private async initializeStrategies(): Promise<void> {
     if (this.user?.id) {
@@ -817,7 +807,14 @@ export class ReportComponent implements OnInit {
         this.accountsData = [];
         this.currentAccount = null;
         this.accountHistory = [];
-        this.stats = undefined;
+        this.stats = {
+          netPnl: 0,
+          tradeWinPercent: 0,
+          profitFactor: 0,
+          avgWinLossTrades: 0,
+          totalTrades: 0,
+          activePositions: 0
+        };
         this.balanceData = null;
         
         // Marcar cuentas como cargadas
@@ -853,7 +850,14 @@ export class ReportComponent implements OnInit {
       this.accountsData = [];
       this.currentAccount = null;
       this.accountHistory = [];
-      this.stats = undefined;
+      this.stats = {
+        netPnl: 0,
+        tradeWinPercent: 0,
+        profitFactor: 0,
+        avgWinLossTrades: 0,
+        totalTrades: 0,
+        activePositions: 0
+      };
       this.balanceData = null;
       
       this.setLoadingState('accounts', true);
@@ -1393,7 +1397,14 @@ export class ReportComponent implements OnInit {
     // Limpiar datos anteriores COMPLETAMENTE
     this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
     this.accountHistory = [];
-    this.stats = undefined;
+    this.stats = {
+      netPnl: 0,
+      tradeWinPercent: 0,
+      profitFactor: 0,
+      avgWinLossTrades: 0,
+      totalTrades: 0,
+      activePositions: 0
+    };
     this.balanceData = null;
     this.realTimeBalance = null;
     this.statsProcessed = false;
@@ -1411,11 +1422,10 @@ export class ReportComponent implements OnInit {
       // 1. Recargar historial de trades desde el backend para la nueva cuenta
       await this.loadAccountData(account);
       
-      // 2. Recargar métricas de la cuenta desde el backend
+      // 2. Recargar métricas de la cuenta desde el backend (incluye balance)
       await this.loadAccountMetricsFromBackend(account.id);
       
-      // 3. Recargar balance desde el backend
-      await this.refreshAccountBalance();
+      // NOTA: refreshAccountBalance() ya no es necesario porque el balance viene en accountMetrics
       
       // 4. Recargar strategy_followed desde el backend
       await this.loadStrategyFollowedFromBackend();
@@ -1523,7 +1533,14 @@ export class ReportComponent implements OnInit {
     // Limpiar datos anteriores y localStorage
     this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
     this.accountHistory = [];
-    this.stats = undefined;
+    this.stats = {
+      netPnl: 0,
+      tradeWinPercent: 0,
+      profitFactor: 0,
+      avgWinLossTrades: 0,
+      totalTrades: 0,
+      activePositions: 0
+    };
     this.balanceData = null;
     this.statsProcessed = false;
     this.chartsRendered = false;
@@ -1603,7 +1620,7 @@ export class ReportComponent implements OnInit {
       
       // El backend gestiona el accessToken automáticamente, no es necesario obtenerlo
       // Obtener trading history
-      const tradingHistory = await this.reportService.getHistoryData(
+      let tradingHistory = await this.reportService.getHistoryData(
         account.accountID,
         account.accountNumber
       ).toPromise();
@@ -1616,14 +1633,47 @@ export class ReportComponent implements OnInit {
       //   account.accountNumber
       // ).toPromise();
       
-      const balanceData = null; // Balance viene de streams
+      let balanceData = null; // Balance viene de streams
 
-      // Guardar en localStorage
+      // Verificar si los datos del backend están vacíos o son 0
+      const hasBackendData = tradingHistory && tradingHistory.length > 0;
+      
+      // Si no hay datos del backend, intentar cargar desde cache
+      if (!hasBackendData) {
+        console.log('📦 [CACHE] Backend devolvió datos vacíos para calendar, revisando cache...');
+        const cachedData = this.loadAccountDataFromLocalStorage(account.accountID);
+        if (cachedData && cachedData.accountHistory && cachedData.accountHistory.length > 0) {
+          console.log('✅ [CACHE] Datos encontrados en cache para calendar, usando como fallback');
+          tradingHistory = cachedData.accountHistory;
+          if (cachedData.stats) {
+            this.stats = cachedData.stats;
+          }
+          if (cachedData.balanceData) {
+            balanceData = cachedData.balanceData;
+            this.balanceData = cachedData.balanceData;
+          }
+        } else {
+          console.log('⚠️ [CACHE] No hay datos en cache, cuenta nueva o sin trades');
+        }
+      }
+
+      // Guardar en localStorage (usar datos del backend o cache)
       this.saveAccountDataToLocalStorage(account.accountID, {
         accountHistory: tradingHistory || [],
-        balanceData: balanceData,
+        stats: this.stats || null,
+        balanceData: balanceData || this.balanceData || null,
         lastUpdated: Date.now()
       });
+
+      // Guardar también en el contexto
+      if (tradingHistory && tradingHistory.length > 0) {
+        this.appContext.setTradingHistoryForAccount(account.id, {
+          accountHistory: tradingHistory,
+          stats: this.stats || null,
+          balanceData: balanceData || this.balanceData || null,
+          lastUpdated: Date.now()
+        });
+      }
 
       // Si hay trades, actualizar accountHistory directamente y marcar calendarData como listo
       if (tradingHistory && tradingHistory.length > 0) {
@@ -1660,8 +1710,67 @@ export class ReportComponent implements OnInit {
         });
         this.setLoadingState('calendarData', true);
       } else {
-        console.error(`   ❌ Error loading data for account ${account.accountID}:`, error);
-        this.setLoadingState('calendarData', true);
+        // Si hay otro error, intentar cargar desde cache como fallback
+        console.warn(`   ⚠️ Error loading data from backend, attempting to load from cache...`);
+        const cachedData = this.loadAccountDataFromLocalStorage(account.accountID);
+        if (cachedData && cachedData.accountHistory) {
+          console.log('   ✅ [CACHE] Datos encontrados en cache, usando como fallback');
+          this.accountHistory = cachedData.accountHistory || [];
+          this.balanceData = cachedData.balanceData || null;
+          
+          // Actualizar el store
+          const groupedTrades = Array.isArray(cachedData.accountHistory) ? 
+            cachedData.accountHistory.map((trade: any) => ({
+              ...trade,
+              pnl: trade.pnl ?? 0,
+              isWon: trade.isWon ?? false,
+              isOpen: trade.isOpen ?? false
+            })) : [];
+          this.store.dispatch(setGroupedTrades({ groupedTrades }));
+          
+          // Si hay stats en cache, usarlos también
+          if (cachedData.stats) {
+            this.stats = cachedData.stats;
+            this.setLoadingState('metricsData', true);
+          }
+          
+          // Si no hay stats pero hay trades, calcularlos
+          if (!this.stats && this.accountHistory.length > 0) {
+            const normalizedTrades = this.accountHistory.map((trade: any) => ({
+              ...trade,
+              pnl: trade.pnl ?? 0
+            }));
+            this.stats = {
+              netPnl: calculateNetPnl(normalizedTrades),
+              tradeWinPercent: calculateTradeWinPercent(normalizedTrades),
+              profitFactor: calculateProfitFactor(normalizedTrades),
+              avgWinLossTrades: calculateAvgWinLossTrades(normalizedTrades),
+              totalTrades: calculateTotalTrades(normalizedTrades),
+              activePositions: this.accountHistory.filter((trade: any) => trade.isOpen === true).length
+            };
+            this.setLoadingState('metricsData', true);
+          }
+          
+          // Guardar en el contexto para futuras referencias
+          if (this.accountHistory.length > 0) {
+            this.appContext.setTradingHistoryForAccount(account.id, {
+              accountHistory: this.accountHistory,
+              stats: this.stats,
+              balanceData: this.balanceData,
+              lastUpdated: cachedData.lastUpdated || Date.now()
+            });
+          }
+          
+          // Marcar como cargados
+          this.setLoadingState('historyData', true);
+          this.setLoadingState('balanceData', true);
+          setTimeout(() => {
+            this.setLoadingState('calendarData', true);
+          }, 500);
+        } else {
+          console.error(`   ❌ Error loading data for account ${account.accountID} and no cache available:`, error);
+          this.setLoadingState('calendarData', true);
+        }
       }
     }
   }
@@ -1930,7 +2039,14 @@ export class ReportComponent implements OnInit {
     console.log('   🧹 [CLEANUP] Limpiando datos anteriores...');
     this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
     this.accountHistory = [];
-    this.stats = undefined;
+    this.stats = {
+      netPnl: 0,
+      tradeWinPercent: 0,
+      profitFactor: 0,
+      avgWinLossTrades: 0,
+      totalTrades: 0,
+      activePositions: 0
+    };
     this.balanceData = null;
     this.statsProcessed = false;
     this.chartsRendered = false;
@@ -1949,9 +2065,7 @@ export class ReportComponent implements OnInit {
       console.log('📊 [REPORT LOAD] Recargando métricas de la cuenta...');
       await this.loadAccountMetricsFromBackend(this.currentAccount.id);
       
-      // 3. Recargar balance desde el backend
-      console.log('💰 [REPORT LOAD] Recargando balance...');
-      await this.refreshAccountBalance();
+      // NOTA: refreshAccountBalance() ya no es necesario porque el balance viene en accountMetrics
       
       // 4. Recargar strategy_followed desde el backend
       console.log('📈 [REPORT LOAD] Recargando strategy_followed...');
@@ -1973,37 +2087,40 @@ export class ReportComponent implements OnInit {
   }
 
   /**
+   * @deprecated Este método ya no se usa porque el balance viene incluido en accountMetrics.
+   * El balance se extrae automáticamente en loadAccountMetricsFromBackend().
+   * 
    * Refrescar balance de la cuenta actual desde el backend
    */
-  private async refreshAccountBalance(): Promise<void> {
-    if (!this.currentAccount) {
-      return;
-    }
+  // private async refreshAccountBalance(): Promise<void> {
+  //   if (!this.currentAccount) {
+  //     return;
+  //   }
 
-    try {
-      this.setLoadingState('balanceData', false);
+  //   try {
+  //     this.setLoadingState('balanceData', false);
       
-      const balance = await firstValueFrom(
-        this.reportService.getBalanceData(
-          this.currentAccount.id,
-          this.currentAccount.accountNumber
-        )
-      );
+  //     const balance = await firstValueFrom(
+  //       this.reportService.getBalanceData(
+  //         this.currentAccount.id,
+  //         this.currentAccount.accountNumber
+  //       )
+  //     );
       
-      if (balance) {
-        this.balanceData = balance;
-        // Actualizar balance en tiempo real también (usar balance o equity según esté disponible)
-        const balanceValue = balance.equity ?? balance.balance ?? 0;
-        this.appContext.updateAccountBalance(this.currentAccount.accountID, balanceValue);
-        console.log('✅ ReportComponent: Balance refrescado:', balanceValue);
-      }
+  //     if (balance) {
+  //       this.balanceData = balance;
+  //       // Actualizar balance en tiempo real también (usar balance o equity según esté disponible)
+  //       const balanceValue = balance.equity ?? balance.balance ?? 0;
+  //       this.appContext.updateAccountBalance(this.currentAccount.accountID, balanceValue);
+  //       console.log('✅ ReportComponent: Balance refrescado:', balanceValue);
+  //     }
       
-      this.setLoadingState('balanceData', true);
-    } catch (error) {
-      console.error('❌ ReportComponent: Error al refrescar balance:', error);
-      this.setLoadingState('balanceData', true);
-    }
-  }
+  //     this.setLoadingState('balanceData', true);
+  //   } catch (error) {
+  //     console.error('❌ ReportComponent: Error al refrescar balance:', error);
+  //     this.setLoadingState('balanceData', true);
+  //   }
+  // }
 
   // ===== NUEVOS MÉTODOS: CARGAR MÉTRICAS DESDE EL BACKEND =====
 
@@ -2114,23 +2231,136 @@ export class ReportComponent implements OnInit {
 
       if (response.success && response.data) {
         console.log('   📊 [METRICS] Actualizando métricas en contexto...');
+        
+        // El backend devuelve: { accountMetrics: [{ accountId, netPnl, profit, bestTrade, balance?, stats? }] }
+        // O puede devolver directamente: { accountId, netPnl, profit, bestTrade, stats? }
+        let accountMetricsData: any;
+        
+        if ((response.data as any).accountMetrics && Array.isArray((response.data as any).accountMetrics)) {
+          // Formato nuevo: buscar la cuenta en el array
+          const accountMetricsArray = (response.data as any).accountMetrics;
+          accountMetricsData = accountMetricsArray.find((m: any) => m.accountId === accountId) || accountMetricsArray[0];
+          console.log('   📊 [METRICS] Formato con accountMetrics array, cuenta encontrada:', accountMetricsData);
+        } else {
+          // Formato antiguo: datos directos
+          accountMetricsData = response.data;
+          console.log('   📊 [METRICS] Formato directo (legacy)');
+        }
+        
+        if (!accountMetricsData) {
+          console.warn('   ⚠️ [METRICS] No se encontraron métricas para la cuenta');
+          if (this.currentAccount?.id === accountId) {
+            this.setLoadingState('metricsData', true);
+          }
+          return;
+        }
+        
+        // Verificar si las métricas del backend son 0 (puede ser cuenta nueva o datos no cargados)
+        const metricsAreZero = accountMetricsData.netPnl === 0 && 
+                               accountMetricsData.profit === 0 && 
+                               accountMetricsData.bestTrade === 0;
+        
+        // Si las métricas son 0, revisar cache
+        if (metricsAreZero && this.currentAccount?.accountID) {
+          console.log('   📦 [CACHE] Métricas del backend son 0, revisando cache...');
+          const cachedData = this.loadAccountDataFromLocalStorage(this.currentAccount.accountID);
+          if (cachedData && cachedData.stats) {
+            const cachedStats = cachedData.stats;
+            // Verificar si el cache tiene datos reales (no todos en 0)
+            const cacheHasData = cachedStats.netPnl !== 0 || 
+                                 cachedStats.profitFactor !== 0 || 
+                                 cachedStats.totalTrades > 0;
+            if (cacheHasData) {
+              console.log('   ✅ [CACHE] Métricas encontradas en cache, usando como fallback');
+              // Usar métricas del cache
+              accountMetricsData.netPnl = cachedStats.netPnl || 0;
+              accountMetricsData.profit = cachedStats.profitFactor || 0;
+              accountMetricsData.bestTrade = cachedStats.bestTrade || 0;
+              
+              // Actualizar stats local también
+              if (this.currentAccount?.id === accountId) {
+                this.stats = {
+                  ...this.stats,
+                  netPnl: cachedStats.netPnl || 0,
+                  profitFactor: cachedStats.profitFactor || 0,
+                  tradeWinPercent: cachedStats.tradeWinPercent || 0,
+                  avgWinLossTrades: cachedStats.avgWinLossTrades || 0,
+                  totalTrades: cachedStats.totalTrades || 0,
+                  activePositions: cachedStats.activePositions || 0
+                };
+              }
+            } else {
+              console.log('   ⚠️ [CACHE] Cache también tiene métricas en 0, cuenta nueva');
+            }
+          }
+        }
+
         // Actualizar métricas en el contexto
         this.appContext.updateAccountMetrics(accountId, {
-          netPnl: response.data.netPnl,
-          profit: response.data.profit,
-          bestTrade: response.data.bestTrade
+          netPnl: accountMetricsData.netPnl,
+          profit: accountMetricsData.profit,
+          bestTrade: accountMetricsData.bestTrade
         });
         console.log('   ✅ [METRICS] Métricas actualizadas en contexto:', {
-          netPnl: response.data.netPnl,
-          profit: response.data.profit,
-          bestTrade: response.data.bestTrade
+          netPnl: accountMetricsData.netPnl,
+          profit: accountMetricsData.profit,
+          bestTrade: accountMetricsData.bestTrade
         });
+        
+        // ✅ NUEVO: Extraer y actualizar balance desde accountMetrics (evita llamada individual)
+        let balanceFromBackend: number | null = null;
+        if (accountMetricsData.balance !== undefined && accountMetricsData.balance !== null) {
+          const balance = Number(accountMetricsData.balance);
+          if (!isNaN(balance)) {
+            balanceFromBackend = balance;
+            console.log('   💰 [BALANCE] Balance encontrado en accountMetrics:', balance);
+            // Actualizar balance en el contexto
+            if (this.currentAccount?.accountID) {
+              this.appContext.updateAccountBalance(this.currentAccount.accountID, balance);
+            }
+            // Actualizar balanceData local si es la cuenta actual
+            if (this.currentAccount?.id === accountId) {
+              this.balanceData = {
+                balance: balance,
+                equity: balance,
+                margin: 0,
+                marginLevel: 0
+              };
+              console.log('   ✅ [BALANCE] Balance actualizado desde accountMetrics:', balance);
+            }
+          } else {
+            console.warn('   ⚠️ [BALANCE] Balance inválido en accountMetrics:', accountMetricsData.balance);
+          }
+        } else {
+          console.log('   ⚠️ [BALANCE] No hay balance en accountMetrics (puede ser opcional)');
+        }
+        
+        // Si el balance del backend es 0, revisar cache
+        if (balanceFromBackend === 0 && this.currentAccount?.accountID) {
+          console.log('   📦 [CACHE] Balance del backend es 0, revisando cache...');
+          const cachedData = this.loadAccountDataFromLocalStorage(this.currentAccount.accountID);
+          if (cachedData && cachedData.balanceData && cachedData.balanceData.balance) {
+            const cachedBalance = Number(cachedData.balanceData.balance);
+            if (!isNaN(cachedBalance) && cachedBalance !== 0) {
+              console.log('   ✅ [CACHE] Balance encontrado en cache:', cachedBalance);
+              // Usar balance del cache
+              if (this.currentAccount?.accountID) {
+                this.appContext.updateAccountBalance(this.currentAccount.accountID, cachedBalance);
+              }
+              if (this.currentAccount?.id === accountId) {
+                this.balanceData = cachedData.balanceData;
+              }
+            } else {
+              console.log('   ⚠️ [CACHE] Cache también tiene balance en 0');
+            }
+          }
+        }
 
         // Si es la cuenta actual y hay stats, actualizar también
-        if (this.currentAccount?.id === accountId && response.data.stats) {
+        if (this.currentAccount?.id === accountId && accountMetricsData.stats) {
           console.log('   📊 [STATS] Actualizando stats desde métricas...');
-          console.log('   📊 [STATS] Stats recibidos:', response.data.stats);
-          this.updateStatsFromMetrics(response.data.stats);
+          console.log('   📊 [STATS] Stats recibidos:', accountMetricsData.stats);
+          this.updateStatsFromMetrics(accountMetricsData.stats);
           console.log('   ✅ [STATS] Stats actualizados:', this.stats);
           
           // Marcar métricas como cargadas solo cuando stats estén actualizados
@@ -2541,4 +2771,11 @@ export class ReportComponent implements OnInit {
     }
   }
   */
+
+  /**
+   * Check if balances are currently loading
+   */
+  isBalancesLoading(): boolean {
+    return this.appContext.balancesLoading();
+  }
 }

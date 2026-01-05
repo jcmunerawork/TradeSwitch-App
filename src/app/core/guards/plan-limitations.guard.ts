@@ -2,12 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { CanActivate, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { selectUser } from '../../features/auth/store/user.selectios';
-import { SubscriptionService } from '../../shared/services/subscription-service';
-import { PlanService } from '../../shared/services/planService';
+import { BackendApiService } from '../services/backend-api.service';
 import { UserStatus } from '../../features/overview/models/overview';
 import { Observable, of, switchMap, catchError } from 'rxjs';
-import { Subscription } from '../../shared/services/subscription-service';
 import { AppContextService } from '../../shared/context';
+import { getAuth } from 'firebase/auth';
 
 export interface PlanLimitations {
   maxAccounts: number;
@@ -53,18 +52,26 @@ export interface ModalData {
  * - Check report access
  * - Validate subscription status (active, banned, cancelled)
  * - Generate modal data for upgrade/blocked scenarios
- * - Integration with AppContextService for plan data
+ * - Integration with AppContextService for plan data (used as fallback only)
+ *
+ * Plan Validation Flow:
+ * 1. Uses backend API endpoint: GET /api/v1/users/:userId/plan
+ *    - Backend obtains the user's latest active subscription (or most recent if none active)
+ *    - Extracts planId from subscription
+ *    - Searches for plan in 'plans' collection using planId
+ *    - Returns complete plan with limits (strategies, tradingAccounts)
+ *    - Returns null if user has no subscription (defaults to Free plan)
+ * 2. If plan is null, user gets Free plan (1 account, 1 strategy)
+ * 3. AppContext is only used as fallback in case of errors
  *
  * Plan Status Validation:
- * - Active: User has valid subscription
- * - Banned: User account is banned
- * - Cancelled: Subscription cancelled
- * - Needs Subscription: User needs to purchase a plan
+ * - Active: Backend returns a valid plan (subscription already validated)
+ * - Free: User has no subscription or plan is null (defaults to Free)
+ * - Needs Subscription: Only used in fallback scenarios
  *
  * Relations:
- * - SubscriptionService: Gets user subscription data
- * - PlanService: Gets plan details and limits
- * - AppContextService: Accesses cached plan data
+ * - BackendApiService: Gets user plan directly from backend API
+ * - AppContextService: Accesses cached plan data (fallback only)
  * - Store (NgRx): Gets current user
  * - Router: Navigation for upgrade flows
  *
@@ -76,11 +83,15 @@ export interface ModalData {
   providedIn: 'root'
 })
 export class PlanLimitationsGuard implements CanActivate {
-  private subscriptionService = inject(SubscriptionService);
-  private planService = inject(PlanService);
+  private backendApi = inject(BackendApiService);
   private store = inject(Store);
   private router = inject(Router);
   private appContext = inject(AppContextService);
+  
+  // Cache para evitar peticiones duplicadas
+  private planCache: Map<string, { data: PlanLimitations; timestamp: number }> = new Map();
+  private readonly CACHE_TTL = 2000; // 2 segundos de caché
+  private pendingRequests: Map<string, Promise<PlanLimitations>> = new Map(); // Evitar peticiones simultáneas
 
   canActivate(): Observable<boolean> {
     return this.store.select(selectUser).pipe(
@@ -97,80 +108,83 @@ export class PlanLimitationsGuard implements CanActivate {
   }
 
   /**
+   * Get Firebase ID token for backend API calls
+   */
+  private async getIdToken(): Promise<string> {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+    return await currentUser.getIdToken();
+  }
+
+  /**
    * Check user's plan limitations and return detailed information
+   * 
+   * Usa el endpoint GET /api/v1/users/:userId/plan que:
+   * - Obtiene la última suscripción activa del usuario
+   * - Extrae el planId de la suscripción
+   * - Busca el plan en la colección plans
+   * - Retorna el plan completo con límites (strategies, tradingAccounts)
+   * - Retorna null si el usuario no tiene suscripción (plan Free por defecto)
    */
   async checkUserLimitations(userId: string): Promise<PlanLimitations> {
-    try {
-      // Usar primero el contexto global
-      const ctxPlan = this.appContext.userPlan();
-      if (ctxPlan) {
-        const isBanned = (ctxPlan as any).status === UserStatus.BANNED || ctxPlan.isActive === false;
-        const isCancelled = (ctxPlan as any).status === UserStatus.CANCELLED && ctxPlan.planName === 'Free';
-        const isActive = ctxPlan.isActive && !isBanned;
-        return {
-          maxAccounts: ctxPlan.maxAccounts,
-          maxStrategies: ctxPlan.maxStrategies,
-          planName: ctxPlan.planName,
-          isActive,
-          isBanned,
-          isCancelled,
-          needsSubscription: !isActive && !isCancelled && !isBanned
-        };
-      }
+    // Verificar si hay una petición pendiente para este usuario
+    const pendingRequest = this.pendingRequests.get(userId);
+    if (pendingRequest) {
+      return pendingRequest;
+    }
 
-      // Fallback: obtener la última suscripción y plan (no debería ocurrir si el contexto está activo)
-      const latestSubscription: Subscription | null = await this.subscriptionService.getUserLatestSubscription(userId);
-      if (!latestSubscription) {
-        return {
-          maxAccounts: 0,
-          maxStrategies: 0,
-          planName: 'No Plan',
-          isActive: false,
-          isBanned: false,
-          isCancelled: false,
-          needsSubscription: true
-        };
-      }
-
-      const isBanned = latestSubscription.status === UserStatus.BANNED;
-      const isCancelled = latestSubscription.status === UserStatus.CANCELLED;
-      const isActive = latestSubscription.status === UserStatus.PURCHASED ||
-                       latestSubscription.status === UserStatus.CREATED ||
-                       latestSubscription.status === UserStatus.PROCESSING ||
-                       latestSubscription.status === UserStatus.ACTIVE;
+    // Verificar caché
+    const cached = this.planCache.get(userId);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp) < this.CACHE_TTL) {
+      return cached.data;
+    }
+    
+    // Crear promesa y guardarla para evitar peticiones duplicadas
+    const requestPromise = (async () => {
+      try {
+        // Obtener token de autenticación
+        const idToken = await this.getIdToken();
+        
+        // Usar el nuevo endpoint que retorna directamente el plan del usuario
+        const response = await this.backendApi.getUserPlan(userId, idToken);
       
-      if (isBanned || isCancelled || !isActive) {
+      if (!response.success) {
         return {
-          maxAccounts: 0,
-          maxStrategies: 0,
-          planName: 'Inactive Plan',
-          isActive: false,
-          isBanned,
-          isCancelled,
-          needsSubscription: true
-        };
-      }
-
-      // Get plan details from Firebase
-      const plan = await this.planService.getPlanById(latestSubscription.planId);
-
-      if (!plan) {
-        return {
-          maxAccounts: 0,
-          maxStrategies: 0,
-          planName: 'Unknown Plan',
-          isActive: false,
+          maxAccounts: 1,
+          maxStrategies: 1,
+          planName: 'Free',
+          isActive: true,
           isBanned: false,
           isCancelled: false,
-          needsSubscription: true
+          needsSubscription: false
         };
       }
 
-      // Extract limitations from plan
+      // Si no hay plan (plan es null), el usuario tiene plan Free por defecto
+      if (!response.data?.plan) {
+        return {
+          maxAccounts: 1,
+          maxStrategies: 1,
+          planName: 'Free',
+          isActive: true,
+          isBanned: false,
+          isCancelled: false,
+          needsSubscription: false
+        };
+      }
+
+      const plan = response.data.plan;
+      
+      // Extraer limitaciones del plan
       const maxAccounts = plan.tradingAccounts || 1;
       const maxStrategies = plan.strategies || 1;
 
-      return {
+      // El plan siempre está activo si el backend lo retorna (ya validó la suscripción)
+      const limitations: PlanLimitations = {
         maxAccounts,
         maxStrategies,
         planName: plan.name,
@@ -180,18 +194,69 @@ export class PlanLimitationsGuard implements CanActivate {
         needsSubscription: false
       };
 
-    } catch (error) {
-      console.error('Error checking user limitations:', error);
-      return {
-        maxAccounts: 0,
-        maxStrategies: 0,
-        planName: 'Error',
-        isActive: false,
-        isBanned: false,
-        isCancelled: false,
-        needsSubscription: true
-      };
-    }
+      // Guardar en caché
+      this.planCache.set(userId, {
+        data: limitations,
+        timestamp: now
+      });
+
+      return limitations;
+      } catch (error) {
+        console.error('❌ PlanLimitationsGuard: Error checking user limitations:', error);
+        
+        // En caso de error, intentar usar el contexto como fallback
+        const ctxPlan = this.appContext.userPlan();
+        if (ctxPlan) {
+          const isBanned = (ctxPlan as any).status === UserStatus.BANNED || ctxPlan.isActive === false;
+          const isCancelled = (ctxPlan as any).status === UserStatus.CANCELLED && ctxPlan.planName === 'Free';
+          const isActive = ctxPlan.isActive && !isBanned;
+          const fallbackLimitations: PlanLimitations = {
+            maxAccounts: ctxPlan.maxAccounts,
+            maxStrategies: ctxPlan.maxStrategies,
+            planName: ctxPlan.planName,
+            isActive,
+            isBanned,
+            isCancelled,
+            needsSubscription: !isActive && !isCancelled && !isBanned
+          };
+          
+          // Guardar en caché incluso el fallback
+          this.planCache.set(userId, {
+            data: fallbackLimitations,
+            timestamp: now
+          });
+          
+          return fallbackLimitations;
+        }
+        
+        // Si no hay contexto, retornar plan Free por defecto (no error)
+        const freePlanLimitations: PlanLimitations = {
+          maxAccounts: 1,
+          maxStrategies: 1,
+          planName: 'Free',
+          isActive: true,
+          isBanned: false,
+          isCancelled: false,
+          needsSubscription: false
+        };
+
+        // Guardar en caché incluso el plan Free
+        this.planCache.set(userId, {
+          data: freePlanLimitations,
+          timestamp: now
+        });
+
+        return freePlanLimitations;
+      } finally {
+        // Limpiar petición pendiente
+        this.pendingRequests.delete(userId);
+      }
+    })();
+
+    // Guardar la promesa para evitar peticiones duplicadas
+    this.pendingRequests.set(userId, requestPromise);
+    
+    return requestPromise;
   }
 
   /**

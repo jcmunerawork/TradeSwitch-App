@@ -19,6 +19,9 @@ import { AppContextService } from '../../../../shared/context/context';
 import { LoadingSpinnerComponent } from '../../../../shared/components/loading-spinner/loading-spinner.component';
 import { StripeLoaderPopupComponent } from '../../../../shared/pop-ups/stripe-loader-popup/stripe-loader-popup.component';
 import { ConfigService } from '../../../../core/services/config.service';
+import { BackendApiService } from '../../../../core/services/backend-api.service';
+import { ToastNotificationService } from '../../../../shared/services/toast-notification.service';
+import { ToastContainerComponent } from '../../../../shared/components/toast-container/toast-container.component';
 
 /**
  * Component for managing user subscription plans.
@@ -51,7 +54,7 @@ import { ConfigService } from '../../../../core/services/config.service';
  */
 @Component({
   selector: 'app-plan-settings',
-  imports: [CommonModule, LoadingSpinnerComponent, StripeLoaderPopupComponent /*SubscriptionProcessingComponent OrderSummaryComponent*/],
+  imports: [CommonModule, LoadingSpinnerComponent, StripeLoaderPopupComponent, ToastContainerComponent /*SubscriptionProcessingComponent OrderSummaryComponent*/],
   templateUrl: './plan-settings.component.html',
   styleUrl: './plan-settings.component.scss',
   standalone: true,
@@ -114,6 +117,8 @@ export class PlanSettingsComponent implements OnInit {
   private authService = inject(AuthService);
   private appContext = inject(AppContextService);
   private configService = inject(ConfigService);
+  private backendApi = inject(BackendApiService);
+  private toastService = inject(ToastNotificationService);
 
   constructor(
     private store: Store,
@@ -721,7 +726,8 @@ export class PlanSettingsComponent implements OnInit {
    * 
    * Related to:
    * - AuthService.getBearerTokenFirebase(): Gets authentication token
-   * - API: /payments/create-portal-session (via ConfigService)
+   * - BackendApiService.createPortalSession(): Creates portal session via backend API
+   * - API: POST /api/v1/payments/create-portal-session
    * - windowCheckInterval: Interval to check if window closed
    * 
    * @private
@@ -733,46 +739,37 @@ export class PlanSettingsComponent implements OnInit {
     try {
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
 
-      const response = await fetch(`${this.configService.apiUrl}/payments/create-portal-session`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${bearerTokenFirebase}`
-        },
-        body: JSON.stringify({
-          userId: this.user?.id
-        })
-      });
+      // Use BackendApiService to create portal session
+      const response = await this.backendApi.createPortalSession(bearerTokenFirebase);
 
-      if (!response.ok) {
-        throw new Error('Error creating portal session');
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Error creating portal session');
       }
 
-      const responseData = await response.json();
-      const portalSessionUrl = responseData.body?.url || responseData.url;
+      const portalSessionUrl = response.data.url;
       
       if (!portalSessionUrl) {
         throw new Error('Portal session URL not found in response');
       }
 
-      // Abrir portal en nueva ventana
+      // Open portal in new window
       const newWindow = window.open(portalSessionUrl, '_blank');
       
-      // Verificar si la ventana se abrió correctamente
+      // Verify if window opened correctly
       if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
         throw new Error('Failed to open Stripe portal. Please check your pop-up blocker.');
       }
 
-      // Verificar periódicamente si la ventana sigue abierta
+      // Periodically check if window is still open
       this.windowCheckInterval = setInterval(() => {
         if (newWindow.closed) {
-          // La ventana se cerró, ocultar loading
+          // Window closed, hide loading
           clearInterval(this.windowCheckInterval);
           this.showRedirectLoading = false;
         }
       }, 500);
 
-      // Timeout de seguridad: si después de 10 segundos no se ha cerrado la ventana, ocultar loading
+      // Safety timeout: if window hasn't closed after 10 seconds, hide loading
       setTimeout(() => {
         if (this.windowCheckInterval) {
           clearInterval(this.windowCheckInterval);
@@ -780,9 +777,11 @@ export class PlanSettingsComponent implements OnInit {
         this.showRedirectLoading = false;
       }, 8000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error opening Stripe portal:', error);
-      // No ocultar el loader aquí, dejar que el timeout de 2 segundos lo maneje
+      // Show backend error in toast
+      this.toastService.showBackendError(error, 'Error opening Stripe portal');
+      // Don't hide loader here, let the 2 second timeout handle it
       throw error;
     }
   }
@@ -867,7 +866,8 @@ export class PlanSettingsComponent implements OnInit {
    * 
    * Related to:
    * - AuthService.getBearerTokenFirebase(): Gets authentication token
-   * - API: /payments/create-portal-session (via ConfigService)
+   * - BackendApiService.createPortalSession(): Creates portal session via backend API
+   * - API: POST /api/v1/payments/create-portal-session
    * 
    * @async
    * @memberof PlanSettingsComponent
@@ -876,32 +876,24 @@ export class PlanSettingsComponent implements OnInit {
     try {
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
 
-      const response = await fetch(`${this.configService.apiUrl}/payments/create-portal-session`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${bearerTokenFirebase}`
-        },
-        body: JSON.stringify({
-          userId: this.user?.id
-        })
-      });
+      // Use BackendApiService to create portal session
+      const response = await this.backendApi.createPortalSession(bearerTokenFirebase);
 
-      if (!response.ok) {
-        throw new Error('Error creating portal session');
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Error creating portal session');
       }
 
-      const responseData = await response.json();
-      const portalSessionUrl = responseData.body?.url || responseData.url;
+      const portalSessionUrl = response.data.url;
       
       if (!portalSessionUrl) {
         throw new Error('Portal session URL not found in response');
       }
 
       window.open(portalSessionUrl, '_blank');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error opening Stripe portal:', error);
-      // Manejar el error de forma más elegante sin alert
+      // Show backend error in toast
+      this.toastService.showBackendError(error, 'Error opening Stripe portal');
     }
   }
 

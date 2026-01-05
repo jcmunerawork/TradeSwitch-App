@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
-import { throwError } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
+import { map, catchError, shareReplay, finalize } from 'rxjs/operators';
 import { BackendApiService } from '../../core/services/backend-api.service';
 import { getAuth } from 'firebase/auth';
 
@@ -85,6 +84,15 @@ export class TradeLockerApiService {
   // Todas las llamadas pasan por el backend propio que actúa como proxy.
   // Las URLs de TradeLocker se mantienen solo como referencia/documentación.
 
+  // Cache para tokens con TTL (5 minutos)
+  // Clave: `${email}:${server}`, Valor: { token: string, expiresAt: number }
+  private tokenCache = new Map<string, { token: string; expiresAt: number }>();
+  private readonly TOKEN_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+  
+  // Map para evitar múltiples llamadas simultáneas con las mismas credenciales
+  // Clave: `${email}:${server}`, Valor: Observable<string>
+  private pendingRequests = new Map<string, Observable<string>>();
+
   constructor(
     private backendApi: BackendApiService
   ) {}
@@ -151,13 +159,44 @@ export class TradeLockerApiService {
             return;
           }
           
-          // El backend devuelve { data: any[] }, así que response.data ya es el objeto con la propiedad data
-          const tokenData = response.data.data || response.data || [];
+          // El backend puede devolver:
+          // 1. Un objeto directo con { accessToken, refreshToken, expireDate } (nuevo formato)
+          // 2. Un objeto con { data: [...] } (formato antiguo)
+          // 3. Un array directo (formato antiguo)
+          
+          // Usar 'any' para manejar los diferentes formatos de respuesta
+          const data: any = response.data;
+          let tokenData: any[];
+          
+          // Si data tiene accessToken directamente, es el nuevo formato
+          if (data && typeof data === 'object' && 'accessToken' in data && !Array.isArray(data)) {
+            // Nuevo formato: convertir objeto a array para mantener compatibilidad
+            tokenData = [{
+              accessToken: data.accessToken,
+              refreshToken: data.refreshToken,
+              expireDate: data.expireDate,
+              accountId: data.accountId || '' // Si el backend no lo envía, usar string vacío
+            }];
+            console.log('🔑 TradeLockerApiService: Detected new format (object), converted to array');
+          } else if (Array.isArray(data)) {
+            // Formato antiguo: array directo
+            tokenData = data;
+            console.log('🔑 TradeLockerApiService: Detected old format (array direct)');
+          } else if (data && typeof data === 'object' && 'data' in data && Array.isArray(data.data)) {
+            // Formato antiguo: { data: [...] }
+            tokenData = data.data;
+            console.log('🔑 TradeLockerApiService: Detected old format (nested data array)');
+          } else {
+            // Intentar como array vacío o error
+            console.error('❌ TradeLockerApiService: Token data format not recognized:', data);
+            observer.error(new Error(`Invalid response format. Expected object with accessToken or array, but got: ${typeof data}`));
+            return;
+          }
           
           console.log('🔑 TradeLockerApiService: Processed token data:', tokenData);
           
-          if (!Array.isArray(tokenData)) {
-            console.error('❌ TradeLockerApiService: Token data is not an array:', tokenData);
+          if (!Array.isArray(tokenData) || tokenData.length === 0) {
+            console.error('❌ TradeLockerApiService: Token data is not a valid array:', tokenData);
             observer.error(new Error(`Invalid response format. Expected array but got: ${typeof tokenData}`));
             return;
           }
@@ -244,11 +283,14 @@ export class TradeLockerApiService {
    * mensajes AccountStatus del Streams API.
    * 
    * NOTA: El backend gestiona el accessToken automáticamente, no es necesario enviarlo.
+   * 
+   * Endpoint correcto: GET /api/v1/tradelocker/balance/:accountId?accNum=1
    */
   getAccountBalance(accountId: string, accountNumber: number): Observable<any> {
     return new Observable(observer => {
       this.getIdToken().then(idToken => {
-        this.backendApi.getTradeLockerAccountBalance(accountId, accountNumber, idToken).then(response => {
+        // Usar el endpoint correcto: /tradelocker/balance/:accountId?accNum=1
+        this.backendApi.getTradeLockerBalance(accountId, accountNumber, idToken).then(response => {
           if (response.success && response.data) {
             observer.next(response.data);
             observer.complete();
@@ -327,10 +369,39 @@ export class TradeLockerApiService {
    * 
    * Uses staging API to get user authentication token.
    * Returns the accessToken from the first account in the response.
+   * 
+   * IMPLEMENTA CACHÉ Y DEDUPLICACIÓN para evitar errores 429 (Too Many Requests)
+   * 
+   * Características:
+   * - Caché en memoria con TTL de 5 minutos
+   * - Deduplicación de peticiones simultáneas con las mismas credenciales
+   * - shareReplay para reutilizar la misma petición entre múltiples suscriptores
+   * - Limpieza automática de peticiones pendientes al completarse
    */
   getUserKey(email: string, password: string, server: string): Observable<string> {
+    // Crear una clave única para estas credenciales (email + server)
+    const cacheKey = `${email}:${server}`;
+    
+    // 1. Verificar si hay un token válido en caché
+    const cached = this.tokenCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      console.log('🔑 TradeLockerApiService: Using cached token for', cacheKey);
+      return of(cached.token);
+    }
+    
+    // 2. Verificar si ya hay una petición en curso para estas credenciales
+    const pendingRequest = this.pendingRequests.get(cacheKey);
+    if (pendingRequest) {
+      console.log('🔑 TradeLockerApiService: Reusing pending request for', cacheKey);
+      return pendingRequest;
+    }
+    
+    // 3. Limpiar tokens expirados del caché antes de hacer nueva petición
+    this.cleanExpiredTokens();
+    
+    // 4. Crear nueva petición
     const credentials: TradeLockerCredentials = { email, password, server };
-    return this.getJWTTokenStaging(credentials).pipe(
+    const request$ = this.getJWTTokenStaging(credentials).pipe(
       map(response => {
         // La respuesta es AccountTokenResponse con estructura { data: AccountTokenData[] }
         console.log('🔑 TradeLockerApiService: getUserKey response:', response);
@@ -358,13 +429,62 @@ export class TradeLockerApiService {
           throw new Error(`No access token found in response. Account data: ${JSON.stringify(firstAccount)}`);
         }
         
-        return firstAccount.accessToken;
+        const token = firstAccount.accessToken;
+        
+        // Guardar en caché con TTL de 5 minutos
+        const expiresAt = Date.now() + this.TOKEN_CACHE_TTL;
+        this.tokenCache.set(cacheKey, { token, expiresAt });
+        console.log('🔑 TradeLockerApiService: Token cached for', cacheKey, 'expires at', new Date(expiresAt).toISOString());
+        
+        return token;
       }),
       catchError(error => {
         console.error('❌ TradeLockerApiService: Error in getUserKey:', error);
+        // Limpiar la petición pendiente en caso de error
+        this.pendingRequests.delete(cacheKey);
         return throwError(() => error);
+      }),
+      // Compartir la petición entre múltiples suscriptores (evita llamadas duplicadas)
+      shareReplay(1),
+      // Limpiar la petición pendiente cuando se complete (éxito o error)
+      finalize(() => {
+        this.pendingRequests.delete(cacheKey);
+        console.log('🔑 TradeLockerApiService: Pending request cleared for', cacheKey);
       })
     );
+    
+    // Guardar la petición pendiente para reutilizarla si se llama de nuevo
+    this.pendingRequests.set(cacheKey, request$);
+    console.log('🔑 TradeLockerApiService: New request created for', cacheKey);
+    
+    return request$;
+  }
+
+  /**
+   * Limpiar caché de tokens (útil para logout o cuando cambian las credenciales)
+   */
+  clearTokenCache(): void {
+    console.log('🔑 TradeLockerApiService: Clearing token cache');
+    this.tokenCache.clear();
+    this.pendingRequests.clear();
+  }
+
+  /**
+   * Limpiar tokens expirados del caché
+   * Se llama automáticamente antes de hacer nuevas peticiones
+   */
+  private cleanExpiredTokens(): void {
+    const now = Date.now();
+    let cleanedCount = 0;
+    for (const [key, value] of this.tokenCache.entries()) {
+      if (value.expiresAt <= now) {
+        this.tokenCache.delete(key);
+        cleanedCount++;
+      }
+    }
+    if (cleanedCount > 0) {
+      console.log(`🔑 TradeLockerApiService: Cleaned ${cleanedCount} expired token(s) from cache`);
+    }
   }
 
   /**

@@ -111,3 +111,24 @@ export interface StrategyFollowedData {
   strategyName?: string;       // Nombre de la estrategia seguida
 }
 
+/**
+ * Interface for subscription updated event from Socket.IO
+ * Emitted when subscription changes (from Stripe webhook or manual update)
+ */
+export interface SubscriptionUpdatedEvent {
+  userId: string;
+  subscription: {
+    id?: string;
+    planId: string;
+    status: string;
+    created_at: any;
+    updated_at: any;
+    userId: string;
+    transactionId?: string;
+    periodStart?: any;
+    periodEnd?: any;
+    cancelAtPeriodEnd?: boolean;
+  } | null;  // null if user has no subscription
+  timestamp: number;
+}
+

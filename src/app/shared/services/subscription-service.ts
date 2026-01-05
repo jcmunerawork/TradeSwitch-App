@@ -1,23 +1,10 @@
 
 import { Injectable } from '@angular/core';
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  getDoc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  orderBy,
-  Timestamp,
-  onSnapshot,
-  limit
-} from 'firebase/firestore';
-import { db } from '../../firebase/firebase.init';
+import { Timestamp } from 'firebase/firestore';
 import { UserStatus } from '../../features/overview/models/overview';
 import { BackendApiService } from '../../core/services/backend-api.service';
 import { getAuth } from 'firebase/auth';
+import { AccountStatusService } from './account-status.service';
 
 /**
  * Interface for user subscription data.
@@ -89,7 +76,12 @@ export class SubscriptionService {
   /**
    * Obtiene la última suscripción de un usuario (único documento esperado)
    * Now uses backend API but maintains same interface
-   * @param userId ID del usuario
+   * 
+   * Endpoint: GET /api/v1/profile/subscriptions/latest
+   * El endpoint siempre retorna 200, nunca 404.
+   * Cuando no hay suscripción, retorna: { "success": true, "data": { "subscription": null } }
+   * 
+   * @param userId ID del usuario (se mantiene por compatibilidad, pero el endpoint lo obtiene del token)
    * @returns Promise con la suscripción o null si no existe
    */
   async getUserLatestSubscription(userId: string): Promise<Subscription | null> {
@@ -97,44 +89,69 @@ export class SubscriptionService {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.getUserLatestSubscription(userId, idToken);
       
-      if (!response.success || !response.data) {
+      // El endpoint siempre retorna success: true
+      // Si no hay suscripción, data.subscription será null
+      if (!response.success) {
+        console.warn('⚠️ SubscriptionService: Respuesta no exitosa del backend:', response);
+        return null;
+      }
+      
+      // Si data es null o undefined, o subscription es null, retornar null
+      if (!response.data || response.data.subscription === null || response.data.subscription === undefined) {
         return null;
       }
       
       return response.data.subscription as Subscription;
-    } catch (error) {
-      console.error('❌ Error al obtener suscripción del usuario:', error);
-      throw error;
+    } catch (error: any) {
+      // ✅ Manejar todos los errores como "usuario sin suscripción" (caso válido)
+      // El endpoint nunca debería retornar error, pero por si acaso lo manejamos
+      if (error?.status === 404) {
+        console.log('ℹ️ SubscriptionService: Usuario sin suscripción (404), retornando null');
+        return null;
+      }
+      
+      // Cualquier otro error también se trata como "sin suscripción"
+      console.warn('⚠️ SubscriptionService: Error al obtener suscripción, tratando como usuario sin suscripción:', error?.message || error);
+      return null;
     }
   }
 
   /**
-   * Escucha cambios en la última suscripción del usuario (único documento esperado)
-   * NOTE: This method still uses Firebase real-time listener for now.
-   * In the future, this could be replaced with WebSocket or Server-Sent Events from backend.
+   * Escucha cambios en la última suscripción del usuario usando WebSocket del backend
+   * 
+   * El backend emite el evento 'subscription:updated' cuando:
+   * - Se actualiza una suscripción desde Stripe webhook (customer.subscription.updated, customer.subscription.deleted, invoice.paid)
+   * - Se actualiza una suscripción manualmente desde ProfileService.updateSubscription()
+   * 
    * Devuelve una función para desuscribirse
+   * 
+   * @param userId - ID del usuario
+   * @param handler - Función que se ejecuta cuando cambia la suscripción
+   * @param accountStatusService - Servicio de WebSocket (debe estar conectado)
+   * @returns Función para desuscribirse
    */
   listenToUserLatestSubscription(
     userId: string,
-    handler: (subscription: Subscription | null) => void
+    handler: (subscription: Subscription | null) => void,
+    accountStatusService: AccountStatusService
   ): () => void {
-    // For now, keep using Firebase real-time listener
-    // TODO: Replace with backend WebSocket/SSE when available
-    const paymentsRef = collection(db, 'users', userId, 'subscription');
-    const q = query(paymentsRef, orderBy('created_at', 'desc'), limit(1));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (snapshot.empty) {
-        handler(null);
-        return;
+    // Usar WebSocket del backend en lugar de Firebase listener
+    const subscription = accountStatusService.subscriptionUpdated$.subscribe((event) => {
+      // Solo procesar eventos para este usuario
+      if (event.userId === userId) {
+        // Convertir subscription del evento a tipo Subscription
+        const subscription = event.subscription ? {
+          ...event.subscription,
+          status: event.subscription.status as UserStatus
+        } as Subscription : null;
+        handler(subscription);
       }
-      const latestDoc = snapshot.docs[0];
-      const data = latestDoc.data();
-      handler({ id: latestDoc.id, ...data } as Subscription);
-    }, (error) => {
-      console.error('❌ Error en listener de suscripción:', error);
-      handler(null);
     });
-    return unsubscribe;
+
+    // Retornar función para desuscribirse
+    return () => {
+      subscription.unsubscribe();
+    };
   }
 
   /**

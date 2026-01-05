@@ -1,6 +1,5 @@
-import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
-import { isPlatformBrowser } from '@angular/common';
+import { Injectable } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AccountData } from '../../features/auth/models/userModel';
 import { BackendApiService } from '../../core/services/backend-api.service';
 import { getAuth } from 'firebase/auth';
@@ -44,23 +43,13 @@ import { AccountsCacheService } from './accounts-cache.service';
   providedIn: 'root'
 })
 export class AccountsOperationsService {
-  private isBrowser: boolean;
-  private db: ReturnType<typeof getFirestore> | null = null;
-  
   // Peticiones pendientes para evitar múltiples peticiones simultáneas
   private pendingRequests = new Map<string, Promise<AccountData[] | null>>();
 
   constructor(
-    @Inject(PLATFORM_ID) private platformId: Object,
     private backendApi: BackendApiService,
     private accountsCache: AccountsCacheService
-  ) {
-    this.isBrowser = isPlatformBrowser(this.platformId);
-    if (this.isBrowser) {
-      const { firebaseApp } = require('../../firebase/firebase.init.ts');
-      this.db = getFirestore(firebaseApp);
-    }
-  }
+  ) {}
 
   /**
    * Get Firebase ID token for backend API calls
@@ -106,17 +95,17 @@ export class AccountsOperationsService {
 
   /**
    * Prepara el objeto AccountData para enviarlo al backend
-   * - Remueve createdAt (el backend lo genera)
-   * - Remueve id (el backend lo genera)
-   * - Asegura que initialBalance y accountNumber sean números
+   * - Solo incluye campos permitidos en UpdateAccountDto
+   * - Remueve campos no permitidos: userId, brokerPassword, publicApiToken, publicApiTokenExpiresIn, updatedAt, createdAt, id
+   * - Asegura que los campos numéricos sean números válidos
    * - Valida que los campos requeridos estén presentes
-   * - Valida que balance esté presente (no puede ser undefined)
+   * 
+   * Campos permitidos según UpdateAccountDto:
+   * - accountName, broker, server, emailTradingAccount, accountID
+   * - accountNumber, initialBalance, netPnl, profit, bestTrade, balance
    */
   private prepareAccountForBackend(account: AccountData): any {
-    // Validar campos requeridos
-    if (!account.userId) {
-      throw new Error('userId is required');
-    }
+    // Validar campos requeridos (solo para validación interna, no se envían todos)
     if (!account.emailTradingAccount) {
       throw new Error('emailTradingAccount is required');
     }
@@ -129,26 +118,67 @@ export class AccountsOperationsService {
       throw new Error('balance is required and cannot be undefined or null');
     }
 
-    // Crear objeto limpio sin createdAt e id (el backend los genera)
-    const { createdAt, id, ...accountWithoutTimestamp } = account;
+    // Campos permitidos en UpdateAccountDto (según el backend)
+    const allowedFields = [
+      'accountName',
+      'broker',
+      'server',
+      'emailTradingAccount',
+      'accountID',
+      'accountNumber',
+      'initialBalance',
+      'netPnl',
+      'profit',
+      'bestTrade',
+      'balance'
+    ];
+
+    // Filtrar y construir el objeto solo con campos permitidos
+    const accountToSend: any = {};
     
-    return {
-      ...accountWithoutTimestamp,
-      // Asegurar que initialBalance sea número
-      initialBalance: typeof account.initialBalance === 'number' 
-        ? account.initialBalance 
-        : (account.initialBalance ? Number(account.initialBalance) : 0),
-      // Asegurar que accountNumber sea número
-      accountNumber: typeof account.accountNumber === 'number' 
-        ? account.accountNumber 
-        : Number(account.accountNumber),
-      // Asegurar que campos opcionales numéricos sean números
-      netPnl: typeof account.netPnl === 'number' ? account.netPnl : (account.netPnl || 0),
-      profit: typeof account.profit === 'number' ? account.profit : (account.profit || 0),
-      bestTrade: typeof account.bestTrade === 'number' ? account.bestTrade : (account.bestTrade || 0),
-      // Asegurar que balance sea número (ya validamos que no sea undefined/null)
-      balance: typeof account.balance === 'number' ? account.balance : Number(account.balance),
-    };
+    allowedFields.forEach(field => {
+      if (account[field as keyof AccountData] !== undefined) {
+        accountToSend[field] = account[field as keyof AccountData];
+      }
+    });
+
+    // Asegurar que los campos numéricos sean números válidos
+    if (accountToSend.initialBalance !== undefined) {
+      accountToSend.initialBalance = typeof accountToSend.initialBalance === 'number' 
+        ? accountToSend.initialBalance 
+        : (accountToSend.initialBalance ? Number(accountToSend.initialBalance) : 0);
+    }
+    
+    if (accountToSend.accountNumber !== undefined) {
+      accountToSend.accountNumber = typeof accountToSend.accountNumber === 'number' 
+        ? accountToSend.accountNumber 
+        : Number(accountToSend.accountNumber);
+    }
+    
+    if (accountToSend.netPnl !== undefined) {
+      accountToSend.netPnl = typeof accountToSend.netPnl === 'number' 
+        ? accountToSend.netPnl 
+        : (accountToSend.netPnl || 0);
+    }
+    
+    if (accountToSend.profit !== undefined) {
+      accountToSend.profit = typeof accountToSend.profit === 'number' 
+        ? accountToSend.profit 
+        : (accountToSend.profit || 0);
+    }
+    
+    if (accountToSend.bestTrade !== undefined) {
+      accountToSend.bestTrade = typeof accountToSend.bestTrade === 'number' 
+        ? accountToSend.bestTrade 
+        : (accountToSend.bestTrade || 0);
+    }
+    
+    // Asegurar que balance sea número (ya validamos que no sea undefined/null)
+    accountToSend.balance = typeof accountToSend.balance === 'number' 
+      ? accountToSend.balance 
+      : Number(accountToSend.balance);
+
+    return accountToSend;
   }
 
   /**
@@ -313,10 +343,40 @@ export class AccountsOperationsService {
       // Preparar objeto para el backend: remover campos no serializables y asegurar tipos correctos
       const accountToSend = this.prepareAccountForBackend(accountData);
       
+      // 🔍 LOG DE DEPURACIÓN: Ver qué datos se envían
+      console.log('📤 AccountsOperationsService: Enviando datos al backend:', {
+        accountId: accountId,
+        accountToSend: accountToSend,
+        tipos: {
+          balance: typeof accountToSend.balance,
+          accountNumber: typeof accountToSend.accountNumber,
+          initialBalance: typeof accountToSend.initialBalance,
+          netPnl: typeof accountToSend.netPnl,
+          profit: typeof accountToSend.profit,
+          bestTrade: typeof accountToSend.bestTrade
+        },
+        valores: {
+          balance: accountToSend.balance,
+          accountNumber: accountToSend.accountNumber,
+          initialBalance: accountToSend.initialBalance,
+          emailTradingAccount: accountToSend.emailTradingAccount
+        }
+      });
+      
       const response = await this.backendApi.updateAccount(accountId, accountToSend, idToken);
       
       if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to update account');
+        // Extraer mensaje de error del formato del backend
+        const errorMessage = this.extractErrorMessage(response.error);
+        const errorDetails = this.extractErrorDetails(response.error);
+        
+        console.error('❌ AccountsOperationsService: Error del backend:', {
+          message: errorMessage,
+          details: errorDetails,
+          fullError: response.error
+        });
+        
+        throw new Error(errorMessage);
       }
       
       // Invalidar caché y recargar cuentas después de actualizar cuenta
@@ -325,10 +385,88 @@ export class AccountsOperationsService {
         // Recargar cuentas del backend y guardar en caché
         await this.refreshUserAccounts(accountData.userId);
       }
-    } catch (error) {
-      console.error('Error updating account:', error);
+    } catch (error: any) {
+      // 🔍 LOG DE DEPURACIÓN: Ver la estructura completa del error
+      console.error('❌ AccountsOperationsService: Error completo:', error);
+      
+      // Si es HttpErrorResponse, tiene estructura diferente
+      if (error instanceof HttpErrorResponse) {
+        console.error('❌ AccountsOperationsService: Es HttpErrorResponse');
+        console.error('❌ AccountsOperationsService: error.error:', error.error);
+        console.error('❌ AccountsOperationsService: error.error?.error:', error.error?.error);
+        console.error('❌ AccountsOperationsService: error.status:', error.status);
+        console.error('❌ AccountsOperationsService: error.statusText:', error.statusText);
+        console.error('❌ AccountsOperationsService: error.url:', error.url);
+      } else {
+        console.error('❌ AccountsOperationsService: error.error:', error?.error);
+        console.error('❌ AccountsOperationsService: error.error?.error:', error?.error?.error);
+        console.error('❌ AccountsOperationsService: error.status:', error?.status);
+        console.error('❌ AccountsOperationsService: error.statusText:', error?.statusText);
+      }
+      
+      // Extraer mensaje de error del formato del backend
+      const errorMessage = this.extractErrorMessage(error);
+      const errorDetails = this.extractErrorDetails(error);
+      
+      console.error('📝 AccountsOperationsService: Mensaje extraído:', errorMessage);
+      console.error('📝 AccountsOperationsService: Detalles extraídos:', errorDetails);
+      
+      // Si hay detalles de validación, mostrarlos también
+      if (errorDetails && errorDetails.length > 0) {
+        console.error('📝 AccountsOperationsService: Errores de validación:', errorDetails.join(', '));
+      }
+      
       throw error;
     }
+  }
+
+  /**
+   * Función helper para extraer el mensaje de error del formato del backend
+   */
+  private extractErrorMessage(error: any): string {
+    // Si es HttpErrorResponse, el error está en error.error
+    if (error instanceof HttpErrorResponse) {
+      if (error.error?.error?.message) {
+        // Formato del backend: error.error.error.message
+        return error.error.error.message;
+      } else if (error.error?.message) {
+        // Formato alternativo
+        return error.error.message;
+      } else if (error.message) {
+        // Mensaje genérico de HTTP
+        return error.message;
+      }
+    } else {
+      // El error puede estar en diferentes ubicaciones dependiendo de cómo Angular maneje la respuesta
+      if (error?.error?.error?.message) {
+        // Formato del backend: error.error.error.message
+        return error.error.error.message;
+      } else if (error?.error?.message) {
+        // Formato alternativo
+        return error.error.message;
+      } else if (error?.message) {
+        // Mensaje genérico de HTTP
+        return error.message;
+      }
+    }
+    return 'An error occurred while updating account';
+  }
+
+  /**
+   * Extraer detalles de validación (array de errores)
+   */
+  private extractErrorDetails(error: any): string[] | null {
+    // Si es HttpErrorResponse, el error está en error.error
+    if (error instanceof HttpErrorResponse) {
+      if (error.error?.error?.details && Array.isArray(error.error.error.details)) {
+        return error.error.error.details;
+      }
+    } else {
+      if (error?.error?.error?.details && Array.isArray(error.error.error.details)) {
+        return error.error.error.details;
+      }
+    }
+    return null;
   }
 
   /**
