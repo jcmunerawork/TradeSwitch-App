@@ -81,13 +81,16 @@ export class MobileHeaderComponent implements OnDestroy {
     this.authService
       .logout()
       .then(() => {
-        // Limpiar todo el localStorage
-        localStorage.clear();
+        // AuthService ya limpia localStorage, sessionStorage, cookies y AppContext
+        // Solo necesitamos limpiar el store de NgRx y navegar
         this.store.dispatch(setUserData({ user: null }));
         this.router.navigate(['/login']);
       })
       .catch((error) => {
-        alert('Logout failed. Please try again.');
+        console.error('❌ MobileHeader: Error durante logout:', error);
+        // Aún así, limpiar el store y navegar
+        this.store.dispatch(setUserData({ user: null }));
+        this.router.navigate(['/login']);
       });
   }
 }

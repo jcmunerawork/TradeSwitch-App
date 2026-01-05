@@ -266,6 +266,11 @@ export class SettingsService {
     }
   }
 
+  // Obtener el número total de estrategias de un usuario (solo no eliminadas)
+  async getAllLengthConfigurationsOverview(userId: string): Promise<number> {
+    return this.strategyOperationsService.getAllLengthConfigurationsOverview(userId);
+  }
+
   // Obtener configuración activa (método legacy para compatibilidad)
   async getActiveConfiguration(userId: string): Promise<ConfigurationOverview | null> {
     return this.strategyOperationsService.getActiveConfiguration(userId);

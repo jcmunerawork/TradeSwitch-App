@@ -96,7 +96,6 @@ export class StrategyOperationsService {
         // Only retry on 429 (Too Many Requests) errors
         if (error?.status === 429 && attempt < maxRetries) {
           const delay = initialDelay * Math.pow(2, attempt);
-          console.warn(`Rate limited (429). Retrying in ${delay}ms... (attempt ${attempt + 1}/${maxRetries + 1})`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
@@ -123,6 +122,9 @@ export class StrategyOperationsService {
       if (!response.success || !response.data) {
         throw new Error(response.error?.message || 'Failed to create configuration overview');
       }
+
+      // Invalidar caché de conteo después de crear estrategia
+      this.invalidateStrategiesCountCache(userId);
       
       return response.data.overviewId;
     } catch (error) {
@@ -198,11 +200,20 @@ export class StrategyOperationsService {
    */
   async deleteConfigurationOverview(overviewId: string): Promise<void> {
     try {
+      // Obtener userId de la estrategia antes de eliminarla para invalidar caché
+      const strategy = await this.getConfigurationOverview(overviewId);
+      const userId = strategy?.userId;
+
       const idToken = await this.getIdToken();
       const response = await this.backendApi.deleteConfigurationOverview(overviewId, idToken);
       
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to delete configuration overview');
+      }
+
+      // Invalidar caché de conteo después de eliminar estrategia
+      if (userId) {
+        this.invalidateStrategiesCountCache(userId);
       }
     } catch (error) {
       console.error('Error deleting configuration overview:', error);
@@ -270,16 +281,21 @@ export class StrategyOperationsService {
 
   /**
    * Crear solo configuration (sin userId ni configurationOverviewId)
+   * Now uses backend API but maintains same interface
    */
   async createConfigurationOnly(configuration: StrategyState): Promise<string> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      throw new Error('Firestore not available');
-    }
-
     try {
-      const docRef = await addDoc(collection(this.db, 'configurations'), configuration as any);
-      return docRef.id;
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.createConfigurationOnly(configuration, idToken);
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to create configuration');
+      }
+      
+      // No invalidar caché aquí porque aún no se ha creado el overview
+      // El caché se invalidará cuando se cree el overview completo
+      
+      return response.data.configurationId;
     } catch (error) {
       console.error('Error creating configuration:', error);
       throw error;
@@ -288,28 +304,27 @@ export class StrategyOperationsService {
 
   /**
    * Crear configuration-overview con configurationId
+   * Now uses backend API but maintains same interface
    */
   async createConfigurationOverviewWithConfigId(userId: string, name: string, configurationId: string, shouldBeActive: boolean = false): Promise<string> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      throw new Error('Firestore not available');
-    }
-
     try {
-      const now = new Date();
-      const overviewData: ConfigurationOverview = {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.createConfigurationOverview(
         userId,
         name,
-        status: shouldBeActive, // Activa solo si no hay otra activa
-        created_at: now,
-        updated_at: now,
-        days_active: 0,
+        idToken,
         configurationId,
-        dateActive: [now.toISOString()],
-      };
-
-      const docRef = await addDoc(collection(this.db, 'configuration-overview'), overviewData as any);
-      return docRef.id;
+        shouldBeActive
+      );
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to create configuration overview');
+      }
+      
+      // Invalidar caché de conteo después de crear estrategia
+      this.invalidateStrategiesCountCache(userId);
+      
+      return response.data.overviewId;
     } catch (error) {
       console.error('Error creating configuration overview:', error);
       throw error;
@@ -404,19 +419,6 @@ export class StrategyOperationsService {
         // Intentar obtener el ID de diferentes campos posibles
         let strategyId = strategy.id || strategy._id || strategy.overviewId || strategy.overview_id;
         
-        // Si aún no hay ID, loguear para debuggear
-        if (!strategyId) {
-          console.warn(`⚠️ Strategy at index ${index} missing ID. Strategy data:`, {
-            name: strategy.name,
-            userId: strategy.userId,
-            hasId: !!strategy.id,
-            has_id: !!strategy._id,
-            hasOverviewId: !!strategy.overviewId,
-            hasOverview_id: !!strategy.overview_id,
-            keys: Object.keys(strategy)
-          });
-        }
-        
         // Si el backend devuelve el ID con otro nombre, mapearlo aquí
         if (strategyId) {
           return { ...strategy, id: strategyId };
@@ -426,7 +428,7 @@ export class StrategyOperationsService {
         // En este caso, deberíamos loguear un error
         console.error(`❌ Strategy missing ID:`, strategy);
         return strategy;
-      });
+      }).filter((strategy: any) => strategy.id); // Filtrar estrategias sin ID
       
       return strategies;
     } catch (error) {
@@ -493,10 +495,11 @@ export class StrategyOperationsService {
 
   /**
    * Eliminar una estrategia
+   * TODO: Migrar completamente a backend cuando exista endpoint DELETE /api/v1/strategies/configuration/:configurationId
+   * Actualmente elimina el overview por backend pero el configuration aún se elimina directamente desde Firebase
    */
   async deleteStrategyView(strategyId: string): Promise<void> {
     if (!this.db) {
-      console.warn('Firestore not available in SSR');
       return;
     }
 
@@ -507,16 +510,17 @@ export class StrategyOperationsService {
         throw new Error('Strategy not found');
       }
 
-      // 2. Eliminar configuration-overview
+      // 2. Eliminar configuration-overview usando backend
       await this.deleteConfigurationOverview(strategyId);
 
-      // 3. Eliminar configuration usando configurationId
+      // 3. Eliminar configuration directamente desde Firebase
+      // TODO: Migrar a endpoint del backend cuando esté disponible
       if (strategy.configurationId) {
         try {
           const configDocRef = doc(this.db, 'configurations', strategy.configurationId);
           await deleteDoc(configDocRef);
         } catch (error) {
-          console.warn('Configuration not found for deletion:', error);
+          // Configuration not found for deletion, continue
         }
       }
     } catch (error) {
@@ -536,11 +540,20 @@ export class StrategyOperationsService {
     }
 
     try {
+      // Obtener userId de la estrategia antes de marcarla como eliminada para invalidar caché
+      const strategy = await this.getConfigurationOverview(strategyId);
+      const userId = strategy?.userId;
+
       const idToken = await this.getIdToken();
       const response = await this.backendApi.markStrategyAsDeleted(strategyId, idToken);
       
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to mark strategy as deleted');
+      }
+
+      // Invalidar caché de conteo después de marcar estrategia como eliminada
+      if (userId) {
+        this.invalidateStrategiesCountCache(userId);
       }
     } catch (error) {
       console.error('Error marking strategy as deleted:', error);
@@ -552,20 +565,77 @@ export class StrategyOperationsService {
    * Obtener el número total de estrategias de un usuario (solo no eliminadas)
    * Now uses backend API but maintains same interface
    */
+  // Cache para evitar peticiones duplicadas
+  private strategiesCountCache: Map<string, { count: number; timestamp: number }> = new Map();
+  private readonly CACHE_TTL = 2000; // 2 segundos de caché
+  private pendingCountRequests: Map<string, Promise<number>> = new Map(); // Evitar peticiones simultáneas
+
   async getAllLengthConfigurationsOverview(userId: string): Promise<number> {
-    try {
-      const idToken = await this.getIdToken();
-      const response = await this.backendApi.getStrategiesCount(userId, idToken);
-      
-      if (!response.success || !response.data) {
-        return 0;
-      }
-      
-      return response.data.count;
-    } catch (error) {
-      console.error('Error getting strategies count:', error);
-      return 0;
+    // Verificar si hay una petición pendiente para este usuario
+    const pendingRequest = this.pendingCountRequests.get(userId);
+    if (pendingRequest) {
+      return pendingRequest;
     }
+
+    // Verificar caché
+    const cached = this.strategiesCountCache.get(userId);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp) < this.CACHE_TTL) {
+      return cached.count;
+    }
+    
+    // Crear promesa y guardarla para evitar peticiones duplicadas
+    const requestPromise = (async () => {
+      try {
+        const idToken = await this.getIdToken();
+        const response = await this.backendApi.getStrategiesCount(userId, idToken);
+        
+        if (!response.success || !response.data) {
+          return 0;
+        }
+        
+        const count = response.data.count;
+        
+        // Guardar en caché
+        this.strategiesCountCache.set(userId, {
+          count,
+          timestamp: now
+        });
+        
+        return count;
+      } catch (error) {
+        console.error('❌ getAllLengthConfigurationsOverview: Error getting strategies count:', error);
+        if (error instanceof Error) {
+          console.error('❌ Error details:', {
+            message: error.message,
+            stack: error.stack
+          });
+        }
+        if (error && typeof error === 'object' && 'status' in error) {
+          console.error('❌ HTTP Error details:', {
+            status: (error as any).status,
+            statusText: (error as any).statusText,
+            error: (error as any).error
+          });
+        }
+        return 0;
+      } finally {
+        // Limpiar petición pendiente
+        this.pendingCountRequests.delete(userId);
+      }
+    })();
+
+    // Guardar la promesa para evitar peticiones duplicadas
+    this.pendingCountRequests.set(userId, requestPromise);
+    
+    return requestPromise;
+  }
+
+  /**
+   * Invalidar caché de conteo de estrategias (llamar después de crear/eliminar estrategias)
+   */
+  invalidateStrategiesCountCache(userId: string): void {
+    this.strategiesCountCache.delete(userId);
   }
 
   /**

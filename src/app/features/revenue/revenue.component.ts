@@ -58,7 +58,7 @@ export class RevenueComponent implements OnInit {
   /**
    * Initializes the component on load.
    *
-   * Loads configuration (mock data) and fetches user data from the store.
+   * Fetches user data from the store and loads revenue data from backend.
    *
    * @memberof RevenueComponent
    */
@@ -70,12 +70,11 @@ export class RevenueComponent implements OnInit {
    * Fetches user data from the NgRx store.
    *
    * Subscribes to the selectUser selector to get current user information.
-   * If user has trading accounts, attempts to fetch access token for API calls.
-   * Currently falls back to mock data if no accounts are available.
+   * Once user is available, fetches revenue data from backend.
    *
    * Related to:
    * - Store.select(selectUser): Gets user from NgRx store
-   * - fetchUserKey(): Fetches access token for API calls
+   * - fetchRevenueData(): Fetches revenue data from backend API
    *
    * @memberof RevenueComponent
    */
@@ -119,37 +118,12 @@ export class RevenueComponent implements OnInit {
       this.refunds = data.refunds || 0;
       this.activeSubscriptions = data.activeSubscriptions || 0;
 
-      // Transform orders data
-      this.orderTableData = data.orders.map(order => ({
-        date: this.formatTimestamp(order.date),
-        value: order.value,
-        concepto: order.concepto,
-        paid: order.paid,
-        method: this.capitalizeFirst(order.method),
-        status: order.status
-      }));
+      // El backend ya formatea todos los datos, usar directamente
+      this.orderTableData = data.orders;
+      this.subscriptionsTableData = data.subscriptions;
+      this.refundsTableData = data.refundsTable;
 
-      // Transform subscriptions data
-      this.subscriptionsTableData = data.subscriptions.map(sub => ({
-        status: sub.status,
-        canceladaAFinalDePeriodo: sub.canceladaAFinalDePeriodo,
-        valor: sub.valor,
-        item: this.capitalizeFirst(sub.item),
-        user: sub.user,
-        startDate: this.formatTimestamp(sub.startDate),
-        actualPeriodStart: this.formatTimestamp(sub.actualPeriodStart),
-        actualPeriodEnd: this.formatTimestamp(sub.actualPeriodEnd)
-      }));
-
-      // Transform refunds data
-      this.refundsTableData = data.refundsTable.map(refund => ({
-        created: this.formatTimestamp(refund.created),
-        amount: refund.amount,
-        destination: this.capitalizeFirst(refund.destination),
-        status: this.formatRefundStatus(refund.status)
-      }));
-
-      console.log('✅ RevenueComponent: Data transformed successfully');
+      console.log('✅ RevenueComponent: Data loaded successfully');
 
     } catch (error: any) {
       console.error('❌ RevenueComponent: Error fetching revenue data:', error);
@@ -161,26 +135,5 @@ export class RevenueComponent implements OnInit {
     } finally {
       this.loading = false;
     }
-  }
-
-  formatTimestamp(timestamp: number): string {
-    const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  }
-
-  capitalizeFirst(str: string): string {
-    if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-  }
-
-  formatRefundStatus(status: string): string {
-    return status
-      .split('_')
-      .map(word => this.capitalizeFirst(word))
-      .join(' ');
   }
 }

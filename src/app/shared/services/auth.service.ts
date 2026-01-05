@@ -158,7 +158,6 @@ export class AuthService {
       const user = authInstance.currentUser;
       
       if (!user) {
-        console.warn('⚠️ AuthService: No hay usuario autenticado para cargar balances');
         return;
       }
       
@@ -168,7 +167,6 @@ export class AuthService {
       );
       
       if (validAccounts.length === 0) {
-        console.warn('⚠️ AuthService: No hay cuentas válidas para cargar balances');
         return;
       }
       
@@ -204,18 +202,8 @@ export class AuthService {
                 // El backend ya guardó el balance en Firebase, solo actualizamos el contexto
                 this.appContext.updateAccountBalance(account.accountID!, result.balance);
               }
-            } else if (!result.success) {
-              console.warn(
-                `⚠️ AuthService: Error obteniendo balance para cuenta ${result.accountId}: ${result.error || 'Unknown error'}`
-              );
             }
           });
-          
-          console.log(
-            `✅ AuthService: Balances cargados: ${batchResponse.data.summary.successful}/${batchResponse.data.summary.total} exitosos`
-          );
-        } else {
-          console.warn('⚠️ AuthService: Respuesta de batch no exitosa:', batchResponse);
         }
       } catch (error) {
         console.error('❌ AuthService: Error cargando balances en batch:', error);
@@ -236,11 +224,13 @@ export class AuthService {
     // Cargar planes globales si no están cargados
     await this.loadGlobalPlansIfNeeded();
     
+    // Usar WebSocket del backend en lugar de Firebase listener
     this.subscriptionUnsubscribe = this.subscriptionService.listenToUserLatestSubscription(
       userId,
       async (subscription) => {
         await this.updateUserPlanFromSubscription(subscription);
-      }
+      },
+      this.accountStatusService
     );
   }
 
@@ -268,8 +258,19 @@ export class AuthService {
 
   private async updateUserPlanFromSubscription(subscription: Subscription | null): Promise<void> {
     try {
+      // Si no hay suscripción, el usuario tiene plan Free por defecto
+      // El plan Free siempre permite 1 cuenta y 1 estrategia
       if (!subscription) {
-        this.appContext.setUserPlan(null);
+        this.appContext.setUserPlan({
+          planId: 'free',
+          planName: 'Free',
+          maxAccounts: 1,
+          maxStrategies: 1,
+          features: [],
+          isActive: true,
+          status: UserStatus.CREATED,
+          price: '0'
+        } as any);
         return;
       }
 
@@ -391,7 +392,6 @@ export class AuthService {
         localStorage.setItem('idToken', idToken);
       }
     } catch (error) {
-      console.warn('Error saving session token to cookie:', error);
       // Continuar aunque falle guardar la cookie
     }
     
@@ -406,17 +406,77 @@ export class AuthService {
   
   /**
    * Logout user.
-   * Clears session cookie and signs out from Firebase Auth.
+   * Performs a complete logout by clearing all stored data:
+   * - Session cookie
+   * - All localStorage items
+   * - All sessionStorage items
+   * - All cookies
+   * - AppContext user data
+   * - Firebase Auth session
    */
   async logout() {
-    // Limpiar cookie de sesión
-    this.sessionCookie.clearSessionToken();
-    // Limpiar localStorage si hay idToken guardado
-    if (this.isBrowser) {
-      localStorage.removeItem('idToken');
+    try {
+      
+      // 1. Limpiar cookie de sesión específica
+      this.sessionCookie.clearSessionToken();
+      
+      if (this.isBrowser) {
+        // 2. Limpiar todo el localStorage
+        localStorage.clear();
+        
+        // 3. Limpiar todo el sessionStorage
+        sessionStorage.clear();
+        
+        // 4. Limpiar todas las cookies
+        this.clearAllCookies();
+      }
+      
+      // 5. Limpiar datos del contexto de la aplicación
+      this.appContext.clearUserData();
+      
+      // 6. Cerrar sesión en Firebase Auth
+      await getAuth().signOut();
+    } catch (error) {
+      console.error('❌ AuthService: Error durante logout:', error);
+      // Continuar con el logout incluso si hay un error
+      // Asegurarse de limpiar todo lo posible
+      if (this.isBrowser) {
+        localStorage.clear();
+        sessionStorage.clear();
+        this.clearAllCookies();
+      }
+      this.appContext.clearUserData();
+      throw error;
     }
-    // Cerrar sesión en Firebase Auth
-    return getAuth().signOut();
+  }
+
+  /**
+   * Clear all cookies from the browser.
+   * This method removes all cookies by setting their expiration date to the past.
+   */
+  private clearAllCookies(): void {
+    if (!this.isBrowser) return;
+
+    try {
+      // Obtener todas las cookies
+      const cookies = document.cookie.split(';');
+      
+      // Eliminar cada cookie estableciendo su fecha de expiración en el pasado
+      for (let cookie of cookies) {
+        const eqPos = cookie.indexOf('=');
+        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+        
+        if (name) {
+          // Eliminar cookie para el path actual
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
+          // También intentar eliminar para otros paths comunes
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=${window.location.hostname}`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.${window.location.hostname}`;
+        }
+      }
+      
+    } catch (error) {
+    }
   }
 
   /**
@@ -521,7 +581,6 @@ export class AuthService {
     
     // Redirigir al login (esto se manejará en el componente o guard)
     // No redirigimos aquí para evitar dependencias circulares
-    console.warn('⚠️ AuthService: Sesión expirada, redirigir al login');
   }
 
   /**
@@ -557,7 +616,7 @@ export class AuthService {
             const userData = await this.getUserData(currentUser.uid);
             return true;
           } catch (error) {
-            console.warn('Error loading user data after auto-login:', error);
+            // Error loading user data after auto-login, continue
             return true;
           }
         } catch (error) {
@@ -590,7 +649,7 @@ export class AuthService {
               const userData = await this.getUserData(currentUser.uid);
               return true;
             } catch (error) {
-              console.warn('Error loading user data after auto-login:', error);
+              // Error loading user data after auto-login, continue
               return true;
             }
           } catch (error) {
@@ -610,7 +669,6 @@ export class AuthService {
       this.sessionCookie.clearSessionToken();
       return false;
     } catch (error) {
-      console.warn('Error checking session token:', error);
       // Si hay error, limpiar cookie por seguridad
       this.sessionCookie.clearSessionToken();
       return false;
@@ -741,7 +799,7 @@ export class AuthService {
       if (error?.status === 429 || (error?.error && error.error.status === 429)) {
         const cached = this.userDataCache.get(uid);
         if (cached) {
-          console.warn('Rate limit exceeded (429) for getCurrentUser, returning cached data');
+          // Rate limit exceeded, returning cached data
           this.appContext.setCurrentUser(cached.user);
           return cached.user;
         }
@@ -821,6 +879,13 @@ export class AuthService {
       // Cargar instrumentos para la nueva cuenta
       if (account.accountID && account.accountNumber !== undefined) {
         try {
+          // Verificar localStorage primero
+          const cachedInstruments = this.getInstrumentsFromLocalStorage(account.accountID);
+          if (cachedInstruments && cachedInstruments.length > 0) {
+            this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
+            return;
+          }
+
           const auth = await import('firebase/auth');
           const { getAuth } = auth;
           const authInstance = getAuth();
@@ -835,12 +900,21 @@ export class AuthService {
             );
             
             if (instrumentsResponse.success && instrumentsResponse.data) {
-              let instruments = instrumentsResponse.data.instruments 
-                || instrumentsResponse.data.d?.instruments 
-                || (Array.isArray(instrumentsResponse.data) ? instrumentsResponse.data : []);
+              // Nuevo formato: response.data es directamente un array de instrumentos
+              let instruments: any[] = [];
+              if (Array.isArray(instrumentsResponse.data)) {
+                instruments = instrumentsResponse.data;
+              } else if (instrumentsResponse.data.instruments && Array.isArray(instrumentsResponse.data.instruments)) {
+                instruments = instrumentsResponse.data.instruments;
+              } else if (instrumentsResponse.data.d?.instruments && Array.isArray(instrumentsResponse.data.d.instruments)) {
+                instruments = instrumentsResponse.data.d.instruments;
+              }
               
-              if (Array.isArray(instruments) && instruments.length > 0) {
+              if (instruments.length > 0) {
+                // Guardar en contexto
                 this.appContext.setInstrumentsForAccount(account.accountID, instruments);
+                // Guardar en localStorage
+                this.saveInstrumentsToLocalStorage(account.accountID, instruments);
               }
             }
           }
@@ -900,13 +974,10 @@ export class AuthService {
    */
   async getUserByEmail(email: string): Promise<User | null> {
     try {
-      console.log('📡 AuthService: Checking if email exists:', email);
       const user = await this.usersOperationsService.getUserByEmail(email);
       
       if (user) {
-        console.log('✅ AuthService: Email already registered');
       } else {
-        console.log('✅ AuthService: Email not registered (available)');
       }
       
       return user;
@@ -938,6 +1009,43 @@ export class AuthService {
         strategies: []
       };
     }
+  }
+
+  /**
+   * Guardar instruments en localStorage
+   */
+  private saveInstrumentsToLocalStorage(accountId: string, instruments: any[]): void {
+    if (!this.isBrowser) return;
+    
+    try {
+      const key = `tradeswitch_instruments_${accountId}`;
+      localStorage.setItem(key, JSON.stringify({
+        instruments,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+    }
+  }
+
+  /**
+   * Obtener instruments desde localStorage
+   */
+  private getInstrumentsFromLocalStorage(accountId: string): any[] | null {
+    if (!this.isBrowser) return null;
+    
+    try {
+      const key = `tradeswitch_instruments_${accountId}`;
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.instruments && Array.isArray(parsed.instruments)) {
+          return parsed.instruments;
+        }
+      }
+    } catch (error) {
+    }
+    
+    return null;
   }
 
   /**

@@ -86,32 +86,41 @@ export class AuthInterceptor implements HttpInterceptor {
   private handleUnauthorized(): void {
     if (!this.isBrowser) return;
 
-    // Limpiar tokens y cookies
-    localStorage.removeItem('idToken');
-    
-    // Limpiar cookie de sesión
+    console.log('🔐 AuthInterceptor: Manejo de error 401 (Unauthorized), limpiando todo...');
+
+    // Limpiar todo el almacenamiento
     try {
+      // Limpiar localStorage completo
+      localStorage.clear();
+      
+      // Limpiar sessionStorage completo
+      sessionStorage.clear();
+      
+      // Limpiar todas las cookies
       const cookies = document.cookie.split(';');
       for (let cookie of cookies) {
         const eqPos = cookie.indexOf('=');
         const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-        if (name === 'sessionToken' || name.startsWith('sessionToken')) {
-          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        if (name) {
+          // Eliminar cookie para diferentes paths y domains
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=${window.location.hostname}`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.${window.location.hostname}`;
         }
       }
     } catch (e) {
-      console.warn('Error limpiando cookies:', e);
+      console.warn('⚠️ AuthInterceptor: Error limpiando almacenamiento:', e);
     }
 
     // Cerrar sesión en Firebase Auth
     const auth = getAuth();
     auth.signOut().catch(err => {
-      console.error('Error cerrando sesión:', err);
+      console.error('❌ AuthInterceptor: Error cerrando sesión en Firebase:', err);
     });
 
     // Redirigir al login
     this.router.navigate(['/login']).catch(err => {
-      console.error('Error redirigiendo al login:', err);
+      console.error('❌ AuthInterceptor: Error redirigiendo al login:', err);
     });
   }
 }

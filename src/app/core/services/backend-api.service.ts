@@ -384,6 +384,28 @@ export class BackendApiService extends BaseApiService {
   }
 
   /**
+   * Get user plan based on active subscription
+   * Endpoint: GET /api/v1/users/:userId/plan
+   * 
+   * Obtiene el plan del usuario basado en su suscripción activa.
+   * El backend:
+   * - Obtiene la última suscripción activa del usuario (o la más reciente si no hay activas)
+   * - Extrae el planId de la suscripción
+   * - Busca el plan en la colección plans usando ese planId
+   * - Retorna el plan completo con límites (strategies, tradingAccounts)
+   * - Retorna null si el usuario no tiene suscripción
+   */
+  async getUserPlan(userId: string, idToken: string): Promise<BackendApiResponse<{ plan: any | null }>> {
+    return firstValueFrom(
+      this.get<BackendApiResponse<{ plan: any | null }>>(`/users/${userId}/plan`, undefined, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      })
+    );
+  }
+
+  /**
    * Get user accounts
    */
   async getUserAccounts(userId: string, idToken: string): Promise<BackendApiResponse<{ accounts: any[] }>> {
@@ -690,10 +712,43 @@ export class BackendApiService extends BaseApiService {
 
   /**
    * Delete user
+   * 
+   * Endpoint: DELETE /api/v1/users/:userId
+   * 
+   * Elimina todos los datos del usuario:
+   * - Trading accounts (accounts collection)
+   * - Strategies (configuration-overview y configurations)
+   * - Monthly reports (monthly_reports)
+   * - Plugin history (plugin_history)
+   * - Link tokens (tokens)
+   * - Subscriptions (users/{userId}/subscription)
+   * - Trading history (users/{userId}/trading_history)
+   * - User document (users/{userId})
+   * - Firebase Auth user
+   * 
+   * Permisos: El usuario puede eliminar su propia cuenta o un admin puede eliminar cualquier cuenta
    */
-  async deleteUser(userId: string, idToken: string): Promise<BackendApiResponse<void>> {
+  async deleteUser(userId: string, idToken: string): Promise<BackendApiResponse<{
+    deleted: {
+      accounts: number;
+      strategies: number;
+      reports: number;
+      pluginHistory: number;
+      tokens: number;
+      subscriptions: number;
+    };
+  }>> {
     return firstValueFrom(
-      this.delete<BackendApiResponse<void>>(`/users/${userId}`, {
+      this.delete<BackendApiResponse<{
+        deleted: {
+          accounts: number;
+          strategies: number;
+          reports: number;
+          pluginHistory: number;
+          tokens: number;
+          subscriptions: number;
+        };
+      }>>(`/users/${userId}`, {
         headers: {
           'Authorization': `Bearer ${idToken}`
         }
@@ -777,11 +832,18 @@ export class BackendApiService extends BaseApiService {
   /**
    * Create configuration overview
    */
-  async createConfigurationOverview(userId: string, name: string, idToken: string): Promise<BackendApiResponse<{ overviewId: string }>> {
+  async createConfigurationOverview(
+    userId: string, 
+    name: string, 
+    idToken: string,
+    configurationId?: string,
+    shouldBeActive?: boolean
+  ): Promise<BackendApiResponse<{ overviewId: string }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ overviewId: string }>>('/strategies/overview', {
-        userId,
-        name
+        name,
+        ...(configurationId && { configurationId }),
+        ...(shouldBeActive !== undefined && { shouldBeActive })
       }, {
         headers: {
           'Authorization': `Bearer ${idToken}`
@@ -822,6 +884,22 @@ export class BackendApiService extends BaseApiService {
   async deleteConfigurationOverview(overviewId: string, idToken: string): Promise<BackendApiResponse<void>> {
     return firstValueFrom(
       this.delete<BackendApiResponse<void>>(`/strategies/overview/${overviewId}`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      })
+    );
+  }
+
+  /**
+   * Create configuration only (without overview)
+   * Creates only a configuration document and returns its ID
+   */
+  async createConfigurationOnly(configuration: any, idToken: string): Promise<BackendApiResponse<{ configurationId: string }>> {
+    return firstValueFrom(
+      this.post<BackendApiResponse<{ configurationId: string }>>('/strategies/configuration', {
+        configuration
+      }, {
         headers: {
           'Authorization': `Bearer ${idToken}`
         }
@@ -1990,28 +2068,28 @@ export class BackendApiService extends BaseApiService {
     mrr: number;
     currency: string;
     orders: Array<{
-      date: number;
+      date: string; // Formato: "Jan 15, 2025"
       value: number;
       concepto: string;
       status: string;
       paid: boolean;
-      method: string;
+      method: string; // Ya capitalizado: "Card", "Stripe", "Paypal"
     }>;
     refundsTable: Array<{
-      created: number;
+      created: string; // Formato: "Jan 10, 2025"
       amount: number;
-      destination: string;
-      status: string;
+      destination: string; // Ya capitalizado: "Card", "Paypal"
+      status: string; // Ya formateado: "Succeeded", "Pending", "Requires Action", etc.
     }>;
     subscriptions: Array<{
       status: string;
       canceladaAFinalDePeriodo: boolean;
       valor: number;
-      item: string;
+      item: string; // Ya capitalizado: "Starter", "Pro", "Enterprise"
       user: string | null;
-      startDate: number;
-      actualPeriodStart: number;
-      actualPeriodEnd: number;
+      startDate: string; // Formato: "Jan 1, 2025"
+      actualPeriodStart: string; // Formato: "Jan 15, 2025"
+      actualPeriodEnd: string; // Formato: "Feb 15, 2025"
     }>;
   }>> {
     return firstValueFrom(
@@ -2023,28 +2101,28 @@ export class BackendApiService extends BaseApiService {
         mrr: number;
         currency: string;
         orders: Array<{
-          date: number;
+          date: string; // Formato: "Jan 15, 2025"
           value: number;
           concepto: string;
           status: string;
           paid: boolean;
-          method: string;
+          method: string; // Ya capitalizado: "Card", "Stripe", "Paypal"
         }>;
         refundsTable: Array<{
-          created: number;
+          created: string; // Formato: "Jan 10, 2025"
           amount: number;
-          destination: string;
-          status: string;
+          destination: string; // Ya capitalizado: "Card", "Paypal"
+          status: string; // Ya formateado: "Succeeded", "Pending", "Requires Action", etc.
         }>;
         subscriptions: Array<{
           status: string;
           canceladaAFinalDePeriodo: boolean;
           valor: number;
-          item: string;
+          item: string; // Ya capitalizado: "Starter", "Pro", "Enterprise"
           user: string | null;
-          startDate: number;
-          actualPeriodStart: number;
-          actualPeriodEnd: number;
+          startDate: string; // Formato: "Jan 1, 2025"
+          actualPeriodStart: string; // Formato: "Jan 15, 2025"
+          actualPeriodEnd: string; // Formato: "Feb 15, 2025"
         }>;
       }>>('/admin-dashboard/revenue', undefined, {
         headers: {

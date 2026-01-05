@@ -320,8 +320,17 @@ export class ReportService {
   ): Observable<Instrument[]> {
     return this.tradeLockerApiService.getAllInstruments(accountId, accNum)
       .pipe(
-        map((details) => {
-          return details.d.instruments;
+        map((data) => {
+          // Nuevo formato: response.data es directamente un array de instrumentos
+          // Formato antiguo: response.data.d.instruments
+          if (Array.isArray(data)) {
+            return data;
+          } else if (data?.d?.instruments && Array.isArray(data.d.instruments)) {
+            return data.d.instruments;
+          } else if (data?.instruments && Array.isArray(data.instruments)) {
+            return data.instruments;
+          }
+          return [];
         })
       )
       .pipe(

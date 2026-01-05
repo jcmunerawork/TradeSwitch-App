@@ -430,12 +430,14 @@ export class ProfileDetailsComponent implements OnInit {
    * Logout and clear all stored data.
    * 
    * This method performs a complete logout:
-   * 1. Clears session cookie
-   * 2. Clears localStorage (idToken and other data)
-   * 3. Clears sessionStorage
-   * 4. Clears NgRx store
-   * 5. Clears app context
-   * 6. Signs out from Firebase Auth
+   * - AuthService.logout() now handles:
+   *   1. Clearing session cookie
+   *   2. Clearing all localStorage items
+   *   3. Clearing all sessionStorage items
+   *   4. Clearing all cookies
+   *   5. Clearing app context
+   *   6. Signing out from Firebase Auth
+   * - This method only needs to clear NgRx store
    * 
    * Used after password change to force re-authentication.
    * 
@@ -445,30 +447,21 @@ export class ProfileDetailsComponent implements OnInit {
    */
   private async logoutAndClearAll(): Promise<void> {
     try {
-      // 1. Logout from AuthService (clears cookie and Firebase Auth)
+      // AuthService.logout() ya limpia todo: localStorage, sessionStorage, cookies, AppContext y Firebase Auth
       await this.authService.logout();
       
-      // 2. Clear all localStorage items
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.clear();
-      }
-      
-      // 3. Clear all sessionStorage items
-      if (typeof window !== 'undefined' && window.sessionStorage) {
-        sessionStorage.clear();
-      }
-      
-      // 4. Clear NgRx store
+      // Solo necesitamos limpiar el store de NgRx
       this.store.dispatch({
         type: '[User] Clear User'
       });
       
-      // 5. Clear app context (clears all user data)
-      this.appContext.clearUserData();
-      
     } catch (error) {
-      console.error('❌ Error during logout:', error);
-      // Continue with logout even if there's an error
+      console.error('❌ ProfileDetailsComponent: Error during logout:', error);
+      // Continuar con el logout incluso si hay un error
+      // Asegurarse de limpiar el store
+      this.store.dispatch({
+        type: '[User] Clear User'
+      });
     }
   }
 

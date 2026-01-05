@@ -149,8 +149,13 @@ export class TradingAccountsComponent implements OnDestroy {
     });
 
     // Suscribirse a las cuentas del usuario
-    this.appContext.userAccounts$.subscribe(accounts => {
+    this.appContext.userAccounts$.subscribe(async accounts => {
       this.usersData = accounts;
+      
+      // Actualizar limitaciones dinámicamente cuando cambian las cuentas
+      if (this.user?.id) {
+        await this.checkPlanLimitations();
+      }
     });
 
     // Suscribirse a los estados de carga
@@ -162,6 +167,13 @@ export class TradingAccountsComponent implements OnDestroy {
     this.appContext.errors$.subscribe(errors => {
       if (errors.accounts) {
         console.error('Error en cuentas:', errors.accounts);
+      }
+    });
+
+    // Suscribirse a cambios en el plan del usuario para actualizar limitaciones dinámicamente
+    this.appContext.userPlan$.subscribe(async plan => {
+      if (plan && this.user?.id) {
+        await this.checkPlanLimitations();
       }
     });
   }
@@ -222,12 +234,10 @@ export class TradingAccountsComponent implements OnDestroy {
           if (tokenResponse && tokenResponse.data && tokenResponse.data.length > 0) {
             // Streams removido - los balances se actualizarán desde el backend
           } else {
-            console.warn('No se obtuvieron tokens para las cuentas');
           }
         } catch (error: any) {
           // Manejar error 404 de manera silenciosa (endpoint puede no estar disponible)
           if (error?.status === 404 || error?.error?.status === 404) {
-            console.warn('Endpoint de tokens no disponible (404). Los balances se actualizarán desde el backend.');
           } else {
             console.error('Error obteniendo tokens o inicializando streams:', error);
           }
@@ -557,6 +567,7 @@ export class TradingAccountsComponent implements OnDestroy {
 
       // If user needs subscription or is banned/cancelled
       if (limitations.needsSubscription || limitations.isBanned || limitations.isCancelled) {
+        this.isAddAccountDisabled = true;
         this.showPlanBanner = true;
         this.planBannerMessage = this.getBlockedMessage(limitations);
         this.planBannerType = 'warning';
@@ -565,18 +576,23 @@ export class TradingAccountsComponent implements OnDestroy {
 
       // Check if user has reached account limit
       if (currentAccountCount >= limitations.maxAccounts) {
+        this.isAddAccountDisabled = true;
         this.showPlanBanner = true;
         this.planBannerMessage = `You've reached the account limit for your ${limitations.planName} plan. Move to a higher plan and keep growing your account.`;
         this.planBannerType = 'warning';
       } else if (currentAccountCount >= limitations.maxAccounts - 1) {
         // Show warning when close to limit
+        this.isAddAccountDisabled = false; // Aún puede crear
         this.showPlanBanner = true;
         this.planBannerMessage = `You have ${limitations.maxAccounts - currentAccountCount} accounts left on your current plan. Want more? Upgrade anytime.`;
         this.planBannerType = 'info';
+      } else {
+        this.isAddAccountDisabled = false;
       }
     } catch (error) {
-      console.error('Error checking plan limitations:', error);
+      console.error('❌ TradingAccountsComponent.checkPlanLimitations: Error checking plan limitations:', error);
       this.showPlanBanner = false;
+      this.isAddAccountDisabled = true; // Por seguridad, deshabilitar en caso de error
     }
   }
 

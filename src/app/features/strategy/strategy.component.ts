@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { filter } from 'rxjs/operators';
+import { filter, debounceTime, distinctUntilChanged, shareReplay } from 'rxjs/operators';
 import { User } from '../overview/models/overview';
 import { selectUser } from '../auth/store/user.selectios';
 import { SettingsService } from './service/strategy.service';
@@ -149,6 +149,12 @@ export class Strategy implements OnInit, OnDestroy {
   // CACHE CENTRALIZADO - Usar servicio de cache
   // Subscription para eventos de navegación
   private navigationSubscription: any = null;
+  
+  // Cache para evitar peticiones duplicadas
+  private planLimitationsCache: { data: any; timestamp: number } | null = null;
+  private strategiesCountCache: { data: number; timestamp: number } | null = null;
+  private readonly CACHE_TTL = 2000; // 2 segundos de caché
+  private checkPlanLimitationsPending = false; // Flag para evitar ejecuciones simultáneas
 
   constructor(
     private store: Store,
@@ -207,15 +213,10 @@ export class Strategy implements OnInit, OnDestroy {
           // 1. Hay cuentas (usuario tiene cuentas configuradas)
           // 2. Y (cache está vacío O cache expirado O no hay strategies en UI)
           if (this.accountsData.length > 0 && (cacheSize === 0 || !isCacheValid || (!hasStrategies && !hasActiveStrategy))) {
-            console.log('🔄 StrategyComponent: Cache vacío/expirado o sin estrategias detectado al navegar, recargando estrategias...');
-            console.log(`   Cache size: ${cacheSize}, Cache válido: ${isCacheValid}, Has strategies: ${hasStrategies}, Has active: ${hasActiveStrategy}, Accounts: ${this.accountsData.length}`);
             this.invalidateCacheAndReload();
           } else if (cacheSize > 0 && isCacheValid && (!hasStrategies || !hasActiveStrategy)) {
             // Si el cache es válido pero la UI está vacía, solo recargar desde cache (sin petición al backend)
-            console.log('📦 StrategyComponent: Cache válido pero UI vacía, recargando desde cache...');
             this.loadAllStrategiesToCache(); // Esto ahora usará el cache si es válido
-          } else {
-            console.log('✅ StrategyComponent: Cache válido y UI actualizada, no se necesita recargar');
           } 
         }, 300);
       }
@@ -261,39 +262,48 @@ export class Strategy implements OnInit, OnDestroy {
     // Suscribirse a las cuentas del usuario
     // También detecta cambios para recargar estrategias si es necesario
     let previousAccountsCount = this.accountsData.length;
-    this.appContext.userAccounts$.subscribe(accounts => {
+    this.appContext.userAccounts$.subscribe(async accounts => {
       const currentAccountsCount = accounts?.length || 0;
       this.accountsData = accounts || [];
       
-      // Si las cuentas cambiaron (por ejemplo, se borró una cuenta), verificar si hay estrategias
-      if (previousAccountsCount !== currentAccountsCount && this.user?.id && currentAccountsCount >= 0) {
-        console.log('🔄 StrategyComponent: Cambio en cuentas detectado, verificando estrategias...');
-        console.log(`   Cuentas anteriores: ${previousAccountsCount}, Cuentas actuales: ${currentAccountsCount}`);
+      // Si las cuentas cambiaron, actualizar limitaciones dinámicamente
+      if (previousAccountsCount !== currentAccountsCount && this.user?.id) {
+        // Actualizar limitaciones cuando cambian las cuentas
+        await this.checkPlanLimitations();
         
-        // Si hay cuentas pero no hay estrategias en la UI, recargar
-        const cacheSize = this.strategyCacheService.getCacheSize();
-        const hasStrategies = this.userStrategies && this.userStrategies.length > 0;
-        const hasActiveStrategy = this.activeStrategy !== null;
-        
-        if (currentAccountsCount > 0 && (cacheSize === 0 || (!hasStrategies && !hasActiveStrategy))) {
-          console.log('🔄 StrategyComponent: Recargando estrategias después de cambio en cuentas...');
-          console.log(`   Cache size: ${cacheSize}, Has strategies: ${hasStrategies}, Has active: ${hasActiveStrategy}`);
+        // Si las cuentas cambiaron (por ejemplo, se borró una cuenta), verificar si hay estrategias
+        if (currentAccountsCount >= 0) {
+          // Si hay cuentas pero no hay estrategias en la UI, recargar
+          const cacheSize = this.strategyCacheService.getCacheSize();
+          const hasStrategies = this.userStrategies && this.userStrategies.length > 0;
+          const hasActiveStrategy = this.activeStrategy !== null;
           
-          // Recargar estrategias después de un pequeño delay para asegurar que el contexto se actualizó
-          setTimeout(() => {
-            this.invalidateCacheAndReload();
-          }, 500);
+          if (currentAccountsCount > 0 && (cacheSize === 0 || (!hasStrategies && !hasActiveStrategy))) {
+            // Recargar estrategias después de un pequeño delay para asegurar que el contexto se actualizó
+            setTimeout(() => {
+              this.invalidateCacheAndReload();
+            }, 500);
+          }
         }
       }
       
       previousAccountsCount = currentAccountsCount;
     });
 
-    // Suscribirse a las estrategias del usuario
-    this.appContext.userStrategies$.subscribe(strategies => {
+    // Suscribirse a las estrategias del usuario con debouncing para evitar múltiples llamadas
+    this.appContext.userStrategies$.pipe(
+      debounceTime(300), // Esperar 300ms después del último cambio
+      distinctUntilChanged((prev, curr) => {
+        // Solo actualizar si realmente cambió el número de estrategias
+        return prev?.length === curr?.length;
+      })
+    ).subscribe(async strategies => {
       this.userStrategies = strategies;
       this.filteredStrategies = strategies;
       this.updateStrategyCard();
+      
+      // Actualizar limitaciones dinámicamente cuando cambian las estrategias
+      await this.checkPlanLimitations();
     });
 
     // Suscribirse a los estados de carga
@@ -305,6 +315,22 @@ export class Strategy implements OnInit, OnDestroy {
     this.appContext.errors$.subscribe(errors => {
       if (errors.strategies) {
         console.error('Error en estrategias:', errors.strategies);
+      }
+    });
+
+    // Suscribirse a cambios en el plan del usuario para actualizar limitaciones dinámicamente
+    // Con debouncing para evitar múltiples llamadas
+    this.appContext.userPlan$.pipe(
+      debounceTime(300), // Esperar 300ms después del último cambio
+      distinctUntilChanged((prev, curr) => {
+        // Solo actualizar si realmente cambió el plan
+        return prev?.planName === curr?.planName && 
+               prev?.maxStrategies === curr?.maxStrategies &&
+               prev?.maxAccounts === curr?.maxAccounts;
+      })
+    ).subscribe(async plan => {
+      if (plan && this.user?.id) {
+        await this.checkPlanLimitations();
       }
     });
   }
@@ -373,8 +399,6 @@ export class Strategy implements OnInit, OnDestroy {
       
       // Si el cache tiene datos y es válido, usar el cache en lugar de hacer petición al backend
       if (currentCacheSize > 0 && isCacheValid) {
-        console.log(`📦 StrategyComponent: Cache válido con ${currentCacheSize} estrategias, cargando desde cache/localStorage...`);
-        
         // Cargar desde cache
         const cachedStrategies = this.strategyCacheService.getAllStrategies();
         const strategiesWithConfigs: Array<{ overview: ConfigurationOverview; configuration: StrategyState }> = [];
@@ -406,15 +430,7 @@ export class Strategy implements OnInit, OnDestroy {
         // Verificar limitaciones
         this.checkStrategyLimitations();
         
-        console.log('✅ StrategyComponent: Estrategias cargadas desde cache/localStorage');
         return; // Salir temprano, no hacer petición al backend
-      }
-      
-      // Si el cache está vacío o es muy antiguo, cargar desde backend
-      if (currentCacheSize === 0) {
-        console.log('📦 StrategyComponent: Cache vacío, cargando estrategias desde backend...');
-      } else {
-        console.log(`📦 StrategyComponent: Cache expirado (${Math.round((Date.now() - (cacheTimestamp || 0)) / 1000 / 60)} min), recargando desde backend...`);
       }
       
       // 1. Obtener todas las estrategias (overviews) desde backend
@@ -472,7 +488,6 @@ export class Strategy implements OnInit, OnDestroy {
             } catch (error: any) {
               // Manejar específicamente errores 429
               if (error?.status === 429) {
-                console.warn(`⚠️ Rate limit (429) when loading strategy ${strategy.name}. Will retry later.`);
                 // No mostrar alerta aquí porque el retry ya se maneja en strategy-operations.service
                 // Solo retornar null para que esta estrategia se omita por ahora
                 return null;
@@ -499,7 +514,6 @@ export class Strategy implements OnInit, OnDestroy {
       if (activeStrategyData) {
         this.activeStrategy = activeStrategyData.overview;
         const activeStrategyId = this.getStrategyIdSafe(this.activeStrategy);
-        console.log('✅ Active strategy set with ID:', activeStrategyId || 'NOT FOUND');
         
         if (!activeStrategyId) {
           console.error('❌ Active strategy overview missing ID:', this.activeStrategy);
@@ -590,7 +604,6 @@ export class Strategy implements OnInit, OnDestroy {
           },
         });
     } else {
-      console.warn('No user email or accounts available for fetching user key');
       this.store.dispatch(setUserKey({ userKey: '' }));
     }
   }
@@ -775,22 +788,53 @@ export class Strategy implements OnInit, OnDestroy {
   // Contar el total de estrategias del usuario (activas + inactivas) sin duplicar
   // IMPORTANTE: Solo cuenta estrategias NO eliminadas (deleted !== true)
   // Las estrategias eliminadas (deleted: true) NO se incluyen en este conteo
-  private getTotalStrategiesCount(): number {
-    const uniqueIds = new Set<string>();
-    this.userStrategies.forEach(s => {
-      const id = this.getStrategyIdSafe(s);
-      if (id) uniqueIds.add(id);
-    });
-    const activeStrategyId = this.getStrategyIdSafe(this.activeStrategy);
-    if (activeStrategyId) uniqueIds.add(activeStrategyId);
+  // Usa el endpoint del backend para obtener el conteo real y evitar problemas de cache
+  private async getTotalStrategiesCount(): Promise<number> {
+    if (!this.user?.id) {
+      // Fallback: contar localmente si no hay userId
+      const uniqueIds = new Set<string>();
+      this.userStrategies.forEach(s => {
+        // Filtrar estrategias eliminadas
+        if (!s.deleted) {
+          const id = this.getStrategyIdSafe(s);
+          if (id) uniqueIds.add(id);
+        }
+      });
+      const activeStrategyId = this.getStrategyIdSafe(this.activeStrategy);
+      if (activeStrategyId && !this.activeStrategy?.deleted) {
+        uniqueIds.add(activeStrategyId);
+      }
+      const localCount = uniqueIds.size;
+      return localCount;
+    }
 
-    const total = uniqueIds.size;
-
-    return total;
+    try {
+      // Usar el endpoint del backend que cuenta solo estrategias no eliminadas
+      const count = await this.strategySvc.getAllLengthConfigurationsOverview(this.user.id);
+      return count;
+    } catch (error) {
+      console.error('❌ getTotalStrategiesCount: Error getting strategies count from backend, using local count:', error);
+      // Fallback: contar localmente filtrando eliminadas
+      const uniqueIds = new Set<string>();
+      this.userStrategies.forEach(s => {
+        if (!s.deleted) {
+          const id = this.getStrategyIdSafe(s);
+          if (id) uniqueIds.add(id);
+        }
+      });
+      const activeStrategyId = this.getStrategyIdSafe(this.activeStrategy);
+      if (activeStrategyId && !this.activeStrategy?.deleted) {
+        uniqueIds.add(activeStrategyId);
+      }
+      const fallbackCount = uniqueIds.size;
+      return fallbackCount;
+    }
   }
 
   async onNewStrategy() {
-    if (!this.user?.id || this.isCreatingStrategy) return;
+    if (!this.user?.id || this.isCreatingStrategy) {
+      return;
+    }
 
     // Verificar si hay cuentas antes de crear estrategia
     if (this.accountsData.length === 0) {
@@ -803,13 +847,15 @@ export class Strategy implements OnInit, OnDestroy {
       // Activar loading
       this.isCreatingStrategy = true;
 
-      // Contar el total de estrategias del usuario (activas + inactivas)
-      const totalStrategies = this.getTotalStrategiesCount();
+      // Contar el total de estrategias del usuario (activas + inactivas) usando el backend
+      const totalStrategies = await this.getTotalStrategiesCount();
+      
       const accessCheck = await this.planLimitationsGuard.checkStrategyCreationWithModal(this.user.id, totalStrategies);
       
       if (!accessCheck.canCreate) {
         // Verificar si es el plan Pro con 8 estrategias (límite máximo)
         const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
+        
         const isProPlanWithMaxStrategies = limitations.planName.toLowerCase().includes('pro') && 
                                           limitations.maxStrategies === 8 && 
                                           totalStrategies >= 8;
@@ -1015,24 +1061,30 @@ export class Strategy implements OnInit, OnDestroy {
   }
 
   private async checkPlanLimitations() {
-    if (!this.user?.id) {
-      this.showPlanBanner = false;
-      // Si no hay cuentas, deshabilitar creación de estrategias
-      this.isAddStrategyDisabled = this.accountsData.length === 0;
+    // Evitar ejecuciones simultáneas
+    if (this.checkPlanLimitationsPending) {
       return;
     }
+    this.checkPlanLimitationsPending = true;
     
-    // Si no hay cuentas, deshabilitar creación de estrategias
-    if (this.accountsData.length === 0) {
-      this.isAddStrategyDisabled = true;
-      this.showPlanBanner = false;
-      return;
-    }
-
     try {
-      // Get user's plan limitations from the guard
-      const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
-      const totalStrategies = this.getTotalStrategiesCount();
+      if (!this.user?.id) {
+        this.showPlanBanner = false;
+        // Si no hay cuentas, deshabilitar creación de estrategias
+        this.isAddStrategyDisabled = this.accountsData.length === 0;
+        return;
+      }
+      
+      // Si no hay cuentas, deshabilitar creación de estrategias
+      if (this.accountsData.length === 0) {
+        this.isAddStrategyDisabled = true;
+        this.showPlanBanner = false;
+        return;
+      }
+
+      // Get user's plan limitations from the guard (con caché)
+      const limitations = await this.getCachedPlanLimitations(this.user.id);
+      const totalStrategies = await this.getCachedStrategiesCount(this.user.id);
       
       this.showPlanBanner = false;
       this.planBannerMessage = '';
@@ -1040,6 +1092,7 @@ export class Strategy implements OnInit, OnDestroy {
 
       // If user needs subscription or is banned/cancelled
       if (limitations.needsSubscription || limitations.isBanned || limitations.isCancelled) {
+        this.isAddStrategyDisabled = true;
         // Only show banner if user has trading accounts (not first-time user with plan)
         if (this.accountsData.length > 0) {
           this.showPlanBanner = true;
@@ -1051,14 +1104,76 @@ export class Strategy implements OnInit, OnDestroy {
 
       // Check if user has reached strategy limit
       if (totalStrategies >= limitations.maxStrategies) {
+        this.isAddStrategyDisabled = true;
         this.showPlanBanner = true;
         this.planBannerMessage = `You've reached the strategy limit for your ${limitations.planName} plan. Move to a higher plan and keep growing your account.`;
         this.planBannerType = 'warning';
+      } else {
+        this.isAddStrategyDisabled = false;
       }
     } catch (error) {
-      console.error('Error checking plan limitations:', error);
+      console.error('❌ checkPlanLimitations: Error checking plan limitations:', error);
       this.showPlanBanner = false;
+      this.isAddStrategyDisabled = true; // Por seguridad, deshabilitar en caso de error
+    } finally {
+      this.checkPlanLimitationsPending = false;
     }
+  }
+
+  /**
+   * Obtener limitaciones del plan con caché para evitar peticiones duplicadas
+   */
+  private async getCachedPlanLimitations(userId: string): Promise<any> {
+    const now = Date.now();
+    
+    // Verificar caché
+    if (this.planLimitationsCache && 
+        (now - this.planLimitationsCache.timestamp) < this.CACHE_TTL) {
+      return this.planLimitationsCache.data;
+    }
+
+    // Obtener del backend
+    const limitations = await this.planLimitationsGuard.checkUserLimitations(userId);
+    
+    // Guardar en caché
+    this.planLimitationsCache = {
+      data: limitations,
+      timestamp: now
+    };
+
+    return limitations;
+  }
+
+  /**
+   * Obtener conteo de estrategias con caché para evitar peticiones duplicadas
+   */
+  private async getCachedStrategiesCount(userId: string): Promise<number> {
+    const now = Date.now();
+    
+    // Verificar caché
+    if (this.strategiesCountCache && 
+        (now - this.strategiesCountCache.timestamp) < this.CACHE_TTL) {
+      return this.strategiesCountCache.data;
+    }
+
+    // Obtener del backend
+    const count = await this.getTotalStrategiesCount();
+    
+    // Guardar en caché
+    this.strategiesCountCache = {
+      data: count,
+      timestamp: now
+    };
+
+    return count;
+  }
+
+  /**
+   * Invalidar caché de limitaciones (llamar después de crear/eliminar estrategias)
+   */
+  private invalidateLimitationsCache(): void {
+    this.planLimitationsCache = null;
+    this.strategiesCountCache = null;
   }
 
   private getBlockedMessage(limitations: any): string {
@@ -1102,8 +1217,8 @@ export class Strategy implements OnInit, OnDestroy {
     }
 
     try {
-      // Contar el total de estrategias del usuario (activas + inactivas)
-      const totalStrategies = this.getTotalStrategiesCount();
+      // Contar el total de estrategias del usuario (activas + inactivas) usando el backend
+      const totalStrategies = await this.getTotalStrategiesCount();
       const accessCheck = await this.planLimitationsGuard.checkStrategyCreationWithModal(this.user.id, totalStrategies);
       
       this.isAddStrategyDisabled = !accessCheck.canCreate;
@@ -1214,6 +1329,11 @@ export class Strategy implements OnInit, OnDestroy {
       // 1. Primero recargar las strategies para tener el estado actualizado
       await this.invalidateCacheAndReload();
       
+      // Invalidar caché de limitaciones antes de crear estrategia
+      if (this.user?.id) {
+        this.invalidateLimitationsCache();
+      }
+      
       // 2. Generar nombre único para la estrategia genérica
       const genericName = this.generateUniqueStrategyName('Strategy');
       
@@ -1223,7 +1343,7 @@ export class Strategy implements OnInit, OnDestroy {
       // 4. Verificar si es la primera estrategia del usuario
       // NOTA: getTotalStrategiesCount() solo cuenta estrategias NO eliminadas (deleted !== true)
       // Las estrategias eliminadas no cuentan para determinar si es la primera
-      const totalStrategies = this.getTotalStrategiesCount();
+      const totalStrategies = await this.getTotalStrategiesCount();
       const isFirstStrategy = totalStrategies === 0;
       
       // 5. Crear configuración vacía con reglas por defecto (todas inactivas)
@@ -1290,10 +1410,18 @@ export class Strategy implements OnInit, OnDestroy {
         );
       }
 
-      // 7. Actualizar el estado del plan en tiempo real después de crear
+      // 7. Invalidar cache y recargar estrategias para tener el estado actualizado
+      await this.invalidateCacheAndReload();
+      
+      // Invalidar caché de limitaciones después de crear estrategia
+      if (this.user?.id) {
+        this.invalidateLimitationsCache();
+      }
+      
+      // 8. Actualizar el estado del plan en tiempo real después de crear
       await this.checkPlanLimitations();
       
-      // 8. Redirigir directamente a edit-strategy con la nueva estrategia
+      // 9. Redirigir directamente a edit-strategy con la nueva estrategia
       this.router.navigate(['/edit-strategy'], { queryParams: { strategyId: strategyId } });
       
     } catch (error) {
@@ -1351,8 +1479,6 @@ export class Strategy implements OnInit, OnDestroy {
 
   // Eliminar estrategia
   deleteStrategy(strategyId: string) {
-    console.log('🔍 deleteStrategy called with strategyId:', strategyId);
-    
     // Validar que el ID no esté vacío
     if (!strategyId || strategyId.trim() === '') {
       console.error('❌ deleteStrategy called with empty strategyId', {
@@ -1364,7 +1490,6 @@ export class Strategy implements OnInit, OnDestroy {
       return;
     }
 
-    console.log('✅ deleteStrategy: Valid ID received, setting strategyToDeleteId:', strategyId);
     // Guardar el ID de la estrategia a eliminar y mostrar el popup de confirmación
     this.strategyToDeleteId = strategyId;
     this.showDeleteConfirmPopup = true;
@@ -1372,7 +1497,6 @@ export class Strategy implements OnInit, OnDestroy {
 
   // Confirmar eliminación de estrategia (marcar como deleted)
   confirmDeleteStrategy = async () => {
-    console.log('🔍 confirmDeleteStrategy called with strategyToDeleteId:', this.strategyToDeleteId);
     
     // Validar que tenemos un ID antes de proceder
     if (!this.strategyToDeleteId || this.strategyToDeleteId.trim() === '') {
@@ -1385,8 +1509,6 @@ export class Strategy implements OnInit, OnDestroy {
       this.showDeleteConfirmPopup = false;
       return;
     }
-    
-    console.log('✅ confirmDeleteStrategy: Valid ID, proceeding with deletion:', this.strategyToDeleteId);
 
     this.showDeleteConfirmPopup = false;
     
@@ -1400,13 +1522,18 @@ export class Strategy implements OnInit, OnDestroy {
       // Invalidar cache y recargar estrategias
       await this.invalidateCacheAndReload();
       
+      // Invalidar caché de limitaciones después de eliminar estrategia
+      if (this.user?.id) {
+        this.invalidateLimitationsCache();
+      }
+      
       // Actualizar el estado del plan en tiempo real después de eliminar
       await this.checkPlanLimitations();
       
       // Verificar si se debe reactivar el botón (para plan Pro que ya no está en el límite máximo)
       if (this.user?.id) {
         const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
-        const currentTotalStrategies = this.userStrategies.length + (this.activeStrategy ? 1 : 0);
+        const currentTotalStrategies = await this.getTotalStrategiesCount();
         const isProPlan = limitations.planName.toLowerCase().includes('pro') && limitations.maxStrategies === 8;
         
         if (isProPlan && currentTotalStrategies < 8) {
@@ -1463,7 +1590,6 @@ export class Strategy implements OnInit, OnDestroy {
   // Actualizar strategy card con la estrategia activa
   async updateStrategyCardWithActiveStrategy() {
     if (!this.activeStrategy || !this.user?.id) {
-      console.warn('⚠️ updateStrategyCardWithActiveStrategy: No activeStrategy or user');
       return;
     }
 
@@ -1473,7 +1599,6 @@ export class Strategy implements OnInit, OnDestroy {
       
       // Si no hay ID en activeStrategy, intentar obtenerlo desde localStorage
       if (!activeStrategyId) {
-        console.warn('⚠️ Active strategy missing ID, trying to get from localStorage');
         activeStrategyId = this.getActiveStrategyIdFromLocalStorage();
         
         if (!activeStrategyId) {
@@ -1486,10 +1611,7 @@ export class Strategy implements OnInit, OnDestroy {
         
         // Actualizar activeStrategy con el ID encontrado
         (this.activeStrategy as any).id = activeStrategyId;
-        console.log('✅ Found ID from localStorage and updated activeStrategy:', activeStrategyId);
       }
-      
-      console.log('🔍 updateStrategyCardWithActiveStrategy: Using strategyId:', activeStrategyId);
       
       // Obtener la estrategia completa (configurations + configuration-overview)
       const strategyData = await this.strategySvc.getStrategyView(activeStrategyId);
@@ -1522,8 +1644,6 @@ export class Strategy implements OnInit, OnDestroy {
         userId: strategyData.overview.userId,
         configurationId: strategyData.overview.configurationId
       };
-      
-      console.log('✅ updateStrategyCardWithActiveStrategy: strategyCard updated with ID:', this.strategyCard.id);
     } catch (error) {
       console.error('❌ Error in updateStrategyCardWithActiveStrategy:', error);
     }
@@ -1539,7 +1659,6 @@ export class Strategy implements OnInit, OnDestroy {
       // Buscar la estrategia activa (status: true) en el cache
       for (const [id, data] of allStrategies.entries()) {
         if (data.overview.status === true) {
-          console.log('✅ Found active strategy ID in localStorage:', id);
           return id;
         }
       }
@@ -1555,7 +1674,6 @@ export class Strategy implements OnInit, OnDestroy {
         
         const activeStrategy = cacheArray.find(item => item.overview.status === true);
         if (activeStrategy) {
-          console.log('✅ Found active strategy ID in localStorage (direct):', activeStrategy.id);
           return activeStrategy.id;
         }
       }
@@ -1610,7 +1728,6 @@ export class Strategy implements OnInit, OnDestroy {
     }
     
     // Fallback: fecha actual
-    console.warn('Unknown date format:', dateValue);
     return new Date();
   }
 
@@ -1785,7 +1902,7 @@ export class Strategy implements OnInit, OnDestroy {
       this.isProcessingStrategy = true;
       
       // Verificar límites del plan antes de duplicar
-      const totalStrategies = this.getTotalStrategiesCount();
+      const totalStrategies = await this.getTotalStrategiesCount();
       const accessCheck = await this.planLimitationsGuard.checkStrategyCreationWithModal(this.user.id, totalStrategies);
       
       if (!accessCheck.canCreate) {
@@ -1882,7 +1999,7 @@ export class Strategy implements OnInit, OnDestroy {
       // Verificar si se debe reactivar el botón (para plan Pro que ya no está en el límite máximo)
       if (this.user?.id) {
         const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
-        const currentTotalStrategies = this.userStrategies.length + (this.activeStrategy ? 1 : 0);
+        const currentTotalStrategies = await this.getTotalStrategiesCount();
         const isProPlan = limitations.planName.toLowerCase().includes('pro') && limitations.maxStrategies === 8;
         
         if (isProPlan && currentTotalStrategies < 8) {

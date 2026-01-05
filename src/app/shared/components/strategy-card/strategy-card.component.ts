@@ -5,10 +5,10 @@ import { StrategyCardData } from './strategy-card.interface';
 import { NumberFormatterService } from '../../utils/number-formatter.service';
 import { StrategyDaysUpdaterService } from '../../services/strategy-days-updater.service';
 import { interval, Subscription } from 'rxjs';
-import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { firebaseApp } from '../../../firebase/firebase.init';
 import { isPlatformBrowser } from '@angular/common';
 import { PLATFORM_ID } from '@angular/core';
+import { BackendApiService } from '../../../core/services/backend-api.service';
+import { getAuth } from 'firebase/auth';
 
 /**
  * Component for displaying a strategy card with details and actions.
@@ -96,15 +96,23 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
   private numberFormatter = new NumberFormatterService();
   private updateSubscription?: Subscription;
   private userId?: string;
-  private db: any;
 
   constructor(
     private daysUpdaterService: StrategyDaysUpdaterService,
+    private backendApi: BackendApiService,
     @Inject(PLATFORM_ID) private platformId: Object
-  ) {
-    if (isPlatformBrowser(this.platformId)) {
-      this.db = getFirestore(firebaseApp);
+  ) {}
+
+  /**
+   * Get Firebase ID token for backend API calls
+   */
+  private async getIdToken(): Promise<string> {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User not authenticated');
     }
+    return await currentUser.getIdToken();
   }
 
   ngOnInit(): void {
@@ -260,49 +268,47 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Actualiza el nombre de la estrategia en Firebase
+   * Actualiza el nombre de la estrategia usando el backend API
    */
   private async updateStrategyNameInFirebase(newName: string): Promise<void> {
-    if (!this.db || !this.strategy.id) {
-      throw new Error('Cannot update: missing database information or strategy ID');
+    if (!this.strategy.id) {
+      throw new Error('Cannot update: missing strategy ID');
     }
 
     try {
-      // Intentar actualizar en la colección 'strategies'
-      const strategyRef = doc(this.db, 'configuration-overview', this.strategy.id);
-      const strategyDoc = await getDoc(strategyRef);
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.updateConfigurationOverview(
+        this.strategy.id,
+        { name: newName },
+        idToken
+      );
       
-      if (strategyDoc.exists()) {
-        // Si existe, actualizar el documento
-        await updateDoc(strategyRef, {
-          name: newName,
-          updated_at: new Date()
-        });
-      } else {
-        // Si no existe, mostrar error específico
-        const errorMsg = `The strategy with ID "${this.strategy.id}" does not exist in Firebase`;
-        console.error(errorMsg);
-        throw new Error(errorMsg);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to update strategy name');
       }
     } catch (error) {
-      console.error('Error updating the name in Firebase:', error);
+      console.error('Error updating the name:', error);
       throw error;
     }
   }
 
   /**
-   * Calcula las reglas activas desde la colección configurations
+   * Calcula las reglas activas desde el backend API
    */
   private async calculateActiveRules(): Promise<void> {
-    if (!this.db || !this.strategy.configurationId) {
+    if (!this.strategy.configurationId) {
       return;
     }
 
     try {
-      const configDoc = await getDoc(doc(this.db, 'configurations', this.strategy.configurationId));
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getConfigurationById(
+        this.strategy.configurationId,
+        idToken
+      );
       
-      if (configDoc.exists()) {
-        const configData = configDoc.data();
+      if (response.success && response.data?.configuration) {
+        const configData = response.data.configuration;
         let activeRulesCount = 0;
 
         // Contar reglas activas

@@ -1,16 +1,14 @@
-import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } from 'firebase/firestore';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { User } from '../../features/overview/models/overview';
 import { BackendApiService } from '../../core/services/backend-api.service';
 import { getAuth } from 'firebase/auth';
 
 /**
- * Service for user data operations in Firebase.
+ * Service for user data operations via backend API.
  *
- * This service provides CRUD operations for user documents in Firestore.
- * It handles user creation, retrieval, updates, and deletion. It's used
- * throughout the application for user data management.
+ * This service provides CRUD operations for user documents through the backend API.
+ * All operations are handled by the backend, which manages Firestore directly.
  *
  * Features:
  * - Get user data by UID
@@ -20,10 +18,6 @@ import { getAuth } from 'firebase/auth';
  * - Update user data
  * - Get all users
  * - Delete user
- *
- * User Data Structure:
- * - Stored in: `users/{userId}`
- * - Includes: profile data, trading statistics, subscription info
  *
  * Relations:
  * - Used by AuthService for user operations
@@ -39,17 +33,12 @@ import { getAuth } from 'firebase/auth';
 })
 export class UsersOperationsService {
   private isBrowser: boolean;
-  private db: ReturnType<typeof getFirestore> | null = null;
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     private backendApi: BackendApiService
   ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
-    if (this.isBrowser) {
-      const { firebaseApp } = require('../../firebase/firebase.init.ts');
-      this.db = getFirestore(firebaseApp);
-    }
   }
 
   /**

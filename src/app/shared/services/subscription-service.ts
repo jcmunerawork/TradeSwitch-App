@@ -1,23 +1,10 @@
 
 import { Injectable } from '@angular/core';
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  getDoc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  orderBy,
-  Timestamp,
-  onSnapshot,
-  limit
-} from 'firebase/firestore';
-import { db } from '../../firebase/firebase.init';
+import { Timestamp } from 'firebase/firestore';
 import { UserStatus } from '../../features/overview/models/overview';
 import { BackendApiService } from '../../core/services/backend-api.service';
 import { getAuth } from 'firebase/auth';
+import { AccountStatusService } from './account-status.service';
 
 /**
  * Interface for user subscription data.
@@ -130,32 +117,41 @@ export class SubscriptionService {
   }
 
   /**
-   * Escucha cambios en la última suscripción del usuario (único documento esperado)
-   * NOTE: This method still uses Firebase real-time listener for now.
-   * In the future, this could be replaced with WebSocket or Server-Sent Events from backend.
+   * Escucha cambios en la última suscripción del usuario usando WebSocket del backend
+   * 
+   * El backend emite el evento 'subscription:updated' cuando:
+   * - Se actualiza una suscripción desde Stripe webhook (customer.subscription.updated, customer.subscription.deleted, invoice.paid)
+   * - Se actualiza una suscripción manualmente desde ProfileService.updateSubscription()
+   * 
    * Devuelve una función para desuscribirse
+   * 
+   * @param userId - ID del usuario
+   * @param handler - Función que se ejecuta cuando cambia la suscripción
+   * @param accountStatusService - Servicio de WebSocket (debe estar conectado)
+   * @returns Función para desuscribirse
    */
   listenToUserLatestSubscription(
     userId: string,
-    handler: (subscription: Subscription | null) => void
+    handler: (subscription: Subscription | null) => void,
+    accountStatusService: AccountStatusService
   ): () => void {
-    // For now, keep using Firebase real-time listener
-    // TODO: Replace with backend WebSocket/SSE when available
-    const paymentsRef = collection(db, 'users', userId, 'subscription');
-    const q = query(paymentsRef, orderBy('created_at', 'desc'), limit(1));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (snapshot.empty) {
-        handler(null);
-        return;
+    // Usar WebSocket del backend en lugar de Firebase listener
+    const subscription = accountStatusService.subscriptionUpdated$.subscribe((event) => {
+      // Solo procesar eventos para este usuario
+      if (event.userId === userId) {
+        // Convertir subscription del evento a tipo Subscription
+        const subscription = event.subscription ? {
+          ...event.subscription,
+          status: event.subscription.status as UserStatus
+        } as Subscription : null;
+        handler(subscription);
       }
-      const latestDoc = snapshot.docs[0];
-      const data = latestDoc.data();
-      handler({ id: latestDoc.id, ...data } as Subscription);
-    }, (error) => {
-      console.error('❌ Error en listener de suscripción:', error);
-      handler(null);
     });
-    return unsubscribe;
+
+    // Retornar función para desuscribirse
+    return () => {
+      subscription.unsubscribe();
+    };
   }
 
   /**

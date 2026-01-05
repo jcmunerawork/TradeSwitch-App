@@ -1,6 +1,4 @@
-import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
-import { isPlatformBrowser } from '@angular/common';
+import { Injectable } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AccountData } from '../../features/auth/models/userModel';
 import { BackendApiService } from '../../core/services/backend-api.service';
@@ -45,23 +43,13 @@ import { AccountsCacheService } from './accounts-cache.service';
   providedIn: 'root'
 })
 export class AccountsOperationsService {
-  private isBrowser: boolean;
-  private db: ReturnType<typeof getFirestore> | null = null;
-  
   // Peticiones pendientes para evitar múltiples peticiones simultáneas
   private pendingRequests = new Map<string, Promise<AccountData[] | null>>();
 
   constructor(
-    @Inject(PLATFORM_ID) private platformId: Object,
     private backendApi: BackendApiService,
     private accountsCache: AccountsCacheService
-  ) {
-    this.isBrowser = isPlatformBrowser(this.platformId);
-    if (this.isBrowser) {
-      const { firebaseApp } = require('../../firebase/firebase.init.ts');
-      this.db = getFirestore(firebaseApp);
-    }
-  }
+  ) {}
 
   /**
    * Get Firebase ID token for backend API calls
