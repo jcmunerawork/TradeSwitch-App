@@ -390,7 +390,6 @@ function createPDF(organizedFiles) {
       processNextFolder(0);
       
       stream.on('finish', () => {
-        console.log(`✅ PDF created: ${outputPath}`);
         resolve(outputPath);
       });
       
@@ -406,7 +405,6 @@ function createPDF(organizedFiles) {
 
 // Main function
 async function exportToPDF() {
-  console.log('🚀 Starting PDF export...\n');
   
   try {
     // Check if store directory exists
@@ -415,33 +413,18 @@ async function exportToPDF() {
       process.exit(1);
     }
     
-    console.log(`📂 Scanning directory: ${STORE_DIR}...`);
-    
     // Find all TypeScript files
     const allFiles = findTypeScriptFiles(STORE_DIR);
-    console.log(`📄 Found ${allFiles.length} TypeScript files\n`);
     
     if (allFiles.length === 0) {
-      console.log('⚠️  No TypeScript files found in store directory');
       return;
     }
     
     // Organize files by folder structure
     const organizedFiles = organizeFiles(allFiles);
     
-    // Display organization
-    console.log('📋 Files organized by folder:');
-    Object.keys(organizedFiles).forEach(folder => {
-      console.log(`   ${folder || 'Root'}: ${organizedFiles[folder].length} files`);
-    });
-    console.log('');
-    
     // Create PDF
-    console.log('📝 Creating PDF...');
     await createPDF(organizedFiles);
-    
-    console.log('\n✨ PDF export completed!');
-    console.log(`📄 Output file: ${OUTPUT_FILE}`);
     
   } catch (error) {
     console.error('❌ Error during export:', error.message);

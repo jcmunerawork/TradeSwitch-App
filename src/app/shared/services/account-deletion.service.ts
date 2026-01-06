@@ -69,17 +69,11 @@ export class AccountDeletionService {
     try {
       const idToken = await this.getIdToken();
       
-      console.log(`🗑️ AccountDeletionService: Deleting all data for user ${userId}...`);
-      
       const response = await this.backendApi.deleteUser(userId, idToken);
       
       if (!response.success) {
         console.error('❌ AccountDeletionService: Error deleting user data:', response.error);
         return false;
-      }
-      
-      if (response.data && 'deleted' in response.data) {
-        console.log('✅ AccountDeletionService: User data deleted successfully:', (response.data as any).deleted);
       }
       
       return true;

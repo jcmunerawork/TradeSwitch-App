@@ -7,7 +7,6 @@ function loadEnvFile() {
   const envPath = path.join(__dirname, '..', '.env');
   
   if (!fs.existsSync(envPath)) {
-    console.log('No .env file found. Using default Firebase configuration.');
     return {};
   }
   
@@ -76,10 +75,3 @@ if (!fs.existsSync(assetsDir)) {
   fs.mkdirSync(assetsDir, { recursive: true });
 }
 fs.writeFileSync(browserEnvPath, browserEnvScript);
-
-console.log('✅ Environment variables configured');
-console.log('   - Firebase config:', configPath);
-console.log('   - Browser env script:', browserEnvPath);
-if (allEnvVars.API_URL) {
-  console.log(`   - API_URL: ${allEnvVars.API_URL}`);
-}

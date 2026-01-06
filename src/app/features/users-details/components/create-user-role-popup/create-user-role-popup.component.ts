@@ -141,7 +141,6 @@ export class CreateUserRolePopupComponent implements OnChanges {
       // Verificar que el email no esté ya registrado usando el endpoint del backend
       // El backend retorna { user: {...} } si existe, o { user: null } si no existe
       try {
-        console.log('📡 CreateUserRolePopup: Verifying email availability:', email);
         const existingUser = await this.authService.getUserByEmail(email);
         
         if (existingUser) {
@@ -153,7 +152,6 @@ export class CreateUserRolePopupComponent implements OnChanges {
           return;
         }
         
-        console.log('✅ CreateUserRolePopup: Email available, proceeding with user creation');
       } catch (error: any) {
         // Si falla la verificación (ej: error de red), continuar
         // El backend también validará el email duplicado en /auth/signup

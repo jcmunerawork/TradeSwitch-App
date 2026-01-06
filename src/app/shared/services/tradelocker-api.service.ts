@@ -144,7 +144,6 @@ export class TradeLockerApiService {
     return new Observable(observer => {
       this.getIdToken().then(idToken => {
         this.backendApi.getTradeLockerJWTToken(credentials, idToken).then(response => {
-          console.log('🔑 TradeLockerApiService: getJWTTokenStaging backend response:', response);
           
           if (!response.success) {
             const errorMessage = response.error?.message || 'Failed to get JWT token';
@@ -177,23 +176,18 @@ export class TradeLockerApiService {
               expireDate: data.expireDate,
               accountId: data.accountId || '' // Si el backend no lo envía, usar string vacío
             }];
-            console.log('🔑 TradeLockerApiService: Detected new format (object), converted to array');
           } else if (Array.isArray(data)) {
             // Formato antiguo: array directo
             tokenData = data;
-            console.log('🔑 TradeLockerApiService: Detected old format (array direct)');
           } else if (data && typeof data === 'object' && 'data' in data && Array.isArray(data.data)) {
             // Formato antiguo: { data: [...] }
             tokenData = data.data;
-            console.log('🔑 TradeLockerApiService: Detected old format (nested data array)');
           } else {
             // Intentar como array vacío o error
             console.error('❌ TradeLockerApiService: Token data format not recognized:', data);
             observer.error(new Error(`Invalid response format. Expected object with accessToken or array, but got: ${typeof data}`));
             return;
           }
-          
-          console.log('🔑 TradeLockerApiService: Processed token data:', tokenData);
           
           if (!Array.isArray(tokenData) || tokenData.length === 0) {
             console.error('❌ TradeLockerApiService: Token data is not a valid array:', tokenData);
@@ -385,14 +379,12 @@ export class TradeLockerApiService {
     // 1. Verificar si hay un token válido en caché
     const cached = this.tokenCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
-      console.log('🔑 TradeLockerApiService: Using cached token for', cacheKey);
       return of(cached.token);
     }
     
     // 2. Verificar si ya hay una petición en curso para estas credenciales
     const pendingRequest = this.pendingRequests.get(cacheKey);
     if (pendingRequest) {
-      console.log('🔑 TradeLockerApiService: Reusing pending request for', cacheKey);
       return pendingRequest;
     }
     
@@ -404,7 +396,6 @@ export class TradeLockerApiService {
     const request$ = this.getJWTTokenStaging(credentials).pipe(
       map(response => {
         // La respuesta es AccountTokenResponse con estructura { data: AccountTokenData[] }
-        console.log('🔑 TradeLockerApiService: getUserKey response:', response);
         
         if (!response) {
           console.error('❌ TradeLockerApiService: No response received');
@@ -422,7 +413,6 @@ export class TradeLockerApiService {
         }
         
         const firstAccount = response.data[0];
-        console.log('🔑 TradeLockerApiService: First account data:', firstAccount);
         
         if (!firstAccount.accessToken) {
           console.error('❌ TradeLockerApiService: No accessToken in first account:', firstAccount);
@@ -434,7 +424,6 @@ export class TradeLockerApiService {
         // Guardar en caché con TTL de 5 minutos
         const expiresAt = Date.now() + this.TOKEN_CACHE_TTL;
         this.tokenCache.set(cacheKey, { token, expiresAt });
-        console.log('🔑 TradeLockerApiService: Token cached for', cacheKey, 'expires at', new Date(expiresAt).toISOString());
         
         return token;
       }),
@@ -449,13 +438,11 @@ export class TradeLockerApiService {
       // Limpiar la petición pendiente cuando se complete (éxito o error)
       finalize(() => {
         this.pendingRequests.delete(cacheKey);
-        console.log('🔑 TradeLockerApiService: Pending request cleared for', cacheKey);
       })
     );
     
     // Guardar la petición pendiente para reutilizarla si se llama de nuevo
     this.pendingRequests.set(cacheKey, request$);
-    console.log('🔑 TradeLockerApiService: New request created for', cacheKey);
     
     return request$;
   }
@@ -464,7 +451,6 @@ export class TradeLockerApiService {
    * Limpiar caché de tokens (útil para logout o cuando cambian las credenciales)
    */
   clearTokenCache(): void {
-    console.log('🔑 TradeLockerApiService: Clearing token cache');
     this.tokenCache.clear();
     this.pendingRequests.clear();
   }
@@ -481,9 +467,6 @@ export class TradeLockerApiService {
         this.tokenCache.delete(key);
         cleanedCount++;
       }
-    }
-    if (cleanedCount > 0) {
-      console.log(`🔑 TradeLockerApiService: Cleaned ${cleanedCount} expired token(s) from cache`);
     }
   }
 

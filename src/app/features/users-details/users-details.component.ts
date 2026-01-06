@@ -130,13 +130,10 @@ export class UsersDetails {
         return;
       }
       
-      console.log('📡 UsersDetails: Loading users data...');
       const allUsers = await this.userManagementService.getAllUsers();
-      console.log('✅ UsersDetails: All users received:', allUsers.length);
       
       // Filtrar usuarios que no son admin
       this.usersData = allUsers.filter((user) => !user.isAdmin);
-      console.log('✅ UsersDetails: Filtered users (non-admin):', this.usersData.length);
       
       this.loading = false;
     } catch (error: any) {

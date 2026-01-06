@@ -193,9 +193,6 @@ export class CreateAccountPopupComponent implements OnChanges {
       bestTrade: this.accountToEdit.bestTrade || 0,
     };
 
-    console.log('updatedAccountData', updatedAccountData);
-    console.log('this.accountToEdit.id', this.accountToEdit.id);
-
     // Update in Firebase
     await this.authService.updateAccount(this.accountToEdit.id, updatedAccountData);
     

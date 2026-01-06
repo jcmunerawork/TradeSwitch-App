@@ -5,8 +5,6 @@ import { Store } from '@ngrx/store';
 import { User } from '../../../overview/models/overview';
 import { selectUser } from '../../../auth/store/user.selectios';
 import { AuthService } from '../../../auth/service/authService';
-import { deleteUser } from 'firebase/auth';
-import { AccountDeletionService } from '../../../../shared/services/account-deletion.service';
 import { Router } from '@angular/router';
 import { AppContextService } from '../../../../shared/context';
 import { PasswordInputComponent } from '../../../../shared/components/password-input/password-input.component';
@@ -63,7 +61,6 @@ export class ProfileDetailsComponent implements OnInit {
   // Inyectar servicios
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
-  private accountDeletionService = inject(AccountDeletionService);
   private router = inject(Router);
   private appContext = inject(AppContextService);
   private backendApi = inject(BackendApiService);
@@ -555,9 +552,8 @@ export class ProfileDetailsComponent implements OnInit {
    * 
    * This method performs complete deletion in the following order:
    * 1. Deletes all user data from Firebase (AccountDeletionService)
-   * 2. Deletes user from Firebase Authentication
-   * 3. Clears local NgRx store
-   * 4. Redirects user to login page
+   * 2. Clears local NgRx store
+   * 3. Redirects user to login page
    * 
    * Handles specific errors:
    * - auth/requires-recent-login: Requires signing in again for security
@@ -565,7 +561,6 @@ export class ProfileDetailsComponent implements OnInit {
    * 
    * Related to:
    * - AccountDeletionService.deleteUserData(): Deletes Firebase data
-   * - Firebase Auth deleteUser(): Deletes user from authentication
    * - Store.dispatch(): Clears user state
    * - Router.navigate(): Redirects to login
    * 
@@ -581,39 +576,29 @@ export class ProfileDetailsComponent implements OnInit {
     this.isDeletingAccount = true;
     this.deleteAccountError = '';
 
+    
     try {
-
-      // 1. Delete all Firebase data
-      const firebaseDataDeleted: boolean = await this.accountDeletionService.deleteUserData(this.user.id);
       
-      if (!firebaseDataDeleted) {
-        throw new Error('Error deleting Firebase data');
+      // Get Firebase ID token
+      const idToken = await this.authService.getBearerTokenFirebase(this.user.id);
+      
+      const response = await this.backendApi.deleteUser(this.user.id, idToken);
+
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Error deleting account');
       }
 
-      // 2. Delete user from Firebase Auth
-      const currentUser = this.authService.getCurrentUser();
-      if (currentUser) {
-        await deleteUser(currentUser);
-      }
+      // Show success message
+      this.toastService.showSuccess('Account deleted successfully');
 
-      // 3. Clear local store
-      this.store.dispatch({
-        type: '[User] Clear User'
-      });
+      // Clear NgRx store
+      this.store.dispatch({ type: '[User] Clear User' });
 
-      // 4. Redirect to login
+      // Redirect to login
       this.router.navigate(['/login']);
 
     } catch (error: any) {
       console.error('❌ Error deleting account:', error);
-      
-      if (error.code === 'auth/requires-recent-login') {
-        this.deleteAccountError = 'For security, you need to sign in again before deleting your account';
-      } else if (error.code === 'auth/too-many-requests') {
-        this.deleteAccountError = 'Too many attempts. Please try again later';
-      } else {
-        this.deleteAccountError = 'Error deleting account. Please try again';
-      }
     } finally {
       this.isDeletingAccount = false;
     }

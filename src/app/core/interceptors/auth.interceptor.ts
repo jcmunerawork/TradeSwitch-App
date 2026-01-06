@@ -86,8 +86,6 @@ export class AuthInterceptor implements HttpInterceptor {
   private handleUnauthorized(): void {
     if (!this.isBrowser) return;
 
-    console.log('🔐 AuthInterceptor: Manejo de error 401 (Unauthorized), limpiando todo...');
-
     // Limpiar todo el almacenamiento
     try {
       // Limpiar localStorage completo

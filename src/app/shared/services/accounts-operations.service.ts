@@ -74,6 +74,8 @@ export class AccountsOperationsService {
       
       // Preparar objeto para el backend: remover campos no serializables y asegurar tipos correctos
       const accountToSend = this.prepareAccountForBackend(account);
+
+      accountToSend.userId = account.userId;
       
       const response = await this.backendApi.createAccount(accountToSend, idToken);
       
@@ -124,6 +126,7 @@ export class AccountsOperationsService {
       'broker',
       'server',
       'emailTradingAccount',
+      'brokerPassword',
       'accountID',
       'accountNumber',
       'initialBalance',
@@ -342,26 +345,6 @@ export class AccountsOperationsService {
       
       // Preparar objeto para el backend: remover campos no serializables y asegurar tipos correctos
       const accountToSend = this.prepareAccountForBackend(accountData);
-      
-      // 🔍 LOG DE DEPURACIÓN: Ver qué datos se envían
-      console.log('📤 AccountsOperationsService: Enviando datos al backend:', {
-        accountId: accountId,
-        accountToSend: accountToSend,
-        tipos: {
-          balance: typeof accountToSend.balance,
-          accountNumber: typeof accountToSend.accountNumber,
-          initialBalance: typeof accountToSend.initialBalance,
-          netPnl: typeof accountToSend.netPnl,
-          profit: typeof accountToSend.profit,
-          bestTrade: typeof accountToSend.bestTrade
-        },
-        valores: {
-          balance: accountToSend.balance,
-          accountNumber: accountToSend.accountNumber,
-          initialBalance: accountToSend.initialBalance,
-          emailTradingAccount: accountToSend.emailTradingAccount
-        }
-      });
       
       const response = await this.backendApi.updateAccount(accountId, accountToSend, idToken);
       

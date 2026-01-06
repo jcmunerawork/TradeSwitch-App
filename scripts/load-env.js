@@ -7,7 +7,6 @@ function loadEnvFile() {
   const envPath = path.join(__dirname, '..', '.env');
   
   if (!fs.existsSync(envPath)) {
-    console.log('No .env file found. Using default Firebase configuration.');
     return {};
   }
   

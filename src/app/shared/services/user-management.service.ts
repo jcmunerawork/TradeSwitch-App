@@ -70,18 +70,11 @@ export class UserManagementService {
 
     try {
       const idToken = await this.getIdToken();
-      console.log('📡 UserManagementService: Fetching all users from backend...');
       
       const response = await this.backendApi.getAllUsers(idToken);
       
-      console.log('✅ UserManagementService: Response received:', {
-        success: response.success,
-        usersCount: response.data?.users?.length || 0
-      });
-      
       if (response.success && response.data?.users) {
         const users = response.data.users as User[];
-        console.log('✅ UserManagementService: Users formatted:', users.length, 'users');
         
         // Validar que los usuarios tengan los campos requeridos
         const validUsers = users.filter(user => {
@@ -92,7 +85,6 @@ export class UserManagementService {
           return isValid;
         });
         
-        console.log('✅ UserManagementService: Valid users:', validUsers.length);
         return validUsers;
       }
       
@@ -269,15 +261,8 @@ export class UserManagementService {
 
     try {
       const idToken = await this.getIdToken();
-      console.log('📡 UserManagementService: Revoking all sessions for user:', userId);
       
       const response = await this.backendApi.revokeAllUserSessions(userId, idToken);
-      
-      console.log('✅ UserManagementService: Sessions revoked:', {
-        success: response.success,
-        message: response.data?.message,
-        tokensDeleted: response.data?.tokensDeleted
-      });
       
       if (response.success && response.data) {
         return response.data;
