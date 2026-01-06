@@ -127,14 +127,8 @@ export class UsersOperationsService {
 
     try {
       const idToken = await this.getIdToken();
-      console.log('📡 UsersOperationsService: Searching user by email:', email);
       
       const response = await this.backendApi.getUserByEmail(email, idToken);
-      
-      console.log('✅ UsersOperationsService: Response received:', {
-        success: response.success,
-        hasUser: !!response.data?.user
-      });
       
       if (!response.success) {
         console.warn('⚠️ UsersOperationsService: Response not successful');
@@ -143,12 +137,10 @@ export class UsersOperationsService {
       
       // El backend retorna { user: null } si no existe, o { user: {...} } si existe
       if (!response.data || response.data.user === null || response.data.user === undefined) {
-        console.log('✅ UsersOperationsService: User not found (email not registered)');
         return null;
       }
       
       const user = response.data.user as User;
-      console.log('✅ UsersOperationsService: User found:', user.id);
       return user;
     } catch (error: any) {
       console.error('❌ UsersOperationsService: Error searching user by email:', error);
@@ -160,7 +152,6 @@ export class UsersOperationsService {
       
       // Si es un 404, el usuario no existe (esto es válido)
       if (error?.status === 404) {
-        console.log('✅ UsersOperationsService: User not found (404)');
         return null;
       }
       

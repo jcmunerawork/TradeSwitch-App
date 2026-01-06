@@ -106,7 +106,6 @@ export class SubscriptionService {
       // ✅ Manejar todos los errores como "usuario sin suscripción" (caso válido)
       // El endpoint nunca debería retornar error, pero por si acaso lo manejamos
       if (error?.status === 404) {
-        console.log('ℹ️ SubscriptionService: Usuario sin suscripción (404), retornando null');
         return null;
       }
       

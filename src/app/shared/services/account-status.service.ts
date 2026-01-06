@@ -112,8 +112,6 @@ export class AccountStatusService implements OnDestroy {
       return;
     }
 
-    console.log('🔔 AccountStatusService: Connecting to WebSocket...');
-
     // Get backend URL from config (remove /api suffix if present for WebSocket)
     const apiUrl = this.configService.apiUrl;
     const backendUrl = apiUrl.replace(/\/api\/?$/, '');
@@ -144,7 +142,6 @@ export class AccountStatusService implements OnDestroy {
 
     // Listen for connection
     registerHandler('connect', () => {
-      console.log('✅ AccountStatusService: Connected to backend WebSocket');
       
       // Resetear contador de reconexiones al conectar exitosamente
       this.reconnectAttempts = 0;
@@ -159,7 +156,6 @@ export class AccountStatusService implements OnDestroy {
       if (this.socket?.connected && this.currentAccounts && this.currentAccounts.length > 0) {
         try {
           this.socket.emit('updateAccounts', { accounts: this.currentAccounts });
-          console.log(`📤 AccountStatusService: Sent ${this.currentAccounts.length} accounts to backend`);
           
           // Actualizar timestamp de último dato recibido
           this.lastStreamDataTime = Date.now();
@@ -211,7 +207,6 @@ export class AccountStatusService implements OnDestroy {
 
     // Listen for connection status updates
     registerHandler('streamsConnectionStatus', (status: any) => {
-      console.log('📡 AccountStatusService: Streams connection status:', status);
       
       // Actualizar estado de conexión del backend con streams
       if (status && typeof status.connected === 'boolean') {
@@ -222,7 +217,6 @@ export class AccountStatusService implements OnDestroy {
           // Solicitar reconexión al backend
           this.requestStreamsReconnection();
         } else {
-          console.log('✅ AccountStatusService: Backend conectado a Streams API');
           // Si se reconecta, reenviar cuentas
           if (this.currentAccounts && this.currentAccounts.length > 0) {
             setTimeout(() => {
@@ -263,13 +257,11 @@ export class AccountStatusService implements OnDestroy {
     
     // Listen for reconnection attempts
     registerHandler('reconnect_attempt', (attemptNumber: number) => {
-      console.log(`🔄 AccountStatusService: Reconnection attempt ${attemptNumber}/${this.maxReconnectAttempts}`);
       this.reconnectAttempts = attemptNumber;
     });
     
     // Listen for reconnection success
     registerHandler('reconnect', (attemptNumber: number) => {
-      console.log(`✅ AccountStatusService: Reconnected after ${attemptNumber} attempts`);
       this.reconnectAttempts = 0;
     });
     
@@ -347,7 +339,6 @@ export class AccountStatusService implements OnDestroy {
       currentStatus.set(normalizedAccountId, accountStatus);
       this.accountStatusSubject.next(currentStatus);
 
-      console.log(`✅ AccountStatusService: Processed AccountStatus for ${accountStatus.accountId}, Balance: ${balance}`);
     } catch (error) {
       console.error('❌ AccountStatusService: Error processing AccountStatus:', error, accountStatus);
     }
@@ -364,7 +355,6 @@ export class AccountStatusService implements OnDestroy {
     if (this.socket?.connected && this.currentAccounts && this.currentAccounts.length > 0) {
       try {
         this.socket.emit('updateAccounts', { accounts: this.currentAccounts });
-        console.log(`📤 AccountStatusService: Updated ${this.currentAccounts.length} accounts in backend`);
         // Actualizar timestamp
         this.lastStreamDataTime = Date.now();
       } catch (error) {
@@ -420,7 +410,6 @@ export class AccountStatusService implements OnDestroy {
       this.currentUserId = null;
       this.currentAccounts = [];
       this.reconnectAttempts = 0;
-      console.log('🔕 AccountStatusService: Disconnected from WebSocket');
     }
   }
 
@@ -443,7 +432,6 @@ export class AccountStatusService implements OnDestroy {
    */
   private handleAccountMetrics(data: AccountMetricsEvent): void {
     try {
-      console.log('📊 AccountStatusService: Received accountMetrics event:', data);
       
       // Validate data
       if (!data || !data.accountId || !data.metrics) {
@@ -461,17 +449,8 @@ export class AccountStatusService implements OnDestroy {
       if ((data.metrics as any).balance !== undefined) {
         const balance = (data.metrics as any).balance;
         this.appContext.updateAccountBalance(data.accountId, balance);
-        console.log(`💰 AccountStatusService: Balance actualizado desde accountMetrics para ${data.accountId}: ${balance}`);
       }
 
-      // NUEVO: Si vienen stats completos, actualizar también
-      if (data.metrics.stats) {
-        console.log('📊 AccountStatusService: Updating account stats:', data.metrics.stats);
-        // El AppContextService puede tener un método para actualizar stats
-        // Por ahora, se actualizará desde el componente del reporte
-      }
-
-      console.log(`✅ AccountStatusService: Processed accountMetrics for ${data.accountId}`);
     } catch (error) {
       console.error('❌ AccountStatusService: Error handling accountMetrics:', error, data);
     }
@@ -482,7 +461,6 @@ export class AccountStatusService implements OnDestroy {
    */
   private handlePositionClosed(data: PositionClosedEvent): void {
     try {
-      console.log('🔒 AccountStatusService: Received positionClosed event:', data);
       
       // Validate data
       if (!data || !data.accountId || !data.positionId) {
@@ -505,20 +483,12 @@ export class AccountStatusService implements OnDestroy {
 
       // NUEVO: Si viene trade formateado, emitirlo para el calendario
       if (data.trade && !data.trade.isOpen) {
-        console.log('📅 AccountStatusService: Emitting trade for calendar:', data.trade);
         this.calendarTradeSubject.next({
           accountId: data.accountId,
           trade: data.trade
         });
       }
 
-      // Mantener compatibilidad: si no viene trade, usar position (formato antiguo)
-      if (!data.trade && data.position) {
-        console.log('⚠️ AccountStatusService: Received position (old format), trade conversion may be needed');
-        // El componente del reporte puede convertir position a trade si es necesario
-      }
-
-      console.log(`✅ AccountStatusService: Processed positionClosed for ${data.positionId}`);
     } catch (error) {
       console.error('❌ AccountStatusService: Error handling positionClosed:', error, data);
     }
@@ -529,7 +499,6 @@ export class AccountStatusService implements OnDestroy {
    */
   private handleStrategyFollowedUpdate(data: StrategyFollowedUpdateEvent): void {
     try {
-      console.log('📈 AccountStatusService: Received strategyFollowedUpdate event:', data);
       
       // Validate data
       if (!data || !data.userId || data.strategy_followed === undefined) {
@@ -545,7 +514,6 @@ export class AccountStatusService implements OnDestroy {
         strategy_followed: data.strategy_followed
       });
 
-      console.log(`✅ AccountStatusService: Processed strategyFollowedUpdate for ${data.userId}`);
     } catch (error) {
       console.error('❌ AccountStatusService: Error handling strategyFollowedUpdate:', error, data);
     }
@@ -557,7 +525,6 @@ export class AccountStatusService implements OnDestroy {
    */
   private handleSubscriptionUpdated(data: SubscriptionUpdatedEvent): void {
     try {
-      console.log('💳 AccountStatusService: Received subscription:updated event:', data);
       
       // Validate data
       if (!data || !data.userId) {
@@ -568,7 +535,6 @@ export class AccountStatusService implements OnDestroy {
       // Emit to subscribers
       this.subscriptionUpdatedSubject.next(data);
 
-      console.log(`✅ AccountStatusService: Processed subscription:updated for ${data.userId}`);
     } catch (error) {
       console.error('❌ AccountStatusService: Error handling subscription:updated:', error, data);
     }
@@ -592,11 +558,8 @@ export class AccountStatusService implements OnDestroy {
     // Calcular delay exponencial
     const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts), 30000);
     
-    console.log(`🔄 AccountStatusService: Programando reconexión en ${delay}ms (intento ${this.reconnectAttempts + 1})`);
-    
     this.reconnectTimer = setTimeout(() => {
       if (this.currentUserId && !this.socket?.connected) {
-        console.log('🔄 AccountStatusService: Intentando reconexión manual...');
         this.reconnectAttempts++;
         this.connect(this.currentUserId, this.currentAccounts);
       }
@@ -640,7 +603,6 @@ export class AccountStatusService implements OnDestroy {
           if (this.currentAccounts && this.currentAccounts.length > 0) {
             try {
               this.socket.emit('updateAccounts', { accounts: this.currentAccounts });
-              console.log(`📤 AccountStatusService: Reenviadas ${this.currentAccounts.length} cuentas al backend`);
               // Actualizar timestamp después de reenviar
               this.lastStreamDataTime = Date.now();
             } catch (error) {
@@ -677,7 +639,6 @@ export class AccountStatusService implements OnDestroy {
         accounts: this.currentAccounts,
         userId: this.currentUserId 
       });
-      console.log('📤 AccountStatusService: Solicitada reconexión a Streams API al backend');
     } catch (error) {
       console.error('❌ AccountStatusService: Error solicitando reconexión a streams:', error);
     }
@@ -687,7 +648,6 @@ export class AccountStatusService implements OnDestroy {
     // NO desconectar el socket al destruir el servicio
     // El socket debe mantenerse conectado incluso al recargar la página
     // Solo limpiar subjects, pero mantener la conexión viva
-    console.log('🔕 AccountStatusService: ngOnDestroy llamado, pero manteniendo conexión de socket activa');
     
     // Complete subjects (pero no desconectar socket)
     this.accountMetricsSubject.complete();

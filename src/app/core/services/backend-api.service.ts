@@ -110,8 +110,6 @@ export class BackendApiService extends BaseApiService {
         // Si falla el sign in, lanzar error para que el componente lo maneje
         throw new Error(`User created but could not sign in: ${authError.message}`);
       }
-    } else if (!shouldAutoLogin) {
-      console.log('✅ BackendApiService: User created without auto-login (autoLogin: false)');
     }
     
     return response;
@@ -448,16 +446,6 @@ export class BackendApiService extends BaseApiService {
    * Update account
    */
   async updateAccount(accountId: string, accountData: any, idToken: string): Promise<BackendApiResponse<{ account: any }>> {
-    // 🔍 LOG DE DEPURACIÓN: Ver qué se envía al backend
-    console.log('📤 BackendApiService: Enviando PUT a /accounts/' + accountId, {
-      accountId: accountId,
-      accountData: accountData,
-      tipos: {
-        balance: typeof accountData.balance,
-        accountNumber: typeof accountData.accountNumber,
-        initialBalance: typeof accountData.initialBalance
-      }
-    });
     
     try {
       const response = await firstValueFrom(

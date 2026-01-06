@@ -94,16 +94,11 @@ export class RevenueComponent implements OnInit {
     }
 
     this.loading = true;
+
     try {
+
       const bearerToken = await this.authService.getBearerTokenFirebase(this.user.id);
-      
-      console.log('📡 RevenueComponent: Fetching revenue data from backend...');
       const response = await this.backendApi.getRevenueData(bearerToken);
-      
-      console.log('✅ RevenueComponent: Revenue data received:', {
-        success: response.success,
-        hasData: !!response.data
-      });
 
       if (!response.success || !response.data) {
         throw new Error(response.error?.message || 'Failed to fetch revenue data');
@@ -122,8 +117,6 @@ export class RevenueComponent implements OnInit {
       this.orderTableData = data.orders;
       this.subscriptionsTableData = data.subscriptions;
       this.refundsTableData = data.refundsTable;
-
-      console.log('✅ RevenueComponent: Data loaded successfully');
 
     } catch (error: any) {
       console.error('❌ RevenueComponent: Error fetching revenue data:', error);

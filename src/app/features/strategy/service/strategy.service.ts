@@ -134,7 +134,6 @@ export class SettingsService {
       // 6. Actualizar contexto con la nueva estrategia (solo una vez)
       this.appContext.addStrategy({ ...newStrategy, id: overviewId });
       
-      console.log('✅ New strategy saved to cache and localStorage:', overviewId);
       
       this.appContext.setLoading('strategies', false);
       return overviewId;
@@ -241,7 +240,6 @@ export class SettingsService {
       // Actualizar en el contexto de la aplicación (solo esta strategy)
       this.appContext.updateStrategy(overviewId, updatedOverview);
       
-      console.log('✅ Strategy updated in cache and localStorage:', overviewId);
     } catch (error) {
       console.error('❌ Error updating strategy in cache, falling back to full reload:', error);
       // Si falla la actualización individual, hacer recarga completa como fallback
@@ -304,7 +302,6 @@ export class SettingsService {
           // Actualizar en el contexto
           this.appContext.activateStrategy(strategyId);
           
-          console.log('✅ Strategy activation updated in cache and localStorage:', strategyId);
         } else {
           // Si no está en cache, recargar solo esta strategy
           const strategyData = await this.getStrategyView(strategyId);
@@ -365,7 +362,6 @@ export class SettingsService {
       // Remover del contexto
       this.appContext.removeStrategy(strategyId);
       
-      console.log('✅ Strategy removed from cache and localStorage:', strategyId);
     } catch (error) {
       console.error('❌ Error removing strategy from cache, falling back to full reload:', error);
       // Si falla, hacer recarga completa como fallback

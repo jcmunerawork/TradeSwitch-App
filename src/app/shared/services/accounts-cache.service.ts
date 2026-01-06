@@ -259,10 +259,7 @@ export class AccountsCacheService {
       // Eliminar tradeSwitch_currentAccount y tradeSwitch_accountsData si existen
       localStorage.removeItem('tradeSwitch_currentAccount');
       localStorage.removeItem('tradeSwitch_accountsData');
-      
-      if (keysToRemove.length > 0) {
-        console.log(`🧹 Limpiados ${keysToRemove.length} elementos legacy de localStorage`);
-      }
+
     } catch (error) {
       console.warn('Error limpiando localStorage legacy:', error);
     }
