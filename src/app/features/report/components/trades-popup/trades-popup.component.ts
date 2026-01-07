@@ -83,8 +83,18 @@ export class TradesPopupComponent {
     this.selectedDate = this.formatDate(this.selectedDay.date);
     this.netPnl = this.selectedDay.pnlTotal;
     
-    // Convertir trades del día a formato de detalle
-    const tradesPromises = this.selectedDay.trades.map(async (trade) => {
+    // Obtener cache de instrumentos una sola vez para todos los trades del día
+    const accounts = this.appContext.userAccounts();
+    let instrumentsCache: any[] | null = null;
+    
+    if (accounts && accounts.length > 0) {
+      const currentAccount = accounts[0];
+      const accountId = currentAccount.accountID;
+      instrumentsCache = this.getInstrumentsFromCache(accountId);
+    }
+    
+    // Convertir trades del día a formato de detalle (sin ordenar, aparecen como llegan)
+    this.trades = this.selectedDay.trades.map((trade) => {
       const openedDate = trade.createdDate 
         ? new Date(Number(trade.createdDate))
         : new Date(Number(trade.lastModified));
@@ -93,34 +103,25 @@ export class TradesPopupComponent {
         ? new Date(Number((trade as any).closedDate))
         : new Date(Number(trade.lastModified));
       
-      // Obtener nombre del instrumento
+      // Obtener nombre del instrumento desde la cache
       let instrumentName = trade.instrument ?? 'N/A';
       
-      // Si el instrument es un número (ID) o no es un nombre válido, obtenerlo desde la API
-      if (trade.tradableInstrumentId && trade.routeId) {
+      // Si el instrument es un número (ID) o no es un nombre válido, buscarlo en la cache
+      if (trade.tradableInstrumentId && instrumentsCache) {
         const isNumericId = !isNaN(Number(instrumentName)) || instrumentName === trade.tradableInstrumentId;
         
         if (isNumericId || !instrumentName || instrumentName === 'N/A') {
-          try {
-            const accounts = this.appContext.userAccounts();
-            if (accounts && accounts.length > 0) {
-              const currentAccount = accounts[0];
-              const accountId = currentAccount.accountID;
-              const accNum = currentAccount.accountNumber || 1;
-              
-              const instrumentDetails = await this.reportService.getInstrumentDetails(
-                accountId,
-                trade.tradableInstrumentId,
-                trade.routeId,
-                accNum
-              ).toPromise();
-              
-              if (instrumentDetails && instrumentDetails.name) {
-                instrumentName = instrumentDetails.name;
-              }
-            }
-          } catch (error) {
-            console.warn(`Error obteniendo nombre del instrumento ${trade.tradableInstrumentId}:`, error);
+          // Buscar en la cache comparando el tradableInstrumentId con el id de cada instrumento
+          const instrumentId = Number(trade.tradableInstrumentId);
+          const cachedInstrument = instrumentsCache.find(
+            (inst: any) => inst.id === instrumentId
+          );
+          
+          if (cachedInstrument && cachedInstrument.name) {
+            instrumentName = cachedInstrument.name;
+          } else {
+            // Si no se encuentra en cache, usar el ID como fallback
+            instrumentName = trade.tradableInstrumentId;
           }
         }
       }
@@ -136,14 +137,31 @@ export class TradesPopupComponent {
       };
     });
 
-    this.trades = await Promise.all(tradesPromises);
-
-    // Ordenar por tiempo de cierre (más reciente primero)
-    this.trades.sort((a, b) => b.positionClosed.localeCompare(a.positionClosed));
-    
-    // Guardar orden original
+    // Guardar orden original (sin ordenar, aparecen como llegan)
     this.originalTrades = [...this.trades];
     this.isReversed = false;
+  }
+
+  /**
+   * Obtener instrumentos desde localStorage cache
+   * @param accountId - ID de la cuenta
+   * @returns array de instrumentos o null si no existe
+   */
+  private getInstrumentsFromCache(accountId: string): any[] | null {
+    try {
+      const key = `tradeswitch_instruments_${accountId}`;
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.instruments && Array.isArray(parsed.instruments)) {
+          return parsed.instruments;
+        }
+      }
+    } catch (error) {
+      console.warn('Error obteniendo instrumentos desde cache:', error);
+    }
+    
+    return null;
   }
 
   formatDate(date: Date): string {

@@ -440,29 +440,41 @@ export class TradingAccountsComponent implements OnDestroy {
   async onAddAccount() {
     if (!this.user?.id) return;
 
+    // PRIMERO: Verificar límites ANTES de hacer cualquier otra cosa
     const currentAccountCount = this.usersData.length;
+    
+    // Check if user has reached absolute maximum (6 accounts)
+    if (currentAccountCount >= 6) {
+      // Absolute maximum reached: button should be disabled (do nothing)
+      return;
+    }
+    
+    // Verificar límite del plan ANTES de continuar
+    const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
+    
+    // Verificación directa: si el usuario alcanzó el límite de su plan, redirigir inmediatamente
+    if (currentAccountCount >= limitations.maxAccounts) {
+      // User has reached plan limit but not absolute maximum: redirect to plan management
+      // IMPORTANTE: Redirigir INMEDIATAMENTE sin hacer nada más
+      this.router.navigate(['/account'], { 
+        queryParams: { tab: 'plan' } 
+      });
+      return;
+    }
+    
+    // Verificación adicional con el guard (por si acaso)
     const accessCheck = await this.planLimitationsGuard.checkAccountCreationWithModal(this.user.id, currentAccountCount);
     
     if (!accessCheck.canCreate) {
-      // Check if user has Pro plan with maximum accounts (should disable button)
-      const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
-      const isProPlanWithMaxAccounts = limitations.planName.toLowerCase().includes('pro') && 
-                                      limitations.maxAccounts === 10 && 
-                                      currentAccountCount >= 10;
-      
-      if (isProPlanWithMaxAccounts) {
-        // Pro plan with maximum accounts: button should be disabled (do nothing)
-        return;
-      } else {
-        // Other plans: redirect to account/plan-management
-        this.router.navigate(['/account'], { 
-          queryParams: { tab: 'plan' } 
-        });
-        return;
-      }
+      // User has reached plan limit but not absolute maximum: redirect to plan management
+      // IMPORTANTE: Redirigir INMEDIATAMENTE sin hacer nada más
+      this.router.navigate(['/account'], { 
+        queryParams: { tab: 'plan' } 
+      });
+      return;
     }
     
-    // If within limits, show add account modal
+    // SOLO si pasa todas las verificaciones, mostrar el modal
     this.editMode = false;
     this.accountToEdit = null;
     this.showAddAccountModal = true;
@@ -523,14 +535,9 @@ export class TradingAccountsComponent implements OnDestroy {
 
     try {
       const currentAccountCount = this.usersData.length;
-      const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
       
-      // Only disable button for Pro plan with maximum accounts (10 accounts)
-      const isProPlanWithMaxAccounts = limitations.planName.toLowerCase().includes('pro') && 
-                                      limitations.maxAccounts === 10 && 
-                                      currentAccountCount >= 10;
-      
-      this.isAddAccountDisabled = isProPlanWithMaxAccounts;
+      // Only disable button when absolute maximum is reached (6 accounts)
+      this.isAddAccountDisabled = currentAccountCount >= 6;
       
       // Show banner based on limitations
       await this.checkPlanLimitations();
@@ -578,20 +585,25 @@ export class TradingAccountsComponent implements OnDestroy {
         return;
       }
 
-      // Check if user has reached account limit
-      if (currentAccountCount >= limitations.maxAccounts) {
-        this.isAddAccountDisabled = true;
+      // Check if user has reached account limit (but not absolute maximum)
+      // Button state is handled in checkAccountLimitations() - only disabled at 6 accounts
+      if (currentAccountCount >= limitations.maxAccounts && currentAccountCount < 6) {
+        // User reached plan limit but not absolute maximum: show banner, button stays active
         this.showPlanBanner = true;
         this.planBannerMessage = `You've reached the account limit for your ${limitations.planName} plan. Move to a higher plan and keep growing your account.`;
         this.planBannerType = 'warning';
-      } else if (currentAccountCount >= limitations.maxAccounts - 1) {
+      } else if (currentAccountCount >= limitations.maxAccounts - 1 && currentAccountCount < 6) {
         // Show warning when close to limit
-        this.isAddAccountDisabled = false; // Aún puede crear
         this.showPlanBanner = true;
         this.planBannerMessage = `You have ${limitations.maxAccounts - currentAccountCount} account(s) left on your current plan. Want more? Upgrade anytime.`;
         this.planBannerType = 'info';
+      } else if (currentAccountCount >= 6) {
+        // Absolute maximum reached
+        this.showPlanBanner = true;
+        this.planBannerMessage = `You've reached the maximum number of accounts (6).`;
+        this.planBannerType = 'warning';
       } else {
-        this.isAddAccountDisabled = false;
+        this.showPlanBanner = false;
       }
     } catch (error) {
       console.error('❌ TradingAccountsComponent.checkPlanLimitations: Error checking plan limitations:', error);
