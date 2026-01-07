@@ -12,6 +12,7 @@ import { RouterLink } from '@angular/router';
 import { AppContextService } from '../../shared/context';
 import { PlanService } from '../../shared/services/planService';
 import { SubscriptionService } from '../../shared/services/subscription-service';
+import { ToastNotificationService } from '../../shared/services/toast-notification.service';
 
 /**
  * Main overview component for displaying dashboard statistics and user data.
@@ -68,7 +69,8 @@ export class Overview {
     private overviewSvc: OverviewService,
     private appContext: AppContextService,
     private planService: PlanService,
-    private subscriptionService: SubscriptionService
+    private subscriptionService: SubscriptionService,
+    private toastService: ToastNotificationService
   ) {}
 
   loading = false;
@@ -405,6 +407,7 @@ export class Overview {
           }
         } catch (error) {
           console.error(`Error obteniendo subscription para usuario ${user.id}:`, error);
+          this.toastService.showBackendError(error, 'Error loading user subscription');
         }
       }
 
@@ -430,6 +433,7 @@ export class Overview {
       this.checkAllLoaded();
     } catch (error) {
       console.error('Error calculando revenue:', error);
+      this.toastService.showError('Error calculating revenue');
       this.calculatedRevenue = 0;
       this.loadingStates.revenue = true;
       this.checkAllLoaded();
@@ -634,6 +638,7 @@ export class Overview {
 
     if (filtered.length === 0) {
       this.exportError = 'No users found for the selected date range.';
+      this.toastService.showError('No users found for the selected date range');
       return;
     }
 

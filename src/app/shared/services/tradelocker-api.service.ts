@@ -302,20 +302,43 @@ export class TradeLockerApiService {
 
   /**
    * Get trading history from TradeLocker
-   * Now uses backend API but maintains same interface
+   * Now uses GET /api/v1/reports/history/:accountId?accNum=... endpoint
+   * 
+   * This endpoint handles everything:
+   * - Fetches from TradeLocker API
+   * - Processes and groups trades
+   * - Calculates metrics
+   * - Returns positions and metrics
+   * - Syncs to Firebase in background
    * 
    * NOTA: El backend gestiona el accessToken automáticamente, no es necesario enviarlo.
    */
   getTradingHistory(accountId: string, accNum: number): Observable<any> {
     return new Observable(observer => {
       this.getIdToken().then(idToken => {
-        this.backendApi.getTradeLockerTradingHistory(accountId, accNum, idToken).then(response => {
+        // Usar el endpoint unificado que hace todo el procesamiento
+        this.backendApi.getTradingHistory(accountId, idToken, accNum).then(response => {
           if (response.success && response.data) {
-            // NUEVO FORMATO: El backend devuelve { success: true, data: { trades: [...] } }
-            // Los trades ya vienen en formato GroupedTradeFinal
-            if (response.data.trades && Array.isArray(response.data.trades)) {
-              // Formato nuevo: devolver directamente los trades
-              observer.next({ trades: response.data.trades });
+            // El backend devuelve { positions: {...}, metrics: {...} }
+            // Necesitamos convertir positions a formato de trades para mantener compatibilidad
+            if (response.data.positions) {
+              const positions = Object.values(response.data.positions || {}) as any[];
+              // Convertir posiciones a formato GroupedTradeFinal
+              const trades = positions.map(pos => ({
+                ...pos,
+                pnl: pos.pnl ?? 0,
+                isOpen: pos.isOpen ?? false,
+                lastModified: pos.lastModified?.toString() || pos.createdDate?.toString() || Date.now().toString(),
+                positionId: pos.positionId || pos.id || '',
+                instrument: pos.instrument || pos.tradableInstrumentId || '',
+                closedDate: pos.closedDate?.toString() || pos.lastModified?.toString() || undefined
+              }));
+              
+              observer.next({ trades, metrics: response.data.metrics });
+            } 
+            // Formato legacy: { trades: [...] }
+            else if (response.data.trades && Array.isArray(response.data.trades)) {
+              observer.next({ trades: response.data.trades, metrics: response.data.metrics });
             } 
             // FORMATO ANTIGUO: { d: { ordersHistory: [...] } }
             else if (response.data.d && response.data.d.ordersHistory) {
@@ -324,7 +347,7 @@ export class TradeLockerApiService {
             // Si no hay estructura reconocida, devolver vacío
             else {
               console.warn(`⚠️ Formato de respuesta no reconocido para account ${accountId}:`, response.data);
-              observer.next({ trades: [] });
+              observer.next({ trades: [], metrics: null });
             }
             observer.complete();
           } else {
@@ -333,7 +356,7 @@ export class TradeLockerApiService {
             console.warn(`⚠️ Trading history not found for account ${accountId}:`, errorMessage);
             // Retornar array vacío en lugar de error para 404
             if (response.error?.message?.includes('404') || response.error?.message?.includes('Not Found')) {
-              observer.next({ trades: [] }); // Estructura nueva vacía
+              observer.next({ trades: [], metrics: null }); // Estructura nueva vacía
               observer.complete();
             } else {
               observer.error(new Error(errorMessage));
@@ -344,7 +367,7 @@ export class TradeLockerApiService {
           if (error?.status === 404 || error?.statusText === 'Not Found') {
             console.warn(`⚠️ Trading history endpoint returned 404 for account ${accountId}. Account may not have history or may not exist.`);
             // Retornar estructura vacía en lugar de error
-            observer.next({ trades: [] });
+            observer.next({ trades: [], metrics: null });
             observer.complete();
           } else {
             console.error(`❌ Error getting trading history for account ${accountId}:`, error);

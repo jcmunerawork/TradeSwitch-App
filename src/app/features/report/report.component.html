@@ -86,17 +86,8 @@
     </button>
   </div>
 } @else {
-<!-- Metrics Section with Loading State -->
-@if (!loadingStates.metricsData) {
-  <!-- Loading State for Metrics - Mostrar ANTES de la sección -->
-  <div class="metrics-loading-container d-flex flex-col align-items-center justify-center p-50 mb-24">
-    <app-loading-spinner 
-      title="Loading metrics..." 
-      description="Fetching your trading statistics.">
-    </app-loading-spinner>
-  </div>
-} @else if (loadingStates.metricsData && stats) {
-  <!-- Mostrar métricas cuando estén cargadas -->
+<!-- Metrics Section -->
+@if (stats) {
   <div class="stats-card-container">
     <app-stat-card
       class="stat-card"
@@ -134,26 +125,19 @@
 <div class="middle-container d-flex mb-24">
   <app-PnL-Graph
     [values]="accountHistory"
-    (onYearChange)="onYearChange($event)"
+    [totalProfit]="stats.netPnl"
+    (onDataFiltered)="onDataFiltered($event)"
   ></app-PnL-Graph>
   <app-win-loss-chart [values]="accountHistory"></app-win-loss-chart>
 </div>
 
-<!-- Calendar Section with Loading State -->
-@if (loadingStates.calendarData && accountHistory && accountHistory.length > 0) {
+<!-- Calendar Section -->
+@if (accountHistory && accountHistory.length > 0) {
   <app-calendar
     [strategies]="strategies"
-    [groupedTrades]="accountHistory"
+    [groupedTrades]="filteredAccountHistory || accountHistory"
     (strategyFollowedPercentageChange)="onStrategyPercentageChange($event)"
   ></app-calendar>
-} @else if (!loadingStates.calendarData) {
-  <!-- Loading State for Calendar -->
-  <div class="calendar-loading-container d-flex flex-col align-items-center justify-center p-50">
-    <app-loading-spinner 
-      title="Loading calendar data..." 
-      description="Processing your trading history for calendar view.">
-    </app-loading-spinner>
-  </div>
 } @else {
   <!-- Empty State for Calendar -->
   <div class="calendar-empty-container d-flex flex-col align-items-center justify-center p-50">

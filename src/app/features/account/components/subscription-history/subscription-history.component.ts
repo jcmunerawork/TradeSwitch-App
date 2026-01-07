@@ -5,6 +5,7 @@ import { Store } from '@ngrx/store';
 import { User } from '../../../overview/models/overview';
 import { selectUser } from '../../../auth/store/user.selectios';
 import { SubscriptionService } from '../../../../shared/services/subscription-service';
+import { ToastNotificationService } from '../../../../shared/services/toast-notification.service';
 import { PlanService } from '../../../../shared/services/planService';
 import { Subscription } from '../../../../shared/services/subscription-service';
 import { Plan } from '../../../../shared/services/planService';
@@ -72,6 +73,7 @@ export class SubscriptionHistoryComponent implements OnInit {
   // Inyectar servicios
   private subscriptionService = inject(SubscriptionService);
   private planService = inject(PlanService);
+  private toastService = inject(ToastNotificationService);
 
   constructor(private store: Store) {}
 
@@ -135,6 +137,7 @@ export class SubscriptionHistoryComponent implements OnInit {
       });
     } catch (error) {
       console.error('Error loading plans:', error);
+      this.toastService.showBackendError(error, 'Error loading plans');
     }
   }
 
@@ -163,6 +166,7 @@ export class SubscriptionHistoryComponent implements OnInit {
       this.calculatePagination();
     } catch (error) {
       console.error('Error loading subscriptions:', error);
+      this.toastService.showBackendError(error, 'Error loading subscriptions');
     } finally {
       this.isLoading = false;
     }

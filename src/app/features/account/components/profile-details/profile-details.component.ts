@@ -493,10 +493,31 @@ export class ProfileDetailsComponent implements OnInit {
   }
 
   /**
+   * Converts field name to readable text format.
+   * 
+   * Converts camelCase to Title Case with spaces:
+   * - currentPassword -> "Current Password"
+   * - newPassword -> "New Password"
+   * - confirmPassword -> "Confirm Password"
+   * 
+   * @private
+   * @param fieldName - Field name in camelCase
+   * @returns Formatted field name
+   * @memberof ProfileDetailsComponent
+   */
+  private formatFieldName(fieldName: string): string {
+    // Convert camelCase to Title Case with spaces
+    return fieldName
+      .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+      .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+      .trim();
+  }
+
+  /**
    * Gets error message for a password form field.
    * 
    * Returns specific error messages based on error type:
-   * - required: Field required
+   * - required: Field required (with formatted field name)
    * - minlength: Password must have at least 6 characters
    * - passwordMismatch: Passwords do not match
    * 
@@ -510,7 +531,8 @@ export class ProfileDetailsComponent implements OnInit {
     const field = this.passwordForm.get(fieldName);
     if (field?.errors && field.touched) {
       if (field.errors['required']) {
-        return `${fieldName} is required`;
+        const formattedName = this.formatFieldName(fieldName);
+        return `${formattedName} is required`;
       }
       if (field.errors['minlength']) {
         return 'Password must have at least 6 characters';

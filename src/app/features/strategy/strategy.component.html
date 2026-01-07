@@ -110,7 +110,7 @@
       
       <div class="strategies-grid">
         @for (strategy of filteredStrategies; track getStrategyId(strategy)) {
-          @if (!strategy.status) {
+          @if (!strategy.deleted) {
           <app-strategy-card
             [strategy]="getCardDataByStrategyId(getStrategyId(strategy)) || {
               id: getStrategyId(strategy),

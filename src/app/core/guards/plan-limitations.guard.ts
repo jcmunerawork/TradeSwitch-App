@@ -152,111 +152,111 @@ export class PlanLimitationsGuard implements CanActivate {
         // Usar el nuevo endpoint que retorna directamente el plan del usuario
         const response = await this.backendApi.getUserPlan(userId, idToken);
       
-      if (!response.success) {
-        return {
-          maxAccounts: 1,
-          maxStrategies: 1,
-          planName: 'Free',
-          isActive: true,
-          isBanned: false,
-          isCancelled: false,
-          needsSubscription: false
-        };
-      }
-
-      // Si no hay plan (plan es null), el usuario tiene plan Free por defecto
-      if (!response.data?.plan) {
-        return {
-          maxAccounts: 1,
-          maxStrategies: 1,
-          planName: 'Free',
-          isActive: true,
-          isBanned: false,
-          isCancelled: false,
-          needsSubscription: false
-        };
-      }
-
-      const plan = response.data.plan;
-      
-      // Extraer limitaciones del plan
-      const maxAccounts = plan.tradingAccounts || 1;
-      const maxStrategies = plan.strategies || 1;
-
-      // El plan siempre está activo si el backend lo retorna (ya validó la suscripción)
-      const limitations: PlanLimitations = {
-        maxAccounts,
-        maxStrategies,
-        planName: plan.name,
-        isActive: true,
-        isBanned: false,
-        isCancelled: false,
-        needsSubscription: false
-      };
-
-      // Guardar en caché
-      this.planCache.set(userId, {
-        data: limitations,
-        timestamp: now
-      });
-
-      return limitations;
-      } catch (error) {
-        console.error('❌ PlanLimitationsGuard: Error checking user limitations:', error);
-        
-        // En caso de error, intentar usar el contexto como fallback
-        const ctxPlan = this.appContext.userPlan();
-        if (ctxPlan) {
-          const isBanned = (ctxPlan as any).status === UserStatus.BANNED || ctxPlan.isActive === false;
-          const isCancelled = (ctxPlan as any).status === UserStatus.CANCELLED && ctxPlan.planName === 'Free';
-          const isActive = ctxPlan.isActive && !isBanned;
-          const fallbackLimitations: PlanLimitations = {
-            maxAccounts: ctxPlan.maxAccounts,
-            maxStrategies: ctxPlan.maxStrategies,
-            planName: ctxPlan.planName,
-            isActive,
-            isBanned,
-            isCancelled,
-            needsSubscription: !isActive && !isCancelled && !isBanned
+        if (!response.success) {
+          return {
+            maxAccounts: 1,
+            maxStrategies: 1,
+            planName: 'Free',
+            isActive: true,
+            isBanned: false,
+            isCancelled: false,
+            needsSubscription: false
           };
-          
-          // Guardar en caché incluso el fallback
-          this.planCache.set(userId, {
-            data: fallbackLimitations,
-            timestamp: now
-          });
-          
-          return fallbackLimitations;
         }
+
+        // Si no hay plan (plan es null), el usuario tiene plan Free por defecto
+        if (!response.data?.plan) {
+          return {
+            maxAccounts: 1,
+            maxStrategies: 1,
+            planName: 'Free',
+            isActive: true,
+            isBanned: false,
+            isCancelled: false,
+            needsSubscription: false
+          };
+        }
+
+        const plan = response.data.plan;
         
-        // Si no hay contexto, retornar plan Free por defecto (no error)
-        const freePlanLimitations: PlanLimitations = {
-          maxAccounts: 1,
-          maxStrategies: 1,
-          planName: 'Free',
+        // Extraer limitaciones del plan
+        const maxAccounts = plan.tradingAccounts || 1;
+        const maxStrategies = plan.strategies || 1;
+
+        // El plan siempre está activo si el backend lo retorna (ya validó la suscripción)
+        const limitations: PlanLimitations = {
+          maxAccounts,
+          maxStrategies,
+          planName: plan.name,
           isActive: true,
           isBanned: false,
           isCancelled: false,
           needsSubscription: false
         };
 
-        // Guardar en caché incluso el plan Free
+        // Guardar en caché
         this.planCache.set(userId, {
-          data: freePlanLimitations,
+          data: limitations,
           timestamp: now
         });
 
-        return freePlanLimitations;
-      } finally {
-        // Limpiar petición pendiente
-        this.pendingRequests.delete(userId);
-      }
-    })();
+        return limitations;
+        } catch (error) {
+          console.error('❌ PlanLimitationsGuard: Error checking user limitations:', error);
+          
+          // En caso de error, intentar usar el contexto como fallback
+          const ctxPlan = this.appContext.userPlan();
+          if (ctxPlan) {
+            const isBanned = (ctxPlan as any).status === UserStatus.BANNED || ctxPlan.isActive === false;
+            const isCancelled = (ctxPlan as any).status === UserStatus.CANCELLED && ctxPlan.planName === 'Free';
+            const isActive = ctxPlan.isActive && !isBanned;
+            const fallbackLimitations: PlanLimitations = {
+              maxAccounts: ctxPlan.maxAccounts,
+              maxStrategies: ctxPlan.maxStrategies,
+              planName: ctxPlan.planName,
+              isActive,
+              isBanned,
+              isCancelled,
+              needsSubscription: !isActive && !isCancelled && !isBanned
+            };
+            
+            // Guardar en caché incluso el fallback
+            this.planCache.set(userId, {
+              data: fallbackLimitations,
+              timestamp: now
+            });
+            
+            return fallbackLimitations;
+          }
+          
+          // Si no hay contexto, retornar plan Free por defecto (no error)
+          const freePlanLimitations: PlanLimitations = {
+            maxAccounts: 1,
+            maxStrategies: 1,
+            planName: 'Free',
+            isActive: true,
+            isBanned: false,
+            isCancelled: false,
+            needsSubscription: false
+          };
 
-    // Guardar la promesa para evitar peticiones duplicadas
-    this.pendingRequests.set(userId, requestPromise);
-    
-    return requestPromise;
+          // Guardar en caché incluso el plan Free
+          this.planCache.set(userId, {
+            data: freePlanLimitations,
+            timestamp: now
+          });
+
+          return freePlanLimitations;
+        } finally {
+          // Limpiar petición pendiente
+          this.pendingRequests.delete(userId);
+        }
+      })();
+
+      // Guardar la promesa para evitar peticiones duplicadas
+      this.pendingRequests.set(userId, requestPromise);
+      
+      return requestPromise;
   }
 
   /**

@@ -29,6 +29,7 @@ import { AuthService } from '../../auth/service/authService';
 import { AccountData } from '../../auth/models/userModel';
 import { PluginHistoryService, PluginHistory } from '../../../shared/services/plugin-history.service';
 import { AlertService } from '../../../core/services';
+import { ToastNotificationService } from '../../../shared/services/toast-notification.service';
 import { Instrument } from '../../report/models/report.model';
 import { StrategyCacheService } from '../services/strategy-cache.service';
 import { BalanceCacheService } from '../services/balance-cache.service';
@@ -130,7 +131,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     private strategyCacheService: StrategyCacheService,
     private balanceCacheService: BalanceCacheService,
     private alertService: AlertService,
-    private appContext: AppContextService
+    private appContext: AppContextService,
+    private toastService: ToastNotificationService
   ) {
     this.config$ = this.store.select(allRules);
   }
@@ -902,7 +904,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           })
           .catch((err) => {
             console.error('Update Error:', err);
-            this.alertService.showError('Error Updating Strategy', 'Update Error');
+            this.toastService.showBackendError(err, 'Error updating strategy');
           })
           .finally(() => {
             this.loading = false;
@@ -920,7 +922,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           })
           .catch((err) => {
             console.error('Create Error:', err);
-            this.alertService.showError('Error Creating Strategy', 'Creation Error');
+            this.toastService.showBackendError(err, 'Error creating strategy');
           })
           .finally(() => {
             this.loading = false;
@@ -1055,7 +1057,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       this.isEditingName = false;
     } catch (error) {
       console.error('Error updating strategy name:', error);
-      this.alertService.showError('Error updating strategy name', 'Name Update Error');
+      this.toastService.showBackendError(error, 'Error updating strategy name');
       this.cancelEditName();
     }
   }

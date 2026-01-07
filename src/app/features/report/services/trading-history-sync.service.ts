@@ -111,80 +111,25 @@ export class TradingHistorySyncService {
   /**
    * Synchronize historical data from TradeLocker API to Firebase via backend.
    * 
-   * Process:
-   * 1. Calls backend sync endpoint which handles:
-   *    - Fetching history from TradeLocker API
-   *    - Fetching and caching instrument names
-   *    - Enriching trades with instrument names
-   *    - Merging with existing Firebase data
-   *    - Calculating metrics
-   *    - Saving to Firebase
+   * DEPRECATED: This method has been removed as the /sync endpoint consumes too much resources
+   * and the frontend doesn't benefit from it. Data is now loaded directly from Firebase.
    * 
-   * Returns SyncResult with success status and details.
+   * @deprecated Use loadFromFirebase() instead
    */
   async syncHistoryFromAPI(
     userId: string,
     accountId: string,
     accNum: number
   ): Promise<SyncResult> {
-    if (!this.isBrowser) {
-      return {
-        success: false,
-        error: 'Not available in SSR'
-      };
-    }
-
-    try {
-      const idToken = await this.getIdToken();
-      const response = await this.backendApi.syncTradingHistory(accountId, idToken, false);
-
-      if (response.success && response.data) {
-        const syncResult = response.data;
-        this.logger.info('History sync completed via backend', 'TradingHistorySyncService', {
-          accountId,
-          positionsAdded: syncResult.positionsAdded || 0,
-          positionsUpdated: syncResult.positionsUpdated || 0,
-          metricsUpdated: syncResult.metricsUpdated || false
-        });
-
-        return {
-          success: true,
-          positionsAdded: syncResult.positionsAdded || 0,
-          positionsUpdated: syncResult.positionsUpdated || 0,
-          metricsUpdated: syncResult.metricsUpdated || false
-        };
-      } else {
-        this.logger.error('Backend sync returned unsuccessful response', 'TradingHistorySyncService', response);
-        return {
-          success: false,
-          error: response.error?.message || 'Sync failed'
-        };
-      }
-    } catch (error: any) {
-      const errorMessage = error?.message || 'Unknown error';
-      const isAccountNotFound = errorMessage.includes('not found') || 
-                                errorMessage.includes('404') ||
-                                errorMessage.includes('Account not found');
-      
-      if (isAccountNotFound) {
-        this.logger.warn('Account not found in API', 'TradingHistorySyncService', { accountId });
-        this.alertService.showWarning(
-          'La cuenta de trading no se encontró en la API. Se mostrarán valores iniciales.',
-          'Cuenta no encontrada'
-        );
-      } else {
-        this.logger.error('Error syncing history from backend', 'TradingHistorySyncService', error);
-        this.alertService.showError(
-          'No se pudo obtener el historial de trading. Se mostrarán valores iniciales.',
-          'Error al obtener historial'
-        );
-      }
-      
-      return {
-        success: false,
-        error: errorMessage
-      };
-    }
+    // Sync endpoint removed - return failure to indicate sync is not available
+    this.logger.warn('syncHistoryFromAPI called but sync endpoint has been removed', 'TradingHistorySyncService', {
+      accountId
+    });
+    
+    return {
+      success: false,
+      error: 'Sync endpoint has been removed. Use loadFromFirebase() instead.'
+    };
   }
 
   /**
@@ -229,12 +174,8 @@ export class TradingHistorySyncService {
       // 3. Recalcular métricas (solo cerrados)
       const metrics = this.calculateMetrics(updatedPositions);
 
-      // TODO: In the future, this should call a backend endpoint to update streams data
-      // For now, we trigger a sync which will save the updated data
-      // Note: This is not ideal as it will re-fetch from TradeLocker API
-      // A dedicated streams update endpoint would be better
-      const idToken = await this.getIdToken();
-      await this.backendApi.syncTradingHistory(accountId, idToken, true);
+      // NOTE: Sync endpoint removed - streams updates are handled by backend automatically
+      // No need to manually trigger sync as it consumes too much resources
 
       return {
         success: true,

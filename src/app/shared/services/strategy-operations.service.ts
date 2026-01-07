@@ -477,12 +477,55 @@ export class StrategyOperationsService {
 
   /**
    * Actualizar fechas de activación/desactivación de estrategias
-   * Now uses backend API but maintains same interface
+   * Now uses the overview endpoint to update dates
+   * The strategyId parameter is actually the overviewId
    */
   async updateStrategyDates(userId: string, strategyId: string, dateActive?: Date, dateInactive?: Date): Promise<void> {
     try {
       const idToken = await this.getIdToken();
-      const response = await this.backendApi.updateStrategyDates(userId, strategyId, dateActive, dateInactive, idToken);
+      
+      // Obtener el overview actual para tener los arrays de fechas existentes
+      const currentOverview = await this.getConfigurationOverview(strategyId);
+      
+      if (!currentOverview) {
+        throw new Error('Strategy overview not found');
+      }
+      
+      // Preparar los arrays de fechas actualizados
+      const updatedDateActive = currentOverview.dateActive ? [...currentOverview.dateActive] : [];
+      const updatedDateInactive = currentOverview.dateInactive ? [...currentOverview.dateInactive] : [];
+      
+      // Agregar nueva fecha de activación si se proporciona
+      if (dateActive) {
+        // Convertir Date a ISO string
+        const dateActiveISO = dateActive.toISOString();
+        updatedDateActive.push(dateActiveISO);
+      }
+      
+      // Agregar nueva fecha de desactivación si se proporciona
+      if (dateInactive) {
+        // Convertir Date a ISO string
+        const dateInactiveISO = dateInactive.toISOString();
+        updatedDateInactive.push(dateInactiveISO);
+      }
+      
+      // Actualizar el overview usando el endpoint existente
+      const updates: Partial<ConfigurationOverview> = {
+        dateActive: updatedDateActive,
+        dateInactive: updatedDateInactive
+      };
+      
+      // Si se agregó una fecha de activación, actualizar el status a true
+      if (dateActive) {
+        updates.status = true;
+      }
+      
+      // Si se agregó una fecha de desactivación, actualizar el status a false
+      if (dateInactive) {
+        updates.status = false;
+      }
+      
+      const response = await this.backendApi.updateConfigurationOverview(strategyId, updates, idToken);
       
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update strategy dates');

@@ -139,10 +139,10 @@ export class statCardComponent {
       return numericValue < 1.0 ? 'color-error' : 'color-success';
     }
     
-    // Para Trade Win %: rojo si es menor a 50%, verde si es mayor a 50%
+    // Para Trade Win %: siempre blanco
     if (this.title.toLowerCase().includes('win') && 
         this.title.toLowerCase().includes('%')) {
-      return numericValue < 50 ? 'color-error' : 'color-success';
+      return 'color-background';
     }
     
     // Para Avg Win/Loss: rojo si es menor a 1.0, verde si es mayor a 1.0

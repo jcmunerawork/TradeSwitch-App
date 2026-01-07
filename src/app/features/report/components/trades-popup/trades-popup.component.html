@@ -9,12 +9,6 @@
           <span class="net-pnl" [ngClass]="netPnl >= 0 ? 'positive' : 'negative'">
             P&L {{ netPnl >= 0 ? '+' : '' }}{{ formatCurrency(netPnl) }}
           </span>
-          <div class="roi-badge" [ngClass]="netPnl >= 0 ? 'positive' : 'negative'">
-            <span class="roi-value">{{ formatPercentage(Math.abs(netRoi)) }}</span>
-            <span class="roi-arrow" [ngClass]="netPnl >= 0 ? 'up' : 'down'">
-              {{ netPnl >= 0 ? '↗' : '↘' }}
-            </span>
-          </div>
         </div>
       </div>
       <button class="close-btn" (click)="onClose()">×</button>
@@ -25,10 +19,6 @@
       <div class="content-header">
         <h3 class="content-title">Trades information</h3>
         <div class="controls">
-          <button class="sort-btn" (click)="onSortByTime()">
-            <span>Sort by: Time</span>
-            <span class="sort-icon">↕</span>
-          </button>
           <button class="filter-btn" (click)="onFilter()">
             <span class="filter-icon">⧉</span>
             <span>Filter</span>
