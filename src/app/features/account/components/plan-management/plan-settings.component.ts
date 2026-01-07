@@ -579,6 +579,8 @@ export class PlanSettingsComponent implements OnInit {
         return; // No hacer nada si es el plan actual
       }
 
+      console.log('plan', plan);
+
       // Validar si es un downgrade y si el usuario tiene recursos que exceden el plan de destino
       const isDowngrade = this.isDowngrade(plan.name);
       

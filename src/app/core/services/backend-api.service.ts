@@ -348,7 +348,7 @@ export class BackendApiService extends BaseApiService {
    */
   async createPortalSession(idToken: string): Promise<BackendApiResponse<{ url: string }>> {
     return firstValueFrom(
-      this.post<BackendApiResponse<{ url: string }>>('/v1/payments/create-portal-session', {}, {
+      this.post<BackendApiResponse<{ url: string }>>('/payments/create-portal-session', {}, {
         headers: {
           'Authorization': `Bearer ${idToken}`
         }

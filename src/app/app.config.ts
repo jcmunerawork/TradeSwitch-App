@@ -20,6 +20,7 @@ import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { AuthService } from './shared/services/auth.service';
+import { withInMemoryScrolling } from '@angular/router';
 
 /**
  * Función de inicialización para verificar token de sesión al iniciar la aplicación
@@ -39,7 +40,13 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes),
+    provideRouter(
+      routes,
+      withInMemoryScrolling({
+        scrollPositionRestoration: 'top',  // siempre arriba
+        anchorScrolling: 'enabled',        // opcional, para hash links
+      })
+    ),
     provideAnimations(),
     provideHttpClient(withFetch()),
     {
