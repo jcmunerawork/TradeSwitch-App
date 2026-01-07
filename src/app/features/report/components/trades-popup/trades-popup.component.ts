@@ -144,12 +144,14 @@ export class TradesPopupComponent {
 
   /**
    * Obtener instrumentos desde localStorage cache
-   * @param accountId - ID de la cuenta
+   * Los instrumentos son iguales para todas las cuentas, así que se usa key genérica
+   * @param accountId - Parámetro mantenido por compatibilidad, pero no se usa
    * @returns array de instrumentos o null si no existe
    */
   private getInstrumentsFromCache(accountId: string): any[] | null {
     try {
-      const key = `tradeswitch_instruments_${accountId}`;
+      // Key genérica sin accountId ya que los instrumentos son iguales para todas las cuentas
+      const key = 'tradeswitch_instruments';
       const cached = localStorage.getItem(key);
       if (cached) {
         const parsed = JSON.parse(cached);
