@@ -578,10 +578,12 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
   /**
    * Guardar instruments en localStorage
+   * Los instrumentos son iguales para todas las cuentas, así que se guardan con key genérica
    */
   private saveInstrumentsToLocalStorage(accountId: string, instruments: any[]): void {
     try {
-      const key = `tradeswitch_instruments_${accountId}`;
+      // Key genérica sin accountId ya que los instrumentos son iguales para todas las cuentas
+      const key = 'tradeswitch_instruments';
       localStorage.setItem(key, JSON.stringify({
         instruments,
         timestamp: Date.now()
@@ -592,10 +594,13 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
   /**
    * Obtener instruments desde localStorage
+   * Los instrumentos son iguales para todas las cuentas, así que se leen con key genérica
+   * @param accountId - Parámetro mantenido por compatibilidad, pero no se usa
    */
   private getInstrumentsFromLocalStorage(accountId: string): any[] | null {
     try {
-      const key = `tradeswitch_instruments_${accountId}`;
+      // Key genérica sin accountId ya que los instrumentos son iguales para todas las cuentas
+      const key = 'tradeswitch_instruments';
       const cached = localStorage.getItem(key);
       if (cached) {
         const parsed = JSON.parse(cached);
@@ -610,54 +615,60 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Cargar instruments para todas las cuentas si no están en el contexto o localStorage
+   * Cargar instruments UNA SOLA VEZ si no están en el contexto o localStorage
+   * Los instrumentos son iguales para todas las cuentas, así que solo se hace una petición
    */
   private async loadInstrumentsForAllAccounts(): Promise<void> {
     if (!this.accountsData || this.accountsData.length === 0) {
       return;
     }
 
-    // Cargar instruments para cada cuenta que no los tenga en el contexto o localStorage
-    const loadPromises = this.accountsData.map(async (account) => {
-      if (!account.accountID || account.accountNumber === undefined) {
-        return;
-      }
+    const firstAccount = this.accountsData[0];
+    if (!firstAccount.accountID || firstAccount.accountNumber === undefined) {
+      return;
+    }
 
-      // 1. Verificar si ya están cargados en el contexto
-      let cachedInstruments = this.appContext.getInstrumentsForAccount(account.accountID);
-      if (cachedInstruments && cachedInstruments.length > 0) {
-        return;
-      }
+    // 1. Verificar si ya están cargados en el contexto (usar primera cuenta como referencia)
+    let cachedInstruments = this.appContext.getInstrumentsForAccount(firstAccount.accountID);
+    if (cachedInstruments && cachedInstruments.length > 0) {
+      // Ya están en contexto, no hacer nada más
+      return;
+    }
 
-      // 2. Verificar localStorage
-      cachedInstruments = this.getInstrumentsFromLocalStorage(account.accountID);
-      if (cachedInstruments && cachedInstruments.length > 0) {
-        // Guardar en el contexto también
-        this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
-        return;
-      }
-
-      // 3. Si no están cargados, cargarlos desde el backend
-      // El backend gestiona el accessToken automáticamente, no es necesario userKey
-      try {
-        const instruments = await firstValueFrom(this.reportSvc.getAllInstruments(
-          account.accountID,
-          account.accountNumber
-        ));
-
-        if (instruments && instruments.length > 0) {
-          // Guardar en el contexto
-          this.appContext.setInstrumentsForAccount(account.accountID, instruments);
-          // Guardar en localStorage
-          this.saveInstrumentsToLocalStorage(account.accountID, instruments);
+    // 2. Verificar localStorage (key genérica)
+    cachedInstruments = this.getInstrumentsFromLocalStorage(firstAccount.accountID);
+    if (cachedInstruments && cachedInstruments.length > 0) {
+      // Guardar en el contexto para todas las cuentas
+      this.accountsData.forEach(account => {
+        if (account.accountID) {
+          this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
         }
-      } catch (error) {
-        console.error(`❌ EditStrategy: Error cargando instruments para cuenta ${account.accountID}:`, error);
-        // No lanzar error, continuar con otras cuentas
-      }
-    });
+      });
+      return;
+    }
 
-    await Promise.all(loadPromises);
+    // 3. Si no están cargados, cargarlos desde el backend UNA SOLA VEZ
+    // El backend gestiona el accessToken automáticamente, no es necesario userKey
+    try {
+      const instruments = await firstValueFrom(this.reportSvc.getAllInstruments(
+        firstAccount.accountID,
+        firstAccount.accountNumber
+      ));
+
+      if (instruments && instruments.length > 0) {
+        // Guardar en el contexto para TODAS las cuentas
+        this.accountsData.forEach(account => {
+          if (account.accountID) {
+            this.appContext.setInstrumentsForAccount(account.accountID, instruments);
+          }
+        });
+        // Guardar en localStorage con key genérica (sin accountId)
+        this.saveInstrumentsToLocalStorage(firstAccount.accountID, instruments);
+      }
+    } catch (error) {
+      console.error(`❌ EditStrategy: Error cargando instruments:`, error);
+      // No lanzar error, los instrumentos se pueden cargar después cuando se necesiten
+    }
   }
 
   loadInstruments(userKey: string, account: AccountData) {

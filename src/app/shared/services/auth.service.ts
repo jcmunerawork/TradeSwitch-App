@@ -212,9 +212,93 @@ export class AuthService {
         // Desactivar loading state
         this.appContext.setLoading('balances', false);
       }
+
+      // ✅ Cargar instrumentos UNA SOLA VEZ (son iguales para todas las cuentas)
+      await this.loadInstrumentsOnceOnLogin(validAccounts, idToken);
+      
     } catch (error) {
       console.error('❌ AuthService: Error cargando balances después del login:', error);
       this.appContext.setLoading('balances', false);
+    }
+  }
+
+  /**
+   * Cargar instrumentos UNA SOLA VEZ después del login
+   * Los instrumentos son los mismos para todas las cuentas, así que solo se hace una petición
+   * @param accounts - Array de cuentas válidas
+   * @param idToken - Token de Firebase
+   */
+  private async loadInstrumentsOnceOnLogin(
+    accounts: AccountData[], 
+    idToken: string
+  ): Promise<void> {
+    if (accounts.length === 0) {
+      return;
+    }
+
+    try {
+      // 1. Verificar si ya están en localStorage (key genérica)
+      const firstAccount = accounts[0];
+      const cachedInstruments = this.getInstrumentsFromLocalStorage(firstAccount.accountID!);
+      
+      if (cachedInstruments && cachedInstruments.length > 0) {
+        // Guardar en el contexto para todas las cuentas
+        accounts.forEach(account => {
+          this.appContext.setInstrumentsForAccount(account.accountID!, cachedInstruments);
+        });
+        return;
+      }
+
+      // 2. Si no están en cache, cargarlos desde el backend UNA SOLA VEZ
+      const instrumentsResponse = await this.backendApi.getTradeLockerAllInstruments(
+        firstAccount.accountID!,
+        firstAccount.accountNumber!,
+        idToken
+      );
+      
+      // 📝 Prints para debug: mostrar la respuesta completa
+      console.log('📋 [INSTRUMENTS] Respuesta completa del backend:', instrumentsResponse);
+      console.log('📋 [INSTRUMENTS] instrumentsResponse.success:', instrumentsResponse.success);
+      console.log('📋 [INSTRUMENTS] instrumentsResponse.data:', instrumentsResponse.data);
+      console.log('📋 [INSTRUMENTS] Tipo de instrumentsResponse.data:', typeof instrumentsResponse.data);
+      console.log('📋 [INSTRUMENTS] Es array?', Array.isArray(instrumentsResponse.data));
+      
+      if (instrumentsResponse.success && instrumentsResponse.data) {
+        // El backend retorna: { success: true, data: [{ id, name }, ...] }
+        let instruments: any[] = [];
+        
+        if (Array.isArray(instrumentsResponse.data)) {
+          instruments = instrumentsResponse.data;
+          console.log('📋 [INSTRUMENTS] Data es array directo, cantidad:', instruments.length);
+        } else if (instrumentsResponse.data.instruments && Array.isArray(instrumentsResponse.data.instruments)) {
+          instruments = instrumentsResponse.data.instruments;
+          console.log('📋 [INSTRUMENTS] Data tiene propiedad instruments, cantidad:', instruments.length);
+        } else {
+          console.warn('📋 [INSTRUMENTS] Formato de data no reconocido:', instrumentsResponse.data);
+        }
+        
+        // 📝 Print de los primeros instrumentos para ver su estructura
+        if (instruments.length > 0) {
+          console.log('📋 [INSTRUMENTS] Total de instrumentos obtenidos:', instruments.length);
+          console.log('📋 [INSTRUMENTS] Primeros 5 instrumentos:', instruments.slice(0, 5));
+          console.log('📋 [INSTRUMENTS] Estructura del primer instrumento:', instruments[0]);
+        } else {
+          console.warn('📋 [INSTRUMENTS] Array de instrumentos está vacío');
+        }
+        
+        if (instruments.length > 0) {
+          // Guardar en contexto para TODAS las cuentas
+          accounts.forEach(account => {
+            this.appContext.setInstrumentsForAccount(account.accountID!, instruments);
+          });
+          
+          // Guardar en localStorage con key genérica (sin accountId)
+          this.saveInstrumentsToLocalStorage(firstAccount.accountID!, instruments);
+        }
+      }
+    } catch (error) {
+      console.error('❌ AuthService: Error cargando instrumentos durante login:', error);
+      // No lanzar error, los instrumentos se pueden cargar después cuando se necesiten
     }
   }
 
@@ -876,16 +960,17 @@ export class AuthService {
         await this.updateUserCounts(account.userId);
       }
       
-      // Cargar instrumentos para la nueva cuenta
+      // Cargar instrumentos para la nueva cuenta (si no están ya en cache)
       if (account.accountID && account.accountNumber !== undefined) {
         try {
-          // Verificar localStorage primero
+          // Verificar localStorage primero (key genérica)
           const cachedInstruments = this.getInstrumentsFromLocalStorage(account.accountID);
           if (cachedInstruments && cachedInstruments.length > 0) {
             this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
             return;
           }
 
+          // Si no hay cache, cargar desde el backend
           const auth = await import('firebase/auth');
           const { getAuth } = auth;
           const authInstance = getAuth();
@@ -913,7 +998,7 @@ export class AuthService {
               if (instruments.length > 0) {
                 // Guardar en contexto
                 this.appContext.setInstrumentsForAccount(account.accountID, instruments);
-                // Guardar en localStorage
+                // Guardar en localStorage con key genérica (sin accountId)
                 this.saveInstrumentsToLocalStorage(account.accountID, instruments);
               }
             }
@@ -1013,12 +1098,14 @@ export class AuthService {
 
   /**
    * Guardar instruments en localStorage
+   * Los instrumentos son iguales para todas las cuentas, así que se guardan con key genérica
    */
   private saveInstrumentsToLocalStorage(accountId: string, instruments: any[]): void {
     if (!this.isBrowser) return;
     
     try {
-      const key = `tradeswitch_instruments_${accountId}`;
+      // Key genérica sin accountId ya que los instrumentos son iguales para todas las cuentas
+      const key = 'tradeswitch_instruments';
       localStorage.setItem(key, JSON.stringify({
         instruments,
         timestamp: Date.now()
@@ -1029,12 +1116,15 @@ export class AuthService {
 
   /**
    * Obtener instruments desde localStorage
+   * Los instrumentos son iguales para todas las cuentas, así que se leen con key genérica
+   * @param accountId - Parámetro mantenido por compatibilidad, pero no se usa
    */
   private getInstrumentsFromLocalStorage(accountId: string): any[] | null {
     if (!this.isBrowser) return null;
     
     try {
-      const key = `tradeswitch_instruments_${accountId}`;
+      // Key genérica sin accountId ya que los instrumentos son iguales para todas las cuentas
+      const key = 'tradeswitch_instruments';
       const cached = localStorage.getItem(key);
       if (cached) {
         const parsed = JSON.parse(cached);
