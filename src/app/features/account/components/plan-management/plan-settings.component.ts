@@ -767,7 +767,7 @@ export class PlanSettingsComponent implements OnInit {
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
 
       // Crear checkout session
-      const response = await fetch(`${this.configService.apiUrl}/payments/create-checkout-session`, {
+      const response = await fetch(`${this.configService.apiUrl}/v1/payments/create-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
