@@ -4,6 +4,8 @@ import { CalendarDay } from '../../models/report.model';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 import { GroupedTradeFinal } from '../../models/report.model';
 import { ConfigurationOverview } from '../../../strategy/models/strategy.model';
+import { ReportService } from '../../service/report.service';
+import { AppContextService } from '../../../../shared/context';
 
 /**
  * Interface representing a trade detail for display in the popup.
@@ -55,13 +57,19 @@ export class TradesPopupComponent {
   @Output() close = new EventEmitter<void>();
 
   trades: TradeDetail[] = [];
+  originalTrades: TradeDetail[] = [];
+  isReversed: boolean = false;
   netPnl: number = 0;
   netRoi: number = 0;
   private numberFormatter = new NumberFormatterService();
   selectedDate: string = '';
 
-  // Expose Math to template
   Math = Math;
+
+  constructor(
+    private reportService: ReportService,
+    private appContext: AppContextService
+  ) {}
 
   ngOnChanges() {
     if (this.selectedDay && this.visible) {
@@ -69,30 +77,58 @@ export class TradesPopupComponent {
     }
   }
 
-  loadTradesData() {
+  async loadTradesData() {
     if (!this.selectedDay) return;
 
     this.selectedDate = this.formatDate(this.selectedDay.date);
     this.netPnl = this.selectedDay.pnlTotal;
-
-    (this.selectedDay.trades);
     
     // Convertir trades del día a formato de detalle
-    this.trades = this.selectedDay.trades.map((trade, index) => {
-      // Position Opened: usar createdDate (cuando se abrió la posición)
+    const tradesPromises = this.selectedDay.trades.map(async (trade) => {
       const openedDate = trade.createdDate 
         ? new Date(Number(trade.createdDate))
-        : new Date(Number(trade.lastModified)); // Fallback a lastModified si no hay createdDate
+        : new Date(Number(trade.lastModified));
       
-      // Position Closed: usar closedDate (nuevo campo del backend) o lastModified como fallback
       const closedDate = (trade as any).closedDate 
         ? new Date(Number((trade as any).closedDate))
-        : new Date(Number(trade.lastModified)); // Fallback a lastModified si no hay closedDate
+        : new Date(Number(trade.lastModified));
+      
+      // Obtener nombre del instrumento
+      let instrumentName = trade.instrument ?? 'N/A';
+      
+      // Si el instrument es un número (ID) o no es un nombre válido, obtenerlo desde la API
+      if (trade.tradableInstrumentId && trade.routeId) {
+        const isNumericId = !isNaN(Number(instrumentName)) || instrumentName === trade.tradableInstrumentId;
+        
+        if (isNumericId || !instrumentName || instrumentName === 'N/A') {
+          try {
+            const accounts = this.appContext.userAccounts();
+            if (accounts && accounts.length > 0) {
+              const currentAccount = accounts[0];
+              const accountId = currentAccount.accountID;
+              const accNum = currentAccount.accountNumber || 1;
+              
+              const instrumentDetails = await this.reportService.getInstrumentDetails(
+                accountId,
+                trade.tradableInstrumentId,
+                trade.routeId,
+                accNum
+              ).toPromise();
+              
+              if (instrumentDetails && instrumentDetails.name) {
+                instrumentName = instrumentDetails.name;
+              }
+            }
+          } catch (error) {
+            console.warn(`Error obteniendo nombre del instrumento ${trade.tradableInstrumentId}:`, error);
+          }
+        }
+      }
       
       return {
         positionOpened: this.formatDateTime(openedDate),
         positionClosed: this.formatDateTime(closedDate),
-        ticker: trade.instrument ?? 'N/A',
+        ticker: instrumentName,
         side: this.determineSide(trade),
         netPnl: trade.pnl ?? 0,
         followedStrategy: this.selectedDay?.followedStrategy ?? false,
@@ -100,8 +136,14 @@ export class TradesPopupComponent {
       };
     });
 
+    this.trades = await Promise.all(tradesPromises);
+
     // Ordenar por tiempo de cierre (más reciente primero)
     this.trades.sort((a, b) => b.positionClosed.localeCompare(a.positionClosed));
+    
+    // Guardar orden original
+    this.originalTrades = [...this.trades];
+    this.isReversed = false;
   }
 
   formatDate(date: Date): string {
@@ -229,17 +271,16 @@ export class TradesPopupComponent {
   }
 
   onClose() {
+    // Restaurar orden original al cerrar
+    this.trades = [...this.originalTrades];
+    this.isReversed = false;
     this.close.emit();
   }
 
-  onSortByTime() {
-    // Sort by position closed time (most recent first)
-    this.trades.sort((a, b) => b.positionClosed.localeCompare(a.positionClosed));
-  }
-
   onFilter() {
-    // Implementar lógica de filtrado
-    ('Filter clicked');
+    // Invertir el orden de la lista
+    this.trades.reverse();
+    this.isReversed = !this.isReversed;
   }
 
   formatCurrency(value: number): string {

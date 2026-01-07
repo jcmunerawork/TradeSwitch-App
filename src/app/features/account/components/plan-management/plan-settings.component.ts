@@ -149,6 +149,25 @@ export class PlanSettingsComponent implements OnInit {
         }
       });
       
+      // Suscribirse a cambios en el plan del usuario desde el contexto
+      this.appContext.userPlan$.subscribe(userPlanData => {
+        if (userPlanData) {
+          // Convertir UserPlanData a Plan para mantener compatibilidad
+          const planFromContext = this.appContext.getPlanByName(userPlanData.planName);
+          if (planFromContext) {
+            this.userPlan = planFromContext;
+            this.isFreePlan = userPlanData.planName.toLowerCase() === 'free';
+            // Si hay fecha de expiración, calcular renovación
+            if (userPlanData.expiresAt) {
+              this.calculateRenewalDate(new Date(userPlanData.expiresAt));
+            } else {
+              this.renewalDate = 'N/A';
+              this.remainingDays = 0;
+            }
+          }
+        }
+      });
+      
       // También intentar construir inmediatamente por si ya están cargados
       this.buildPlansData();
       
@@ -192,28 +211,57 @@ export class PlanSettingsComponent implements OnInit {
         return;
       }
       
-      // Obtener la suscripción del usuario
-      const subscription = await this.subscriptionService.getUserLatestSubscription(this.user.id);
-      if (subscription && subscription.planId) {
-        // Buscar el plan por ID
-        const plan: Plan | undefined = await this.planService.getPlanById(subscription.planId);
+      // Usar el mismo método que PlanLimitationsGuard para obtener el plan
+      const idToken = await this.authService.getBearerTokenFirebase(this.user.id);
+      const response = await this.backendApi.getUserPlan(this.user.id, idToken);
+      
+      if (response.success && response.data?.plan) {
+        const plan = response.data.plan;
         
-        if (plan) {
-          this.userPlan = plan;
-          this.isFreePlan = plan.name.toLowerCase() === 'free';
-          
-          // Usar periodEnd si existe, sino usar created_at
-          if (subscription.periodEnd) {
-            this.calculateRenewalDate(subscription.periodEnd);
-          } else {
-            this.calculateRenewalDate(subscription.created_at);
-          }
+        // Buscar el plan completo en el contexto global para obtener todos los detalles
+        const fullPlan = this.appContext.getPlanByName(plan.name);
+        
+        if (fullPlan) {
+          this.userPlan = fullPlan;
         } else {
-          // Si no se encuentra el plan, usar plan gratuito por defecto
-          this.setDefaultFreePlan();
+          // Si no está en el contexto, usar el plan del backend directamente
+          this.userPlan = {
+            id: plan.id || '',
+            name: plan.name,
+            price: plan.price || '0',
+            strategies: plan.strategies || 1,
+            tradingAccounts: plan.tradingAccounts || 1,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+        }
+        
+        this.isFreePlan = plan.name.toLowerCase() === 'free';
+        
+        // Para obtener la fecha de renovación, obtener la suscripción que contiene periodEnd
+        // Si no hay suscripción activa o es plan Free, mostrar N/A
+        if (this.isFreePlan) {
+          this.renewalDate = 'N/A';
+          this.remainingDays = 0;
+        } else {
+          // Obtener la suscripción para la fecha de renovación (periodEnd)
+          try {
+            const subscription = await this.subscriptionService.getUserLatestSubscription(this.user.id);
+            if (subscription && subscription.periodEnd) {
+              // periodEnd puede ser un Timestamp de Firebase o un Date
+              this.calculateRenewalDate(subscription.periodEnd);
+            } else {
+              this.renewalDate = 'N/A';
+              this.remainingDays = 0;
+            }
+          } catch (error) {
+            console.error('Error getting subscription for renewal date:', error);
+            this.renewalDate = 'N/A';
+            this.remainingDays = 0;
+          }
         }
       } else {
-        // Si no hay suscripción, usar plan gratuito por defecto
+        // Si no hay plan, usar plan gratuito por defecto
         this.setDefaultFreePlan();
       }
     } catch (error) {
@@ -385,14 +433,51 @@ export class PlanSettingsComponent implements OnInit {
       return;
     }
     
+    if (!periodEnd) {
+      this.renewalDate = 'N/A';
+      this.remainingDays = 0;
+      return;
+    }
+    
     let renewalDate: Date;
     
-    if (periodEnd) {
-      // Usar periodEnd de la subscription
-      renewalDate = periodEnd.toDate ? periodEnd.toDate() : new Date(periodEnd);
+    // periodEnd puede venir en diferentes formatos:
+    // 1. Firebase Timestamp (tiene método toDate())
+    // 2. Date object
+    // 3. Unix timestamp en milisegundos (number)
+    // 4. Unix timestamp en segundos (number < 1e12)
+    // 5. String ISO
+    // 6. Objeto con propiedad seconds (Firebase Timestamp serializado)
+    if (periodEnd.toDate && typeof periodEnd.toDate === 'function') {
+      // Firebase Timestamp con método toDate()
+      renewalDate = periodEnd.toDate();
+    } else if (periodEnd instanceof Date) {
+      // Date object
+      renewalDate = periodEnd;
+    } else if (typeof periodEnd === 'number') {
+      // Unix timestamp (puede ser en segundos o milisegundos)
+      // Si es menor que 1e12, asumimos que está en segundos
+      renewalDate = new Date(periodEnd < 1e12 ? periodEnd * 1000 : periodEnd);
+    } else if (typeof periodEnd === 'string') {
+      // String ISO o fecha en formato string
+      renewalDate = new Date(periodEnd);
+    } else if (periodEnd.seconds && typeof periodEnd.seconds === 'number') {
+      // Firebase Timestamp serializado con propiedad seconds
+      renewalDate = new Date(periodEnd.seconds * 1000);
+    } else if (periodEnd._seconds && typeof periodEnd._seconds === 'number') {
+      // Firebase Timestamp serializado con propiedad _seconds (formato interno)
+      renewalDate = new Date(periodEnd._seconds * 1000);
     } else {
-      // Fallback: usar fecha actual
-      renewalDate = new Date();
+      // Fallback: intentar convertir directamente
+      renewalDate = new Date(periodEnd);
+    }
+    
+    // Validar que la fecha sea válida
+    if (isNaN(renewalDate.getTime())) {
+      console.error('Invalid renewal date:', periodEnd);
+      this.renewalDate = 'N/A';
+      this.remainingDays = 0;
+      return;
     }
     
     // Formatear fecha de renovación
@@ -682,7 +767,7 @@ export class PlanSettingsComponent implements OnInit {
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.user?.id || '');
 
       // Crear checkout session
-      const response = await fetch(`${this.configService.apiUrl}/v1/payments/create-checkout-session`, {
+      const response = await fetch(`${this.configService.apiUrl}/payments/create-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

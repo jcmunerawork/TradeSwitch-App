@@ -319,7 +319,7 @@ export class BackendApiService extends BaseApiService {
    */
   async createCheckoutSession(priceId: string, idToken: string): Promise<BackendApiResponse<{ url: string; sessionId: string }>> {
     return firstValueFrom(
-      this.post<BackendApiResponse<{ url: string; sessionId: string }>>('/v1/payments/create-checkout-session', {
+      this.post<BackendApiResponse<{ url: string; sessionId: string }>>('/payments/create-checkout-session', {
         priceId
       }, {
         headers: {
@@ -1120,7 +1120,7 @@ export class BackendApiService extends BaseApiService {
   async getUserLatestSubscription(userId: string, idToken: string): Promise<BackendApiResponse<{ subscription: any }>> {
     // Nota: userId se mantiene en la firma por compatibilidad, pero el endpoint lo obtiene del token
     return firstValueFrom(
-      this.get<BackendApiResponse<{ subscription: any }>>(`/profile/subscriptions/latest`, undefined, {
+      this.get<BackendApiResponse<{ subscription: any }>>(`/profile/subscription`, undefined, {
         headers: {
           'Authorization': `Bearer ${idToken}`
         }
@@ -1360,8 +1360,13 @@ export class BackendApiService extends BaseApiService {
    * El backend gestiona el accessToken automáticamente
    * Backend route: @Get('accounts/:accountId/history') under /tradelocker controller
    * Query param: accNum (not path param)
+   * 
+   * @deprecated Use getTradingHistory(accountId, idToken, accNum) instead.
+   * This endpoint only returns closed trades for calendar view.
+   * The unified endpoint GET /api/v1/reports/history/:accountId?accNum=... handles everything.
    */
   async getTradeLockerTradingHistory(accountId: string, accNum: number, idToken: string): Promise<BackendApiResponse<any>> {
+    console.warn('⚠️ Deprecated: getTradeLockerTradingHistory is deprecated. Use getTradingHistory(accountId, idToken, accNum) instead.');
     const response = await firstValueFrom(
       this.get<BackendApiResponse<any>>(`/tradelocker/accounts/${accountId}/history`, {
         accNum: accNum.toString()
@@ -1442,12 +1447,23 @@ export class BackendApiService extends BaseApiService {
    */
 
   /**
-   * Get trading history from Firebase
-   * Endpoint: GET /api/v1/reports/history/:accountId
+   * Get trading history with full processing
+   * Endpoint: GET /api/v1/reports/history/:accountId?accNum=...
+   * 
+   * When accNum is provided, this endpoint:
+   * - Fetches from TradeLocker API
+   * - Processes and groups trades
+   * - Calculates metrics
+   * - Returns positions and metrics
+   * - Syncs to Firebase in background
+   * 
+   * When accNum is not provided, returns data from Firebase only
    */
-  async getTradingHistory(accountId: string, idToken: string): Promise<BackendApiResponse<any>> {
+  async getTradingHistory(accountId: string, idToken: string, accNum?: number): Promise<BackendApiResponse<any>> {
+    const params = accNum !== undefined ? { accNum: accNum.toString() } : undefined;
+    
     return firstValueFrom(
-      this.get<BackendApiResponse<any>>(`/reports/history/${accountId}`, undefined, {
+      this.get<BackendApiResponse<any>>(`/reports/history/${accountId}`, params, {
         headers: {
           'Authorization': `Bearer ${idToken}`
         }
@@ -1463,29 +1479,32 @@ export class BackendApiService extends BaseApiService {
   /**
    * Sync trading history from TradeLocker API to Firebase
    * Endpoint: POST /api/v1/reports/history/:accountId/sync
+   * 
+   * DEPRECATED: This endpoint has been removed as it consumes too much resources
+   * and the frontend doesn't benefit from it. Data is now loaded directly from Firebase.
+   * 
+   * @deprecated This method is no longer used
    */
   async syncTradingHistory(accountId: string, idToken: string, forceSync?: boolean): Promise<BackendApiResponse<any>> {
-    return firstValueFrom(
-      this.post<BackendApiResponse<any>>(`/reports/history/${accountId}/sync`, {
-        forceSync: forceSync || false
-      }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
-      }).pipe(
-        catchError((error: HttpErrorResponse) => {
-          console.error('❌ BackendApiService: Error syncing trading history:', error);
-          return throwError(() => error);
-        })
-      )
-    );
+    console.warn('⚠️ syncTradingHistory called but endpoint has been removed');
+    return Promise.resolve({
+      success: false,
+      error: {
+        message: 'Sync endpoint has been removed'
+      },
+      data: null
+    } as BackendApiResponse<any>);
   }
 
   /**
    * Get trading history metrics
    * Endpoint: GET /api/v1/reports/history/:accountId/metrics
+   * 
+   * @deprecated Use getTradingHistory(accountId, idToken, accNum) instead.
+   * The unified endpoint returns both positions and metrics, making this endpoint redundant.
    */
   async getTradingHistoryMetrics(accountId: string, idToken: string): Promise<BackendApiResponse<any>> {
+    console.warn('⚠️ Deprecated: getTradingHistoryMetrics is deprecated. Use getTradingHistory(accountId, idToken, accNum) instead.');
     return firstValueFrom(
       this.get<BackendApiResponse<any>>(`/reports/history/${accountId}/metrics`, undefined, {
         headers: {

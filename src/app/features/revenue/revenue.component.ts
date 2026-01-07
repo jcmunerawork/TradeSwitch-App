@@ -17,6 +17,7 @@ import { selectUser } from '../auth/store/user.selectios';
 import { User } from '../overview/models/overview';
 import { AuthService } from '../../shared/services/auth.service';
 import { BackendApiService } from '../../core/services/backend-api.service';
+import { ToastNotificationService } from '../../shared/services/toast-notification.service';
 
 @Component({
   selector: 'app-revenue',
@@ -52,7 +53,8 @@ export class RevenueComponent implements OnInit {
   constructor(
     private store: Store,
     private authService: AuthService,
-    private backendApi: BackendApiService
+    private backendApi: BackendApiService,
+    private toastService: ToastNotificationService
   ) {}
 
   /**
@@ -125,6 +127,7 @@ export class RevenueComponent implements OnInit {
         message: error?.message,
         error: error?.error
       });
+      this.toastService.showBackendError(error, 'Error loading revenue data');
     } finally {
       this.loading = false;
     }

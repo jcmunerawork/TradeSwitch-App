@@ -18,7 +18,8 @@ import { User } from '../../overview/models/overview';
 import { UserCredentials } from '../models/userModel';
 import { AppContextService } from '../../../shared/context';
 import { AlertService } from '../../../core/services';
-import { ForgotPasswordPopupComponent } from '../../../shared/pop-ups/forgot-password/forgot-password.component';
+import { ToastNotificationService } from '../../../shared/services/toast-notification.service';
+import { ForgotPasswordPopupComponent } from '../../../shared/pop-ups/forgot-password/forgot-password.component';  
 
 @Component({
   selector: 'app-login',
@@ -46,7 +47,8 @@ export class Login {
     private store: Store,
     private router: Router,
     private appContext: AppContextService,
-    private alertService: AlertService
+    private alertService: AlertService,
+    private toastService: ToastNotificationService
   ) {
     this.loginForm = this.fb.group({
       loginEmail: ['', [Validators.required, Validators.email, this.emailValidator]],
@@ -171,7 +173,7 @@ export class Login {
 
     // Mostrar alerta si hay errores
     if (errors.length > 0) {
-      this.alertService.showError('Validation errors:\n\n' + errors.join('\n'), 'Validation Error');
+      this.toastService.showError('Validation errors:\n\n' + errors.join('\n'));
     }
   }
 
@@ -185,8 +187,8 @@ export class Login {
     // Mostrar error en rojo en el componente
     this.errorMessage = errorMessage;
     
-    // También mostrar en alerta para compatibilidad
-    this.alertService.showError(errorMessage, 'Login Error');
+    // Mostrar toast notification
+    this.toastService.showBackendError(error, 'Login error');
   }
 
   // Función helper para extraer el mensaje de error del formato del backend

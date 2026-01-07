@@ -16,7 +16,7 @@
         {{ showCountryDropdown ? 'arrow_drop_up' : 'arrow_drop_down' }}
       </span>
 
-      <div class="country-dropdown" *ngIf="showCountryDropdown">
+      <div class="country-dropdown" [class.signup-dropdown]="isSignupPage" *ngIf="showCountryDropdown">
         <div class="search-container">
           <input
             type="text"
@@ -31,7 +31,7 @@
           <div
             class="country-option"
             *ngFor="let country of filteredCountries"
-            (click)="selectCountry(country)"
+            (click)="selectCountry(country, $event)"
           >
             <img
               [src]="country.flag"

@@ -26,7 +26,7 @@
   width: 100%;
   flex-wrap: nowrap;
   position: relative; /* Ensure dropdown positioning context */
-  z-index: 0; /* Base z-index, dropdown will be higher */
+  z-index: 100; /* Base z-index, dropdown will be higher */
 }
 
 .country-selector {
@@ -34,7 +34,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: transparent;
+  background: #0c0c0c;
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-bottom-left-radius: 8px;
   border-top-left-radius: 8px;
@@ -74,11 +74,11 @@
   position: absolute;
   top: 100%;
   left: 0;
-  background: #1a1a1a;
+  background: #0c0c0c;
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 8px;
   margin-top: 4px;
-  z-index: 10001; /* Higher than popup z-index (1000) and form container */
+  z-index: 1000; /* Higher than popup z-index (1000) and form container */
   max-height: 150px;
   overflow: hidden;
   display: flex;
@@ -86,11 +86,24 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   min-width: 200px; /* Increased minimum width */
   width: max-content; /* Allow dropdown to be wider than container */
-}
+  
+  /* Asegurar que el fondo sea completamente opaco */
+  opacity: 1;
+  backdrop-filter: none;
+  
+  /* Aumentar altura solo en signup */
+  &.signup-dropdown {
+    opacity: 1;
+    max-height: 250px;
+  }
+} 
 
 .search-container {
   padding: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0c0c0c;
+  opacity: 1;
+  backdrop-filter: none;
 }
 
 .country-search {
@@ -103,7 +116,8 @@
   font-size: 12px;
   padding: 8px 12px;
   outline: none;
-  
+  backdrop-filter: none;
+  opacity: 1;
   &::placeholder {
     color: rgba(255, 255, 255, 0.5);
   }
@@ -116,6 +130,9 @@
 .countries-list {
   max-height: 240px;
   overflow-y: auto;
+  background: #0c0c0c;
+  opacity: 1;
+  backdrop-filter: none;
 }
 
 .country-option {
@@ -125,6 +142,8 @@
   padding: 12px 16px;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  background: #0c0c0c;
+  opacity: 1;
 
   &:hover {
     background: rgba(255, 255, 255, 0.1);

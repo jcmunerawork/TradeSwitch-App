@@ -28,6 +28,7 @@ import { AppContextService } from '../../shared/context';
 import { StrategyCacheService } from './services/strategy-cache.service';
 import { BalanceCacheService } from './services/balance-cache.service';
 import { AlertService } from '../../core/services';
+import { ToastNotificationService } from '../../shared/services/toast-notification.service';
 
 
 /**
@@ -155,6 +156,7 @@ export class Strategy implements OnInit, OnDestroy {
   private strategiesCountCache: { data: number; timestamp: number } | null = null;
   private readonly CACHE_TTL = 2000; // 2 segundos de caché
   private checkPlanLimitationsPending = false; // Flag para evitar ejecuciones simultáneas
+  private allowsMultipleStrategies = false; // Flag para saber si el plan permite múltiples estrategias
 
   constructor(
     private store: Store,
@@ -167,7 +169,8 @@ export class Strategy implements OnInit, OnDestroy {
     private appContext: AppContextService,
     private strategyCacheService: StrategyCacheService,
     private balanceCacheService: BalanceCacheService,
-    private alertService: AlertService
+    private alertService: AlertService,
+    private toastService: ToastNotificationService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -298,8 +301,22 @@ export class Strategy implements OnInit, OnDestroy {
         return prev?.length === curr?.length;
       })
     ).subscribe(async strategies => {
-      this.userStrategies = strategies;
-      this.filteredStrategies = strategies;
+      // Si el contexto envía un array vacío pero ya tenemos estrategias cargadas desde el cache,
+      // no sobrescribir para evitar perder los datos del cache
+      if (strategies.length === 0 && this.userStrategies.length > 0) {
+        return;
+      }
+      
+      // Filtrar estrategias: excluir eliminadas y la estrategia activa (si existe)
+      const activeStrategyId = this.activeStrategy ? this.getStrategyIdSafe(this.activeStrategy) : null;
+      const filtered = strategies.filter(s => {
+        const isDeleted = s.deleted === true;
+        const isActive = activeStrategyId && this.getStrategyIdSafe(s) === activeStrategyId;
+        return !isDeleted && !isActive;
+      });
+      
+      this.userStrategies = filtered;
+      this.filteredStrategies = [...filtered];
       this.updateStrategyCard();
       
       // Actualizar limitaciones dinámicamente cuando cambian las estrategias
@@ -418,8 +435,19 @@ export class Strategy implements OnInit, OnDestroy {
           this.activeStrategy = null;
         }
         
-        this.userStrategies = strategiesWithConfigs.filter(s => s.overview.status !== true).map(s => s.overview);
-        this.filteredStrategies = [...this.userStrategies];
+        // Filtrar estrategias no eliminadas y excluir la estrategia activa (si existe)
+        // La estrategia activa se muestra en la sección "Active Strategy", no en "Other Strategies"
+        const activeStrategyId = this.activeStrategy ? this.getStrategyIdSafe(this.activeStrategy) : null;
+        const filtered = strategiesWithConfigs
+          .filter(s => !s.overview.deleted && (!activeStrategyId || this.getStrategyIdSafe(s.overview) !== activeStrategyId))
+          .map(s => s.overview);
+        
+        this.userStrategies = filtered;
+        this.filteredStrategies = [...filtered];
+        
+        // Actualizar el contexto con todas las estrategias (sin filtrar) para que otros componentes las tengan
+        const allStrategiesFromCache = strategiesWithConfigs.map(s => s.overview);
+        this.appContext.setUserStrategies(allStrategiesFromCache);
         
         // Cargar datos de las cards y actualizar strategy card si hay estrategia activa
         await this.loadStrategyCardsData();
@@ -522,18 +550,29 @@ export class Strategy implements OnInit, OnDestroy {
         this.activeStrategy = null;
       }
       
-      this.userStrategies = validStrategies.filter(s => s.overview.status !== true).map(s => s.overview);
-      this.filteredStrategies = [...this.userStrategies];
+      // Filtrar estrategias no eliminadas y excluir la estrategia activa (si existe)
+      // La estrategia activa se muestra en la sección "Active Strategy", no en "Other Strategies"
+      const activeStrategyId = this.activeStrategy ? this.getStrategyIdSafe(this.activeStrategy) : null;
+      const filtered = validStrategies
+        .filter(s => !s.overview.deleted && (!activeStrategyId || this.getStrategyIdSafe(s.overview) !== activeStrategyId))
+        .map(s => s.overview);
+      
+      this.userStrategies = filtered;
+      this.filteredStrategies = [...filtered];
 
-      // 4. Cargar datos de las cards
+      // 4. Actualizar el contexto con todas las estrategias (sin filtrar) para que otros componentes las tengan
+      const allStrategiesFromBackend = validStrategies.map(s => s.overview);
+      this.appContext.setUserStrategies(allStrategiesFromBackend);
+
+      // 5. Cargar datos de las cards
       await this.loadStrategyCardsData();
       
-      // 5. Actualizar strategy card si hay estrategia activa
+      // 6. Actualizar strategy card si hay estrategia activa
       if (this.activeStrategy) {
         await this.updateStrategyCardWithActiveStrategy();
       }
 
-      // 6. Verificar limitaciones
+      // 7. Verificar limitaciones
       this.checkStrategyLimitations();
 
     } catch (error: any) {
@@ -1044,8 +1083,7 @@ export class Strategy implements OnInit, OnDestroy {
 
   // Check if the current plan allows multiple strategies
   canCreateMultipleStrategies(): boolean {
-    // This will be determined by the plan limitations guard
-    return true; // Default to true, let the guard handle the actual validation
+    return this.allowsMultipleStrategies;
   }
 
   private getActiveStrategyCount(): number {
@@ -1072,6 +1110,7 @@ export class Strategy implements OnInit, OnDestroy {
         this.showPlanBanner = false;
         // Si no hay cuentas, deshabilitar creación de estrategias
         this.isAddStrategyDisabled = this.accountsData.length === 0;
+        this.allowsMultipleStrategies = false; // Por defecto, no permitir múltiples estrategias
         return;
       }
       
@@ -1079,12 +1118,16 @@ export class Strategy implements OnInit, OnDestroy {
       if (this.accountsData.length === 0) {
         this.isAddStrategyDisabled = true;
         this.showPlanBanner = false;
+        this.allowsMultipleStrategies = false; // Por defecto, no permitir múltiples estrategias
         return;
       }
 
       // Get user's plan limitations from the guard (con caché)
       const limitations = await this.getCachedPlanLimitations(this.user.id);
       const totalStrategies = await this.getCachedStrategiesCount(this.user.id);
+      
+      // Actualizar flag de múltiples estrategias (maxStrategies > 1)
+      this.allowsMultipleStrategies = limitations.maxStrategies > 1;
       
       this.showPlanBanner = false;
       this.planBannerMessage = '';
@@ -1093,6 +1136,7 @@ export class Strategy implements OnInit, OnDestroy {
       // If user needs subscription or is banned/cancelled
       if (limitations.needsSubscription || limitations.isBanned || limitations.isCancelled) {
         this.isAddStrategyDisabled = true;
+        this.allowsMultipleStrategies = false; // No permitir múltiples estrategias si está bloqueado
         // Only show banner if user has trading accounts (not first-time user with plan)
         if (this.accountsData.length > 0) {
           this.showPlanBanner = true;
@@ -1115,6 +1159,7 @@ export class Strategy implements OnInit, OnDestroy {
       console.error('❌ checkPlanLimitations: Error checking plan limitations:', error);
       this.showPlanBanner = false;
       this.isAddStrategyDisabled = true; // Por seguridad, deshabilitar en caso de error
+      this.allowsMultipleStrategies = false; // Por defecto, no permitir múltiples estrategias en caso de error
     } finally {
       this.checkPlanLimitationsPending = false;
     }
@@ -1426,7 +1471,7 @@ export class Strategy implements OnInit, OnDestroy {
       
     } catch (error) {
       console.error('Error creating generic strategy:', error);
-      this.alertService.showError('Error creating strategy. Please try again.', 'Strategy Creation Error');
+      this.toastService.showBackendError(error, 'Error creating strategy');
     }
   }
 
@@ -1470,7 +1515,7 @@ export class Strategy implements OnInit, OnDestroy {
       this.loadConfig(balance);
     } catch (error) {
       console.error('Error activating strategy:', error);
-      this.alertService.showError('Error activating strategy. Please try again.', 'Strategy Activation Error');
+      this.toastService.showBackendError(error, 'Error activating strategy');
     } finally {
       // Ocultar loading al finalizar
       this.isProcessingStrategy = false;
@@ -1486,7 +1531,7 @@ export class Strategy implements OnInit, OnDestroy {
         strategyCard: this.strategyCard,
         activeStrategy: this.activeStrategy
       });
-      this.alertService.showError('Cannot delete strategy: Invalid strategy ID.', 'Strategy Deletion Error');
+      this.toastService.showError('Cannot delete strategy: Invalid strategy ID');
       return;
     }
 
@@ -1505,7 +1550,7 @@ export class Strategy implements OnInit, OnDestroy {
         strategyCard: this.strategyCard,
         activeStrategy: this.activeStrategy
       });
-      this.alertService.showError('No strategy selected for deletion.', 'Strategy Deletion Error');
+      this.toastService.showError('No strategy selected for deletion');
       this.showDeleteConfirmPopup = false;
       return;
     }
@@ -1554,7 +1599,7 @@ export class Strategy implements OnInit, OnDestroy {
         }
       }
     } catch (error) {
-      this.alertService.showError('Error marking strategy as deleted. Please try again.', 'Strategy Deletion Error');
+      this.toastService.showBackendError(error, 'Error deleting strategy');
     } finally {
       // Ocultar loading al finalizar
       this.isProcessingStrategy = false;
@@ -1583,7 +1628,7 @@ export class Strategy implements OnInit, OnDestroy {
       // Solo recargar la UI local si es necesario
       await this.loadAllStrategiesToCache();
     } catch (error) {
-      this.alertService.showError('Error updating strategy name. Please try again.', 'Strategy Name Update Error');
+      this.toastService.showBackendError(error, 'Error updating strategy name');
     }
   }
 
@@ -1766,26 +1811,17 @@ export class Strategy implements OnInit, OnDestroy {
       const strategyData = await this.strategySvc.getStrategyView(strategyId);
       
       if (!strategyData) {
-        this.alertService.showError(
-          'Strategy not found. The strategy may have been deleted or does not exist.',
-          'Strategy Not Found'
-        );
+        this.toastService.showError('Strategy not found. The strategy may have been deleted or does not exist.');
         return false;
       }
       
       if (!strategyData.overview) {
-        this.alertService.showError(
-          'Strategy overview not found. The strategy metadata is missing.',
-          'Strategy Overview Missing'
-        );
+        this.toastService.showError('Strategy overview not found. The strategy metadata is missing.');
         return false;
       }
       
       if (!strategyData.configuration) {
-        this.alertService.showError(
-          'Strategy configuration not found. The strategy rules are missing.',
-          'Strategy Configuration Missing'
-        );
+        this.toastService.showError('Strategy configuration not found. The strategy rules are missing.');
         return false;
       }
       
@@ -1795,15 +1831,9 @@ export class Strategy implements OnInit, OnDestroy {
       
       // Mostrar mensaje de error específico según el tipo de error
       if (error?.status === 404) {
-        this.alertService.showError(
-          'Strategy not found. The strategy may have been deleted or does not exist.',
-          'Strategy Not Found'
-        );
+        this.toastService.showError('Strategy not found. The strategy may have been deleted or does not exist.');
       } else {
-        this.alertService.showError(
-          'Error loading strategy. Please try again later.',
-          'Error Loading Strategy'
-        );
+        this.toastService.showBackendError(error, 'Error loading strategy');
       }
       
       return false;

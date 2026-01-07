@@ -111,14 +111,14 @@ export class ReportService {
   getHistoryData(
     accountId: string,
     accNum: number
-  ): Observable<GroupedTradeFinal[]> {
+  ): Observable<{ trades: GroupedTradeFinal[], metrics: any }> {
     this.appContext.setLoading('report', true);
     this.appContext.setError('report', null);
     
     return this.tradeLockerApiService.getTradingHistory(accountId, accNum)
       .pipe(
         switchMap(async (details) => {
-          // NUEVO FORMATO: El backend devuelve trades ya procesados en formato GroupedTradeFinal
+          // NUEVO FORMATO: El backend devuelve { trades: [...], metrics: {...} }
           if (details && details.trades && Array.isArray(details.trades)) {
             const groupedTrades = details.trades as GroupedTradeFinal[];
             // Asegurar que todos los trades tengan los campos requeridos
@@ -134,7 +134,8 @@ export class ReportService {
             
             this.appContext.updateReportHistory(normalizedTrades);
             this.appContext.setLoading('report', false);
-            return normalizedTrades;
+            // Retornar trades y métricas del endpoint
+            return { trades: normalizedTrades, metrics: details.metrics || null };
           }
           
           // FORMATO ANTIGUO: { d: { ordersHistory: [...] } } - necesita transformación
@@ -149,13 +150,14 @@ export class ReportService {
             this.appContext.updateReportHistory(groupedTrades);
             this.appContext.setLoading('report', false);
             
-            return groupedTrades;
+            // Formato antiguo no tiene métricas, retornar null
+            return { trades: groupedTrades, metrics: null };
           }
 
           // Si no hay datos válidos, retornar array vacío
           this.appContext.updateReportHistory([]);
           this.appContext.setLoading('report', false);
-          return [];
+          return { trades: [], metrics: null };
         })
       );
   }

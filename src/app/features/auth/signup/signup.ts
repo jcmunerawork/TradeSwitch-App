@@ -25,6 +25,7 @@ import { AppContextService } from '../../../shared/context';
 import { StripeLoaderPopupComponent } from '../../../shared/pop-ups/stripe-loader-popup/stripe-loader-popup.component';
 import { AlertService } from '../../../core/services';
 import { BackendApiService } from '../../../core/services/backend-api.service';
+import { ToastNotificationService } from '../../../shared/services/toast-notification.service';
 
 @Component({
   selector: 'app-signup',
@@ -71,7 +72,8 @@ export class SignupComponent implements OnInit {
     private store: Store,
     private appContext: AppContextService,
     private alertService: AlertService,
-    private backendApi: BackendApiService
+    private backendApi: BackendApiService,
+    private toastService: ToastNotificationService
   ) {
     this.signupForm = this.fb.group({
       firstName: ['', [Validators.required, Validators.minLength(2)]],
@@ -122,7 +124,7 @@ export class SignupComponent implements OnInit {
           if (existingUser) {
             this.isLoading = false;
             this.errorMessage = 'This email is already registered. Please use a different email or try logging in.';
-            this.alertService.showError(this.errorMessage, 'Email Already Registered');
+            this.toastService.showError(this.errorMessage);
             this.appContext.setLoading('user', false);
             return;
           }
@@ -347,7 +349,7 @@ export class SignupComponent implements OnInit {
 
     // Mostrar alerta con todos los errores
     if (errors.length > 0) {
-      this.alertService.showError('Validation errors:\n\n' + errors.join('\n'), 'Validation Error');
+      this.toastService.showError('Validation errors:\n\n' + errors.join('\n'));
     }
 
     this.markFormGroupTouched();
@@ -410,6 +412,8 @@ export class SignupComponent implements OnInit {
         throw new Error('Plan price ID not found');
       }
 
+      console.log(selectedPlan);
+
       // Obtener el token de Firebase
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.currentUserId);
 
@@ -463,8 +467,8 @@ export class SignupComponent implements OnInit {
       this.errorMessage = errorMessage;
     }
     
-    // También mostrar en alerta para compatibilidad
-    this.alertService.showError(this.errorMessage, 'Registration Error');
+    // Mostrar toast notification
+    this.toastService.showBackendError(error, 'Registration error');
   }
 
   // Función helper para extraer el mensaje de error del formato del backend

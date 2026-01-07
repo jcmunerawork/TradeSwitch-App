@@ -58,8 +58,8 @@
           class="calendar-cell"
           [ngClass]="{
             active: cell.tradesCount > 0,
-            'positive-cell': cell.tradesCount > 0 && cell.followedStrategy,
-            'negative-cell': cell.tradesCount > 0 && !cell.followedStrategy,
+            'positive-cell': cell.tradesCount > 0 && cell.pnlTotal > 0,
+            'negative-cell': cell.tradesCount > 0 && cell.pnlTotal < 0,
             'clickable': cell.tradesCount > 0,
             'outside-month': !cell.isCurrentMonth
           }"

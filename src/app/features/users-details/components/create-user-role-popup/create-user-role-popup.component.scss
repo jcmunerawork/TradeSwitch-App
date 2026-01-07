@@ -78,7 +78,7 @@
 }
 
 .actions { gap: 10px; margin-top: 10px; }
-.btn { border-radius: 8px; padding: 8px 14px; border: 1.5px solid #e4e7ec; background: transparent; color: #e4e7ec; transition: all 0.2s ease; }
+.btn { border-radius: 8px; padding: 8px 14px; border: 1.5px solid #e4e7ec; background: transparent; color: #e4e7ec; cursor: pointer; transition: all 0.2s ease; }
 .btn.primary { background: #9bf526; color: #0b0b0c; border: none; &:hover { background: #468506; } }
 .btn.cancel { background: transparent; &:hover { color: #4a4a4a; border-color: #4a4a4a; } }
 

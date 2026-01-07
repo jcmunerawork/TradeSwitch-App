@@ -21,6 +21,7 @@ import { PlanLimitationModalComponent } from '../../shared/components/plan-limit
 import { PlanBannerComponent } from '../../shared/components/plan-banner/plan-banner.component';
 import { AppContextService } from '../../shared/context';
 import { TradeLockerApiService, TradeLockerCredentials } from '../../shared/services/tradelocker-api.service';
+import { ToastNotificationService } from '../../shared/services/toast-notification.service';
 
 /**
  * Main component for managing trading accounts.
@@ -82,7 +83,8 @@ export class TradingAccountsComponent implements OnDestroy {
     private router: Router,
     private planLimitationsGuard: PlanLimitationsGuard,
     private appContext: AppContextService,
-    private tradeLockerApi: TradeLockerApiService
+    private tradeLockerApi: TradeLockerApiService,
+    private toastService: ToastNotificationService
   ) {}
 
   loading = false;
@@ -417,6 +419,7 @@ export class TradingAccountsComponent implements OnDestroy {
       .catch((err) => {
         this.loading = false;
         console.error('Error deleting account', err);
+        this.toastService.showBackendError(err, 'Error deleting account');
       });
   }
 
@@ -533,6 +536,7 @@ export class TradingAccountsComponent implements OnDestroy {
       await this.checkPlanLimitations();
     } catch (error) {
       console.error('Error checking account limitations:', error);
+      this.toastService.showBackendError(error, 'Error checking account limitations');
       this.isAddAccountDisabled = false; // Default to active
     }
   }
@@ -584,13 +588,14 @@ export class TradingAccountsComponent implements OnDestroy {
         // Show warning when close to limit
         this.isAddAccountDisabled = false; // Aún puede crear
         this.showPlanBanner = true;
-        this.planBannerMessage = `You have ${limitations.maxAccounts - currentAccountCount} accounts left on your current plan. Want more? Upgrade anytime.`;
+        this.planBannerMessage = `You have ${limitations.maxAccounts - currentAccountCount} account(s) left on your current plan. Want more? Upgrade anytime.`;
         this.planBannerType = 'info';
       } else {
         this.isAddAccountDisabled = false;
       }
     } catch (error) {
       console.error('❌ TradingAccountsComponent.checkPlanLimitations: Error checking plan limitations:', error);
+      this.toastService.showBackendError(error, 'Error checking plan limitations');
       this.showPlanBanner = false;
       this.isAddAccountDisabled = true; // Por seguridad, deshabilitar en caso de error
     }
@@ -614,7 +619,9 @@ export class TradingAccountsComponent implements OnDestroy {
 
 
   onUpgradePlan() {
-    this.router.navigate(['/account']);
+    this.router.navigate(['/account'], { 
+      queryParams: { tab: 'plan' } 
+    });
   }
 
   onCloseBanner() {
