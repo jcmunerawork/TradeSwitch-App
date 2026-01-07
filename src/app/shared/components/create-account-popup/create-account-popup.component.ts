@@ -200,7 +200,7 @@ export class CreateAccountPopupComponent implements OnChanges {
       brokerPassword: this.newAccount.brokerPassword,
       accountID: this.newAccount.accountID,
       accountNumber: this.newAccount.accountNumber,
-      initialBalance: 0,
+      initialBalance: this.newAccount.initialBalance || 0,
       netPnl: this.accountToEdit.netPnl || 0,
       profit: this.accountToEdit.profit || 0,
       bestTrade: this.accountToEdit.bestTrade || 0,
@@ -290,7 +290,7 @@ export class CreateAccountPopupComponent implements OnChanges {
         brokerPassword: this.accountToEdit.brokerPassword || '',
         accountID: this.accountToEdit.accountID || '',
         accountNumber: this.accountToEdit.accountNumber || 1,
-        initialBalance: 0,
+        initialBalance: this.accountToEdit.initialBalance || 0,
       };
       
       // Set balance input values for display with currency format
@@ -319,7 +319,7 @@ export class CreateAccountPopupComponent implements OnChanges {
       accountName: this.newAccount.accountName,
       accountID: this.newAccount.accountID,
       accountNumber: this.newAccount.accountNumber,
-      initialBalance: 0,
+      initialBalance: this.newAccount.initialBalance,
       balance: this.newAccount.initialBalance || 0, // Usar initialBalance como balance inicial
       createdAt: Timestamp.now(),
       netPnl: 0,
