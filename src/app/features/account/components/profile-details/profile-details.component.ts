@@ -381,6 +381,8 @@ export class ProfileDetailsComponent implements OnInit {
             message: 'Your password has been changed. Please sign in with your new password.'
           }
         });
+
+        window.location.reload();
         
       } catch (error: any) {
         console.error('❌ Error changing password:', error);
@@ -618,6 +620,8 @@ export class ProfileDetailsComponent implements OnInit {
 
       // Redirect to login
       this.router.navigate(['/login']);
+
+      window.location.reload();
 
     } catch (error: any) {
       console.error('❌ Error deleting account:', error);

@@ -131,6 +131,12 @@ export class Strategy implements OnInit, OnDestroy {
   strategyCardsData: StrategyCardData[] = [];
   searchTerm = '';
   
+  // Estado para controlar qué dropdown de reglas está abierto
+  openRulesDropdown: { [strategyId: string]: boolean } = {};
+  
+  // Cache para almacenar las configuraciones de las estrategias
+  private strategyConfigurationsCache: { [strategyId: string]: any } = {};
+  
   // Strategy Card Data - Dynamic
   strategyCard: StrategyCardData = {
     id: '', // Cambiar de '1' a '' para evitar confusión
@@ -875,43 +881,54 @@ export class Strategy implements OnInit, OnDestroy {
       return;
     }
 
-    // Verificar si hay cuentas antes de crear estrategia
-    if (this.accountsData.length === 0) {
-      this.alertService.showWarning('You need to add a trading account before creating strategies.', 'No Trading Accounts');
-      this.router.navigate(['/account'], { queryParams: { tab: 'accounts' } });
-      return;
-    }
+    // Activar loading INMEDIATAMENTE para dar feedback visual
+    this.isCreatingStrategy = true;
 
     try {
-      // Activar loading
-      this.isCreatingStrategy = true;
+      // Verificar si hay cuentas antes de crear estrategia
+      if (this.accountsData.length === 0) {
+        this.alertService.showWarning('You need to add a trading account before creating strategies.', 'No Trading Accounts');
+        this.router.navigate(['/account'], { queryParams: { tab: 'accounts' } });
+        return;
+      }
 
-      // Contar el total de estrategias del usuario (activas + inactivas) usando el backend
+      // Verificar límites (con loading activo para dar feedback)
       const totalStrategies = await this.getTotalStrategiesCount();
       
+      // Check if user has reached absolute maximum (8 strategies)
+      if (totalStrategies >= 8) {
+        // Absolute maximum reached: button should be disabled (do nothing)
+        return;
+      }
+      
+      // Verificar límite del plan
+      const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
+      
+      // Verificación directa: si el usuario alcanzó el límite de su plan, redirigir
+      if (totalStrategies >= limitations.maxStrategies) {
+        // User has reached plan limit but not absolute maximum: redirect to plan management
+        // Pequeño delay para que el usuario vea el loading
+        await new Promise(resolve => setTimeout(resolve, 500));
+        this.router.navigate(['/account'], { 
+          queryParams: { tab: 'plan' } 
+        });
+        return;
+      }
+      
+      // Verificación adicional con el guard (por si acaso)
       const accessCheck = await this.planLimitationsGuard.checkStrategyCreationWithModal(this.user.id, totalStrategies);
       
       if (!accessCheck.canCreate) {
-        // Verificar si es el plan Pro con 8 estrategias (límite máximo)
-        const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
-        
-        const isProPlanWithMaxStrategies = limitations.planName.toLowerCase().includes('pro') && 
-                                          limitations.maxStrategies === 8 && 
-                                          totalStrategies >= 8;
-        
-        if (isProPlanWithMaxStrategies) {
-          // Para plan Pro con 8 estrategias: desactivar botón
-          this.isAddStrategyDisabled = true;
-          return;
-        } else {
-          // Para otros planes: redirigir a la página de cuenta
-          this.router.navigate(['/account'], { 
-            queryParams: { tab: 'plan' } 
-          });
-          return;
-        }
+        // User has reached plan limit but not absolute maximum: redirect to plan management
+        // Pequeño delay para que el usuario vea el loading
+        await new Promise(resolve => setTimeout(resolve, 500));
+        this.router.navigate(['/account'], { 
+          queryParams: { tab: 'plan' } 
+        });
+        return;
       }
-      
+
+      // SOLO si pasa todas las verificaciones, proceder con la creación
       // Verificar si es la primera estrategia del usuario
       if (totalStrategies === 0) {
         // Primera estrategia: mostrar modal de guía de estrategias
@@ -1071,6 +1088,61 @@ export class Strategy implements OnInit, OnDestroy {
     return count;
   }
 
+  /**
+   * Obtiene los nombres de las reglas activas de una estrategia
+   */
+  getActiveRuleNames(strategyId: string): string[] {
+    const config = this.strategyConfigurationsCache[strategyId];
+    if (!config) return [];
+    
+    const activeRules: string[] = [];
+    if (config.maxDailyTrades?.isActive) activeRules.push('Max Daily Trades');
+    if (config.riskReward?.isActive) activeRules.push('Risk Reward Ratio');
+    if (config.riskPerTrade?.isActive) activeRules.push('Max Risk Per Trade');
+    if (config.daysAllowed?.isActive) activeRules.push('Days Allowed');
+    if (config.hoursAllowed?.isActive) activeRules.push('Trading Hours');
+    if (config.assetsAllowed?.isActive) activeRules.push('Assets Allowed');
+    
+    return activeRules;
+  }
+
+  /**
+   * Carga la configuración de una estrategia y la guarda en cache
+   */
+  async loadStrategyConfiguration(strategyId: string): Promise<void> {
+    if (this.strategyConfigurationsCache[strategyId]) {
+      return; // Ya está en cache
+    }
+    
+    try {
+      const strategyData = await this.strategySvc.getStrategyView(strategyId);
+      if (strategyData?.configuration) {
+        this.strategyConfigurationsCache[strategyId] = strategyData.configuration;
+      }
+    } catch (error) {
+      console.error(`Error loading strategy configuration for ${strategyId}:`, error);
+    }
+  }
+
+  /**
+   * Toggle del dropdown de reglas
+   */
+  toggleRulesDropdown(strategyId: string): void {
+    this.openRulesDropdown[strategyId] = !this.openRulesDropdown[strategyId];
+    
+    // Si se abre el dropdown, cargar la configuración si no está en cache
+    if (this.openRulesDropdown[strategyId]) {
+      this.loadStrategyConfiguration(strategyId);
+    }
+  }
+
+  /**
+   * Verifica si el dropdown de reglas está abierto
+   */
+  isRulesDropdownOpen(strategyId: string): boolean {
+    return this.openRulesDropdown[strategyId] || false;
+  }
+
   getLastModifiedDate(): string {
     // For now, return current date. In the future, this could come from a timestamp in the config
     const now = new Date();
@@ -1147,13 +1219,22 @@ export class Strategy implements OnInit, OnDestroy {
       }
 
       // Check if user has reached strategy limit
-      if (totalStrategies >= limitations.maxStrategies) {
+      // Button is only disabled at absolute maximum (8 strategies)
+      if (totalStrategies >= 8) {
+        // Absolute maximum reached: disable button
         this.isAddStrategyDisabled = true;
+        this.showPlanBanner = true;
+        this.planBannerMessage = `You've reached the maximum number of strategies (8).`;
+        this.planBannerType = 'warning';
+      } else if (totalStrategies >= limitations.maxStrategies) {
+        // User reached plan limit but not absolute maximum: show banner, button stays active
+        this.isAddStrategyDisabled = false;
         this.showPlanBanner = true;
         this.planBannerMessage = `You've reached the strategy limit for your ${limitations.planName} plan. Move to a higher plan and keep growing your account.`;
         this.planBannerType = 'warning';
       } else {
         this.isAddStrategyDisabled = false;
+        this.showPlanBanner = false;
       }
     } catch (error) {
       console.error('❌ checkPlanLimitations: Error checking plan limitations:', error);
@@ -1264,9 +1345,9 @@ export class Strategy implements OnInit, OnDestroy {
     try {
       // Contar el total de estrategias del usuario (activas + inactivas) usando el backend
       const totalStrategies = await this.getTotalStrategiesCount();
-      const accessCheck = await this.planLimitationsGuard.checkStrategyCreationWithModal(this.user.id, totalStrategies);
       
-      this.isAddStrategyDisabled = !accessCheck.canCreate;
+      // Only disable button when absolute maximum is reached (8 strategies)
+      this.isAddStrategyDisabled = totalStrategies >= 8;
       
       // El banner se actualiza automáticamente en checkPlanLimitations()
     } catch (error) {
@@ -1689,6 +1770,11 @@ export class Strategy implements OnInit, OnDestroy {
         userId: strategyData.overview.userId,
         configurationId: strategyData.overview.configurationId
       };
+      
+      // Guardar configuración en cache para el dropdown de reglas
+      if (strategyData.configuration) {
+        this.strategyConfigurationsCache[activeStrategyId] = strategyData.configuration;
+      }
     } catch (error) {
       console.error('❌ Error in updateStrategyCardWithActiveStrategy:', error);
     }
@@ -1878,6 +1964,11 @@ export class Strategy implements OnInit, OnDestroy {
       
       // Formatear fecha de actualización
       const lastModified = this.formatDate(this.parseDate(strategyData.overview.updated_at));
+
+      // Guardar configuración en cache para el dropdown de reglas
+      if (strategyData.configuration) {
+        this.strategyConfigurationsCache[strategyId] = strategyData.configuration;
+      }
 
       // Validar que strategyId no sea null (ya validado arriba, pero TypeScript necesita la aserción)
       if (!strategyId) {

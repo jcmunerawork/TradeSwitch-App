@@ -92,6 +92,9 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
   isEditingName = false;
   editingStrategyName = '';
   isSavingName = false;
+  showRulesDropdown = false;
+  activeRuleNames: string[] = [];
+  private configurationCache: any = null;
 
   private numberFormatter = new NumberFormatterService();
   private updateSubscription?: Subscription;
@@ -309,6 +312,8 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
       
       if (response.success && response.data?.configuration) {
         const configData = response.data.configuration;
+        this.configurationCache = configData; // Guardar en cache para el dropdown
+        
         let activeRulesCount = 0;
 
         // Contar reglas activas
@@ -324,5 +329,64 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error calculating active rules:', error);
     }
+  }
+
+  /**
+   * Toggle del dropdown de reglas
+   */
+  async toggleRulesDropdown(): Promise<void> {
+    this.showRulesDropdown = !this.showRulesDropdown;
+    
+    // Si se abre el dropdown, cargar la configuración si no está en cache
+    if (this.showRulesDropdown && !this.configurationCache && this.strategy.configurationId) {
+      await this.loadConfigurationForRules();
+    }
+    
+    // Obtener nombres de reglas activas
+    if (this.showRulesDropdown) {
+      this.activeRuleNames = this.getActiveRuleNames();
+    }
+  }
+
+  /**
+   * Cargar configuración para obtener las reglas
+   */
+  private async loadConfigurationForRules(): Promise<void> {
+    if (!this.strategy.configurationId) {
+      return;
+    }
+
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getConfigurationById(
+        this.strategy.configurationId,
+        idToken
+      );
+      
+      if (response.success && response.data?.configuration) {
+        this.configurationCache = response.data.configuration;
+      }
+    } catch (error) {
+      console.error('Error loading configuration for rules:', error);
+    }
+  }
+
+  /**
+   * Obtiene los nombres de las reglas activas
+   */
+  getActiveRuleNames(): string[] {
+    if (!this.configurationCache) {
+      return [];
+    }
+    
+    const activeRules: string[] = [];
+    if (this.configurationCache['maxDailyTrades']?.isActive) activeRules.push('Max Daily Trades');
+    if (this.configurationCache['riskReward']?.isActive) activeRules.push('Risk Reward Ratio');
+    if (this.configurationCache['riskPerTrade']?.isActive) activeRules.push('Max Risk Per Trade');
+    if (this.configurationCache['daysAllowed']?.isActive) activeRules.push('Days Allowed');
+    if (this.configurationCache['hoursAllowed']?.isActive) activeRules.push('Trading Hours');
+    if (this.configurationCache['assetsAllowed']?.isActive) activeRules.push('Assets Allowed');
+    
+    return activeRules;
   }
 }

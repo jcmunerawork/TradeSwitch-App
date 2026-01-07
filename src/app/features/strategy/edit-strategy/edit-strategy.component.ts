@@ -1113,6 +1113,13 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Desuscribirse de la suscripción anterior antes de crear una nueva
+    // Esto evita múltiples suscripciones y múltiples intervalos
+    if (this.pluginSubscription) {
+      this.pluginSubscription.unsubscribe();
+      this.pluginSubscription = null;
+    }
+
     try {
       
       // Suscribirse al Observable del servicio con userId

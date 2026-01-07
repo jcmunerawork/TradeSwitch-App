@@ -1,6 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { Observable, from, interval, switchMap, startWith, catchError, of } from 'rxjs';
+import { Observable, from, interval, switchMap, startWith, catchError, of, share } from 'rxjs';
 import { TimezoneService } from './timezone.service';
 import { BackendApiService } from '../../core/services/backend-api.service';
 import { getAuth } from 'firebase/auth';
@@ -56,6 +56,8 @@ export interface PluginHistory {
 export class PluginHistoryService {
 
     private isBrowser: boolean;
+    // Cachear el Observable por userId para compartir entre suscriptores y evitar múltiples intervalos
+    private realtimeObservables: Map<string, Observable<PluginHistory[]>> = new Map();
 
     constructor(
         @Inject(PLATFORM_ID) private platformId: Object,
@@ -146,6 +148,7 @@ export class PluginHistoryService {
      * - Filtra por userId específico
      * - El componente se suscribe y recibe actualizaciones automáticas
      * - Maneja errores y limpieza de recursos
+     * - COMPARTE el Observable entre múltiples suscriptores para evitar múltiples intervalos
      * 
      * Nota: Como no hay WebSockets, usamos polling para simular tiempo real
      */
@@ -155,8 +158,13 @@ export class PluginHistoryService {
             return from([]);
         }
 
-        // Polling cada 5 segundos para simular tiempo real
-        return interval(5000).pipe(
+        // Si ya existe un Observable para este userId, reutilizarlo para evitar múltiples intervalos
+        if (this.realtimeObservables.has(userId)) {
+            return this.realtimeObservables.get(userId)!;
+        }
+
+        // Crear un nuevo Observable y compartirlo entre múltiples suscriptores
+        const observable = interval(5000).pipe(
             startWith(0), // Emitir inmediatamente al suscribirse
             switchMap(() => {
                 return from(this.getIdToken()).pipe(
@@ -174,8 +182,13 @@ export class PluginHistoryService {
                         return of([]);
                     })
                 );
-            })
+            }),
+            share() // Compartir el Observable entre múltiples suscriptores (evita múltiples intervalos)
         );
+
+        // Guardar el Observable en el cache para reutilizarlo
+        this.realtimeObservables.set(userId, observable);
+        return observable;
     }
 
 }
