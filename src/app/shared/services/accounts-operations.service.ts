@@ -67,8 +67,9 @@ export class AccountsOperationsService {
    * Crear cuenta de trading
    * Now uses backend API but maintains same interface
    * Invalidates cache and refetches accounts after creation
+   * Returns the backend response to allow access to messages
    */
-  async createAccount(account: AccountData): Promise<void> {
+  async createAccount(account: AccountData): Promise<any> {
     try {
       const idToken = await this.getIdToken();
       
@@ -89,6 +90,9 @@ export class AccountsOperationsService {
         // Recargar cuentas del backend y guardar en caché
         await this.refreshUserAccounts(account.userId);
       }
+      
+      // Retornar la respuesta para que el componente pueda acceder al mensaje
+      return response;
     } catch (error) {
       console.error('Error creating account:', error);
       throw error;
@@ -339,7 +343,7 @@ export class AccountsOperationsService {
    * Now uses backend API but maintains same interface
    * Invalidates cache and refetches accounts after update
    */
-  async updateAccount(accountId: string, accountData: AccountData): Promise<void> {
+  async updateAccount(accountId: string, accountData: AccountData): Promise<any> {
     try {
       const idToken = await this.getIdToken();
       
@@ -368,6 +372,9 @@ export class AccountsOperationsService {
         // Recargar cuentas del backend y guardar en caché
         await this.refreshUserAccounts(accountData.userId);
       }
+      
+      // Retornar la respuesta para que el componente pueda acceder al mensaje
+      return response;
     } catch (error: any) {
       // 🔍 LOG DE DEPURACIÓN: Ver la estructura completa del error
       console.error('❌ AccountsOperationsService: Error completo:', error);

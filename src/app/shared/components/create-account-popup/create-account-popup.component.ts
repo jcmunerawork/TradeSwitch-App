@@ -7,6 +7,7 @@ import { AccountData } from '../../../features/auth/models/userModel';
 import { Timestamp } from 'firebase/firestore';
 import { NumberFormatterService } from '../../utils/number-formatter.service';
 import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner.component';
+import { ToastNotificationService } from '../../services/toast-notification.service';
 
 /**
  * Component for creating and editing trading accounts.
@@ -69,7 +70,8 @@ export class CreateAccountPopupComponent implements OnChanges {
   constructor(
     private authService: AuthService,
     private tradeLockerApiService: TradeLockerApiService,
-    private numberFormatter: NumberFormatterService
+    private numberFormatter: NumberFormatterService,
+    private toastService: ToastNotificationService
   ) {}
 
   ngOnChanges(changes: SimpleChanges) {
@@ -131,7 +133,7 @@ export class CreateAccountPopupComponent implements OnChanges {
     if (!this.newAccount.accountName || 
         !this.newAccount.emailTradingAccount || !this.newAccount.brokerPassword || 
         !this.newAccount.server || !this.newAccount.accountID || !this.newAccount.accountNumber) {
-      alert('Please fill in all required fields.');
+      this.toastService.showError('Please fill in all required fields.');
       return;
     }
     
@@ -143,7 +145,7 @@ export class CreateAccountPopupComponent implements OnChanges {
       const accountExists = await this.validateAccountInTradeLocker();
       if (!accountExists) {
         this.isCreatingAccount = false;
-        alert('Account does not exist in TradeLocker. Please verify the credentials.');
+        this.toastService.showError('Account does not exist in TradeLocker. Please verify the credentials.');
         return;
       }
       
@@ -151,7 +153,7 @@ export class CreateAccountPopupComponent implements OnChanges {
       const validationResult = await this.validateAccountUniqueness();
       if (!validationResult.isValid) {
         this.isCreatingAccount = false;
-        alert(validationResult.message);
+        this.toastService.showError(validationResult.message);
         return;
       }
       
@@ -169,7 +171,7 @@ export class CreateAccountPopupComponent implements OnChanges {
     } catch (error) {
       console.error('Error processing trading account:', error);
       this.isCreatingAccount = false;
-      alert(`Failed to ${this.editMode ? 'update' : 'create'} trading account. Please try again.`);
+      this.toastService.showBackendError(error, `Failed to ${this.editMode ? 'update' : 'create'} trading account. Please try again.`);
     }
   }
 
@@ -177,8 +179,12 @@ export class CreateAccountPopupComponent implements OnChanges {
     // Create account object for Firebase
     const accountData = this.createAccountObject();
     
-    // Save to Firebase
-    await this.authService.createAccount(accountData);
+    // Save to Firebase and get response
+    const response = await this.authService.createAccount(accountData);
+    
+    // Show success toast with message from backend (if available)
+    const successMessage = response?.message || response?.data?.message || 'Trading account added successfully!';
+    this.toastService.showSuccess(successMessage);
     
     // Show success modal
     this.showSuccessModal = true;
@@ -206,8 +212,12 @@ export class CreateAccountPopupComponent implements OnChanges {
       bestTrade: this.accountToEdit.bestTrade || 0,
     };
 
-    // Update in Firebase
-    await this.authService.updateAccount(this.accountToEdit.id, updatedAccountData);
+    // Update in Firebase and get response
+    const response = await this.authService.updateAccount(this.accountToEdit.id, updatedAccountData);
+    
+    // Show success toast with message from backend (if available)
+    const successMessage = response?.message || response?.data?.message || 'Trading account updated successfully!';
+    this.toastService.showSuccess(successMessage);
     
     // Show success modal
     this.showSuccessModal = true;

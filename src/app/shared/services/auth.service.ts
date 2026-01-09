@@ -951,7 +951,7 @@ export class AuthService {
     this.appContext.setLoading('accounts', true);
     this.appContext.setError('accounts', null);
     try {
-      await this.accountsOperationsService.createAccount(account);
+      const response = await this.accountsOperationsService.createAccount(account);
       this.appContext.addAccount(account);
       
       // Actualizar conteos del usuario
@@ -1010,6 +1010,8 @@ export class AuthService {
       }
       
       this.appContext.setLoading('accounts', false);
+      // Retornar la respuesta para que el componente pueda acceder al mensaje
+      return response;
     } catch (error) {
       this.appContext.setLoading('accounts', false);
       this.appContext.setError('accounts', 'Error al crear cuenta');
@@ -1038,7 +1040,7 @@ export class AuthService {
   async checkAccountExists(broker: string, server: string, accountID: string, currentUserId: string, excludeAccountId?: string): Promise<boolean> { 
     return this.accountsOperationsService.checkAccountExists(broker, server, accountID, currentUserId, excludeAccountId); 
   }
-  async updateAccount(accountId: string, accountData: AccountData): Promise<void> { return this.accountsOperationsService.updateAccount(accountId, accountData); }
+  async updateAccount(accountId: string, accountData: AccountData): Promise<any> { return this.accountsOperationsService.updateAccount(accountId, accountData); }
   async deleteAccount(accountId: string): Promise<void> {
     const userId = await this.accountsOperationsService.deleteAccount(accountId);
     

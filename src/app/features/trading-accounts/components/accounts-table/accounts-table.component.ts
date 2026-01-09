@@ -104,10 +104,12 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
         .toLowerCase()
         .includes(lower);
 
-      let matchesMinBalance = (account.balance ?? 0) >= this.appliedMinBalance;
-      let matchesMaxBalance = (account.balance ?? 0) <= this.appliedMaxBalance;
+      // Usar solo initialBalance para el filtro
+      const accountBalance = account.initialBalance ?? 0;
+      let matchesMinBalance = accountBalance >= this.appliedMinBalance;
+      let matchesMaxBalance = accountBalance <= this.appliedMaxBalance;
 
-      if (account.balance === undefined) {
+      if (account.initialBalance === undefined) {
         matchesMinBalance = true;
         matchesMaxBalance = true;
       }
@@ -333,22 +335,11 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   }
   
   /**
-   * Get balance for an account (from real-time streams or account data)
+   * Get initial balance for an account (the balance entered when adding the account)
    */
   getAccountBalance(account: AccountData): number | undefined {
-    // Obtener balance actualizado del signal
-    const currentBalances = this.appContext.accountBalances();
-    
-    // Primero intentar obtener del balance en tiempo real
-    const realTimeBalance = currentBalances.get(account.accountID) || 
-                           currentBalances.get(account.id);
-    
-    if (realTimeBalance !== undefined && realTimeBalance !== null) {
-      return realTimeBalance;
-    }
-    
-    // Fallback al balance del objeto account
-    return account.balance;
+    // Retornar solo el balance inicial que se ingresó al añadir la cuenta
+    return account.initialBalance;
   }
 
   /**

@@ -22,6 +22,7 @@ import { PlanBannerComponent } from '../../shared/components/plan-banner/plan-ba
 import { AppContextService } from '../../shared/context';
 import { TradeLockerApiService, TradeLockerCredentials } from '../../shared/services/tradelocker-api.service';
 import { ToastNotificationService } from '../../shared/services/toast-notification.service';
+import { ToastContainerComponent } from '../../shared/components/toast-container/toast-container.component';
 
 /**
  * Main component for managing trading accounts.
@@ -63,6 +64,7 @@ import { ToastNotificationService } from '../../shared/services/toast-notificati
     CreateAccountPopupComponent,
     PlanLimitationModalComponent,
     PlanBannerComponent,
+    ToastContainerComponent,
   ],
   templateUrl: './trading-accounts.component.html',
   styleUrl: './trading-accounts.component.scss',
