@@ -86,30 +86,30 @@ export class StrategyOperationsService {
     initialDelay: number = 1500
   ): Promise<T> {
     let lastError: any;
-    
+
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return await fn();
       } catch (error: any) {
         lastError = error;
-        
+
         // Only retry on 429 (Too Many Requests) errors
         if (error?.status === 429 && attempt < maxRetries) {
           const delay = initialDelay * Math.pow(2, attempt);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
-        
+
         // For other errors or if max retries reached, throw immediately
         throw error;
       }
     }
-    
+
     throw lastError;
   }
 
   // ===== CONFIGURATION-OVERVIEW (colección de metadatos) =====
-  
+
   /**
    * Crear configuration-overview (solo metadatos)
    * Now uses backend API but maintains same interface
@@ -118,14 +118,14 @@ export class StrategyOperationsService {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.createConfigurationOverview(userId, name, idToken);
-      
+
       if (!response.success || !response.data) {
         throw new Error(response.error?.message || 'Failed to create configuration overview');
       }
 
       // Invalidar caché de conteo después de crear estrategia
       this.invalidateStrategiesCountCache(userId);
-      
+
       return response.data.overviewId;
     } catch (error) {
       console.error('Error creating configuration overview:', error);
@@ -149,11 +149,11 @@ export class StrategyOperationsService {
       return await this.retryWithBackoff(async () => {
         const idToken = await this.getIdToken();
         const response = await this.backendApi.getConfigurationOverview(overviewId, idToken);
-        
+
         if (!response.success || !response.data) {
           return null;
         }
-        
+
         return response.data.overview as ConfigurationOverview;
       });
     } catch (error: any) {
@@ -182,9 +182,9 @@ export class StrategyOperationsService {
       if (updates.configurationId !== undefined) updateData.configurationId = updates.configurationId;
       if (updates.dateActive !== undefined) updateData.dateActive = updates.dateActive;
       if (updates.dateInactive !== undefined) updateData.dateInactive = updates.dateInactive;
-      
+
       const response = await this.backendApi.updateConfigurationOverview(overviewId, updateData, idToken);
-      
+
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update configuration overview');
       }
@@ -206,7 +206,7 @@ export class StrategyOperationsService {
 
       const idToken = await this.getIdToken();
       const response = await this.backendApi.deleteConfigurationOverview(overviewId, idToken);
-      
+
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to delete configuration overview');
       }
@@ -222,7 +222,7 @@ export class StrategyOperationsService {
   }
 
   // ===== CONFIGURATIONS (colección de reglas) =====
-  
+
   /**
    * Crear configuración (solo reglas + IDs)
    * Now uses backend API but maintains same interface
@@ -231,7 +231,7 @@ export class StrategyOperationsService {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.createConfiguration(userId, configurationOverviewId, configuration, idToken);
-      
+
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to create configuration');
       }
@@ -249,11 +249,11 @@ export class StrategyOperationsService {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.getConfiguration(userId, idToken);
-      
+
       if (!response.success || !response.data) {
         return null;
       }
-      
+
       return response.data.configuration as StrategyState;
     } catch (error) {
       console.error('Error getting configuration:', error);
@@ -269,7 +269,7 @@ export class StrategyOperationsService {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.updateConfiguration(userId, configuration, idToken);
-      
+
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update configuration');
       }
@@ -287,14 +287,14 @@ export class StrategyOperationsService {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.createConfigurationOnly(configuration, idToken);
-      
+
       if (!response.success || !response.data) {
         throw new Error(response.error?.message || 'Failed to create configuration');
       }
-      
+
       // No invalidar caché aquí porque aún no se ha creado el overview
       // El caché se invalidará cuando se cree el overview completo
-      
+
       return response.data.configurationId;
     } catch (error) {
       console.error('Error creating configuration:', error);
@@ -316,14 +316,14 @@ export class StrategyOperationsService {
         configurationId,
         shouldBeActive
       );
-      
+
       if (!response.success || !response.data) {
         throw new Error(response.error?.message || 'Failed to create configuration overview');
       }
-      
+
       // Invalidar caché de conteo después de crear estrategia
       this.invalidateStrategiesCountCache(userId);
-      
+
       return response.data.overviewId;
     } catch (error) {
       console.error('Error creating configuration overview:', error);
@@ -339,7 +339,7 @@ export class StrategyOperationsService {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.updateConfigurationById(configurationId, configuration, idToken);
-      
+
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update configuration by ID');
       }
@@ -360,12 +360,12 @@ export class StrategyOperationsService {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.getConfigurationById(configurationId, idToken);
-      
+
       if (!response.success || !response.data) {
         console.error('Backend response error:', response);
         return null;
       }
-      
+
       return response.data.configuration as StrategyState;
     } catch (error: any) {
       console.error('Error getting configuration by ID:', error);
@@ -385,12 +385,12 @@ export class StrategyOperationsService {
     try {
       // 1. Primero obtener el overview para obtener el configurationId
       const overview = await this.getConfigurationOverview(overviewId);
-      
+
       if (!overview || !overview.configurationId) {
         console.error('Overview not found or missing configurationId');
         return null;
       }
-      
+
       // 2. Obtener la configuración usando el configurationId
       return await this.getConfigurationById(overview.configurationId);
     } catch (error) {
@@ -407,29 +407,29 @@ export class StrategyOperationsService {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.getUserStrategyViews(userId, idToken);
-      
+
       if (!response.success || !response.data) {
         return [];
       }
-      
+
       // Mapear las estrategias para asegurar que tengan el campo 'id'
       // El backend debería devolver el ID del documento, pero si no lo hace,
       // necesitamos agregarlo. Verificar si viene como 'id', 'overviewId', o '_id'
       const strategies = (response.data.strategies || []).map((strategy: any, index: number) => {
         // Intentar obtener el ID de diferentes campos posibles
         let strategyId = strategy.id || strategy._id || strategy.overviewId || strategy.overview_id;
-        
+
         // Si el backend devuelve el ID con otro nombre, mapearlo aquí
         if (strategyId) {
           return { ...strategy, id: strategyId };
         }
-        
+
         // Si no hay ID, retornar la estrategia tal cual (pero esto causará problemas)
         // En este caso, deberíamos loguear un error
         console.error(`❌ Strategy missing ID:`, strategy);
         return strategy;
       }).filter((strategy: any) => strategy.id); // Filtrar estrategias sin ID
-      
+
       return strategies;
     } catch (error) {
       console.error('❌ Error getting user strategies:', error);
@@ -445,11 +445,11 @@ export class StrategyOperationsService {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.getActiveConfiguration(userId, idToken);
-      
+
       if (!response.success || !response.data) {
         return null;
       }
-      
+
       return response.data.overview as ConfigurationOverview;
     } catch (error) {
       console.error('Error getting active configuration:', error);
@@ -465,13 +465,66 @@ export class StrategyOperationsService {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.activateStrategyView(userId, strategyId, idToken);
-      
+
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to activate strategy');
       }
     } catch (error) {
       console.error('Error activating strategy:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Activate strategy (Transactional)
+   * Deactivates any currently active strategy and activates the new one
+   */
+  async activateStrategy(userId: string, strategyId: string): Promise<void> {
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.activateStrategy(userId, strategyId, idToken);
+
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to activate strategy transactionally');
+      }
+    } catch (error) {
+      console.error('Error activating strategy transactionally:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all user strategies with full configuration
+   * Returns an array of objects containing both 'overview' and 'configuration'
+   */
+  async getUserCompleteStrategies(userId: string): Promise<Array<{ overview: ConfigurationOverview; configuration: StrategyState }>> {
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getUserCompleteStrategies(userId, idToken);
+
+      if (!response.success || !response.data) {
+        return [];
+      }
+
+      const strategies = (response.data.strategies || []).map((s: any) => {
+        // Ensure overview has ID
+        const overview = s.overview;
+        const strategyId = overview.id || overview._id || overview.overviewId;
+
+        if (strategyId) {
+          overview.id = strategyId;
+        }
+
+        return {
+          overview: overview as ConfigurationOverview,
+          configuration: s.configuration as StrategyState
+        };
+      }).filter((s: any) => s.overview.id);
+
+      return strategies;
+    } catch (error) {
+      console.error('Error getting user complete strategies:', error);
+      return [];
     }
   }
 
@@ -483,50 +536,50 @@ export class StrategyOperationsService {
   async updateStrategyDates(userId: string, strategyId: string, dateActive?: Date, dateInactive?: Date): Promise<void> {
     try {
       const idToken = await this.getIdToken();
-      
+
       // Obtener el overview actual para tener los arrays de fechas existentes
       const currentOverview = await this.getConfigurationOverview(strategyId);
-      
+
       if (!currentOverview) {
         throw new Error('Strategy overview not found');
       }
-      
+
       // Preparar los arrays de fechas actualizados
       const updatedDateActive = currentOverview.dateActive ? [...currentOverview.dateActive] : [];
       const updatedDateInactive = currentOverview.dateInactive ? [...currentOverview.dateInactive] : [];
-      
+
       // Agregar nueva fecha de activación si se proporciona
       if (dateActive) {
         // Convertir Date a ISO string
         const dateActiveISO = dateActive.toISOString();
         updatedDateActive.push(dateActiveISO);
       }
-      
+
       // Agregar nueva fecha de desactivación si se proporciona
       if (dateInactive) {
         // Convertir Date a ISO string
         const dateInactiveISO = dateInactive.toISOString();
         updatedDateInactive.push(dateInactiveISO);
       }
-      
+
       // Actualizar el overview usando el endpoint existente
       const updates: Partial<ConfigurationOverview> = {
         dateActive: updatedDateActive,
         dateInactive: updatedDateInactive
       };
-      
+
       // Si se agregó una fecha de activación, actualizar el status a true
       if (dateActive) {
         updates.status = true;
       }
-      
+
       // Si se agregó una fecha de desactivación, actualizar el status a false
       if (dateInactive) {
         updates.status = false;
       }
-      
+
       const response = await this.backendApi.updateConfigurationOverview(strategyId, updates, idToken);
-      
+
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update strategy dates');
       }
@@ -589,7 +642,7 @@ export class StrategyOperationsService {
 
       const idToken = await this.getIdToken();
       const response = await this.backendApi.markStrategyAsDeleted(strategyId, idToken);
-      
+
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to mark strategy as deleted');
       }
@@ -626,25 +679,25 @@ export class StrategyOperationsService {
     if (cached && (now - cached.timestamp) < this.CACHE_TTL) {
       return cached.count;
     }
-    
+
     // Crear promesa y guardarla para evitar peticiones duplicadas
     const requestPromise = (async () => {
       try {
         const idToken = await this.getIdToken();
         const response = await this.backendApi.getStrategiesCount(userId, idToken);
-        
+
         if (!response.success || !response.data) {
           return 0;
         }
-        
+
         const count = response.data.count;
-        
+
         // Guardar en caché
         this.strategiesCountCache.set(userId, {
           count,
           timestamp: now
         });
-        
+
         return count;
       } catch (error) {
         console.error('❌ getAllLengthConfigurationsOverview: Error getting strategies count:', error);
@@ -670,7 +723,7 @@ export class StrategyOperationsService {
 
     // Guardar la promesa para evitar peticiones duplicadas
     this.pendingCountRequests.set(userId, requestPromise);
-    
+
     return requestPromise;
   }
 

@@ -568,8 +568,15 @@ export class ReportComponent implements OnInit {
   }
 
   fetchUserRules() {
+    const userId = this.user?.id;
+    if (!userId) {
+      this.store.dispatch(resetConfig({ config: initialStrategyState }));
+      this.config = this.prepareConfigDisplayData(initialStrategyState);
+      this.checkIfAllDataLoaded();
+      return;
+    }
     this.strategySvc
-      .getStrategyConfig(this.user?.id)
+      .getConfiguration(userId)
       .then((data) => {
         if (data) {
           this.store.dispatch(resetConfig({ config: data }));

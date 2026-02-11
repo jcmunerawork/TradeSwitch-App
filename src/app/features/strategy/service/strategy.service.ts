@@ -46,10 +46,10 @@ export class SettingsService {
     private appContext: AppContextService,
     private authService: AuthService,
     private strategyCacheService: StrategyCacheService
-  ) {}
+  ) { }
 
   // ===== CONFIGURATION-OVERVIEW (colección de metadatos) =====
-  
+
   // Crear configuration-overview (solo metadatos)
   async createConfigurationOverview(userId: string, name: string): Promise<string> {
     return this.strategyOperationsService.createConfigurationOverview(userId, name);
@@ -71,7 +71,7 @@ export class SettingsService {
   }
 
   // ===== CONFIGURATIONS (colección de reglas) =====
-  
+
   // Crear configuración (solo reglas + IDs)
   async createConfiguration(userId: string, configurationOverviewId: string, configuration: StrategyState): Promise<void> {
     return this.strategyOperationsService.createConfiguration(userId, configurationOverviewId, configuration);
@@ -88,7 +88,7 @@ export class SettingsService {
   }
 
   // ===== MÉTODOS INDIVIDUALES NUEVOS =====
-  
+
   // Crear solo configuration (sin userId ni configurationOverviewId)
   async createConfigurationOnly(configuration: StrategyState): Promise<string> {
     return this.strategyOperationsService.createConfigurationOnly(configuration);
@@ -105,36 +105,36 @@ export class SettingsService {
   }
 
   // ===== MÉTODOS COMBINADOS =====
-  
+
   // Crear estrategia completa (configurations + configuration-overview)
   async createStrategyView(userId: string, name: string, configuration: StrategyState, shouldBeActive: boolean = false): Promise<string> {
     this.appContext.setLoading('strategies', true);
     this.appContext.setError('strategies', null);
-    
+
     try {
       // 1. Crear configuration primero para obtener el ID
       const configurationId = await this.createConfigurationOnly(configuration);
-      
+
       // 2. Crear configuration-overview con el configurationId
       const overviewId = await this.createConfigurationOverviewWithConfigId(userId, name, configurationId, shouldBeActive);
-      
+
       // 3. Obtener la nueva estrategia completa
       const newStrategy = await this.getConfigurationOverview(overviewId);
       if (!newStrategy) {
         throw new Error('Failed to get created strategy');
       }
-      
+
       // 4. Actualizar conteos del usuario
       await this.authService.updateUserCounts(userId);
-      
+
       // 5. ✅ OPTIMIZACIÓN: Guardar solo la nueva strategy en cache y localStorage
       // En lugar de recargar todas las strategies, solo agregamos la nueva
       this.strategyCacheService.setStrategy(overviewId, newStrategy, configuration);
-      
+
       // 6. Actualizar contexto con la nueva estrategia (solo una vez)
       this.appContext.addStrategy({ ...newStrategy, id: overviewId });
-      
-      
+
+
       this.appContext.setLoading('strategies', false);
       return overviewId;
     } catch (error) {
@@ -152,17 +152,17 @@ export class SettingsService {
     if (cached) {
       return cached;
     }
-    
+
     // 2. Si no está en cache, obtener desde el backend
     const overview = await this.getConfigurationOverview(overviewId);
-    
+
     if (!overview) {
       return null;
     }
 
     // 3. Luego obtener configuration usando el configurationId
     const configuration = await this.getConfigurationById(overview.configurationId);
-    
+
     if (!configuration) {
       return null;
     }
@@ -191,19 +191,19 @@ export class SettingsService {
       throw new Error('Strategy not found or missing userId');
     }
     const userId = currentOverview.userId;
-    
+
     // 2. Actualizar configuration-overview si hay cambios de nombre
     if (updates.name) {
       await this.updateConfigurationOverview(overviewId, { name: updates.name });
     }
-    
+
     // 3. Actualizar configuration si hay cambios de reglas
     if (updates.configuration) {
       if (currentOverview.configurationId) {
         await this.updateConfigurationById(currentOverview.configurationId, updates.configuration);
       }
     }
-    
+
     // 4. ✅ OPTIMIZACIÓN: Actualizar solo la strategy modificada en cache y localStorage
     // En lugar de recargar todas las strategies, solo actualizamos la que cambió
     try {
@@ -212,7 +212,7 @@ export class SettingsService {
       if (!updatedOverview) {
         throw new Error('Failed to get updated strategy overview');
       }
-      
+
       // Obtener la configuración (puede ser la actualizada o la existente)
       let updatedConfiguration: StrategyState;
       if (updates.configuration && updatedOverview.configurationId) {
@@ -233,13 +233,13 @@ export class SettingsService {
           throw new Error('Strategy has no configuration ID');
         }
       }
-      
+
       // Actualizar en cache (esto también actualiza localStorage automáticamente)
       this.strategyCacheService.setStrategy(overviewId, updatedOverview, updatedConfiguration);
-      
+
       // Actualizar en el contexto de la aplicación (solo esta strategy)
       this.appContext.updateStrategy(overviewId, updatedOverview);
-      
+
     } catch (error) {
       console.error('❌ Error updating strategy in cache, falling back to full reload:', error);
       // Si falla la actualización individual, hacer recarga completa como fallback
@@ -251,7 +251,7 @@ export class SettingsService {
   async getUserStrategyViews(userId: string): Promise<ConfigurationOverview[]> {
     this.appContext.setLoading('strategies', true);
     this.appContext.setError('strategies', null);
-    
+
     try {
       const strategies = await this.strategyOperationsService.getUserStrategyViews(userId);
       this.appContext.setUserStrategies(strategies);
@@ -274,43 +274,55 @@ export class SettingsService {
     return this.strategyOperationsService.getActiveConfiguration(userId);
   }
 
-  // Método legacy para compatibilidad
-  async getStrategyConfig(userId: string) {
-    return await this.getConfiguration(userId);
-  }
 
-  // Método legacy para compatibilidad
-  async saveStrategyConfig(userId: string, configurationOverviewId: string) {
-    // Este método ya no es necesario con la nueva estructura
-    console.warn('saveStrategyConfig is deprecated. Use createConfiguration instead.');
-  }
 
-  // Activar una estrategia
+  // Activar una estrategia (usando endpoint transaccional)
   async activateStrategyView(userId: string, strategyId: string): Promise<void> {
-    await this.strategyOperationsService.activateStrategyView(userId, strategyId);
-    
+    // Usar el nuevo método transaccional
+    await this.strategyOperationsService.activateStrategy(userId, strategyId);
+
     // ✅ OPTIMIZACIÓN: Actualizar solo la strategy activada en cache y localStorage
     try {
-      const updatedOverview = await this.getConfigurationOverview(strategyId);
-      if (updatedOverview) {
-        // Obtener la configuración desde cache o backend
-        const existingStrategy = this.strategyCacheService.getStrategy(strategyId);
-        if (existingStrategy) {
-          // Actualizar solo el overview (el estado de activación cambió)
-          this.strategyCacheService.setStrategy(strategyId, updatedOverview, existingStrategy.configuration);
-          
-          // Actualizar en el contexto
-          this.appContext.activateStrategy(strategyId);
-          
-        } else {
-          // Si no está en cache, recargar solo esta strategy
-          const strategyData = await this.getStrategyView(strategyId);
-          if (strategyData) {
-            this.strategyCacheService.setStrategy(strategyId, strategyData.overview, strategyData.configuration);
-            this.appContext.activateStrategy(strategyId);
-          }
+      // Como es transaccional, todas las demás se desactivaron.
+      // Necesitamos actualizar el estado local para reflejar esto sin recargar todo.
+
+      const allStrategies = this.strategyCacheService.getAllStrategies();
+      const strategiesCache = new Map<string, { overview: ConfigurationOverview; configuration: StrategyState }>();
+
+      // Recorrer todas las estrategias en cache
+      for (const [id, data] of allStrategies.entries()) {
+        const isTarget = id === strategyId;
+
+        // Actualizar status
+        const updatedOverview = {
+          ...data.overview,
+          status: isTarget
+        };
+
+        // Actualizar fechas si es necesario (el backend ya lo hizo, aquí es solo para UI inmediata)
+        if (isTarget) {
+          if (!updatedOverview.dateActive) updatedOverview.dateActive = [];
+          updatedOverview.dateActive = [...updatedOverview.dateActive, new Date().toISOString()];
+        } else if (data.overview.status) {
+          // Si estaba activa, ahora se desactiva
+          if (!updatedOverview.dateInactive) updatedOverview.dateInactive = [];
+          updatedOverview.dateInactive = [...updatedOverview.dateInactive, new Date().toISOString()];
+        }
+
+        strategiesCache.set(id, {
+          overview: updatedOverview,
+          configuration: data.configuration
+        });
+
+        // Actualizar active strategy en contexto si es la target
+        if (isTarget) {
+          this.appContext.activateStrategy(id);
         }
       }
+
+      // Guardar todo el mapa actualizado
+      this.strategyCacheService.setAllStrategies(strategiesCache);
+
     } catch (error) {
       console.error('❌ Error updating strategy activation in cache, falling back to full reload:', error);
       // Si falla, hacer recarga completa como fallback
@@ -340,17 +352,17 @@ export class SettingsService {
     if (!strategy) {
       throw new Error('Strategy not found');
     }
-    
+
     const userId = strategy.userId;
-    
+
     // 2. Marcar la estrategia como eliminada
     await this.strategyOperationsService.markStrategyAsDeleted(strategyId);
-    
+
     // 3. Actualizar conteos del usuario
     if (userId) {
       await this.authService.updateUserCounts(userId);
     }
-    
+
     // 4. ✅ OPTIMIZACIÓN: Remover solo esta strategy del cache y localStorage
     // En lugar de recargar todas las strategies, solo removemos la eliminada
     try {
@@ -358,10 +370,10 @@ export class SettingsService {
       const allStrategies = this.strategyCacheService.getAllStrategies();
       allStrategies.delete(strategyId);
       this.strategyCacheService.setAllStrategies(allStrategies);
-      
+
       // Remover del contexto
       this.appContext.removeStrategy(strategyId);
-      
+
     } catch (error) {
       console.error('❌ Error removing strategy from cache, falling back to full reload:', error);
       // Si falla, hacer recarga completa como fallback
@@ -369,6 +381,13 @@ export class SettingsService {
         await this.reloadAllStrategiesToCache(userId);
       }
     }
+  }
+
+  /**
+   * Obtener todas las estrategias completas (overview + configuration)
+   */
+  async getUserCompleteStrategies(userId: string): Promise<Array<{ overview: ConfigurationOverview; configuration: StrategyState }>> {
+    return this.strategyOperationsService.getUserCompleteStrategies(userId);
   }
 
   /**
@@ -381,66 +400,164 @@ export class SettingsService {
    */
   async reloadAllStrategiesToCache(userId: string): Promise<void> {
     try {
-      // 1. Obtener todas las estrategias (overviews) del usuario
-      const allStrategies = await this.getUserStrategyViews(userId);
-      
-      if (!allStrategies || allStrategies.length === 0) {
+      // 1. Obtener todas las estrategias completas de una vez usando el nuevo endpoint batch
+      const strategies = await this.getUserCompleteStrategies(userId);
+
+      if (!strategies || strategies.length === 0) {
         // Si no hay estrategias, limpiar el cache
         this.strategyCacheService.clearCache();
         return;
       }
 
-      // 2. Para cada estrategia, cargar su configuración completa
-      // Limitar peticiones concurrentes para evitar rate limiting (429)
-      const CONCURRENT_REQUESTS = 2; // Procesar máximo 2 estrategias a la vez
+      // 2. Construir mapa para cache
       const strategiesCache = new Map<string, { overview: ConfigurationOverview; configuration: StrategyState }>();
-      
-      for (let i = 0; i < allStrategies.length; i += CONCURRENT_REQUESTS) {
-        const batch = allStrategies.slice(i, i + CONCURRENT_REQUESTS);
-        
-        await Promise.all(
-          batch.map(async (strategy) => {
-            try {
-              // Validar que la estrategia tenga un ID válido
-              const strategyId = (strategy as any).id || (strategy as any)._id || (strategy as any).overviewId;
-              
-              if (!strategyId) {
-                console.error('❌ Strategy missing ID:', strategy);
-                return;
-              }
-              
-              // Obtener la configuración completa
-              const strategyData = await this.getStrategyView(strategyId);
-              
-              if (strategyData && strategyData.configuration) {
-                // Guardar en cache
-                strategiesCache.set(strategyId, {
-                  overview: strategyData.overview,
-                  configuration: strategyData.configuration
-                });
-              }
-            } catch (error: any) {
-              // Manejar específicamente errores 429
-              if (error?.status === 429) {
-                console.warn(`⚠️ Rate limit (429) when loading strategy ${strategy.name} for cache. Will retry later.`);
-              } else {
-                console.error(`❌ Error loading strategy ${strategy.name} for cache:`, error);
-              }
-            }
-          })
-        );
-        
-        // Pequeña pausa entre lotes para evitar rate limiting
-        if (i + CONCURRENT_REQUESTS < allStrategies.length) {
-          await new Promise(resolve => setTimeout(resolve, 300)); // 300ms entre lotes
+
+      strategies.forEach(s => {
+        if (s.overview.id) {
+          strategiesCache.set(s.overview.id, s);
         }
-      }
+      });
 
       // 3. Guardar todas las estrategias en el cache (memoria y localStorage)
       this.strategyCacheService.setAllStrategies(strategiesCache);
+
+      // 4. Actualizar el contexto con las overviews
+      const overviews = strategies.map(s => s.overview);
+      this.appContext.setUserStrategies(overviews);
+
     } catch (error) {
       console.error('❌ Error reloading strategies to cache:', error);
       // No lanzar el error para que no interrumpa el flujo principal
     }
+  }
+
+  // ===== HELPER METHODS =====
+
+  /**
+   * Generar nombre único para una estrategia
+   * @param baseName - Nombre base para la estrategia
+   * @param existingStrategies - Lista de estrategias existentes para verificar duplicados
+   */
+  generateUniqueStrategyName(baseName: string, existingStrategies: ConfigurationOverview[]): string {
+    // Extraer solo los nombres
+    const existingNames = existingStrategies.map(strategy => strategy.name);
+
+    // Si el nombre base no existe, usarlo tal como está
+    if (!existingNames.includes(baseName)) {
+      return baseName;
+    }
+
+    // Si el nombre base termina con "copy", agregar número secuencial
+    if (baseName.toLowerCase().endsWith('copy')) {
+      let counter = 1;
+      let newName = `${baseName} ${counter}`;
+
+      while (existingNames.includes(newName)) {
+        counter++;
+        newName = `${baseName} ${counter}`;
+      }
+
+      return newName;
+    }
+
+    // Si el nombre base no termina con "copy", agregar "copy" primero
+    let copyName = `${baseName} copy`;
+
+    if (!existingNames.includes(copyName)) {
+      return copyName;
+    }
+
+    // Si "copy" ya existe, agregar número secuencial
+    let counter = 1;
+    let newName = `${baseName} copy ${counter}`;
+
+    while (existingNames.includes(newName)) {
+      counter++;
+      newName = `${baseName} copy ${counter}`;
+    }
+
+    return newName;
+  }
+
+  /**
+   * Crear una estrategia genérica con configuración vacía
+   * Maneja la lógica de "Primera Estrategia" (activa por defecto) y nombres únicos
+   * 
+   * @param userId - ID del usuario
+   * @param existingStrategies - Lista de estrategias existentes para lógica de negocio
+   * @returns Promise<string> - ID de la nueva estrategia creada
+   */
+  async createGenericStrategy(userId: string, existingStrategies: ConfigurationOverview[]): Promise<string> {
+    // 1. Generar nombre único
+    const genericName = this.generateUniqueStrategyName('Strategy', existingStrategies);
+
+    // 2. Determinar si es la primera estrategia (si no hya estrategias activas ni eliminadas)
+    // NOTA: Para ser consistentes con el frontend, asumimos que si existingStrategies está vacío, es la primera.
+    // Aunque idealmente deberíamos verificar con backend si hay eliminadas, 
+    // asumiremos la lista pasada como fuente de verdad para la decisión de "Active/Inactive".
+    const isFirstStrategy = existingStrategies.length === 0;
+
+    // 3. Crear configuración vacía con reglas por defecto
+    const emptyStrategyConfig: StrategyState = {
+      maxDailyTrades: {
+        isActive: false,
+        maxDailyTrades: 0,
+        type: 'MAX DAILY TRADES' as any,
+      },
+      riskReward: {
+        isActive: false,
+        riskRewardRatio: '1:2',
+        type: 'RISK REWARD RATIO' as any,
+      },
+      riskPerTrade: {
+        isActive: false,
+        review_type: 'MAX',
+        number_type: 'PERCENTAGE',
+        percentage_type: 'NULL',
+        risk_ammount: 0,
+        type: 'MAX RISK PER TRADE' as any,
+        balance: 0,
+        actualBalance: 0,
+      },
+      daysAllowed: {
+        isActive: false,
+        type: 'DAYS ALLOWED' as any,
+        tradingDays: [],
+      },
+      hoursAllowed: {
+        isActive: false,
+        tradingOpenTime: '',
+        tradingCloseTime: '',
+        timezone: '',
+        type: 'TRADING HOURS' as any,
+      },
+      assetsAllowed: {
+        isActive: false,
+        type: 'ASSETS ALLOWED' as any,
+        assetsAllowed: [],
+      },
+    };
+
+    // 4. Crear la estrategia
+    const strategyId = await this.createStrategyView(
+      userId,
+      genericName,
+      emptyStrategyConfig,
+      isFirstStrategy // Primera estrategia activa, el resto inactivas
+    );
+
+    // 5. Si NO es la primera estrategia, agregar dateInactive inmediatamente
+    if (!isFirstStrategy) {
+      const inactiveTime = new Date(Date.now() + 2000); // +2 segundos
+
+      await this.updateStrategyDates(
+        userId,
+        strategyId,
+        undefined,
+        inactiveTime
+      );
+    }
+
+    return strategyId;
   }
 }

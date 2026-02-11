@@ -97,7 +97,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   editPopupVisible = false;
   confirmPopupVisible = false;
   strategyId: string | null = null;
-  
+
   // Mini card properties
   currentStrategyName: string = 'My Strategy';
   lastModifiedText: string = 'Never modified';
@@ -107,7 +107,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   accountsData: AccountData[] = [];
   currentAccount: AccountData | null = null;
   availableInstruments: string[] = [];
-  
+
   // Plugin history properties
   pluginHistory: PluginHistory[] = [];
   isPluginActive: boolean = false;
@@ -139,7 +139,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
   async ngOnInit() {
     this.initialLoading = true;
-    
+
     try {
       // FLUJO SIMPLIFICADO: Cargar todo antes de mostrar la UI
       await this.initializeEverything();
@@ -156,10 +156,10 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   private async initializeEverything(): Promise<void> {
     // 1. Obtener datos del usuario
     await this.getUserDataAsync();
-    
+
     // 2. Configurar listeners
     this.listenConfigurations();
-    
+
     // 3. Obtener ID de estrategia y cargar configuración
     this.getStrategyId();
   }
@@ -172,14 +172,14 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   getStrategyId() {
     this.route.queryParams.subscribe(params => {
       const newStrategyId = params['strategyId'] || null;
-      
+
       // Si cambió la estrategia, limpiar el estado
       if (this.strategyId !== newStrategyId) {
         this.clearState();
       }
-      
+
       this.strategyId = newStrategyId;
-      
+
       // Cargar configuración usando el cache
       this.loadStrategyFromCache();
     });
@@ -197,7 +197,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     this.isFavorited = false;
     this.isEditingName = false;
     this.editingStrategyName = '';
-    
+
     // LIMPIAR EL STORE para evitar datos de estrategias anteriores
     // Usar un estado inicial vacío en lugar de null
     const emptyState: StrategyState = {
@@ -208,7 +208,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       assetsAllowed: { isActive: false, type: RuleType.ASSETS_ALLOWED, assetsAllowed: [] },
       hoursAllowed: { isActive: false, type: RuleType.TRADING_HOURS, tradingOpenTime: '', tradingCloseTime: '', timezone: '' }
     };
-    
+
     this.store.dispatch(resetConfig({ config: emptyState }));
   }
 
@@ -239,10 +239,10 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
     try {
       this.initialLoading = true;
-      
+
       // Cargar estrategia directamente desde backend
       const strategyData = await this.strategySvc.getStrategyView(this.strategyId);
-      
+
       if (!strategyData || !strategyData.configuration) {
         console.error('Strategy data not found or missing configuration');
         this.initializeAsNewStrategy();
@@ -251,7 +251,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
       // Actualizar mini card
       this.currentStrategyName = strategyData.overview.name;
-      
+
       // Manejar diferentes formatos de updated_at (Firebase Timestamp o objeto con seconds/nanoseconds)
       const updatedAt = this.parseDate(strategyData.overview.updated_at);
       this.lastModifiedText = this.formatDate(updatedAt);
@@ -259,7 +259,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
       // Cargar balance y inicializar con configuración
       this.loadBalanceAndInitializeWithConfig(strategyData.configuration);
-      
+
     } catch (error) {
       console.error('Error loading strategy from backend:', error);
       this.initializeAsNewStrategy();
@@ -275,32 +275,32 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     if (!dateValue) {
       return new Date();
     }
-    
+
     // Si es un objeto Date, retornarlo directamente
     if (dateValue instanceof Date) {
       return dateValue;
     }
-    
+
     // Si tiene método toDate() (Firebase Timestamp)
     if (typeof dateValue.toDate === 'function') {
       return dateValue.toDate();
     }
-    
+
     // Si es un objeto con seconds y nanoseconds (formato del backend)
     if (dateValue.seconds !== undefined) {
       return new Date(dateValue.seconds * 1000 + (dateValue.nanoseconds || 0) / 1000000);
     }
-    
+
     // Si es una string ISO
     if (typeof dateValue === 'string') {
       return new Date(dateValue);
     }
-    
+
     // Si es un número (timestamp)
     if (typeof dateValue === 'number') {
       return new Date(dateValue);
     }
-    
+
     // Fallback: fecha actual
     return new Date();
   }
@@ -309,11 +309,14 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
    * Cargar balance e inicializar con configuración específica
    */
   loadBalanceAndInitializeWithConfig(configuration: StrategyState) {
-    // Obtener balance desde cache primero
+    // Obtener balance desde AppContext primero
     let balance = 0;
     if (this.accountsData.length > 0) {
       const firstAccount = this.accountsData[0];
-      balance = this.balanceCacheService.getBalance(firstAccount.accountID);
+      const balances = this.appContext.accountBalances();
+      if (firstAccount.accountID && balances.has(firstAccount.accountID)) {
+        balance = balances.get(firstAccount.accountID) || 0;
+      }
     }
 
     // Inicializar con balance del cache
@@ -335,8 +338,10 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     // El backend gestiona el accessToken automáticamente
     this.reportSvc.getBalanceData(account.accountID as string, account.accountNumber as number).subscribe({
       next: (balance) => {
-        // Actualizar cache con nuevo balance
-        this.balanceCacheService.setBalance(account.accountID, balance);
+        // Actualizar balance en el contexto
+        if (account.accountID) {
+          this.appContext.updateAccountBalance(account.accountID, balance);
+        }
       },
       error: (err) => {
         console.error('Error fetching balance data in background:', err);
@@ -351,7 +356,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     // Solo actualizar balance si es para balance actual (ACTUAL_B)
     // Para balance inicial (INITIAL_B), mantener el valor de Firebase
     let configWithBalance = { ...configuration };
-    
+
     if (configuration.riskPerTrade.percentage_type === 'ACTUAL_B') {
       // Para balance actual, usar el balance del cache
       configWithBalance = {
@@ -402,83 +407,83 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   distributeRulesBetweenPanels(configurationData: StrategyState) {
     // My Choices: Solo reglas activas (isActive = true)
     this.myChoices = {
-      maxDailyTrades: { 
-        isActive: configurationData.maxDailyTrades.isActive, 
-        type: configurationData.maxDailyTrades.type, 
-        maxDailyTrades: configurationData.maxDailyTrades.maxDailyTrades 
+      maxDailyTrades: {
+        isActive: configurationData.maxDailyTrades.isActive,
+        type: configurationData.maxDailyTrades.type,
+        maxDailyTrades: configurationData.maxDailyTrades.maxDailyTrades
       },
-      riskReward: { 
-        isActive: configurationData.riskReward.isActive, 
-        type: configurationData.riskReward.type, 
-        riskRewardRatio: configurationData.riskReward.riskRewardRatio 
+      riskReward: {
+        isActive: configurationData.riskReward.isActive,
+        type: configurationData.riskReward.type,
+        riskRewardRatio: configurationData.riskReward.riskRewardRatio
       },
-      riskPerTrade: { 
-        isActive: configurationData.riskPerTrade.isActive, 
-        type: configurationData.riskPerTrade.type, 
-        review_type: configurationData.riskPerTrade.review_type, 
-        number_type: configurationData.riskPerTrade.number_type, 
-        percentage_type: configurationData.riskPerTrade.percentage_type, 
-        risk_ammount: configurationData.riskPerTrade.risk_ammount, 
+      riskPerTrade: {
+        isActive: configurationData.riskPerTrade.isActive,
+        type: configurationData.riskPerTrade.type,
+        review_type: configurationData.riskPerTrade.review_type,
+        number_type: configurationData.riskPerTrade.number_type,
+        percentage_type: configurationData.riskPerTrade.percentage_type,
+        risk_ammount: configurationData.riskPerTrade.risk_ammount,
         balance: configurationData.riskPerTrade.balance,
-        actualBalance: configurationData.riskPerTrade.actualBalance 
+        actualBalance: configurationData.riskPerTrade.actualBalance
       },
-      daysAllowed: { 
-        isActive: configurationData.daysAllowed.isActive, 
-        type: configurationData.daysAllowed.type, 
-        tradingDays: configurationData.daysAllowed.tradingDays 
+      daysAllowed: {
+        isActive: configurationData.daysAllowed.isActive,
+        type: configurationData.daysAllowed.type,
+        tradingDays: configurationData.daysAllowed.tradingDays
       },
-      assetsAllowed: { 
-        isActive: configurationData.assetsAllowed.isActive, 
-        type: configurationData.assetsAllowed.type, 
-        assetsAllowed: configurationData.assetsAllowed.assetsAllowed 
+      assetsAllowed: {
+        isActive: configurationData.assetsAllowed.isActive,
+        type: configurationData.assetsAllowed.type,
+        assetsAllowed: configurationData.assetsAllowed.assetsAllowed
       },
-      hoursAllowed: { 
-        isActive: configurationData.hoursAllowed.isActive, 
-        type: configurationData.hoursAllowed.type, 
-        tradingOpenTime: configurationData.hoursAllowed.tradingOpenTime, 
-        tradingCloseTime: configurationData.hoursAllowed.tradingCloseTime, 
-        timezone: configurationData.hoursAllowed.timezone 
+      hoursAllowed: {
+        isActive: configurationData.hoursAllowed.isActive,
+        type: configurationData.hoursAllowed.type,
+        tradingOpenTime: configurationData.hoursAllowed.tradingOpenTime,
+        tradingCloseTime: configurationData.hoursAllowed.tradingCloseTime,
+        timezone: configurationData.hoursAllowed.timezone
       }
     };
 
     // Available Rules: Solo reglas NO activas (isActive = false)
     this.config = {
-      maxDailyTrades: { 
-        isActive: !configurationData.maxDailyTrades.isActive, 
-        type: configurationData.maxDailyTrades.type, 
-        maxDailyTrades: configurationData.maxDailyTrades.maxDailyTrades 
+      maxDailyTrades: {
+        isActive: !configurationData.maxDailyTrades.isActive,
+        type: configurationData.maxDailyTrades.type,
+        maxDailyTrades: configurationData.maxDailyTrades.maxDailyTrades
       },
-      riskReward: { 
-        isActive: !configurationData.riskReward.isActive, 
-        type: configurationData.riskReward.type, 
-        riskRewardRatio: configurationData.riskReward.riskRewardRatio 
+      riskReward: {
+        isActive: !configurationData.riskReward.isActive,
+        type: configurationData.riskReward.type,
+        riskRewardRatio: configurationData.riskReward.riskRewardRatio
       },
-      riskPerTrade: { 
-        isActive: !configurationData.riskPerTrade.isActive, 
-        type: configurationData.riskPerTrade.type, 
-        review_type: configurationData.riskPerTrade.review_type, 
-        number_type: configurationData.riskPerTrade.number_type, 
-        percentage_type: configurationData.riskPerTrade.percentage_type, 
-        risk_ammount: configurationData.riskPerTrade.risk_ammount, 
+      riskPerTrade: {
+        isActive: !configurationData.riskPerTrade.isActive,
+        type: configurationData.riskPerTrade.type,
+        review_type: configurationData.riskPerTrade.review_type,
+        number_type: configurationData.riskPerTrade.number_type,
+        percentage_type: configurationData.riskPerTrade.percentage_type,
+        risk_ammount: configurationData.riskPerTrade.risk_ammount,
         balance: configurationData.riskPerTrade.balance,
-        actualBalance: configurationData.riskPerTrade.actualBalance 
+        actualBalance: configurationData.riskPerTrade.actualBalance
       },
-      daysAllowed: { 
-        isActive: !configurationData.daysAllowed.isActive, 
-        type: configurationData.daysAllowed.type, 
-        tradingDays: configurationData.daysAllowed.tradingDays 
+      daysAllowed: {
+        isActive: !configurationData.daysAllowed.isActive,
+        type: configurationData.daysAllowed.type,
+        tradingDays: configurationData.daysAllowed.tradingDays
       },
-      assetsAllowed: { 
-        isActive: !configurationData.assetsAllowed.isActive, 
-        type: configurationData.assetsAllowed.type, 
-        assetsAllowed: configurationData.assetsAllowed.assetsAllowed 
+      assetsAllowed: {
+        isActive: !configurationData.assetsAllowed.isActive,
+        type: configurationData.assetsAllowed.type,
+        assetsAllowed: configurationData.assetsAllowed.assetsAllowed
       },
-      hoursAllowed: { 
-        isActive: !configurationData.hoursAllowed.isActive, 
-        type: configurationData.hoursAllowed.type, 
-        tradingOpenTime: configurationData.hoursAllowed.tradingOpenTime, 
-        tradingCloseTime: configurationData.hoursAllowed.tradingCloseTime, 
-        timezone: configurationData.hoursAllowed.timezone 
+      hoursAllowed: {
+        isActive: !configurationData.hoursAllowed.isActive,
+        type: configurationData.hoursAllowed.type,
+        tradingOpenTime: configurationData.hoursAllowed.tradingOpenTime,
+        tradingCloseTime: configurationData.hoursAllowed.tradingCloseTime,
+        timezone: configurationData.hoursAllowed.timezone
       }
     };
   }
@@ -491,23 +496,23 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       try {
         const accounts = await this.authService.getUserAccounts(this.user.id);
         this.accountsData = accounts || [];
-        
+
         // Cargar instruments para todas las cuentas si no están en el contexto
         if (this.accountsData.length > 0) {
           await this.loadInstrumentsForAllAccounts();
-          
+
           // Actualizar availableInstruments con la primera cuenta
           const firstAccount = this.accountsData[0];
           if (firstAccount?.accountID) {
             const cachedInstruments = this.appContext.getInstrumentsForAccount(firstAccount.accountID);
             if (cachedInstruments && cachedInstruments.length > 0) {
-              this.availableInstruments = cachedInstruments.map((instrument: any) => 
+              this.availableInstruments = cachedInstruments.map((instrument: any) =>
                 instrument.name || instrument.localizedName || ''
               ).filter((name: string) => name);
             }
           }
         }
-        
+
         // After loading accounts, try to fetch user key
         await this.fetchUserKeyAsync();
       } catch (error) {
@@ -534,14 +539,14 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     if (this.user?.email && this.accountsData.length > 0) {
       // Use the first account's credentials
       const firstAccount = this.accountsData[0];
-      
+
       try {
         const key = await firstValueFrom(this.reportSvc.getUserKey(
-          firstAccount.emailTradingAccount, 
-          firstAccount.brokerPassword, 
+          firstAccount.emailTradingAccount,
+          firstAccount.brokerPassword,
           firstAccount.server
         ));
-        
+
         this.store.dispatch(setUserKey({ userKey: key || '' }));
         // After getting userKey, load instruments
         this.loadInstruments(key || '', firstAccount);
@@ -571,9 +576,9 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
             this.store.dispatch(setUserKey({ userKey: '' }));
           },
         });
-        } else {
-          this.store.dispatch(setUserKey({ userKey: '' }));
-        }
+    } else {
+      this.store.dispatch(setUserKey({ userKey: '' }));
+    }
   }
 
   /**
@@ -610,7 +615,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
     }
-    
+
     return null;
   }
 
@@ -674,7 +679,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   loadInstruments(userKey: string, account: AccountData) {
     // 1. Primero intentar obtener instrumentos del contexto
     let cachedInstruments = this.appContext.getInstrumentsForAccount(account.accountID);
-    
+
     // 2. Si no están en el contexto, verificar localStorage
     if (!cachedInstruments || cachedInstruments.length === 0) {
       cachedInstruments = this.getInstrumentsFromLocalStorage(account.accountID);
@@ -683,13 +688,13 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
       }
     }
-    
+
     if (cachedInstruments && cachedInstruments.length > 0) {
       // Extraer solo los nombres de los instrumentos
-      this.availableInstruments = cachedInstruments.map((instrument: any) => 
+      this.availableInstruments = cachedInstruments.map((instrument: any) =>
         instrument.name || instrument.localizedName || ''
       ).filter((name: string) => name);
-      
+
       // Guardar instrumentos en localStorage para uso en reglas de estrategia (formato antiguo para compatibilidad)
       try {
         const instrumentNames = cachedInstruments
@@ -701,7 +706,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       }
       return;
     }
-    
+
     // 3. Si no están en el contexto ni localStorage, cargarlos desde el backend
     // El backend gestiona el accessToken automáticamente, no es necesario userKey
     this.reportSvc.getAllInstruments(
@@ -711,13 +716,13 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       next: (instruments: Instrument[]) => {
         // Extraer solo los nombres de los instrumentos
         this.availableInstruments = instruments.map(instrument => instrument.name);
-        
+
         // Guardar en el contexto para futuras referencias
         if (instruments.length > 0) {
           this.appContext.setInstrumentsForAccount(account.accountID, instruments);
           // Guardar en localStorage con la nueva clave
           this.saveInstrumentsToLocalStorage(account.accountID, instruments);
-          
+
           // Guardar instrumentos en localStorage para uso en reglas de estrategia (formato antiguo para compatibilidad)
           try {
             const instrumentNames = instruments
@@ -764,7 +769,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       this.store.select(selectUser).subscribe({
         next: async (user) => {
           this.user = user.user;
-          
+
           // Cargar cuentas y configurar plugin history cuando el usuario esté disponible
           if (this.user?.id) {
             await this.fetchUserAccountsAsync();
@@ -785,7 +790,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     this.store.select(selectUser).subscribe({
       next: (user) => {
         this.user = user.user;
-        
+
         // Cargar cuentas y configurar plugin history cuando el usuario esté disponible
         if (this.user?.id) {
           this.fetchUserAccounts();
@@ -803,22 +808,23 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
    * MÉTODO SIMPLIFICADO: Cargar balance e inicializar como nueva estrategia
    */
   loadBalanceAndInitialize() {
-    // Obtener balance desde cache primero
+    // Obtener balance desde AppContext primero
     let balance = 0;
     if (this.accountsData.length > 0) {
       const firstAccount = this.accountsData[0];
-      balance = this.balanceCacheService.getBalance(firstAccount.accountID);
+      const balances = this.appContext.accountBalances();
+      if (firstAccount.accountID && balances.has(firstAccount.accountID)) {
+        balance = balances.get(firstAccount.accountID) || 0;
+      }
     }
 
     // Inicializar con balance del cache
     this.initializeWithConfigAndBalance(initialStrategyState, balance);
 
-    // Si necesita actualización, hacer petición en background
-    if (this.accountsData.length > 0) {
+    // Si no hay balance, hacer petición en background
+    if (balance === 0 && this.accountsData.length > 0) {
       const firstAccount = this.accountsData[0];
-      if (this.balanceCacheService.needsUpdate(firstAccount.accountID)) {
-        this.updateBalanceInBackground(firstAccount);
-      }
+      this.updateBalanceInBackground(firstAccount);
     }
   }
 
@@ -869,7 +875,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     if (!this.validateActiveRules()) {
       return;
     }
-    
+
     this.confirmPopupVisible = true;
   }
 
@@ -883,7 +889,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   save = () => {
     if (this.myChoices && this.user?.id) {
       this.loading = true;
-      
+
       // GUARDADO: Crear configuración solo con las reglas de My Choices
       // Las reglas que están en My Choices son las que se guardarán como activas
       const newConfig: StrategyState = {
@@ -907,10 +913,10 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           .then(async () => {
             // Actualizar fecha de modificación en la mini card
             this.lastModifiedText = this.formatDate(new Date());
-            
+
             // NOTA: updateStrategyView ya llama a reloadAllStrategiesToCache internamente
             // No es necesario limpiar el cache aquí, ya se recarga automáticamente
-            
+
             this.router.navigate(['/strategy']);
           })
           .catch((err) => {
@@ -928,7 +934,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           .then(async (strategyId) => {
             // ✅ createStrategyView ya guarda la strategy en cache y localStorage automáticamente
             // No es necesario recargar todas las strategies
-            
+
             this.router.navigate(['/strategy']);
           })
           .catch((err) => {
@@ -964,7 +970,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     if (!this.validateActiveRules()) {
       return; // No proceder con el guardado
     }
-    
+
     this.save();
   };
 
@@ -1014,9 +1020,9 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     }
 
     if (validationErrors.length > 0) {
-      const errorMessage = 'Cannot save strategy. Please complete the following rules:\n\n' + 
-                          validationErrors.join('\n') + 
-                          '\n\nAll required fields must be filled before saving.';
+      const errorMessage = 'Cannot save strategy. Please complete the following rules:\n\n' +
+        validationErrors.join('\n') +
+        '\n\nAll required fields must be filled before saving.';
       this.alertService.showError(errorMessage, 'Validation Error');
       return false;
     }
@@ -1052,10 +1058,10 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     try {
       if (this.strategyId) {
         // ✅ Usar updateStrategyView para que se actualice automáticamente el cache y localStorage
-        await this.strategySvc.updateStrategyView(this.strategyId, { 
-          name: this.editingStrategyName.trim() 
+        await this.strategySvc.updateStrategyView(this.strategyId, {
+          name: this.editingStrategyName.trim()
         });
-        
+
         // Actualizar UI
         this.currentStrategyName = this.editingStrategyName.trim();
         this.lastModifiedText = this.formatDate(new Date());
@@ -1064,7 +1070,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         this.currentStrategyName = this.editingStrategyName.trim();
         this.lastModifiedText = this.formatDate(new Date());
       }
-      
+
       this.isEditingName = false;
     } catch (error) {
       console.error('Error updating strategy name:', error);
@@ -1104,7 +1110,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
     // Confirmar la acción
     const confirmed = confirm('Are you sure you want to reset the strategy? This will move all rules back to Available Rules and cannot be undone.');
-    
+
     if (confirmed) {
       // Resetear a configuración inicial (todas las reglas en Available Rules)
       this.initializeWithConfigAndBalance(initialStrategyState, 0);
@@ -1119,7 +1125,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
    * - Bloquear botón de guardar si está activo
    */
   setupPluginHistoryListener() {
-    
+
     if (!this.user?.id) {
       return;
     }
@@ -1132,12 +1138,12 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     }
 
     try {
-      
+
       // Suscribirse al Observable del servicio con userId
       this.pluginSubscription = this.pluginHistoryService.getPluginHistoryRealtime(this.user.id).subscribe({
         next: (pluginHistory: PluginHistory[]) => {
           this.pluginHistory = pluginHistory;
-          
+
           // Verificar si el plugin está activo usando la nueva lógica de fechas
           if (pluginHistory.length > 0) {
             const plugin = pluginHistory[0];
@@ -1146,14 +1152,14 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
             // No hay plugin para este usuario
             this.isPluginActive = false;
           }
-          
+
         },
         error: (error) => {
           console.error('Error in plugin history subscription:', error);
           this.isPluginActive = false;
         }
       });
-      
+
     } catch (error) {
       console.error('Error setting up plugin history listener:', error);
       this.isPluginActive = false;

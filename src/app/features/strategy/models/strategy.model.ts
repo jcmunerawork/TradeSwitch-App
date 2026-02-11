@@ -165,6 +165,7 @@ export interface StrategyState {
  * @interface ConfigurationOverview
  */
 export interface ConfigurationOverview {
+  id?: string;
   userId: string;
   name: string;
   status: boolean;
