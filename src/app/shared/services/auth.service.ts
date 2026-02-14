@@ -115,12 +115,12 @@ export class AuthService {
     try {
       // Get user accounts
       const accounts = await this.accountsOperationsService.getUserAccounts(userId);
-      
+
       // Solo conectar si hay cuentas
       if (accounts && accounts.length > 0) {
         // Cargar balances de todas las cuentas después del login
         await this.loadAccountBalancesOnLogin(userId, accounts);
-        
+
         // Conectar a streams
         this.accountStatusService.connect(userId, accounts);
       } else {
@@ -156,38 +156,38 @@ export class AuthService {
       const { getAuth } = auth;
       const authInstance = getAuth();
       const user = authInstance.currentUser;
-      
+
       if (!user) {
         return;
       }
-      
+
       // Filtrar cuentas válidas
-      const validAccounts = accounts.filter(account => 
+      const validAccounts = accounts.filter(account =>
         account.accountID && account.accountNumber !== undefined
       );
-      
+
       if (validAccounts.length === 0) {
         return;
       }
-      
+
       const idToken = await user.getIdToken();
-      
+
       // Preparar datos para batch request
       const batchAccounts = validAccounts.map(account => ({
         accountId: account.accountID!,
         accNum: account.accountNumber!
       }));
-      
+
       // Activar loading state
       this.appContext.setLoading('balances', true);
-      
+
       try {
         // Llamar al endpoint batch
         const batchResponse = await this.backendApi.getTradeLockerBalancesBatch(
           batchAccounts,
           idToken
         );
-        
+
         if (batchResponse.success && batchResponse.data) {
           // Procesar resultados del batch
           batchResponse.data.balances.forEach((result) => {
@@ -196,7 +196,7 @@ export class AuthService {
               const account = validAccounts.find(
                 acc => acc.accountID === result.accountId
               );
-              
+
               if (account) {
                 // Actualizar balance en el contexto
                 // El backend ya guardó el balance en Firebase, solo actualizamos el contexto
@@ -220,10 +220,10 @@ export class AuthService {
 
   private async startUserPlanListener(userId: string): Promise<void> {
     this.stopUserPlanListener();
-    
+
     // Cargar planes globales si no están cargados
     await this.loadGlobalPlansIfNeeded();
-    
+
     // Usar WebSocket del backend en lugar de Firebase listener
     this.subscriptionUnsubscribe = this.subscriptionService.listenToUserLatestSubscription(
       userId,
@@ -334,7 +334,7 @@ export class AuthService {
 
   // Firebase Auth primitives
   getAuth() { return getAuth(); }
-  
+
   /**
    * Register a new user.
    * DEPRECATED: Usar backendApi.signup() directamente.
@@ -348,20 +348,20 @@ export class AuthService {
       email: user.email,
       password: user.password
     });
-    
+
     // BackendApiService.signup ya hace sign in automáticamente, obtener el usuario actual
     const auth = getAuth();
     const currentUser = auth.currentUser;
     if (!currentUser) {
       throw new Error('User not found after registration');
     }
-    
+
     // Return user credential-like object for compatibility
     return {
       user: currentUser
     } as any;
   }
-  
+
   /**
    * Login user.
    * Now uses backend API for authentication.
@@ -375,14 +375,14 @@ export class AuthService {
       email: user.email,
       password: user.password
     });
-    
+
     // BackendApiService.login already signs in to Firebase Auth, so get current user
     const auth = getAuth();
     const currentUser = auth.currentUser;
     if (!currentUser) {
       throw new Error('User not found after login');
     }
-    
+
     // Obtener token de Firebase Auth y guardarlo en cookie y localStorage
     try {
       const idToken = await currentUser.getIdToken();
@@ -394,16 +394,16 @@ export class AuthService {
     } catch (error) {
       // Continuar aunque falle guardar la cookie
     }
-    
+
     // Return user credential-like object for compatibility
     return {
       user: currentUser
     } as any;
   }
-  
+
   loginWithGoogle() { const provider = new GoogleAuthProvider(); return signInWithPopup(getAuth(), provider); }
   loginWithApple() { const provider = new OAuthProvider('apple.com'); return signInWithPopup(getAuth(), provider); }
-  
+
   /**
    * Logout user.
    * Performs a complete logout by clearing all stored data:
@@ -416,24 +416,24 @@ export class AuthService {
    */
   async logout() {
     try {
-      
+
       // 1. Limpiar cookie de sesión específica
       this.sessionCookie.clearSessionToken();
-      
+
       if (this.isBrowser) {
         // 2. Limpiar todo el localStorage
         localStorage.clear();
-        
+
         // 3. Limpiar todo el sessionStorage
         sessionStorage.clear();
-        
+
         // 4. Limpiar todas las cookies
         this.clearAllCookies();
       }
-      
+
       // 5. Limpiar datos del contexto de la aplicación
       this.appContext.clearUserData();
-      
+
       // 6. Cerrar sesión en Firebase Auth
       await getAuth().signOut();
     } catch (error) {
@@ -460,12 +460,12 @@ export class AuthService {
     try {
       // Obtener todas las cookies
       const cookies = document.cookie.split(';');
-      
+
       // Eliminar cada cookie estableciendo su fecha de expiración en el pasado
       for (let cookie of cookies) {
         const eqPos = cookie.indexOf('=');
         const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-        
+
         if (name) {
           // Eliminar cookie para el path actual
           document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
@@ -474,7 +474,7 @@ export class AuthService {
           document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.${window.location.hostname}`;
         }
       }
-      
+
     } catch (error) {
     }
   }
@@ -491,17 +491,17 @@ export class AuthService {
     try {
       const auth = getAuth();
       const currentUser = auth.currentUser;
-      
+
       if (!currentUser) {
         return false;
       }
 
       // Obtener token actual
       const idToken = await currentUser.getIdToken();
-      
+
       // Verificar autenticación con el backend
       const authResult = await this.backendApi.checkAuth(idToken);
-      
+
       if (!authResult || !authResult.authenticated) {
         // Token inválido o expirado, redirigir al login
         await this.redirectToLogin();
@@ -516,13 +516,13 @@ export class AuthService {
       return true;
     } catch (error: any) {
       console.error('❌ AuthService: Error verificando autenticación:', error);
-      
+
       // Si es un error 401, el token es inválido
       if (error.status === 401 || error.response?.status === 401) {
         await this.redirectToLogin();
         return false;
       }
-      
+
       // Otros errores no bloquean, pero retornamos false
       return false;
     }
@@ -537,7 +537,7 @@ export class AuthService {
     try {
       const auth = getAuth();
       const currentUser = auth.currentUser;
-      
+
       if (!currentUser) {
         await this.redirectToLogin();
         return null;
@@ -545,13 +545,13 @@ export class AuthService {
 
       // Forzar renovación del token
       const newIdToken = await currentUser.getIdToken(true);
-      
+
       // Actualizar token en cookie
       this.sessionCookie.setSessionToken(newIdToken);
-      
+
       // Guardar en localStorage también
       localStorage.setItem('idToken', newIdToken);
-      
+
       return newIdToken;
     } catch (error) {
       console.error('❌ AuthService: Error renovando token:', error);
@@ -568,17 +568,17 @@ export class AuthService {
 
     // Limpiar cookie de sesión
     this.sessionCookie.clearSessionToken();
-    
+
     // Limpiar localStorage
     localStorage.removeItem('idToken');
-    
+
     // Cerrar sesión en Firebase Auth
     try {
       await getAuth().signOut();
     } catch (error) {
       console.error('Error cerrando sesión:', error);
     }
-    
+
     // Redirigir al login (esto se manejará en el componente o guard)
     // No redirigimos aquí para evitar dependencias circulares
   }
@@ -607,10 +607,10 @@ export class AuthService {
         try {
           // Verificar que el token actual sea válido
           const newToken = await currentUser.getIdToken(true); // Force refresh
-          
+
           // Actualizar token en cookie
           this.sessionCookie.setSessionToken(newToken);
-          
+
           // Cargar datos del usuario y actualizar contexto
           try {
             const userData = await this.getUserData(currentUser.uid);
@@ -635,15 +635,15 @@ export class AuthService {
         // El backend verifica el token, pero necesitamos que Firebase Auth tenga la sesión
         // Esperar un momento para que Firebase Auth se sincronice
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         currentUser = auth.currentUser;
-        
+
         if (currentUser) {
           // Obtener nuevo token y actualizar cookie
           try {
             const newToken = await currentUser.getIdToken(true);
             this.sessionCookie.setSessionToken(newToken);
-            
+
             // Cargar datos del usuario
             try {
               const userData = await this.getUserData(currentUser.uid);
@@ -681,12 +681,8 @@ export class AuthService {
    * Maintains same interface as before but uses backend for validation.
    */
   async sendPasswordReset(email: string): Promise<void> {
-    // Verify user exists via backend
+    // Verify user exists and trigger email sending via backend
     await this.backendApi.forgotPassword(email);
-    
-    // Then send email via Firebase Auth (client-side)
-    const { sendPasswordResetEmail } = await import('firebase/auth');
-    return sendPasswordResetEmail(getAuth(), email);
   }
 
   // Observabilidad de sesión
@@ -774,27 +770,27 @@ export class AuthService {
         throw new Error('User not authenticated');
       }
       const idToken = await currentUser.getIdToken();
-      
+
       // Call backend to get user data
       const response = await this.backendApi.getCurrentUser(idToken);
-      
+
       if (!response.success || !response.data) {
         throw new Error(response.error?.message || 'Failed to get user data');
       }
-      
+
       const userData = response.data.user as User;
-      
+
       // Los conteos ya vienen del backend en la respuesta, no necesitamos actualizarlos
       // Guardar en caché
       this.userDataCache.set(uid, { user: userData, timestamp: Date.now() });
-      
+
       this.appContext.setCurrentUser(userData);
       this.appContext.setLoading('user', false);
       return userData;
     } catch (error: any) {
       this.appContext.setLoading('user', false);
       this.appContext.setError('user', 'Error al obtener datos del usuario');
-      
+
       // En caso de error 429, intentar usar caché si existe (aunque esté expirado)
       if (error?.status === 429 || (error?.error && error.error.status === 429)) {
         const cached = this.userDataCache.get(uid);
@@ -804,7 +800,7 @@ export class AuthService {
           return cached.user;
         }
       }
-      
+
       throw error;
     }
   }
@@ -844,20 +840,20 @@ export class AuthService {
    * Create user document in Firestore.
    * Now handled by backend during signup, but kept for compatibility.
    */
-  async createUser(user: User) { 
+  async createUser(user: User) {
     // User creation is now handled by backend during signup
     // This method is kept for compatibility but may not be needed
-    return this.usersOperationsService.createUser(user); 
+    return this.usersOperationsService.createUser(user);
   }
-  
+
   /**
    * Create link token.
    * Now handled by backend during signup, but kept for compatibility.
    */
-  async createLinkToken(token: LinkToken) { 
+  async createLinkToken(token: LinkToken) {
     // Token creation is now handled by backend during signup
     // This method is kept for compatibility but may not be needed
-    return this.tokensOperationsService.createLinkToken(token); 
+    return this.tokensOperationsService.createLinkToken(token);
   }
   async deleteLinkToken(tokenId: string) { return this.tokensOperationsService.deleteLinkToken(tokenId); }
   async deleteUser(userId: string) { return this.usersOperationsService.deleteUser(userId); }
@@ -869,13 +865,13 @@ export class AuthService {
     try {
       await this.accountsOperationsService.createAccount(account);
       this.appContext.addAccount(account);
-      
+
       // Actualizar conteos del usuario
       // Nota: updateUserCounts() ya invalida el caché automáticamente a través de updateUser()
       if (account.userId) {
         await this.updateUserCounts(account.userId);
       }
-      
+
       // Cargar instrumentos para la nueva cuenta
       if (account.accountID && account.accountNumber !== undefined) {
         try {
@@ -890,7 +886,7 @@ export class AuthService {
           const { getAuth } = auth;
           const authInstance = getAuth();
           const user = authInstance.currentUser;
-          
+
           if (user) {
             const idToken = await user.getIdToken();
             const instrumentsResponse = await this.backendApi.getTradeLockerAllInstruments(
@@ -898,7 +894,7 @@ export class AuthService {
               account.accountNumber,
               idToken
             );
-            
+
             if (instrumentsResponse.success && instrumentsResponse.data) {
               // Nuevo formato: response.data es directamente un array de instrumentos
               let instruments: any[] = [];
@@ -909,7 +905,7 @@ export class AuthService {
               } else if (instrumentsResponse.data.d?.instruments && Array.isArray(instrumentsResponse.data.d.instruments)) {
                 instruments = instrumentsResponse.data.d.instruments;
               }
-              
+
               if (instruments.length > 0) {
                 // Guardar en contexto
                 this.appContext.setInstrumentsForAccount(account.accountID, instruments);
@@ -923,7 +919,7 @@ export class AuthService {
           // No lanzar error, solo loguear - la cuenta se creó exitosamente
         }
       }
-      
+
       this.appContext.setLoading('accounts', false);
     } catch (error) {
       this.appContext.setLoading('accounts', false);
@@ -950,13 +946,13 @@ export class AuthService {
   async getAllAccounts(): Promise<AccountData[] | null> { return this.accountsOperationsService.getAllAccounts(); }
   async checkEmailExists(emailTradingAccount: string, currentUserId: string): Promise<boolean> { return this.accountsOperationsService.checkEmailExists(emailTradingAccount, currentUserId); }
   async checkAccountIdExists(accountID: string, currentUserId: string): Promise<boolean> { return this.accountsOperationsService.checkAccountIdExists(accountID, currentUserId); }
-  async checkAccountExists(broker: string, server: string, accountID: string, currentUserId: string, excludeAccountId?: string): Promise<boolean> { 
-    return this.accountsOperationsService.checkAccountExists(broker, server, accountID, currentUserId, excludeAccountId); 
+  async checkAccountExists(broker: string, server: string, accountID: string, currentUserId: string, excludeAccountId?: string): Promise<boolean> {
+    return this.accountsOperationsService.checkAccountExists(broker, server, accountID, currentUserId, excludeAccountId);
   }
   async updateAccount(accountId: string, accountData: AccountData): Promise<void> { return this.accountsOperationsService.updateAccount(accountId, accountData); }
   async deleteAccount(accountId: string): Promise<void> {
     const userId = await this.accountsOperationsService.deleteAccount(accountId);
-    
+
     // Actualizar conteos del usuario después de eliminar la cuenta
     // Nota: updateUserCounts() ya invalida el caché automáticamente a través de updateUser()
     if (userId) {
@@ -975,11 +971,11 @@ export class AuthService {
   async getUserByEmail(email: string): Promise<User | null> {
     try {
       const user = await this.usersOperationsService.getUserByEmail(email);
-      
+
       if (user) {
       } else {
       }
-      
+
       return user;
     } catch (error) {
       console.error('❌ AuthService: Error checking if email exists:', error);
@@ -1016,7 +1012,7 @@ export class AuthService {
    */
   private saveInstrumentsToLocalStorage(accountId: string, instruments: any[]): void {
     if (!this.isBrowser) return;
-    
+
     try {
       const key = `tradeswitch_instruments_${accountId}`;
       localStorage.setItem(key, JSON.stringify({
@@ -1032,7 +1028,7 @@ export class AuthService {
    */
   private getInstrumentsFromLocalStorage(accountId: string): any[] | null {
     if (!this.isBrowser) return null;
-    
+
     try {
       const key = `tradeswitch_instruments_${accountId}`;
       const cached = localStorage.getItem(key);
@@ -1044,7 +1040,7 @@ export class AuthService {
       }
     } catch (error) {
     }
-    
+
     return null;
   }
 
