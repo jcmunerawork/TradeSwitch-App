@@ -168,20 +168,16 @@ export class StrategyOperationsService {
   }
 
   /**
-   * Actualizar configuration-overview
-   * Now uses backend API but maintains same interface
+   * Actualizar configuration-overview.
+   * Solo se envían name y/o configurationId; timeline y updated_at_history los gestiona el backend
+   * en activate/deactivate/update. No se envían dateActive, dateInactive ni timeline.
    */
   async updateConfigurationOverview(overviewId: string, updates: Partial<ConfigurationOverview>): Promise<void> {
     try {
       const idToken = await this.getIdToken();
-      // Solo enviar campos permitidos por el DTO del backend
-      // El backend maneja updated_at automáticamente
       const updateData: any = {};
       if (updates.name !== undefined) updateData.name = updates.name;
-      if (updates.status !== undefined) updateData.status = updates.status;
       if (updates.configurationId !== undefined) updateData.configurationId = updates.configurationId;
-      if (updates.dateActive !== undefined) updateData.dateActive = updates.dateActive;
-      if (updates.dateInactive !== undefined) updateData.dateInactive = updates.dateInactive;
 
       const response = await this.backendApi.updateConfigurationOverview(overviewId, updateData, idToken);
 
@@ -529,64 +525,11 @@ export class StrategyOperationsService {
   }
 
   /**
-   * Actualizar fechas de activación/desactivación de estrategias
-   * Now uses the overview endpoint to update dates
-   * The strategyId parameter is actually the overviewId
+   * @deprecated El backend gestiona timeline en activate/deactivate; no usar.
+   * Se mantiene por compatibilidad pero no hace nada (no-op).
    */
-  async updateStrategyDates(userId: string, strategyId: string, dateActive?: Date, dateInactive?: Date): Promise<void> {
-    try {
-      const idToken = await this.getIdToken();
-
-      // Obtener el overview actual para tener los arrays de fechas existentes
-      const currentOverview = await this.getConfigurationOverview(strategyId);
-
-      if (!currentOverview) {
-        throw new Error('Strategy overview not found');
-      }
-
-      // Preparar los arrays de fechas actualizados
-      const updatedDateActive = currentOverview.dateActive ? [...currentOverview.dateActive] : [];
-      const updatedDateInactive = currentOverview.dateInactive ? [...currentOverview.dateInactive] : [];
-
-      // Agregar nueva fecha de activación si se proporciona
-      if (dateActive) {
-        // Convertir Date a ISO string
-        const dateActiveISO = dateActive.toISOString();
-        updatedDateActive.push(dateActiveISO);
-      }
-
-      // Agregar nueva fecha de desactivación si se proporciona
-      if (dateInactive) {
-        // Convertir Date a ISO string
-        const dateInactiveISO = dateInactive.toISOString();
-        updatedDateInactive.push(dateInactiveISO);
-      }
-
-      // Actualizar el overview usando el endpoint existente
-      const updates: Partial<ConfigurationOverview> = {
-        dateActive: updatedDateActive,
-        dateInactive: updatedDateInactive
-      };
-
-      // Si se agregó una fecha de activación, actualizar el status a true
-      if (dateActive) {
-        updates.status = true;
-      }
-
-      // Si se agregó una fecha de desactivación, actualizar el status a false
-      if (dateInactive) {
-        updates.status = false;
-      }
-
-      const response = await this.backendApi.updateConfigurationOverview(strategyId, updates, idToken);
-
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to update strategy dates');
-      }
-    } catch (error) {
-      console.error('Error updating strategy dates:', error);
-      throw error;
-    }
+  async updateStrategyDates(_userId: string, _strategyId: string, _dateActive?: Date, _dateInactive?: Date): Promise<void> {
+    // Timeline se actualiza en el backend al llamar activateStrategy / deactivateStrategy
   }
 
   /**

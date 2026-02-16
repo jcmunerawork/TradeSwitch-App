@@ -98,18 +98,14 @@ export class StrategyActionsService {
     }
 
     const strategyConfig: StrategyState = { ...strategyData.configuration };
-    const newStrategyId = await this.strategySvc.createStrategyView(
+    await this.strategySvc.createStrategyView(
       userId,
       newName,
       strategyConfig,
       isActiveStrategy ? false : undefined
     );
 
-    if (isActiveStrategy) {
-      const inactiveTime = new Date(Date.now() + 2000);
-      await this.strategySvc.updateStrategyDates(userId, newStrategyId, undefined, inactiveTime);
-    }
-
+    // El backend crea la copia como inactiva si isActiveStrategy; timeline lo gestiona el backend
     return 'success';
   }
 

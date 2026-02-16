@@ -96,6 +96,9 @@ export class StrategyCardsDataService {
       updated_at: overview.updated_at,
       userId: overview.userId ?? '',
       configurationId: overview.configurationId ?? '',
+      timeline: overview.timeline,
+      dateActive: overview.dateActive,
+      dateInactive: overview.dateInactive,
     };
   }
 

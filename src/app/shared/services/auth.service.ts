@@ -1010,9 +1010,9 @@ export class AuthService {
       }
       
       this.appContext.setLoading('accounts', false);
-    } catch (error) {
+    } catch (error: any) {
       this.appContext.setLoading('accounts', false);
-      this.appContext.setError('accounts', 'Error al crear cuenta');
+      this.appContext.setError('accounts', error?.message || 'Error al crear cuenta');
       throw error;
     }
   }

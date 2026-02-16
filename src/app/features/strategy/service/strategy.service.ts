@@ -293,21 +293,11 @@ export class SettingsService {
       for (const [id, data] of allStrategies.entries()) {
         const isTarget = id === strategyId;
 
-        // Actualizar status
+        // Actualizar solo status; el backend gestiona timeline en activate/deactivate
         const updatedOverview = {
           ...data.overview,
           status: isTarget
         };
-
-        // Actualizar fechas si es necesario (el backend ya lo hizo, aquí es solo para UI inmediata)
-        if (isTarget) {
-          if (!updatedOverview.dateActive) updatedOverview.dateActive = [];
-          updatedOverview.dateActive = [...updatedOverview.dateActive, new Date().toISOString()];
-        } else if (data.overview.status) {
-          // Si estaba activa, ahora se desactiva
-          if (!updatedOverview.dateInactive) updatedOverview.dateInactive = [];
-          updatedOverview.dateInactive = [...updatedOverview.dateInactive, new Date().toISOString()];
-        }
 
         strategiesCache.set(id, {
           overview: updatedOverview,
@@ -330,7 +320,9 @@ export class SettingsService {
     }
   }
 
-  // Actualizar fechas de activación/desactivación de estrategias
+  /**
+   * @deprecated El backend gestiona timeline en activate/deactivate; no usar.
+   */
   async updateStrategyDates(userId: string, strategyId: string, dateActive?: Date, dateInactive?: Date): Promise<void> {
     return this.strategyOperationsService.updateStrategyDates(userId, strategyId, dateActive, dateInactive);
   }
@@ -546,18 +538,7 @@ export class SettingsService {
       isFirstStrategy // Primera estrategia activa, el resto inactivas
     );
 
-    // 5. Si NO es la primera estrategia, agregar dateInactive inmediatamente
-    if (!isFirstStrategy) {
-      const inactiveTime = new Date(Date.now() + 2000); // +2 segundos
-
-      await this.updateStrategyDates(
-        userId,
-        strategyId,
-        undefined,
-        inactiveTime
-      );
-    }
-
+    // El backend ya creó la estrategia como inactiva si !isFirstStrategy; no hace falta actualizar fechas
     return strategyId;
   }
 }

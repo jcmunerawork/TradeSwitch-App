@@ -141,18 +141,18 @@ export class PhoneInputComponent implements ControlValueAccessor, OnInit, OnDest
 
   writeValue(value: string): void {
     if (value) {
-      // Si el valor ya incluye un código de país, extraer solo el número
       const phoneMatch = value.match(/^(\+\d{1,4})\s(.+)$/);
+      const raw = phoneMatch ? phoneMatch[2] : value;
+      const digitsOnly = raw.replace(/\D/g, '');
       if (phoneMatch) {
-        const [, dialCode, phoneNumber] = phoneMatch;
-        // Buscar el país correspondiente al código de marcación
+        const dialCode = phoneMatch[1];
         const country = this.countries.find(c => c.dialCode === dialCode);
         if (country) {
           this.selectedCountry = country;
         }
-        this.phoneNumber = phoneNumber;
+        this.phoneNumber = digitsOnly;
       } else {
-        this.phoneNumber = value;
+        this.phoneNumber = digitsOnly;
       }
     } else {
       this.phoneNumber = '';
@@ -172,8 +172,10 @@ export class PhoneInputComponent implements ControlValueAccessor, OnInit, OnDest
   }
 
   onPhoneInput(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
+    const input = event.target as HTMLInputElement;
+    const value = input.value.replace(/\D/g, '');
     this.phoneNumber = value;
+    input.value = value;
     this.onChange(this.formatPhoneNumber(value));
   }
 

@@ -1037,23 +1037,6 @@ export class BackendApiService extends BaseApiService {
   }
 
   /**
-   * Update strategy dates
-   */
-  async updateStrategyDates(userId: string, strategyId: string, dateActive?: Date, dateInactive?: Date, idToken?: string): Promise<BackendApiResponse<void>> {
-    return firstValueFrom(
-      this.put<BackendApiResponse<void>>(`/strategies/${strategyId}/dates`, {
-        userId,
-        dateActive,
-        dateInactive
-      }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
-      })
-    );
-  }
-
-  /**
    * Mark strategy as deleted
    */
   async markStrategyAsDeleted(strategyId: string, idToken: string): Promise<BackendApiResponse<void>> {

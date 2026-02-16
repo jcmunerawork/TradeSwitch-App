@@ -14,7 +14,7 @@ import {
 import { ReportService } from '../../service/report.service';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 import { TradesPopupComponent } from '../trades-popup/trades-popup.component';
-import { ConfigurationOverview } from '../../../strategy/models/strategy.model';
+import { ConfigurationOverview, getStrategyRangesFromTimeline } from '../../../strategy/models/strategy.model';
 import { PluginHistoryService, PluginHistory } from '../../../../shared/services/plugin-history.service';
 import { AppContextService } from '../../../../shared/context';
 import { TradeLockerApiService } from '../../../../shared/services/tradelocker-api.service';
@@ -395,50 +395,47 @@ export class CalendarComponent {
    * @returns true si la estrategia estaba activa, false si no
    */
   private isStrategyActiveAtTime(strategy: ConfigurationOverview, tradeDate: Date): boolean {
-    // Si la estrategia no tiene fechas de activación, no estaba activa
-    if (!strategy.dateActive || !strategy.dateInactive) {
-      return false;
+    const strategyRanges = this.getStrategyRangesForOverview(strategy, tradeDate);
+    for (const range of strategyRanges) {
+      if (tradeDate >= range.start && tradeDate <= range.end) {
+        return true;
+      }
     }
+    return false;
+  }
 
+  /** Rangos de actividad: usa timeline (backend) con fallback a dateActive/dateInactive (legacy). */
+  private getStrategyRangesForOverview(strategy: ConfigurationOverview, tradeDate: Date): { start: Date; end: Date }[] {
+    if (strategy.timeline && strategy.timeline.length > 0) {
+      return getStrategyRangesFromTimeline(strategy.timeline, tradeDate);
+    }
+    if (!strategy.dateActive?.length || !strategy.dateInactive) {
+      return [];
+    }
     const strategyActive = strategy.dateActive;
     const strategyInactive = strategy.dateInactive;
     const now = new Date();
-
-    // Crear rangos de actividad de la estrategia
-    const strategyRanges: { start: Date, end: Date }[] = [];
-
-    // Si strategyActive tiene más elementos que strategyInactive, está activa hasta ahora
+    const ranges: { start: Date; end: Date }[] = [];
     if (strategyActive.length > strategyInactive.length) {
-      // Crear rangos para todos los pares completos
       for (let i = 0; i < strategyInactive.length; i++) {
-        strategyRanges.push({
+        ranges.push({
           start: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyActive[i])),
           end: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyInactive[i]))
         });
       }
-      // El último rango activo va desde la última fecha de active hasta ahora
-      strategyRanges.push({
+      ranges.push({
         start: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyActive[strategyActive.length - 1])),
         end: this.convertToUTCWithTimezone(now)
       });
     } else {
-      // Si tienen la misma cantidad, crear rangos de fechas
       for (let i = 0; i < strategyActive.length; i++) {
-        strategyRanges.push({
+        ranges.push({
           start: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyActive[i])),
           end: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyInactive[i]))
         });
       }
     }
-
-    // Verificar si la estrategia estaba activa en la fecha/hora exacta del trade
-    for (const range of strategyRanges) {
-      if (tradeDate >= range.start && tradeDate <= range.end) {
-        return true; // Estrategia estaba activa en este rango
-      }
-    }
-
-    return false; // Estrategia no estaba activa
+    return ranges;
   }
 
   /**
@@ -469,7 +466,7 @@ export class CalendarComponent {
     let strategyActiveRange: { start: Date, end: Date } | null = null;
     if (strategyName && this.strategies) {
       const strategy = this.strategies.find(s => s.name === strategyName);
-      if (strategy && strategy.dateActive && strategy.dateInactive) {
+      if (strategy && (strategy.timeline?.length || (strategy.dateActive && strategy.dateInactive))) {
         strategyActiveRange = this.getStrategyActiveRange(strategy, tradeDate);
       }
     }
@@ -490,48 +487,12 @@ export class CalendarComponent {
    * @returns rango activo de la estrategia o null si no estaba activa
    */
   private getStrategyActiveRange(strategy: ConfigurationOverview, tradeDate: Date): { start: Date, end: Date } | null {
-    if (!strategy.dateActive || !strategy.dateInactive) {
-      return null;
-    }
-
-    const strategyActive = strategy.dateActive;
-    const strategyInactive = strategy.dateInactive;
-    const now = new Date();
-
-    // Crear rangos de actividad de la estrategia
-    const strategyRanges: { start: Date, end: Date }[] = [];
-
-    // Si strategyActive tiene más elementos que strategyInactive, está activa hasta ahora
-    if (strategyActive.length > strategyInactive.length) {
-      // Crear rangos para todos los pares completos
-      for (let i = 0; i < strategyInactive.length; i++) {
-        strategyRanges.push({
-          start: this.convertFirestoreTimestamp(strategyActive[i]),
-          end: this.convertFirestoreTimestamp(strategyInactive[i])
-        });
-      }
-      // El último rango activo va desde la última fecha de active hasta ahora
-      strategyRanges.push({
-        start: this.convertFirestoreTimestamp(strategyActive[strategyActive.length - 1]),
-        end: now
-      });
-    } else {
-      // Si tienen la misma cantidad, crear rangos de fechas
-      for (let i = 0; i < strategyActive.length; i++) {
-        strategyRanges.push({
-          start: this.convertFirestoreTimestamp(strategyActive[i]),
-          end: this.convertFirestoreTimestamp(strategyInactive[i])
-        });
-      }
-    }
-
-    // Buscar el rango que contiene la fecha del trade
+    const strategyRanges = this.getStrategyRangesForOverview(strategy, tradeDate);
     for (const range of strategyRanges) {
       if (tradeDate >= range.start && tradeDate <= range.end) {
         return range;
       }
     }
-
     return null;
   }
 
