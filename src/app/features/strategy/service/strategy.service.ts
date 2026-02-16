@@ -34,19 +34,22 @@ import { StrategyCacheService } from '../services/strategy-cache.service';
  */
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
-  /**
-   * Constructor for SettingsService.
-   *
-   * @param strategyOperationsService - Service for direct Firebase operations
-   * @param appContext - Application context service for global state
-   * @param authService - Authentication service for user operations
-   */
+  private createStrategyButtonState: 'available' | 'plan_reached' | 'block' = 'available';
+
   constructor(
     private strategyOperationsService: StrategyOperationsService,
     private appContext: AppContextService,
     private authService: AuthService,
     private strategyCacheService: StrategyCacheService
   ) { }
+
+  setCreateStrategyButtonState(button_state: 'available' | 'plan_reached' | 'block'): void {
+    this.createStrategyButtonState = button_state;
+  }
+
+  getCreateStrategyButtonState(): 'available' | 'plan_reached' | 'block' {
+    return this.createStrategyButtonState;
+  }
 
   // ===== CONFIGURATION-OVERVIEW (colección de metadatos) =====
 
@@ -376,6 +379,16 @@ export class SettingsService {
   }
 
   /**
+   * Obtener estrategias completas y estado del botón desde el backend (único endpoint).
+   */
+  async getStrategiesWithButtonState(userId: string): Promise<{
+    strategies: Array<{ overview: ConfigurationOverview; configuration: StrategyState }>;
+    button_state: 'available' | 'plan_reached' | 'block';
+  }> {
+    return this.strategyOperationsService.getStrategiesForUser(userId);
+  }
+
+  /**
    * Obtener todas las estrategias completas (overview + configuration)
    */
   async getUserCompleteStrategies(userId: string): Promise<Array<{ overview: ConfigurationOverview; configuration: StrategyState }>> {
@@ -392,34 +405,25 @@ export class SettingsService {
    */
   async reloadAllStrategiesToCache(userId: string): Promise<void> {
     try {
-      // 1. Obtener todas las estrategias completas de una vez usando el nuevo endpoint batch
-      const strategies = await this.getUserCompleteStrategies(userId);
+      const { strategies, button_state } = await this.getStrategiesWithButtonState(userId);
+      this.setCreateStrategyButtonState(button_state);
 
       if (!strategies || strategies.length === 0) {
-        // Si no hay estrategias, limpiar el cache
         this.strategyCacheService.clearCache();
         return;
       }
 
-      // 2. Construir mapa para cache
       const strategiesCache = new Map<string, { overview: ConfigurationOverview; configuration: StrategyState }>();
-
       strategies.forEach(s => {
         if (s.overview.id) {
           strategiesCache.set(s.overview.id, s);
         }
       });
 
-      // 3. Guardar todas las estrategias en el cache (memoria y localStorage)
       this.strategyCacheService.setAllStrategies(strategiesCache);
-
-      // 4. Actualizar el contexto con las overviews
-      const overviews = strategies.map(s => s.overview);
-      this.appContext.setUserStrategies(overviews);
-
+      this.appContext.setUserStrategies(strategies.map(s => s.overview));
     } catch (error) {
       console.error('❌ Error reloading strategies to cache:', error);
-      // No lanzar el error para que no interrumpa el flujo principal
     }
   }
 

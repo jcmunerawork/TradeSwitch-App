@@ -9,6 +9,8 @@ export interface RunNewStrategyFlowParams {
   getTotalStrategiesCount: () => Promise<number>;
   showStrategyGuide: () => void;
   createGenericStrategy: () => Promise<void>;
+  /** Estado del botón desde el backend: available | plan_reached | block */
+  button_state: 'available' | 'plan_reached' | 'block';
 }
 
 export type RunNewStrategyFlowResult = 'show_guide' | 'created' | 'redirect_accounts' | 'redirect_plan' | 'max_reached';
@@ -28,15 +30,24 @@ export class StrategyNewStrategyFlowService {
   ) {}
 
   async run(params: RunNewStrategyFlowParams): Promise<RunNewStrategyFlowResult> {
-    const { userId, accountsLength, getTotalStrategiesCount, showStrategyGuide, createGenericStrategy } = params;
+    const { userId, accountsLength, getTotalStrategiesCount, showStrategyGuide, createGenericStrategy, button_state } = params;
 
+    if (button_state === 'block') {
+      return 'max_reached';
+    }
+    // Sin cuentas: redirigir a la página de trading accounts para añadir una
     if (accountsLength === 0) {
       this.alertService.showWarning(
         'You need to add a trading account before creating strategies.',
         'No Trading Accounts'
       );
-      this.router.navigate(['/account'], { queryParams: { tab: 'accounts' } });
+      this.router.navigate(['/trading-accounts']);
       return 'redirect_accounts';
+    }
+    if (button_state === 'plan_reached') {
+      await new Promise(r => setTimeout(r, 500));
+      this.router.navigate(['/account'], { queryParams: { tab: 'plan' } });
+      return 'redirect_plan';
     }
 
     const totalStrategies = await getTotalStrategiesCount();

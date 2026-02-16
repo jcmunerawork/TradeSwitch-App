@@ -295,7 +295,7 @@ export class Strategy implements OnInit, OnDestroy {
     this.activeStrategy = result.activeStrategy;
     await this.loadStrategyCardsData();
     if (this.activeStrategy) await this.updateStrategyCardWithActiveStrategy();
-    this.checkStrategyLimitations();
+    await this.checkPlanLimitationsWithButtonState(result.button_state);
   }
 
   /**
@@ -433,6 +433,7 @@ export class Strategy implements OnInit, OnDestroy {
         getTotalStrategiesCount: () => this.getTotalStrategiesCount(),
         showStrategyGuide: () => { this.showStrategyGuide = true; },
         createGenericStrategy: () => this.createGenericStrategy(),
+        button_state: this.strategySvc.getCreateStrategyButtonState(),
       });
       if (result === 'max_reached') { /* botón deshabilitado, no hacer nada */ }
     } finally {
@@ -578,6 +579,16 @@ export class Strategy implements OnInit, OnDestroy {
       this.user?.id ?? null,
       this.accountsData.length,
       () => this.getTotalStrategiesCount()
+    );
+    this.syncPlanLimitationsFromService();
+  }
+
+  private async checkPlanLimitationsWithButtonState(button_state: 'available' | 'plan_reached' | 'block'): Promise<void> {
+    await this.planLimitationsService.refresh(
+      this.user?.id ?? null,
+      this.accountsData.length,
+      () => this.getTotalStrategiesCount(),
+      button_state
     );
     this.syncPlanLimitationsFromService();
   }
@@ -785,14 +796,13 @@ export class Strategy implements OnInit, OnDestroy {
     }
   }
 
-  // Navegar a trading accounts
+  // Navegar a la página de trading accounts para añadir una cuenta
   navigateToTradingAccounts() {
     const accountsCount = this.accountsData?.length || 0;
     if (accountsCount >= 8) {
       return; // botón ya estará deshabilitado; no hacer nada
     }
-    // Redirigir a Plan Management en Account
-    this.router.navigate(['/account'], { queryParams: { tab: 'plan' } });
+    this.router.navigate(['/trading-accounts']);
   }
 
   // Strategy guide modal methods

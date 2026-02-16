@@ -396,41 +396,57 @@ export class StrategyOperationsService {
   }
 
   /**
-   * Obtener todas las estrategias de un usuario
-   * Now uses backend API but maintains same interface
+   * Obtener estrategias completas + button_state desde el único endpoint GET /strategies/user/:userId.
+   * El backend devuelve { strategies, button_state }. Estrategias pueden venir como { overview, configuration } o solo overview.
    */
-  async getUserStrategyViews(userId: string): Promise<ConfigurationOverview[]> {
+  async getStrategiesForUser(userId: string): Promise<{
+    strategies: Array<{ overview: ConfigurationOverview; configuration: StrategyState }>;
+    button_state: 'available' | 'plan_reached' | 'block';
+  }> {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.getUserStrategyViews(userId, idToken);
 
+      // Validar respuesta del backend (puedes quitar el log después de validar)
+      console.log('[Strategies API] Response:', JSON.stringify({
+        success: response.success,
+        strategiesCount: response.data?.strategies?.length ?? 0,
+        button_state: response.data?.button_state
+      }));
+
       if (!response.success || !response.data) {
-        return [];
+        return { strategies: [], button_state: 'available' };
       }
 
-      // Mapear las estrategias para asegurar que tengan el campo 'id'
-      // El backend debería devolver el ID del documento, pero si no lo hace,
-      // necesitamos agregarlo. Verificar si viene como 'id', 'overviewId', o '_id'
-      const strategies = (response.data.strategies || []).map((strategy: any, index: number) => {
-        // Intentar obtener el ID de diferentes campos posibles
-        let strategyId = strategy.id || strategy._id || strategy.overviewId || strategy.overview_id;
+      const rawStrategies = response.data.strategies || [];
+      const button_state = response.data.button_state ?? 'available';
 
-        // Si el backend devuelve el ID con otro nombre, mapearlo aquí
+      const strategies = rawStrategies.map((s: any) => {
+        const overview = s.overview ?? s;
+        const configuration = s.configuration ?? {};
+        const strategyId = overview.id ?? overview._id ?? overview.overviewId ?? overview.overview_id;
         if (strategyId) {
-          return { ...strategy, id: strategyId };
+          overview.id = strategyId;
         }
+        return {
+          overview: overview as ConfigurationOverview,
+          configuration: configuration as StrategyState
+        };
+      }).filter((s: any) => s.overview?.id);
 
-        // Si no hay ID, retornar la estrategia tal cual (pero esto causará problemas)
-        // En este caso, deberíamos loguear un error
-        console.error(`❌ Strategy missing ID:`, strategy);
-        return strategy;
-      }).filter((strategy: any) => strategy.id); // Filtrar estrategias sin ID
-
-      return strategies;
+      return { strategies, button_state };
     } catch (error) {
       console.error('❌ Error getting user strategies:', error);
-      return [];
+      return { strategies: [], button_state: 'available' };
     }
+  }
+
+  /**
+   * Obtener solo los overviews de las estrategias del usuario (misma llamada al backend).
+   */
+  async getUserStrategyViews(userId: string): Promise<ConfigurationOverview[]> {
+    const { strategies } = await this.getStrategiesForUser(userId);
+    return strategies.map(s => s.overview);
   }
 
   /**
@@ -490,38 +506,12 @@ export class StrategyOperationsService {
   }
 
   /**
-   * Get all user strategies with full configuration
-   * Returns an array of objects containing both 'overview' and 'configuration'
+   * Obtener todas las estrategias completas (overview + configuration).
+   * Usa el mismo endpoint GET /strategies/user/:userId.
    */
   async getUserCompleteStrategies(userId: string): Promise<Array<{ overview: ConfigurationOverview; configuration: StrategyState }>> {
-    try {
-      const idToken = await this.getIdToken();
-      const response = await this.backendApi.getUserCompleteStrategies(userId, idToken);
-
-      if (!response.success || !response.data) {
-        return [];
-      }
-
-      const strategies = (response.data.strategies || []).map((s: any) => {
-        // Ensure overview has ID
-        const overview = s.overview;
-        const strategyId = overview.id || overview._id || overview.overviewId;
-
-        if (strategyId) {
-          overview.id = strategyId;
-        }
-
-        return {
-          overview: overview as ConfigurationOverview,
-          configuration: s.configuration as StrategyState
-        };
-      }).filter((s: any) => s.overview.id);
-
-      return strategies;
-    } catch (error) {
-      console.error('Error getting user complete strategies:', error);
-      return [];
-    }
+    const { strategies } = await this.getStrategiesForUser(userId);
+    return strategies;
   }
 
   /**

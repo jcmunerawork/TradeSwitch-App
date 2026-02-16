@@ -212,6 +212,4 @@ export interface ConfigurationOverview {
    * @deprecated Usar timeline. Fechas cuando se desactivó la estrategia (legacy).
    */
   dateInactive?: string[];
-  deleted?: boolean;
-  deleted_at?: any;
 }

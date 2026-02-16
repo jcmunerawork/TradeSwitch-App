@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { PlanLimitationsGuard } from '../../../core/guards';
 
+export type CreateStrategyButtonState = 'available' | 'plan_reached' | 'block';
+
 export interface StrategyPlanLimitationsState {
   showPlanBanner: boolean;
   planBannerMessage: string;
@@ -26,7 +28,36 @@ export class StrategyPlanLimitationsService {
     allowsMultipleStrategies: false,
   };
 
+  private lastButtonState: CreateStrategyButtonState | null = null;
+
   constructor(private planLimitationsGuard: PlanLimitationsGuard) {}
+
+  /**
+   * Aplica el estado del botón crear estrategia que viene del backend.
+   * available: botón habilitado, sin banner. plan_reached: redirigir a upgrade. block: botón deshabilitado.
+   */
+  setButtonState(button_state: CreateStrategyButtonState): void {
+    this.lastButtonState = button_state;
+    if (button_state === 'block') {
+      this.state.isAddStrategyDisabled = true;
+      this.state.showPlanBanner = true;
+      this.state.planBannerMessage = `You've reached the maximum number of strategies (8).`;
+      this.state.planBannerType = 'warning';
+      this.state.allowsMultipleStrategies = false;
+    } else if (button_state === 'plan_reached') {
+      this.state.isAddStrategyDisabled = false;
+      this.state.showPlanBanner = true;
+      this.state.planBannerMessage = `You've reached the strategy limit for your plan. Move to a higher plan and keep growing your account.`;
+      this.state.planBannerType = 'warning';
+      this.state.allowsMultipleStrategies = true;
+    } else {
+      this.state.isAddStrategyDisabled = false;
+      this.state.showPlanBanner = false;
+      this.state.planBannerMessage = '';
+      this.state.planBannerType = 'info';
+      this.state.allowsMultipleStrategies = true;
+    }
+  }
 
   getState(): StrategyPlanLimitationsState {
     return { ...this.state };
@@ -39,13 +70,13 @@ export class StrategyPlanLimitationsService {
   get allowsMultipleStrategies(): boolean { return this.state.allowsMultipleStrategies; }
 
   /**
-   * Actualiza el estado según userId, número de cuentas y total de estrategias.
-   * getTotalStrategiesCount debe ser una función que devuelva el conteo actual (p. ej. desde el componente).
+   * Actualiza el estado. Si se pasa button_state (del backend), se usa ese; si no, se usa lógica de plan.
    */
   async refresh(
     userId: string | null,
     accountsLength: number,
-    getTotalStrategiesCount: () => Promise<number>
+    getTotalStrategiesCount: () => Promise<number>,
+    button_state?: CreateStrategyButtonState
   ): Promise<void> {
     try {
       if (!userId) {
@@ -53,13 +84,23 @@ export class StrategyPlanLimitationsService {
         return;
       }
       if (accountsLength === 0) {
+        // Sin cuentas: botón habilitado para que al hacer clic redirija a añadir trading account
         this.state = {
           showPlanBanner: false,
           planBannerMessage: '',
           planBannerType: 'info',
-          isAddStrategyDisabled: true,
+          isAddStrategyDisabled: false,
           allowsMultipleStrategies: false,
         };
+        this.lastButtonState = null;
+        return;
+      }
+      if (button_state != null) {
+        this.setButtonState(button_state);
+        return;
+      }
+      if (this.lastButtonState != null) {
+        this.setButtonState(this.lastButtonState);
         return;
       }
       const limitations = await this.planLimitationsGuard.checkUserLimitations(userId);
@@ -78,11 +119,19 @@ export class StrategyPlanLimitationsService {
   }
 
   /**
-   * Solo actualiza el estado del botón Add Strategy (p. ej. cuando se alcanza el máximo absoluto 8).
+   * Solo actualiza el estado del botón Add Strategy. Si tenemos button_state del backend, lo usamos.
    */
   async refreshButtonOnly(userId: string | null, accountsLength: number, getTotalStrategiesCount: () => Promise<number>): Promise<void> {
-    if (!userId || accountsLength === 0) {
+    if (!userId) {
       this.state.isAddStrategyDisabled = true;
+      return;
+    }
+    if (accountsLength === 0) {
+      this.state.isAddStrategyDisabled = false;
+      return;
+    }
+    if (this.lastButtonState != null) {
+      this.setButtonState(this.lastButtonState);
       return;
     }
     try {

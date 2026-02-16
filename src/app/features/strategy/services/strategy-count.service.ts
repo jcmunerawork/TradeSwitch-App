@@ -3,7 +3,7 @@ import { ConfigurationOverview } from '../models/strategy.model';
 import { SettingsService } from '../service/strategy.service';
 
 /**
- * Conteo de estrategias del usuario (no eliminadas).
+ * Conteo de estrategias del usuario en configuration-overview (todas activas).
  * Usa backend cuando hay userId; fallback a conteo local.
  */
 @Injectable({
@@ -34,9 +34,9 @@ export class StrategyCountService {
   ): number {
     const ids = new Set<string>();
     userStrategies.forEach(s => {
-      if (!s.deleted && s.id) ids.add(s.id);
+      if (s.id) ids.add(s.id);
     });
-    if (activeStrategy?.id && !activeStrategy.deleted) ids.add(activeStrategy.id);
+    if (activeStrategy?.id) ids.add(activeStrategy.id);
     return ids.size;
   }
 }

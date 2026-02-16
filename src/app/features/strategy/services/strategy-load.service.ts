@@ -12,6 +12,8 @@ const CACHE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutos
 export interface LoadStrategiesResult {
   userStrategies: ConfigurationOverview[];
   activeStrategy: ConfigurationOverview | null;
+  /** Estado del botón crear estrategia desde el backend: available | plan_reached | block */
+  button_state: 'available' | 'plan_reached' | 'block';
 }
 
 /**
@@ -46,10 +48,12 @@ export class StrategyLoadService {
         return this.loadFromCache();
       }
 
-      const strategies = await this.strategySvc.getUserCompleteStrategies(userId);
+      const { strategies, button_state } = await this.strategySvc.getStrategiesWithButtonState(userId);
+      this.strategySvc.setCreateStrategyButtonState(button_state);
+
       if (!strategies?.length) {
         this.strategyFilterService.setStrategies([]);
-        return { userStrategies: [], activeStrategy: null };
+        return { userStrategies: [], activeStrategy: null, button_state };
       }
 
       const strategiesCache = new Map<string, { overview: ConfigurationOverview; configuration: StrategyState }>();
@@ -64,12 +68,12 @@ export class StrategyLoadService {
 
       const userStrategies = strategies
         .map(s => s.overview)
-        .filter(s => !s.deleted && (!activeStrategyId || (s.id || '') !== activeStrategyId));
+        .filter(s => !activeStrategyId || (s.id || '') !== activeStrategyId);
 
       this.strategyFilterService.setStrategies(userStrategies);
       this.appContext.setUserStrategies(strategies.map(s => s.overview));
 
-      return { userStrategies, activeStrategy };
+      return { userStrategies, activeStrategy, button_state };
     } catch (error: any) {
       console.error('❌ Error loading strategies to cache:', error);
       if (error?.status === 429) {
@@ -79,7 +83,7 @@ export class StrategyLoadService {
         );
       }
       this.strategyFilterService.setStrategies([]);
-      return { userStrategies: [], activeStrategy: null };
+      return { userStrategies: [], activeStrategy: null, button_state: this.strategySvc.getCreateStrategyButtonState() };
     }
   }
 
@@ -99,12 +103,12 @@ export class StrategyLoadService {
     const activeStrategyId = activeStrategy ? (activeStrategy.id || '') : null;
 
     const userStrategies = strategiesWithConfigs
-      .filter(s => !s.overview.deleted && (!activeStrategyId || (s.overview.id || '') !== activeStrategyId))
+      .filter(s => !activeStrategyId || (s.overview.id || '') !== activeStrategyId)
       .map(s => s.overview);
 
     this.strategyFilterService.setStrategies(userStrategies);
     this.appContext.setUserStrategies(strategiesWithConfigs.map(s => s.overview));
 
-    return { userStrategies, activeStrategy };
+    return { userStrategies, activeStrategy, button_state: this.strategySvc.getCreateStrategyButtonState() };
   }
 }

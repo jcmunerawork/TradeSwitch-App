@@ -20,7 +20,7 @@ export interface StrategyContextBridgeHandlers {
 
 /**
  * Suscripciones al AppContext (user, accounts, strategies, loading, errors, plan).
- * Filtra strategies (excluye eliminadas y activa) y actualiza StrategyFilterService.
+ * Filtra strategies (excluye la activa) y actualiza StrategyFilterService.
  * El componente pasa un objeto con callbacks y recibe las actualizaciones.
  */
 @Injectable({
@@ -60,7 +60,6 @@ export class StrategyContextBridgeService {
         if (strategies.length === 0 && handlers.getCurrentUserStrategiesLength() > 0) return;
         const activeId = handlers.getActiveStrategyId();
         const filtered = (strategies ?? []).filter(s => {
-          if (s.deleted === true) return false;
           if (activeId && (s.id ?? '') === activeId) return false;
           return true;
         });

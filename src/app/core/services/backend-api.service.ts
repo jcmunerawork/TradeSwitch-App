@@ -965,11 +965,18 @@ export class BackendApiService extends BaseApiService {
   }
 
   /**
-   * Get user strategy views
+   * Get user strategies (full) and button state for create strategy.
+   * Response: { strategies: Array<{ overview?, configuration? }>, button_state: 'available' | 'plan_reached' | 'block' }
    */
-  async getUserStrategyViews(userId: string, idToken: string): Promise<BackendApiResponse<{ strategies: any[] }>> {
+  async getUserStrategyViews(userId: string, idToken: string): Promise<BackendApiResponse<{
+    strategies: any[];
+    button_state: 'available' | 'plan_reached' | 'block';
+  }>> {
     return firstValueFrom(
-      this.get<BackendApiResponse<{ strategies: any[] }>>(`/strategies/user/${userId}`, undefined, {
+      this.get<BackendApiResponse<{
+        strategies: any[];
+        button_state: 'available' | 'plan_reached' | 'block';
+      }>>(`/strategies/user/${userId}`, undefined, {
         headers: {
           'Authorization': `Bearer ${idToken}`
         }
@@ -983,20 +990,6 @@ export class BackendApiService extends BaseApiService {
   async getActiveConfiguration(userId: string, idToken: string): Promise<BackendApiResponse<{ overview: any }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ overview: any }>>(`/strategies/active/${userId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
-      })
-    );
-  }
-
-  /**
-   * Get all user strategies with full configuration
-   * Returns an array of objects containing both 'overview' and 'configuration'
-   */
-  async getUserCompleteStrategies(userId: string, idToken: string): Promise<BackendApiResponse<{ strategies: Array<{ overview: any; configuration: any }> }>> {
-    return firstValueFrom(
-      this.get<BackendApiResponse<{ strategies: Array<{ overview: any; configuration: any }> }>>(`/strategies/user/${userId}/complete`, undefined, {
         headers: {
           'Authorization': `Bearer ${idToken}`
         }

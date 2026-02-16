@@ -5,20 +5,18 @@
       <p class="section-description">Manage your other strategy configurations.</p>
       <div class="strategies-grid">
         @for (strategy of filteredStrategies; track getStrategyId(strategy)) {
-          @if (!strategy.deleted) {
-            <app-strategy-card
-              [strategy]="getCardDataByStrategyId(getStrategyId(strategy)) || fallbackCardData(strategy)"
-              [showCustomizeButton]="true"
-              customizeButtonText="Activate strategy"
-              (edit)="edit.emit($event)"
-              (favorite)="favorite.emit($event)"
-              (moreOptions)="moreOptions.emit($event)"
-              (customize)="customize.emit($event)"
-              (editStrategy)="editStrategy.emit($event)"
-              (duplicate)="duplicate.emit($event)"
-              (delete)="delete.emit($event)"
-            ></app-strategy-card>
-          }
+          <app-strategy-card
+            [strategy]="getCardDataByStrategyId(getStrategyId(strategy)) || fallbackCardData(strategy)"
+            [showCustomizeButton]="true"
+            customizeButtonText="Activate strategy"
+            (edit)="edit.emit($event)"
+            (favorite)="favorite.emit($event)"
+            (moreOptions)="moreOptions.emit($event)"
+            (customize)="customize.emit($event)"
+            (editStrategy)="editStrategy.emit($event)"
+            (duplicate)="duplicate.emit($event)"
+            (delete)="delete.emit($event)"
+          ></app-strategy-card>
         }
       </div>
     </div>
@@ -39,18 +37,16 @@
     </div>
   }
 } @else {
+  <!-- Plan Free: solo una estrategia; no se muestra botón para añadir más -->
   <div class="other-strategies d-flex flex-col">
     <h3 class="section-title">Other Strategies</h3>
-    <p class="section-description">Upgrade your plan to create multiple strategies.</p>
+    <p class="section-description">Your Free plan includes one strategy.</p>
     <div class="empty-strategies d-flex flex-col align-items-center">
       <div class="empty-icon">
         <span class="material-symbols-outlined" style="font-size: 28px; color: #9BF526;">lock</span>
       </div>
-      <h3 class="empty-title">Upgrade to create more</h3>
-      <p class="empty-description">Your Free plan allows only 1 strategy. Upgrade to Starter or Pro for more.</p>
-      <button type="button" class="create-first-btn" (click)="upgradePlan.emit()">
-        Upgrade Plan
-      </button>
+      <h3 class="empty-title">One strategy on Free plan</h3>
+      <p class="empty-description">Upgrade to Starter or Pro to create multiple strategies.</p>
     </div>
   </div>
 }
