@@ -66,7 +66,7 @@
 
       <div class="form-row">
         <label>Phone number</label>
-        <app-phone-input [label]="''" formControlName="phoneNumber" placeholder="+1 302 555 0107"></app-phone-input>
+        <app-phone-input [className]='"phone-input-row"' [label]="''" formControlName="phoneNumber" placeholder="+1 302 555 0107"></app-phone-input>
         @if(form.get('phoneNumber')?.touched && form.get('phoneNumber')?.invalid){
           <small class="error-text">Enter a valid phone number</small>
         }

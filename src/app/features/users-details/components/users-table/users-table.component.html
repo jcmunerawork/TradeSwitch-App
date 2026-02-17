@@ -91,8 +91,8 @@
       <table class="regularText">
         <thead>
           <tr>
-            <th class="regularText py-18">First Name</th>
-            <th class="regularText py-18">Last Name</th>
+            <th class="regularText py-10">First Name</th>
+            <th class="regularText py-10">Last Name</th>
             <th class="regularText py-18">Status</th>
             <th class="regularText py-18">Email</th>
             <th class="regularText py-18">Phone Number</th>
@@ -104,12 +104,12 @@
         <tbody>
           @for (user of paginatedUsers; track $index) {
           <tr>
-            <td class="smallText" style="width: 10.5rem">
+            <td class="smallText" style="width: 7.5rem">
               <p>
                 {{ user.firstName }}
               </p>
             </td>
-            <td class="smallText" style="width: 12.5rem">
+            <td class="smallText" style="width: 9.5rem">
               <p>
                 {{ user.lastName }}
               </p>
@@ -117,7 +117,7 @@
 
             <td class="smallText">
               <span
-                class="status py-8 px-4 smallText d-flex items-center justify-center"
+                class="status py-8 px-2 smallText d-flex items-center justify-center"
                 [ngClass]="statusClass(user)"
               >
                 {{ getDisplayStatus(user) }}

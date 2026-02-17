@@ -50,7 +50,8 @@ import { NumberFormatterService } from '../../../../shared/utils/number-formatte
 })
 export class PnlGraphComponent implements OnInit, OnChanges {
   @Input() values!: GroupedTradeFinal[];
-  @Output() onYearChange = new EventEmitter<string>();
+  @Input() totalProfit: number = 0; // Profit desde stats.netPnl del report component (solo referencia)
+  @Output() onDataFiltered = new EventEmitter<GroupedTradeFinal[]>();
 
   public chartOptions: any;
   private numberFormatter = new NumberFormatterService();
@@ -84,12 +85,21 @@ export class PnlGraphComponent implements OnInit, OnChanges {
       this.originalData = [...this.values];
       this.filteredData = [...this.values];
       this.chartOptions = this.getChartOptions(this.filteredData);
+      this.emitFilteredData();
     } else {
-      // Mostrar gráfica vacía cuando no hay datos
       this.originalData = [];
       this.filteredData = [];
       this.chartOptions = this.getEmptyChartOptions();
+      this.onDataFiltered.emit([]);
     }
+  }
+
+  private emitFilteredData() {
+    let dataToEmit = this.filteredData;
+    if (this.selectedStartDate || this.selectedEndDate) {
+      dataToEmit = this.applyDateRangeFilter(this.filteredData, this.selectedStartDate, this.selectedEndDate);
+    }
+    this.onDataFiltered.emit(dataToEmit);
   }
 
   generateYearRangesPast(yearsBack: number) {
@@ -118,13 +128,11 @@ export class PnlGraphComponent implements OnInit, OnChanges {
   getChartOptions(trades: GroupedTradeFinal[]): any {
     const yearValue = this.year;
     
-    // Si hay filtro de fechas activo, no aplicar filtro de año
     let filteredTrades = trades;
-    if (!this.selectedStartDate && !this.selectedEndDate) {
-      filteredTrades = this.applyYearFilter(trades);
+    if (this.selectedStartDate || this.selectedEndDate) {
+      filteredTrades = this.applyDateRangeFilter(trades, this.selectedStartDate, this.selectedEndDate);
     }
     
-    // Use monthly chart by default
     const chartConfig = this.getMonthlyChartConfig(filteredTrades, yearValue);
     
     return {
@@ -245,16 +253,27 @@ export class PnlGraphComponent implements OnInit, OnChanges {
   applyYearFilter(trades: GroupedTradeFinal[]): GroupedTradeFinal[] {
     if (!trades || trades.length === 0) return [];
     
-    let filteredTrades = [...trades];
-
-    // Filter by year
     const yearValue = parseInt(this.year);
-    filteredTrades = filteredTrades.filter(trade => {
-      const tradeDate = new Date(Number(trade.lastModified));
+    return trades.filter(trade => {
+      const tradeDate = this.getTradeDate(trade);
       return tradeDate.getFullYear() === yearValue;
     });
+  }
 
-    return filteredTrades;
+  private getTradeDate(trade: GroupedTradeFinal): Date {
+    if (trade.lastModified) {
+      const date = new Date(Number(trade.lastModified));
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+    if (trade.createdDate) {
+      const date = new Date(Number(trade.createdDate));
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+    return new Date();
   }
 
   applyDateRangeFilter(trades: GroupedTradeFinal[], startDate: string, endDate: string): GroupedTradeFinal[] {
@@ -265,60 +284,93 @@ export class PnlGraphComponent implements OnInit, OnChanges {
     const start = startDate ? new Date(startDate) : new Date(0);
     const end = endDate ? new Date(endDate) : new Date();
 
-    // Si solo hay fecha de inicio, usar fin del día
     if (startDate && !endDate) {
       end.setHours(23, 59, 59, 999);
     }
-    // Si solo hay fecha de fin, usar inicio del día
     if (!startDate && endDate) {
       start.setHours(0, 0, 0, 0);
     }
 
     return trades.filter(trade => {
-      const tradeDate = new Date(Number(trade.lastModified));
+      const tradeDate = this.getTradeDate(trade);
       return tradeDate >= start && tradeDate <= end;
     });
   }
 
 
   getMonthlyChartConfig(trades: GroupedTradeFinal[], yearValue: string) {
-    const monthlyMap: { [label: string]: number } = {};
-    
-    // Si hay filtro de fechas activo, generar categorías dinámicas
     if (this.selectedStartDate || this.selectedEndDate) {
       return this.getDateRangeChartConfig(trades);
     }
     
-    trades.forEach(trade => {
-      const date = new Date(Number(trade.lastModified));
-      const tradeYear = date.getFullYear();
-      const yearValueNum = parseInt(yearValue);
-      
-      // Only process trades from the selected year
-      if (tradeYear === yearValueNum) {
-        const label = this.capitalizeFirstLetter(
-          date.toLocaleString('en', { month: 'short' })
-        );
-        const sum = (monthlyMap[label] ?? 0) + (trade.pnl ?? 0);
-        monthlyMap[label] = sum < 1 ? Math.round(sum * 100) / 100 : Math.round(sum);
-        
-      }
-    });
-
-    const monthOrder = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
+    if (!trades || trades.length === 0) {
+      const monthOrder = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      return { data: monthOrder.map(() => 0), categories: monthOrder };
+    }
     
-    const data = monthOrder.map(m => monthlyMap[m] ?? 0);
-    const categories = monthOrder;
+    const sortedTrades = [...trades].sort((a, b) => {
+      const dateA = this.getTradeDate(a).getTime();
+      const dateB = this.getTradeDate(b).getTime();
+      return dateA - dateB;
+    });
+    
+    const monthlyMap: { [key: string]: number } = {};
+    let cumulativePnL = 0;
+    
+    sortedTrades.forEach(trade => {
+      const date = this.getTradeDate(trade);
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const key = `${year}-${month}`;
+      
+      cumulativePnL += (trade.pnl ?? 0);
+      monthlyMap[key] = Math.round(cumulativePnL * 100) / 100;
+    });
+    
+    const allMonths: { date: Date; label: string; value: number }[] = [];
+    const firstTradeDate = this.getTradeDate(sortedTrades[0]);
+    const lastTradeDate = this.getTradeDate(sortedTrades[sortedTrades.length - 1]);
+    const current = new Date(firstTradeDate.getFullYear(), firstTradeDate.getMonth(), 1);
+    const end = new Date(lastTradeDate.getFullYear(), lastTradeDate.getMonth(), 1);
+    
+    while (current <= end) {
+      const key = `${current.getFullYear()}-${current.getMonth()}`;
+      const monthLabel = this.capitalizeFirstLetter(
+        current.toLocaleString('en', { month: 'short' })
+      );
+      const yearLabel = current.getFullYear();
+      
+      let value = monthlyMap[key];
+      if (value === undefined) {
+        const previousMonth = new Date(current);
+        previousMonth.setMonth(previousMonth.getMonth() - 1);
+        const prevKey = `${previousMonth.getFullYear()}-${previousMonth.getMonth()}`;
+        value = monthlyMap[prevKey] ?? 0;
+      }
+      
+      allMonths.push({
+        date: new Date(current),
+        label: `${monthLabel} ${yearLabel}`,
+        value: value
+      });
+      
+      current.setMonth(current.getMonth() + 1);
+    }
+    
+    const categories = allMonths.map(m => m.label);
+    const data = allMonths.map(m => m.value);
+    
     return { data, categories };
   }
 
   getDateRangeChartConfig(trades: GroupedTradeFinal[]) {
-    const dateMap: { [key: string]: number } = {};
+    if (!trades || trades.length === 0) {
+      return { data: [], categories: [] };
+    }
     
-    // Determinar el rango de fechas
     let startDate: Date;
     let endDate: Date;
     
@@ -332,27 +384,67 @@ export class PnlGraphComponent implements OnInit, OnChanges {
       startDate = new Date(0);
       endDate = new Date(this.selectedEndDate);
     } else {
-      // Fallback a año completo
       const year = new Date().getFullYear();
       startDate = new Date(year, 0, 1);
       endDate = new Date(year, 11, 31);
     }
     
-    // Procesar trades en el rango
-    trades.forEach(trade => {
-      const tradeDate = new Date(Number(trade.lastModified));
-      if (tradeDate >= startDate && tradeDate <= endDate) {
-        const label = this.formatDateForChart(tradeDate);
-        const sum = (dateMap[label] ?? 0) + (trade.pnl ?? 0);
-        dateMap[label] = sum < 1 ? Math.round(sum * 100) / 100 : Math.round(sum);
+    const filteredTrades = trades.filter(trade => {
+      const tradeDate = this.getTradeDate(trade);
+      return tradeDate >= startDate && tradeDate <= endDate;
+    });
+    
+    const sortedTrades = filteredTrades.sort((a, b) => {
+      const dateA = this.getTradeDate(a).getTime();
+      const dateB = this.getTradeDate(b).getTime();
+      return dateA - dateB;
+    });
+    
+    const categories = this.generateDateRangeCategories(startDate, endDate);
+    const periodMap: { [key: string]: number } = {};
+    let cumulativePnL = 0;
+    
+    sortedTrades.forEach(trade => {
+      const tradeDate = this.getTradeDate(trade);
+      cumulativePnL += (trade.pnl ?? 0);
+      
+      let periodKey = '';
+      if (categories.length <= 30) {
+        periodKey = this.formatDateForChart(tradeDate);
+      } else if (categories.length <= 90) {
+        const weekStart = this.getWeekStart(tradeDate);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        periodKey = `${this.formatDateForChart(weekStart)} - ${this.formatDateForChart(weekEnd)}`;
+      } else {
+        const month = tradeDate.toLocaleString('en', { month: 'short' });
+        const year = tradeDate.getFullYear();
+        periodKey = `${month} ${year}`;
+      }
+      
+      periodMap[periodKey] = Math.round(cumulativePnL * 100) / 100;
+    });
+    
+    const data: number[] = [];
+    let lastValue = 0;
+    categories.forEach((cat) => {
+      const value = periodMap[cat];
+      if (value !== undefined) {
+        lastValue = value;
+        data.push(value);
+      } else {
+        data.push(lastValue);
       }
     });
     
-    // Generar categorías dinámicas basadas en el rango
-    const categories = this.generateDateRangeCategories(startDate, endDate);
-    const data = categories.map(cat => dateMap[cat] ?? 0);
-    
     return { data, categories };
+  }
+
+  private getWeekStart(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day;
+    return new Date(d.setDate(diff));
   }
 
   formatDateForChart(date: Date): string {
@@ -409,23 +501,40 @@ export class PnlGraphComponent implements OnInit, OnChanges {
 
   onYearSelected(year: string) {
     this.year = year;
-    this.onYearChange.emit(year);
     this.updateChart();
+    this.emitFilteredData();
   }
 
   get getTotalProfit(): number {
-    // Apply the same filters as the chart
-    let filteredTrades = this.filteredData;
-    if (!this.selectedStartDate && !this.selectedEndDate) {
-      filteredTrades = this.applyYearFilter(this.filteredData);
+    if (this.selectedStartDate || this.selectedEndDate) {
+      let endDate: Date;
+      
+      if (this.selectedEndDate) {
+        endDate = new Date(this.selectedEndDate);
+        endDate.setHours(23, 59, 59, 999);
+      } else if (this.selectedStartDate) {
+        endDate = new Date();
+      } else {
+        endDate = new Date();
+      }
+      
+      const tradesUpToEndDate = this.filteredData.filter(trade => {
+        const tradeDate = this.getTradeDate(trade);
+        return tradeDate <= endDate;
+      });
+      
+      const totalProfit = tradesUpToEndDate.reduce(
+        (acc, trade) => acc + (trade.pnl ?? 0),
+        0
+      );
+      return Math.round(totalProfit * 100) / 100;
     }
     
-    const totalProfit = filteredTrades.reduce(
+    const totalProfit = this.filteredData.reduce(
       (acc, trade) => acc + (trade.pnl ?? 0),
       0
     );
-    const result = Math.round(totalProfit * 100) / 100;
-    return result;
+    return Math.round(totalProfit * 100) / 100;
   }
 
   // Date filter methods
@@ -457,13 +566,13 @@ export class PnlGraphComponent implements OnInit, OnChanges {
   applyDateFilter() {
     if (this.selectedStartDate || this.selectedEndDate) {
       this.filteredData = this.applyDateRangeFilter(this.originalData, this.selectedStartDate, this.selectedEndDate);
-      // Actualizar el año basado en las fechas seleccionadas
       this.updateYearFromDateRange();
     } else {
       this.filteredData = [...this.originalData];
     }
     this.updateChart();
     this.closeDateFilter();
+    this.emitFilteredData();
   }
 
   updateYearFromDateRange() {
@@ -480,7 +589,14 @@ export class PnlGraphComponent implements OnInit, OnChanges {
     this.selectedStartDate = '';
     this.selectedEndDate = '';
     this.filteredData = [...this.originalData];
+    
+    const currentYear = new Date().getFullYear().toString();
+    if (this.year !== currentYear) {
+      this.year = currentYear;
+    }
+    
     this.updateChart();
+    this.onDataFiltered.emit([]);
   }
 
   updateChart() {
@@ -492,7 +608,7 @@ export class PnlGraphComponent implements OnInit, OnChanges {
     
     const years = new Set<number>();
     this.values.forEach(trade => {
-      const date = new Date(Number(trade.lastModified));
+      const date = this.getTradeDate(trade);
       years.add(date.getFullYear());
     });
     

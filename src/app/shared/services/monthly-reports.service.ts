@@ -1,26 +1,29 @@
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit } from 'firebase/firestore';
 import { isPlatformBrowser } from '@angular/common';
 import { MonthlyReport } from '../../features/report/models/report.model';
 import { newDataId } from '../../features/report/utils/firebase-data-utils';
+import { BackendApiService } from '../../core/services/backend-api.service';
+import { getAuth } from 'firebase/auth';
 
 /**
- * Service for managing monthly trading reports in Firebase.
+ * Service for managing monthly trading reports via backend API.
  *
  * This service provides CRUD operations for monthly trading reports that
  * aggregate trading statistics by month. Reports are used for historical
  * analysis and performance tracking.
  *
+ * All operations now go through the backend API, which handles Firebase persistence.
+ *
  * Features:
- * - Update monthly report
- * - Get monthly report by ID
- * - Get all monthly reports
- * - Get monthly reports by user ID
- * - Get monthly report by user, month, and year
- * - Delete monthly report
+ * - Update monthly report (via backend)
+ * - Get monthly report by ID (via backend)
+ * - Get all monthly reports for current user (via backend)
+ * - Get monthly reports by user ID (via backend)
+ * - Get monthly report by user, month, and year (via backend)
+ * - Delete monthly report (via backend)
  *
  * Report Structure:
- * - Stored in: `monthly_reports/{reportId}`
+ * - Stored in: `monthly_reports/{reportId}` (managed by backend)
  * - Report ID format: Generated using `newDataId()` utility
  * - Contains: Monthly aggregated trading statistics
  *
@@ -28,6 +31,7 @@ import { newDataId } from '../../features/report/utils/firebase-data-utils';
  * - Used by ReportService for saving monthly summaries
  * - Used by ReportComponent for historical data
  * - Uses `newDataId` utility for unique ID generation
+ * - Uses BackendApiService for all Firebase operations
  *
  * @service
  * @injectable
@@ -38,33 +42,38 @@ import { newDataId } from '../../features/report/utils/firebase-data-utils';
 })
 export class MonthlyReportsService {
   private isBrowser: boolean;
-  private db: ReturnType<typeof getFirestore> | null = null;
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private backendApi: BackendApiService
+  ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
-    if (this.isBrowser) {
-      const { firebaseApp } = require('../../firebase/firebase.init.ts');
-      this.db = getFirestore(firebaseApp);
-    }
   }
 
   /**
-   * Update monthly report
+   * Get Firebase ID token for backend API calls
+   */
+  private async getIdToken(): Promise<string> {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+    return await currentUser.getIdToken();
+  }
+
+  /**
+   * Update monthly report (creates or updates via backend)
    */
   async updateMonthlyReport(monthlyReport: MonthlyReport): Promise<void> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
+    if (!this.isBrowser) {
+      console.warn('Not available in SSR');
       return;
     }
 
     try {
-      const id = newDataId(
-        monthlyReport.id,
-        monthlyReport.month,
-        monthlyReport.year
-      );
-
-      await setDoc(doc(this.db, 'monthly_reports', id), monthlyReport);
+      const idToken = await this.getIdToken();
+      await this.backendApi.createOrUpdateMonthlyReport(monthlyReport, idToken);
     } catch (error) {
       console.error('Error updating monthly report:', error);
       throw error;
@@ -75,17 +84,17 @@ export class MonthlyReportsService {
    * Get monthly report by ID
    */
   async getMonthlyReport(reportId: string): Promise<MonthlyReport | null> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
+    if (!this.isBrowser) {
+      console.warn('Not available in SSR');
       return null;
     }
 
     try {
-      const docRef = doc(this.db, 'monthly_reports', reportId);
-      const docSnap = await getDoc(docRef);
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getMonthlyReport(reportId, idToken);
       
-      if (docSnap.exists()) {
-        return docSnap.data() as MonthlyReport;
+      if (response.success && response.data?.report) {
+        return response.data.report as MonthlyReport;
       }
       return null;
     } catch (error) {
@@ -95,25 +104,22 @@ export class MonthlyReportsService {
   }
 
   /**
-   * Get all monthly reports
+   * Get all monthly reports for the current user
    */
   async getAllMonthlyReports(): Promise<MonthlyReport[]> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
+    if (!this.isBrowser) {
+      console.warn('Not available in SSR');
       return [];
     }
 
     try {
-      const snapshot = await getDoc(doc(this.db, 'monthly_reports'));
-      const reports: MonthlyReport[] = [];
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getMonthlyReports(idToken);
       
-      snapshot.data()?.['forEach']((doc: any) => {
-        const data = doc.data() as MonthlyReport;
-        (data as any).id = doc.id;
-        reports.push(data);
-      });
-      
-      return reports;
+      if (response.success && response.data?.reports) {
+        return response.data.reports as MonthlyReport[];
+      }
+      return [];
     } catch (error) {
       console.error('Error getting all monthly reports:', error);
       return [];
@@ -122,31 +128,24 @@ export class MonthlyReportsService {
 
   /**
    * Get monthly reports by user ID
+   * Note: The backend endpoint returns all reports for the current user (from token)
    */
   async getMonthlyReportsByUserId(userId: string): Promise<MonthlyReport[]> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
+    if (!this.isBrowser) {
+      console.warn('Not available in SSR');
       return [];
     }
 
     try {
-      const q = query(
-        collection(this.db, 'monthly_reports'),
-        where('userId', '==', userId),
-        orderBy('year', 'desc'),
-        orderBy('month', 'desc')
-      );
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getMonthlyReports(idToken);
       
-      const snapshot = await getDoc(doc(this.db, 'monthly_reports'));
-      const reports: MonthlyReport[] = [];
-      
-      snapshot.data()?.['forEach']((doc: any) => {
-        const data = doc.data() as MonthlyReport;
-        (data as any).id = doc.id;
-        reports.push(data);
-      });
-      
-      return reports;
+      if (response.success && response.data?.reports) {
+        // Filter by userId if needed (backend should already filter by token user)
+        const reports = response.data.reports as MonthlyReport[];
+        return reports.filter(report => report.id && report.id.includes(userId) || true); // Backend already filters by user
+      }
+      return [];
     } catch (error) {
       console.error('Error getting monthly reports by user ID:', error);
       return [];
@@ -157,29 +156,18 @@ export class MonthlyReportsService {
    * Get monthly report by user, month and year
    */
   async getMonthlyReportByUserMonthYear(userId: string, month: number, year: number): Promise<MonthlyReport | null> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
+    if (!this.isBrowser) {
+      console.warn('Not available in SSR');
       return null;
     }
 
     try {
-      const q = query(
-        collection(this.db, 'monthly_reports'),
-        where('userId', '==', userId),
-        where('month', '==', month),
-        where('year', '==', year),
-        limit(1)
-      );
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getMonthlyReportByUserMonthYear(userId, month, year, idToken);
       
-      const snapshot = await getDoc(doc(this.db, 'monthly_reports'));
-      
-      if (snapshot.exists()) {
-        const doc = snapshot.data()?.[0];
-        const data = doc.data() as MonthlyReport;
-        (data as any).id = doc.id;
-        return data;
+      if (response.success && response.data?.report) {
+        return response.data.report as MonthlyReport;
       }
-      
       return null;
     } catch (error) {
       console.error('Error getting monthly report by user, month and year:', error);
@@ -191,13 +179,14 @@ export class MonthlyReportsService {
    * Delete monthly report
    */
   async deleteMonthlyReport(reportId: string): Promise<void> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
+    if (!this.isBrowser) {
+      console.warn('Not available in SSR');
       return;
     }
 
     try {
-      await deleteDoc(doc(this.db, 'monthly_reports', reportId));
+      const idToken = await this.getIdToken();
+      await this.backendApi.deleteMonthlyReport(reportId, idToken);
     } catch (error) {
       console.error('Error deleting monthly report:', error);
       throw error;

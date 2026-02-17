@@ -191,9 +191,6 @@ export class WinLossChartComponent implements OnInit, OnChanges, OnDestroy {
           const isWin = seriesIndex === 0; // Ahora el índice 0 es Win
           const color = isWin ? '#468506' : '#EC221F';
           
-          // Usar los valores monetarios reales en lugar del porcentaje
-          const moneyValue = isWin ? this.winLossData.winValue : this.winLossData.lossValue;
-          const formattedValue = this.numberFormatter.formatCurrency(moneyValue);
           const formattedPercentage = this.numberFormatter.formatPercentageValue(percentage);
           
           return `
@@ -212,12 +209,6 @@ export class WinLossChartComponent implements OnInit, OnChanges, OnDestroy {
               <div style="
                 font-size: 16px;
                 font-weight: 700;
-                color: #333;
-                margin-bottom: 4px;
-              ">${formattedValue}</div>
-              <div style="
-                font-size: 12px;
-                font-weight: 500;
                 color: ${color};
               ">${formattedPercentage}%</div>
             </div>

@@ -1,6 +1,7 @@
 import { Store } from '@ngrx/store';
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
+import { Subscription, concatMap, from, catchError, of, firstValueFrom } from 'rxjs';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { FormsModule } from '@angular/forms';
 import { OverviewService } from '../overview/services/overview.service';
@@ -12,14 +13,16 @@ import { selectUser } from '../auth/store/user.selectios';
 import { AccountData } from '../auth/models/userModel';
 import { ReportService } from '../report/service/report.service';
 import { setUserKey } from '../report/store/report.actions';
-import { concatMap, from, catchError, of } from 'rxjs';
 import { CreateAccountPopupComponent } from '../../shared/components/create-account-popup/create-account-popup.component';
 import { Router } from '@angular/router';
-import { PlanLimitationsGuard } from '../../guards/plan-limitations.guard';
+import { PlanLimitationsGuard } from '../../core/guards';
 import { PlanLimitationModalData } from '../../shared/interfaces/plan-limitation-modal.interface';
 import { PlanLimitationModalComponent } from '../../shared/components/plan-limitation-modal/plan-limitation-modal.component';
 import { PlanBannerComponent } from '../../shared/components/plan-banner/plan-banner.component';
 import { AppContextService } from '../../shared/context';
+import { TradeLockerApiService, TradeLockerCredentials } from '../../shared/services/tradelocker-api.service';
+import { ToastNotificationService } from '../../shared/services/toast-notification.service';
+import { ToastContainerComponent } from '../../shared/components/toast-container/toast-container.component';
 
 /**
  * Main component for managing trading accounts.
@@ -61,16 +64,19 @@ import { AppContextService } from '../../shared/context';
     CreateAccountPopupComponent,
     PlanLimitationModalComponent,
     PlanBannerComponent,
+    ToastContainerComponent,
   ],
   templateUrl: './trading-accounts.component.html',
   styleUrl: './trading-accounts.component.scss',
   standalone: true,
 })
-export class TradingAccountsComponent {
+export class TradingAccountsComponent implements OnDestroy {
   user: User | null = null;
   userKey: string = '';
   fromDate: string = '';
   toDate: string = '';
+
+  // Suscripción para limpiar al destruir el componente
 
   constructor(
     private store: Store,
@@ -78,7 +84,9 @@ export class TradingAccountsComponent {
     private userSvc: AuthService,
     private router: Router,
     private planLimitationsGuard: PlanLimitationsGuard,
-    private appContext: AppContextService
+    private appContext: AppContextService,
+    private tradeLockerApi: TradeLockerApiService,
+    private toastService: ToastNotificationService
   ) {}
 
   loading = false;
@@ -145,8 +153,13 @@ export class TradingAccountsComponent {
     });
 
     // Suscribirse a las cuentas del usuario
-    this.appContext.userAccounts$.subscribe(accounts => {
+    this.appContext.userAccounts$.subscribe(async accounts => {
       this.usersData = accounts;
+      
+      // Actualizar limitaciones dinámicamente cuando cambian las cuentas
+      if (this.user?.id) {
+        await this.checkPlanLimitations();
+      }
     });
 
     // Suscribirse a los estados de carga
@@ -158,6 +171,13 @@ export class TradingAccountsComponent {
     this.appContext.errors$.subscribe(errors => {
       if (errors.accounts) {
         console.error('Error en cuentas:', errors.accounts);
+      }
+    });
+
+    // Suscribirse a cambios en el plan del usuario para actualizar limitaciones dinámicamente
+    this.appContext.userPlan$.subscribe(async plan => {
+      if (plan && this.user?.id) {
+        await this.checkPlanLimitations();
       }
     });
   }
@@ -177,41 +197,109 @@ export class TradingAccountsComponent {
   /**
    * Fetches all trading accounts for the current user.
    *
-   * Uses AuthService to get accounts from Firebase, then fetches
-   * balance data for each account. Also checks account limitations
-   * after loading.
+   * First checks if there are accounts in Firebase. If accounts exist:
+   * - Gets accessToken using getAccountTokens
+   * - Connects to streams for real-time balance updates
+   * - Updates balances in Firebase when received from streams
+   *
+   * If no accounts exist:
+   * - Validates account using getAccountTokens (if returns token, account exists)
+   * - Saves user info for display in other sections
    *
    * Related to:
    * - AuthService.getUserAccounts(): Fetches accounts from Firebase
-   * - getBalanceForAccounts(): Fetches balances for all accounts
+   * - TradeLockerApiService.getAccountTokens(): Gets access tokens
    * - checkAccountLimitations(): Checks plan limitations
    *
    * @memberof TradingAccountsComponent
    */
-  getUserAccounts() {
-    this.userSvc
-      .getUserAccounts(this.user?.id || '')
-      .then((docSnap) => {
+  async getUserAccounts() {
+    try {
+      const docSnap = await this.userSvc.getUserAccounts(this.user?.id || '');
+      
+      if (docSnap && docSnap.length > 0) {
+        // Hay cuentas en Firebase: obtener accessToken y conectar streams
+        this.usersData = docSnap;
         
-        if (docSnap && docSnap.length > 0) {
-          this.usersData = docSnap;
-          // Don't set loading = false here, wait for balances to load
-          this.getBalanceForAccounts();
-        } else {
-          this.usersData = [];
-          this.loading = false; // No accounts, no balances to load
+        // Obtener accessToken para todas las cuentas usando la primera cuenta
+        const firstAccount = docSnap[0];
+        const credentials: TradeLockerCredentials = {
+          email: firstAccount.emailTradingAccount,
+          password: firstAccount.brokerPassword,
+          server: firstAccount.server
+        };
+        
+        try {
+          // Obtener tokens para todas las cuentas del usuario
+          const tokenResponse = await firstValueFrom(
+            this.tradeLockerApi.getAccountTokens(credentials)
+          );
+          
+          if (tokenResponse && tokenResponse.data && tokenResponse.data.length > 0) {
+            // Streams removido - los balances se actualizarán desde el backend
+          } else {
+          }
+        } catch (error: any) {
+          // Manejar error 404 de manera silenciosa (endpoint puede no estar disponible)
+          if (error?.status === 404 || error?.error?.status === 404) {
+          } else {
+            console.error('Error obteniendo tokens o inicializando streams:', error);
+          }
         }
         
-        // Verificar limitaciones después de cargar las cuentas
-        this.checkAccountLimitations();
-      })
-      .catch((err) => {
         this.loading = false;
-        console.error('Error to get the config', err);
-      });
+      } else {
+        // No hay cuentas en Firebase: validar con getAccountTokens
+        this.usersData = [];
+        
+        // COMENTADO: Validación de cuenta deshabilitada por ahora
+        // La validación se hará cuando el usuario intente crear una cuenta
+        // await this.validateAccountWithoutFirebase();
+        
+        this.loading = false;
+      }
+      
+      // Verificar limitaciones después de cargar las cuentas
+      await this.checkAccountLimitations();
+    } catch (err) {
+      this.loading = false;
+      console.error('Error to get the config', err);
+    }
+  }
+
+
+  /**
+   * Cleanup method called when component is destroyed.
+   * 
+   * Unsubscribes from balance updates to prevent memory leaks.
+   *
+   * @memberof TradingAccountsComponent
+   */
+  ngOnDestroy(): void {
+    // Cleanup si es necesario
   }
 
   /**
+   * Validates account without Firebase registration.
+   *
+   * Uses getAccountTokens to check if account exists. If it returns a token,
+   * the account exists. Saves user info for display in other sections.
+   *
+   * COMENTADO: Este método está deshabilitado por ahora según requerimientos.
+   * La validación se hará cuando el usuario intente crear una cuenta.
+   *
+   * @private
+   * @memberof TradingAccountsComponent
+   */
+  // private async validateAccountWithoutFirebase() {
+  //   // Este método se puede usar en el futuro para validar cuentas sin registrarlas en Firebase
+  //   // Por ahora está comentado según los requerimientos
+  // }
+
+  /**
+   * COMENTADO: Método antiguo para obtener balance de la API
+   * Ahora se usa solo el balance de streams API (tiempo real)
+   * 
    * Fetches balance data for all accounts.
    *
    * Processes accounts sequentially, fetching user key and balance
@@ -225,26 +313,29 @@ export class TradingAccountsComponent {
    *
    * @memberof TradingAccountsComponent
    */
-  getBalanceForAccounts() {
-    // Loading is already active from getUserAccounts, don't set it again
-    from(this.usersData)
-      .pipe(concatMap((account) => this.fetchUserKey(account)))
-      .subscribe({
-        next: () => {},
-        complete: () => {
-          this.loading = false; // Only set to false when balances are loaded
-        },
-        error: (err) => {
-          this.loading = false;
-          console.error(
-            'Error en el proceso de actualización de balances',
-            err
-          );
-        },
-      });
-  }
+  // getBalanceForAccounts() {
+  //   // Loading is already active from getUserAccounts, don't set it again
+  //   from(this.usersData)
+  //     .pipe(concatMap((account) => this.fetchUserKey(account)))
+  //     .subscribe({
+  //       next: () => {},
+  //       complete: () => {
+  //         this.loading = false; // Only set to false when balances are loaded
+  //       },
+  //       error: (err) => {
+  //         this.loading = false;
+  //         console.error(
+  //           'Error en el proceso de actualización de balances',
+  //           err
+  //         );
+  //       },
+  //     });
+  // }
 
   /**
+   * COMENTADO: Método antiguo para obtener balance de la API
+   * Ahora se usa solo el balance de streams API (tiempo real)
+   * 
    * Fetches user authentication key for an account.
    *
    * Authenticates with trading account credentials and stores the key
@@ -259,22 +350,25 @@ export class TradingAccountsComponent {
    * @returns Observable that completes when balance is fetched
    * @memberof TradingAccountsComponent
    */
-  fetchUserKey(account: AccountData) {
-    return this.reportSvc
-      .getUserKey(
-        account.emailTradingAccount,
-        account.brokerPassword,
-        account.server
-      )
-      .pipe(
-        concatMap((key: string) => {
-          this.store.dispatch(setUserKey({ userKey: key }));
-          return this.getActualBalance(key, account);
-        })
-      );
-  }
+  // fetchUserKey(account: AccountData) {
+  //   return this.reportSvc
+  //     .getUserKey(
+  //       account.emailTradingAccount,
+  //       account.brokerPassword,
+  //       account.server
+  //     )
+  //     .pipe(
+  //       concatMap((key: string) => {
+  //         this.store.dispatch(setUserKey({ userKey: key }));
+  //         return this.getActualBalance(key, account);
+  //       })
+  //     );
+  // }
 
   /**
+   * COMENTADO: Método antiguo para obtener balance de la API
+   * Ahora se usa solo el balance de streams API (tiempo real)
+   * 
    * Fetches actual balance for an account from the trading API.
    *
    * Uses the authentication key to fetch balance data and updates
@@ -288,17 +382,17 @@ export class TradingAccountsComponent {
    * @returns Observable that emits the account with updated balance
    * @memberof TradingAccountsComponent
    */
-  getActualBalance(key: string, account: AccountData) {
-    return this.reportSvc
-      .getBalanceData(account.accountID, key, account.accountNumber)
-      .pipe(
-        concatMap((balanceData) => {
-          // Guardar el balance en la cuenta
-          account.balance = balanceData.balance || 0;
-          return [account];
-        })
-      );
-  }
+  // getActualBalance(key: string, account: AccountData) {
+  //   return this.reportSvc
+  //     .getBalanceData(account.accountID, key, account.accountNumber)
+  //     .pipe(
+  //       concatMap((balanceData) => {
+  //         // Guardar el balance en la cuenta
+  //         account.balance = balanceData.balance || 0;
+  //         return [account];
+  //       })
+  //     );
+  // }
 
   /**
    * Deletes a trading account.
@@ -327,6 +421,7 @@ export class TradingAccountsComponent {
       .catch((err) => {
         this.loading = false;
         console.error('Error deleting account', err);
+        this.toastService.showBackendError(err, 'Error deleting account');
       });
   }
 
@@ -347,29 +442,41 @@ export class TradingAccountsComponent {
   async onAddAccount() {
     if (!this.user?.id) return;
 
+    // PRIMERO: Verificar límites ANTES de hacer cualquier otra cosa
     const currentAccountCount = this.usersData.length;
+    
+    // Check if user has reached absolute maximum (6 accounts)
+    if (currentAccountCount >= 6) {
+      // Absolute maximum reached: button should be disabled (do nothing)
+      return;
+    }
+    
+    // Verificar límite del plan ANTES de continuar
+    const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
+    
+    // Verificación directa: si el usuario alcanzó el límite de su plan, redirigir inmediatamente
+    if (currentAccountCount >= limitations.maxAccounts) {
+      // User has reached plan limit but not absolute maximum: redirect to plan management
+      // IMPORTANTE: Redirigir INMEDIATAMENTE sin hacer nada más
+      this.router.navigate(['/account'], { 
+        queryParams: { tab: 'plan' } 
+      });
+      return;
+    }
+    
+    // Verificación adicional con el guard (por si acaso)
     const accessCheck = await this.planLimitationsGuard.checkAccountCreationWithModal(this.user.id, currentAccountCount);
     
     if (!accessCheck.canCreate) {
-      // Check if user has Pro plan with maximum accounts (should disable button)
-      const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
-      const isProPlanWithMaxAccounts = limitations.planName.toLowerCase().includes('pro') && 
-                                      limitations.maxAccounts === 10 && 
-                                      currentAccountCount >= 10;
-      
-      if (isProPlanWithMaxAccounts) {
-        // Pro plan with maximum accounts: button should be disabled (do nothing)
-        return;
-      } else {
-        // Other plans: redirect to account/plan-management
-        this.router.navigate(['/account'], { 
-          queryParams: { tab: 'plan' } 
-        });
-        return;
-      }
+      // User has reached plan limit but not absolute maximum: redirect to plan management
+      // IMPORTANTE: Redirigir INMEDIATAMENTE sin hacer nada más
+      this.router.navigate(['/account'], { 
+        queryParams: { tab: 'plan' } 
+      });
+      return;
     }
     
-    // If within limits, show add account modal
+    // SOLO si pasa todas las verificaciones, mostrar el modal
     this.editMode = false;
     this.accountToEdit = null;
     this.showAddAccountModal = true;
@@ -430,19 +537,15 @@ export class TradingAccountsComponent {
 
     try {
       const currentAccountCount = this.usersData.length;
-      const limitations = await this.planLimitationsGuard.checkUserLimitations(this.user.id);
       
-      // Only disable button for Pro plan with maximum accounts (10 accounts)
-      const isProPlanWithMaxAccounts = limitations.planName.toLowerCase().includes('pro') && 
-                                      limitations.maxAccounts === 10 && 
-                                      currentAccountCount >= 10;
-      
-      this.isAddAccountDisabled = isProPlanWithMaxAccounts;
+      // Only disable button when absolute maximum is reached (6 accounts)
+      this.isAddAccountDisabled = currentAccountCount >= 6;
       
       // Show banner based on limitations
       await this.checkPlanLimitations();
     } catch (error) {
       console.error('Error checking account limitations:', error);
+      this.toastService.showBackendError(error, 'Error checking account limitations');
       this.isAddAccountDisabled = false; // Default to active
     }
   }
@@ -477,26 +580,38 @@ export class TradingAccountsComponent {
 
       // If user needs subscription or is banned/cancelled
       if (limitations.needsSubscription || limitations.isBanned || limitations.isCancelled) {
+        this.isAddAccountDisabled = true;
         this.showPlanBanner = true;
         this.planBannerMessage = this.getBlockedMessage(limitations);
         this.planBannerType = 'warning';
         return;
       }
 
-      // Check if user has reached account limit
-      if (currentAccountCount >= limitations.maxAccounts) {
+      // Check if user has reached account limit (but not absolute maximum)
+      // Button state is handled in checkAccountLimitations() - only disabled at 6 accounts
+      if (currentAccountCount >= limitations.maxAccounts && currentAccountCount < 6) {
+        // User reached plan limit but not absolute maximum: show banner, button stays active
         this.showPlanBanner = true;
         this.planBannerMessage = `You've reached the account limit for your ${limitations.planName} plan. Move to a higher plan and keep growing your account.`;
         this.planBannerType = 'warning';
-      } else if (currentAccountCount >= limitations.maxAccounts - 1) {
+      } else if (currentAccountCount >= limitations.maxAccounts - 1 && currentAccountCount < 6) {
         // Show warning when close to limit
         this.showPlanBanner = true;
-        this.planBannerMessage = `You have ${limitations.maxAccounts - currentAccountCount} accounts left on your current plan. Want more? Upgrade anytime.`;
+        this.planBannerMessage = `You have ${limitations.maxAccounts - currentAccountCount} account(s) left on your current plan. Want more? Upgrade anytime.`;
         this.planBannerType = 'info';
+      } else if (currentAccountCount >= 6) {
+        // Absolute maximum reached
+        this.showPlanBanner = true;
+        this.planBannerMessage = `You've reached the maximum number of accounts (6).`;
+        this.planBannerType = 'warning';
+      } else {
+        this.showPlanBanner = false;
       }
     } catch (error) {
-      console.error('Error checking plan limitations:', error);
+      console.error('❌ TradingAccountsComponent.checkPlanLimitations: Error checking plan limitations:', error);
+      this.toastService.showBackendError(error, 'Error checking plan limitations');
       this.showPlanBanner = false;
+      this.isAddAccountDisabled = true; // Por seguridad, deshabilitar en caso de error
     }
   }
 
@@ -518,7 +633,9 @@ export class TradingAccountsComponent {
 
 
   onUpgradePlan() {
-    this.router.navigate(['/account']);
+    this.router.navigate(['/account'], { 
+      queryParams: { tab: 'plan' } 
+    });
   }
 
   onCloseBanner() {
@@ -537,6 +654,7 @@ export class TradingAccountsComponent {
   async onAccountCreated(accountData: any) {
     // Account is already created in Firebase by the popup component
     // Show loading and reload everything
+    // Note: The popup will be closed when user clicks "Go to list" in success modal
     this.loading = true;
     this.loadConfig(); // Reload accounts
     await this.checkPlanLimitations();
@@ -545,6 +663,7 @@ export class TradingAccountsComponent {
   async onAccountUpdated(accountData: any) {
     // Account is already updated in Firebase by the popup component
     // Show loading and reload everything
+    // Note: The popup will be closed when user clicks "Go to list" in success modal
     this.loading = true;
     this.loadConfig(); // Reload accounts
     await this.checkPlanLimitations();

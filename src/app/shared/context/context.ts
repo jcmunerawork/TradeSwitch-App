@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, effect } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { BehaviorSubject, Observable, combineLatest, map, distinctUntilChanged } from 'rxjs';
 import { User } from '../../features/overview/models/overview';
 import { AccountData } from '../../features/auth/models/userModel';
@@ -6,6 +6,7 @@ import { ConfigurationOverview } from '../../features/strategy/models/strategy.m
 import { BalanceData, GroupedTradeFinal } from '../../features/report/models/report.model';
 import { Plan } from '../services/planService';
 import { TradeLockerApiService } from '../services/tradelocker-api.service';
+import { AccountsCacheService } from '../services/accounts-cache.service';
 
 // Interfaces para datos de API externa
 export interface TradeLockerAccountData {
@@ -88,6 +89,7 @@ export interface AppContextState {
     report: boolean;
     overview: boolean;
     globalPlans: boolean;
+    balances: boolean; // Loading state for account balances
   };
   
   // Estados de error
@@ -155,6 +157,8 @@ export interface AppContextState {
   providedIn: 'root'
 })
 export class AppContextService {
+  private accountsCacheService = inject(AccountsCacheService);
+  
   // Estado inicial
   private initialState: AppContextState = {
     currentUser: null,
@@ -190,7 +194,8 @@ export class AppContextService {
       tradeLocker: false,
       report: false,
       overview: false,
-      globalPlans: false
+      globalPlans: false,
+      balances: false
     },
     errors: {
       user: null,
@@ -238,6 +243,15 @@ export class AppContextService {
     balanceData: null,
     monthlyReports: []
   });
+  
+  // Signal para balances en tiempo real por accountId
+  public accountBalances = signal<Map<string, number>>(new Map());
+  
+  // Signal para estado de loading de balances
+  public balancesLoading = signal<boolean>(false);
+  
+  // Signal para instrumentos por accountId (accountID de Firebase)
+  public instrumentsByAccount = signal<Map<string, any[]>>(new Map());
   
   // Signals para datos de overview
   public overviewData = signal<{
@@ -345,6 +359,18 @@ export class AppContextService {
     map(state => state.reportData),
     distinctUntilChanged()
   );
+  
+  // Observable para balances en tiempo real (usando toSignal pattern)
+  public accountBalances$ = this.state$.pipe(
+    map(() => this.accountBalances()),
+    distinctUntilChanged((prev, curr) => {
+      if (prev.size !== curr.size) return false;
+      for (const [key, value] of prev) {
+        if (curr.get(key) !== value) return false;
+      }
+      return true;
+    })
+  );
 
   public overviewData$ = this.state$.pipe(
     map(state => state.overviewData),
@@ -362,21 +388,26 @@ export class AppContextService {
   );
 
   constructor(private tradeLockerApi: TradeLockerApiService) {
+    // Limpiar datos legacy de localStorage al iniciar
+    this.accountsCacheService.cleanupLegacyLocalStorage();
+    
+    // COMENTADO: effect() no está disponible en servicios sin contexto de inyección
+    // La sincronización se hace manualmente en los métodos setter de cada signal
     // Sincronizar signals con el estado principal
-    effect(() => {
-      this.updateState({
-        currentUser: this.currentUser(),
-        isAuthenticated: this.isAuthenticated(),
-        userAccounts: this.userAccounts(),
-        userStrategies: this.userStrategies(),
-        userPlan: this.userPlan(),
-        pluginHistory: this.pluginHistory(),
-        globalPlans: this.globalPlans(),
-        planLimits: this.planLimits(),
-        reportData: this.reportData(),
-        overviewData: this.overviewData()
-      });
-    });
+    // effect(() => {
+    //   this.updateState({
+    //     currentUser: this.currentUser(),
+    //     isAuthenticated: this.isAuthenticated(),
+    //     userAccounts: this.userAccounts(),
+    //     userStrategies: this.userStrategies(),
+    //     userPlan: this.userPlan(),
+    //     pluginHistory: this.pluginHistory(),
+    //     globalPlans: this.globalPlans(),
+    //     planLimits: this.planLimits(),
+    //     reportData: this.reportData(),
+    //     overviewData: this.overviewData()
+    //   });
+    // });
   }
 
   // ===== MÉTODOS DE ACTUALIZACIÓN DE ESTADO =====
@@ -437,6 +468,14 @@ export class AppContextService {
 
   setUserAccounts(accounts: AccountData[]): void {
     this.userAccounts.set(accounts);
+    // Sincronizar con el estado principal
+    this.updateState({ userAccounts: accounts });
+    
+    // Actualizar también el cache de localStorage
+    const currentUser = this.currentUser();
+    if (currentUser?.id) {
+      this.accountsCacheService.setAccounts(currentUser.id, accounts);
+    }
   }
 
   addAccount(account: AccountData): void {
@@ -648,6 +687,11 @@ export class AppContextService {
         [component]: loading
       }
     });
+    
+    // Actualizar signal específico para balances
+    if (component === 'balances') {
+      this.balancesLoading.set(loading);
+    }
   }
 
   setError(component: keyof AppContextState['errors'], error: string | null): void {
@@ -753,6 +797,139 @@ export class AppContextService {
     const currentData = this.reportData();
     this.reportData.set({ ...currentData, balanceData });
   }
+  
+  /**
+   * Update account balance in real-time
+   * 
+   * @param accountId - Account ID from backend (can be "D#1492655" format or regular accountID)
+   * @param balance - Balance value (equity from AccountStatus)
+   */
+  /**
+   * Update account metrics (netPnl, profit, bestTrade) from backend
+   */
+  updateAccountMetrics(accountId: string, metrics: { netPnl: number; profit: number; bestTrade: number }): void {
+    const currentAccounts = this.userAccounts();
+    const updatedAccounts = currentAccounts.map(account => {
+      if (account.id === accountId) {
+        return {
+          ...account,
+          netPnl: metrics.netPnl,
+          profit: metrics.profit,
+          bestTrade: metrics.bestTrade
+        };
+      }
+      return account;
+    });
+    this.userAccounts.set(updatedAccounts);
+    
+    // Actualizar también el cache de localStorage
+    const currentUser = this.currentUser();
+    if (currentUser?.id) {
+      this.accountsCacheService.setAccounts(currentUser.id, updatedAccounts);
+    }
+  }
+
+  /**
+   * Establecer instrumentos para una cuenta específica
+   * @param accountId - ID de la cuenta (accountID de Firebase)
+   * @param instruments - Array de instrumentos
+   */
+  setInstrumentsForAccount(accountId: string, instruments: any[]): void {
+    const currentInstruments = new Map(this.instrumentsByAccount());
+    currentInstruments.set(accountId, instruments);
+    this.instrumentsByAccount.set(currentInstruments);
+  }
+
+  /**
+   * Obtener instrumentos para una cuenta específica
+   * @param accountId - ID de la cuenta (accountID de Firebase)
+   * @returns Array de instrumentos o null si no existen
+   */
+  getInstrumentsForAccount(accountId: string): any[] | null {
+    const instruments = this.instrumentsByAccount().get(accountId);
+    return instruments || null;
+  }
+
+  /**
+   * Obtener nombres de instrumentos para una cuenta específica
+   * @param accountId - ID de la cuenta (accountID de Firebase)
+   * @returns Array de nombres de instrumentos
+   */
+  getInstrumentNamesForAccount(accountId: string): string[] {
+    const instruments = this.getInstrumentsForAccount(accountId);
+    if (!instruments || instruments.length === 0) {
+      return [];
+    }
+    return instruments.map((instrument: any) => instrument.name || instrument.localizedName || '').filter((name: string) => name);
+  }
+
+  updateAccountBalance(accountId: string, balance: number): void {
+    const currentBalances = new Map(this.accountBalances());
+    
+    // The accountId from backend might be in format "D#1492655"
+    // We need to find the matching account in our system
+    const accounts = this.userAccounts();
+    
+    // Try to find account by accountID first
+    let matchingAccount = accounts.find(acc => acc.accountID === accountId);
+    
+    // If not found, try to match by extracting the number part from "D#1492655" format
+    if (!matchingAccount && accountId.includes('#')) {
+      const accountNumber = accountId.split('#')[1];
+      matchingAccount = accounts.find(acc => 
+        acc.accountID === accountNumber || 
+        acc.accountID === accountId ||
+        String(acc.accountNumber) === accountNumber
+      );
+    }
+    
+    // If still not found, try matching by accountNumber
+    if (!matchingAccount) {
+      const accountNumber = parseInt(accountId.replace(/[^0-9]/g, ''));
+      if (!isNaN(accountNumber)) {
+        matchingAccount = accounts.find(acc => acc.accountNumber === accountNumber);
+      }
+    }
+    
+    // Use the matching account's accountID or the original accountId
+    const balanceKey = matchingAccount?.accountID || matchingAccount?.id || accountId;
+    
+    // Update balance in the map
+    currentBalances.set(balanceKey, balance);
+    
+    // Also set with the original accountId in case it's needed
+    if (balanceKey !== accountId) {
+      currentBalances.set(accountId, balance);
+    }
+    
+    this.accountBalances.set(currentBalances);
+    
+    // Also update the account in userAccounts if it exists
+    if (matchingAccount) {
+      const accountIndex = accounts.findIndex(acc => acc.id === matchingAccount!.id);
+      if (accountIndex !== -1) {
+        const updatedAccounts = [...accounts];
+        updatedAccounts[accountIndex] = {
+          ...updatedAccounts[accountIndex],
+          balance
+        };
+        this.setUserAccounts(updatedAccounts);
+        
+        // Actualizar también el cache de localStorage
+        const currentUser = this.currentUser();
+        if (currentUser?.id) {
+          this.accountsCacheService.setAccounts(currentUser.id, updatedAccounts);
+        }
+      }
+    }
+  }
+  
+  /**
+   * Get balance for a specific account
+   */
+  getAccountBalance(accountId: string): number {
+    return this.accountBalances().get(accountId) || 0;
+  }
 
   updateReportHistory(accountHistory: any[]): void {
     const currentData = this.reportData();
@@ -820,8 +997,6 @@ export class AppContextService {
    */
   private async loadUserAccountsIfNeeded(userId: string): Promise<void> {
     // Este método se implementará cuando se integre con AuthService
-    // Por ahora, solo logueamos que necesitamos cargar las cuentas
-    console.log('Loading user accounts for userId:', userId);
   }
 
   /**
@@ -832,27 +1007,15 @@ export class AppContextService {
       this.setLoading('tradeLocker', true);
       this.setError('tradeLocker', null);
 
-      // Obtener userKey
-      const userKey = await this.tradeLockerApi.getUserKey(
-        account.emailTradingAccount,
-        account.brokerPassword,
-        account.server
-      ).toPromise();
-
-      if (!userKey) {
-        throw new Error('No se pudo obtener userKey');
-      }
-
+      // El backend gestiona el accessToken automáticamente, no es necesario obtenerlo
       // Obtener balance data
       const balanceData = await this.tradeLockerApi.getAccountBalance(
         account.accountID,
-        userKey,
         1
       ).toPromise();
 
       // Obtener trading history
       const tradingHistory = await this.tradeLockerApi.getTradingHistory(
-        userKey,
         account.accountID,
         1
       ).toPromise();
@@ -870,8 +1033,8 @@ export class AppContextService {
 
       this.setTradingHistoryForAccount(account.id, accountData);
 
-      // Guardar en localStorage
-      this.saveTradingHistoryToLocalStorage(account.id, accountData);
+      // Los datos ya se guardan en Firebase a través del backend
+      // No es necesario guardar en localStorage
 
       this.setLoading('tradeLocker', false);
     } catch (error) {
@@ -956,68 +1119,8 @@ export class AppContextService {
   }
 
   /**
-   * Guardar trading history en localStorage por cuenta
-   */
-  saveTradingHistoryToLocalStorage(accountId: string, data: {
-    accountHistory: GroupedTradeFinal[];
-    stats: any;
-    balanceData: any;
-    lastUpdated: number;
-  }): void {
-    try {
-      const key = `tradeSwitch_tradingHistory_${accountId}`;
-      
-      // Cargar datos existentes para preservar balanceData si es null
-      let existingBalanceData = null;
-      try {
-        const existingData = localStorage.getItem(key);
-        if (existingData) {
-          const parsed = JSON.parse(existingData);
-          existingBalanceData = parsed.balanceData;
-        }
-      } catch (error) {
-        // Si no hay datos existentes, continuar
-      }
-      
-      const dataToSave = {
-        accountHistory: data.accountHistory,
-        stats: data.stats,
-        // Solo sobrescribir balanceData si no es null, de lo contrario preservar el existente
-        balanceData: data.balanceData !== null && data.balanceData !== undefined 
-          ? data.balanceData 
-          : existingBalanceData,
-        lastUpdated: data.lastUpdated
-      };
-      
-      localStorage.setItem(key, JSON.stringify(dataToSave));
-    } catch (error) {
-      console.error('Error saving trading history to localStorage:', error);
-    }
-  }
-
-  /**
-   * Cargar trading history desde localStorage por cuenta
-   */
-  loadTradingHistoryFromLocalStorage(accountId: string): {
-    accountHistory: GroupedTradeFinal[];
-    stats: any;
-    balanceData: any;
-    lastUpdated: number;
-  } | null {
-    try {
-      const key = `tradeSwitch_tradingHistory_${accountId}`;
-      const data = localStorage.getItem(key);
-      if (data) {
-        return JSON.parse(data);
-      }
-    } catch (error) {
-      console.error('Error loading trading history from localStorage:', error);
-    }
-    return null;
-  }
-
-  /**
    * Limpiar trading history de una cuenta específica
+   * Los datos se mantienen en Firebase, solo se limpia del contexto en memoria
    */
   clearTradingHistoryForAccount(accountId: string): void {
     const currentState = this.stateSubject.value;
@@ -1027,88 +1130,6 @@ export class AppContextService {
     this.updateState({
       tradingHistoryByAccount: newTradingHistory
     });
-
-    // Limpiar también del localStorage
-    try {
-      const key = `tradeSwitch_tradingHistory_${accountId}`;
-      localStorage.removeItem(key);
-    } catch (error) {
-      console.error('Error clearing trading history from localStorage:', error);
-    }
-  }
-
-  /**
-   * Cargar datos de reporte desde localStorage por accountID
-   */
-  loadReportDataFromLocalStorage(accountID: string): {
-    tradingAccount: AccountData;
-    accountHistory: GroupedTradeFinal[];
-    stats: any;
-    balanceData: any;
-    lastUpdated: number;
-  } | null {
-    try {
-      const key = `tradeSwitch_reportData_${accountID}`;
-      const data = localStorage.getItem(key);
-      if (data) {
-        return JSON.parse(data);
-      }
-    } catch (error) {
-      console.error('Error loading report data from localStorage:', error);
-    }
-    return null;
-  }
-
-  /**
-   * Guardar datos de reporte en localStorage por accountID
-   */
-  saveReportDataToLocalStorage(accountID: string, tradingAccount: AccountData, reportData: {
-    accountHistory: GroupedTradeFinal[];
-    stats: any;
-    balanceData: any;
-    lastUpdated: number;
-  }): void {
-    try {
-      const key = `tradeSwitch_reportData_${accountID}`;
-      
-      // Cargar datos existentes para preservar balanceData si es null
-      let existingBalanceData = null;
-      try {
-        const existingData = localStorage.getItem(key);
-        if (existingData) {
-          const parsed = JSON.parse(existingData);
-          existingBalanceData = parsed.balanceData;
-        }
-      } catch (error) {
-        // Si no hay datos existentes, continuar
-      }
-      
-      const dataToSave = {
-        tradingAccount: tradingAccount,
-        accountHistory: reportData.accountHistory,
-        stats: reportData.stats,
-        // Solo sobrescribir balanceData si no es null, de lo contrario preservar el existente
-        balanceData: reportData.balanceData !== null && reportData.balanceData !== undefined 
-          ? reportData.balanceData 
-          : existingBalanceData,
-        lastUpdated: reportData.lastUpdated
-      };
-      
-      localStorage.setItem(key, JSON.stringify(dataToSave));
-    } catch (error) {
-      console.error('Error saving report data to localStorage:', error);
-    }
-  }
-
-  /**
-   * Limpiar datos de reporte de localStorage por accountID
-   */
-  clearReportDataFromLocalStorage(accountID: string): void {
-    try {
-      const key = `tradeSwitch_reportData_${accountID}`;
-      localStorage.removeItem(key);
-    } catch (error) {
-      console.error('Error clearing report data from localStorage:', error);
-    }
+    // Los datos ya están en Firebase, no es necesario limpiar localStorage
   }
 }

@@ -17,8 +17,9 @@ import { setUserData } from '../store/user.actions';
 import { User } from '../../overview/models/overview';
 import { UserCredentials } from '../models/userModel';
 import { AppContextService } from '../../../shared/context';
-import { AlertService } from '../../../shared/services/alert.service';
-import { ForgotPasswordPopupComponent } from '../../../shared/pop-ups/forgot-password/forgot-password.component';
+import { AlertService } from '../../../core/services';
+import { ToastNotificationService } from '../../../shared/services/toast-notification.service';
+import { ForgotPasswordPopupComponent } from '../../../shared/pop-ups/forgot-password/forgot-password.component';  
 
 @Component({
   selector: 'app-login',
@@ -37,6 +38,8 @@ export class Login {
   loginForm: FormGroup;
   showPassword = false;
   forgotVisible = false;
+  isLoading = false;
+  errorMessage = '';
 
   constructor(
     private fb: FormBuilder,
@@ -44,7 +47,8 @@ export class Login {
     private store: Store,
     private router: Router,
     private appContext: AppContextService,
-    private alertService: AlertService
+    private alertService: AlertService,
+    private toastService: ToastNotificationService
   ) {
     this.loginForm = this.fb.group({
       loginEmail: ['', [Validators.required, Validators.email, this.emailValidator]],
@@ -61,7 +65,9 @@ export class Login {
     if (this.loginForm.valid) {
       const userCredentials = this.createUserCredentialsObject();
       
-      // Establecer estado de carga
+      // Establecer estado de carga y limpiar error previo
+      this.isLoading = true;
+      this.errorMessage = '';
       this.appContext.setLoading('user', true);
       this.appContext.setError('user', null);
       
@@ -78,6 +84,7 @@ export class Login {
               this.store.dispatch(setUserData({ user: userData }));
               
               // Limpiar estado de carga
+              this.isLoading = false;
               this.appContext.setLoading('user', false);
               
               // Navegar según el tipo de usuario
@@ -88,12 +95,14 @@ export class Login {
               }
             })
             .catch((error: any) => {
+              this.isLoading = false;
               this.appContext.setLoading('user', false);
               this.appContext.setError('user', 'Error al obtener datos del usuario');
               this.handleLoginError(error);
             });
         })
         .catch((error: any) => {
+          this.isLoading = false;
           this.appContext.setLoading('user', false);
           this.appContext.setError('user', 'Error de autenticación');
           this.handleLoginError(error);
@@ -122,12 +131,10 @@ export class Login {
 
   signInWithGoogle(): void {
     // TODO: Implement Google sign-in
-    console.log('Google sign-in');
   }
 
   signInWithApple(): void {
     // TODO: Implement Apple sign-in
-    console.log('Apple sign-in');
   }
 
   // Validador personalizado para email
@@ -166,7 +173,7 @@ export class Login {
 
     // Mostrar alerta si hay errores
     if (errors.length > 0) {
-      this.alertService.showError('Validation errors:\n\n' + errors.join('\n'), 'Validation Error');
+      this.toastService.showError('Validation errors:\n\n' + errors.join('\n'));
     }
   }
 
@@ -174,24 +181,44 @@ export class Login {
   private handleLoginError(error: any): void {
     console.error('Login error:', error);
     
-    let errorMessage = 'Login failed. ';
+    // Extraer mensaje de error del formato del backend
+    const errorMessage = this.extractErrorMessage(error);
     
-    // Verificar tipo de error específico
-    if (error.code === 'auth/user-not-found') {
-      errorMessage += 'No account found with this email.';
-    } else if (error.code === 'auth/wrong-password') {
-      errorMessage += 'Incorrect password.';
-    } else if (error.code === 'auth/invalid-email') {
-      errorMessage += 'Invalid email format.';
-    } else if (error.code === 'auth/user-disabled') {
-      errorMessage += 'This account has been disabled.';
-    } else if (error.code === 'auth/too-many-requests') {
-      errorMessage += 'Too many failed attempts. Please try again later.';
-    } else {
-      // Error genérico - verificar si es problema de credenciales
-      errorMessage += 'Email or password is incorrect. Please check your credentials and try again.';
+    // Mostrar error en rojo en el componente
+    this.errorMessage = errorMessage;
+    
+    // Mostrar toast notification
+    this.toastService.showBackendError(error, 'Login error');
+  }
+
+  // Función helper para extraer el mensaje de error del formato del backend
+  private extractErrorMessage(error: any): string {
+    // El error puede estar en diferentes ubicaciones dependiendo de cómo Angular maneje la respuesta
+    if (error?.error?.error?.message) {
+      // Formato del backend: error.error.error.message
+      return error.error.error.message;
+    } else if (error?.error?.message) {
+      // Formato alternativo
+      return error.error.message;
+    } else if (error?.message) {
+      // Mensaje genérico de HTTP
+      return error.message;
+    } else if (error?.code) {
+      // Errores de Firebase Auth (compatibilidad)
+      if (error.code === 'auth/user-not-found') {
+        return 'No account found with this email.';
+      } else if (error.code === 'auth/wrong-password') {
+        return 'Incorrect password.';
+      } else if (error.code === 'auth/invalid-email') {
+        return 'Invalid email format.';
+      } else if (error.code === 'auth/user-disabled') {
+        return 'This account has been disabled.';
+      } else if (error.code === 'auth/too-many-requests') {
+        return 'Too many failed attempts. Please try again later.';
+      }
     }
     
-    this.alertService.showError(errorMessage, 'Login Error');
+    // Mensaje por defecto
+    return 'Email or password is incorrect. Please check your credentials and try again.';
   }
 }

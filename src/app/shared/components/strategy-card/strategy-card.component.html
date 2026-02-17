@@ -108,6 +108,29 @@
     </div>
   </div>
 
+  <!-- Rules Dropdown - Only show if there are active rules -->
+  @if (strategy.rules > 0) {
+    <div class="rules-dropdown-container">
+      <button 
+        class="rules-dropdown-toggle"
+        (click)="toggleRulesDropdown()"
+        type="button"
+      >
+        <span>Active Rules</span>
+        <span class="material-symbols-outlined chevron" [class.open]="showRulesDropdown">
+          expand_more
+        </span>
+      </button>
+      @if (showRulesDropdown) {
+        <div class="rules-dropdown-list">
+          @for (ruleName of activeRuleNames; track ruleName) {
+            <div class="rules-dropdown-item">{{ ruleName }}</div>
+          }
+        </div>
+      }
+    </div>
+  }
+
   <!-- Action Buttons -->
   <div class="action-buttons" *ngIf="!strategy.status">
     <button class="edit-strategy-btn" (click)="onEditStrategy()">

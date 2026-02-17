@@ -1,14 +1,14 @@
-import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } from 'firebase/firestore';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { User } from '../../features/overview/models/overview';
+import { BackendApiService } from '../../core/services/backend-api.service';
+import { getAuth } from 'firebase/auth';
 
 /**
- * Service for user data operations in Firebase.
+ * Service for user data operations via backend API.
  *
- * This service provides CRUD operations for user documents in Firestore.
- * It handles user creation, retrieval, updates, and deletion. It's used
- * throughout the application for user data management.
+ * This service provides CRUD operations for user documents through the backend API.
+ * All operations are handled by the backend, which manages Firestore directly.
  *
  * Features:
  * - Get user data by UID
@@ -18,10 +18,6 @@ import { User } from '../../features/overview/models/overview';
  * - Update user data
  * - Get all users
  * - Delete user
- *
- * User Data Structure:
- * - Stored in: `users/{userId}`
- * - Includes: profile data, trading statistics, subscription info
  *
  * Relations:
  * - Used by AuthService for user operations
@@ -37,60 +33,78 @@ import { User } from '../../features/overview/models/overview';
 })
 export class UsersOperationsService {
   private isBrowser: boolean;
-  private db: ReturnType<typeof getFirestore> | null = null;
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private backendApi: BackendApiService
+  ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
-    if (this.isBrowser) {
-      const { firebaseApp } = require('../../firebase/firebase.init.ts');
-      this.db = getFirestore(firebaseApp);
+  }
+
+  /**
+   * Get Firebase ID token for backend API calls
+   */
+  private async getIdToken(): Promise<string> {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User not authenticated');
     }
+    return await currentUser.getIdToken();
   }
 
   /**
    * Obtener datos de un usuario por UID
+   * Now uses backend API but maintains same interface
    */
   async getUserData(uid: string): Promise<User> {
-    if (this.db) {
-      const userDoc = doc(this.db, 'users', uid);
-      return getDoc(userDoc).then((doc) => {
-        if (doc.exists()) {
-          return doc.data() as User;
-        } else {
-          throw new Error('User not found');
-        }
-      });
-    } else {
-      console.warn('Firestore not available in SSR');
-      return Promise.resolve({} as User);
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getUserById(uid, idToken);
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'User not found');
+      }
+      
+      return response.data.user as User;
+    } catch (error) {
+      console.error('Error getting user data:', error);
+      throw error;
     }
   }
 
   /**
    * Crear usuario
+   * Now uses backend API but maintains same interface
    */
   async createUser(user: User): Promise<void> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return;
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.createUser(user, idToken);
+      
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to create user');
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
     }
-    await setDoc(doc(this.db, 'users', user.id), user);
   }
 
   /**
    * Obtener un usuario por su ID
+   * Now uses backend API but maintains same interface
    */
   async getUserById(userId: string): Promise<User | null> {
     try {
-      if (!this.isBrowser || !this.db) {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getUserById(userId, idToken);
+      
+      if (!response.success || !response.data) {
         return null;
       }
-
-      const userDoc = await getDoc(doc(this.db, 'users', userId));
-      if (userDoc.exists()) {
-        return { id: userDoc.id, ...userDoc.data() } as User;
-      }
-      return null;
+      
+      return response.data.user as User;
     } catch (error) {
       console.error('Error obteniendo usuario por ID:', error);
       return null;
@@ -99,42 +113,69 @@ export class UsersOperationsService {
 
   /**
    * Buscar un usuario por su email
+   * Usa el endpoint GET /api/v1/users/email del backend
+   * 
+   * El backend retorna:
+   * - Si existe: { success: true, data: { user: {...} } }
+   * - Si no existe: { success: true, data: { user: null } }
    */
   async getUserByEmail(email: string): Promise<User | null> {
+    if (!this.isBrowser) {
+      console.warn('Not available in SSR');
+      return null;
+    }
+
     try {
-      if (!this.isBrowser || !this.db) {
+      const idToken = await this.getIdToken();
+      
+      const response = await this.backendApi.getUserByEmail(email, idToken);
+      
+      if (!response.success) {
+        console.warn('⚠️ UsersOperationsService: Response not successful');
         return null;
       }
-
-      const usersSnapshot = await getDocs(collection(this.db, 'users'));
       
-      for (const doc of usersSnapshot.docs) {
-        const userData = doc.data() as User;
-        if (userData.email === email) {
-          return { ...userData, id: doc.id } as User;
-        }
+      // El backend retorna { user: null } si no existe, o { user: {...} } si existe
+      if (!response.data || response.data.user === null || response.data.user === undefined) {
+        return null;
       }
       
-      return null;
-    } catch (error) {
-      console.error('Error buscando usuario por email:', error);
+      const user = response.data.user as User;
+      return user;
+    } catch (error: any) {
+      console.error('❌ UsersOperationsService: Error searching user by email:', error);
+      console.error('❌ UsersOperationsService: Error details:', {
+        status: error?.status,
+        message: error?.message,
+        error: error?.error
+      });
+      
+      // Si es un 404, el usuario no existe (esto es válido)
+      if (error?.status === 404) {
+        return null;
+      }
+      
+      // Para otros errores, retornar null pero loguear el error
       return null;
     }
   }
 
   /**
    * Actualizar un usuario existente
+   * Now uses backend API but maintains same interface
    */
   async updateUser(userId: string, userData: Partial<User>): Promise<void> {
     try {
-      if (!this.isBrowser || !this.db) {
-        throw new Error('No se puede actualizar usuario en el servidor');
-      }
-
-      await setDoc(doc(this.db, 'users', userId), {
+      const idToken = await this.getIdToken();
+      const updateData = {
         ...userData,
         lastUpdated: new Date().getTime()
-      }, { merge: true });
+      };
+      const response = await this.backendApi.updateUser(userId, updateData, idToken);
+      
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to update user');
+      }
     } catch (error) {
       console.error('Error actualizando usuario:', error);
       throw error;
@@ -143,24 +184,18 @@ export class UsersOperationsService {
 
   /**
    * Obtener todos los usuarios
+   * Now uses backend API but maintains same interface
    */
   async getAllUsers(): Promise<User[]> {
-    if (!this.db) {
-      console.warn('Firestore not available in SSR');
-      return [];
-    }
-    
     try {
-      const snapshot = await getDocs(collection(this.db, 'users'));
-      const users: User[] = [];
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getAllUsers(idToken);
       
-      snapshot.forEach((doc) => {
-        const data = doc.data() as User;
-        (data as any).id = doc.id;
-        users.push(data);
-      });
+      if (!response.success || !response.data) {
+        return [];
+      }
       
-      return users;
+      return response.data.users || [];
     } catch (error) {
       console.error('Error getting all users:', error);
       return [];
@@ -169,15 +204,16 @@ export class UsersOperationsService {
 
   /**
    * Eliminar un usuario
+   * Now uses backend API but maintains same interface
    */
   async deleteUser(userId: string): Promise<void> {
     try {
-      if (!this.isBrowser || !this.db) {
-        throw new Error('No se puede eliminar usuario en el servidor');
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.deleteUser(userId, idToken);
+      
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to delete user');
       }
-
-      await deleteDoc(doc(this.db, 'users', userId));
-      console.log('Usuario eliminado exitosamente:', userId);
     } catch (error) {
       console.error('Error eliminando usuario:', error);
       throw error;

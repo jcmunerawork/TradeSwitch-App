@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
-import { AlertService, AlertConfig } from '../../services/alert.service';
+import { AlertService, AlertConfig } from '../../../core/services';
 import { AlertPopupComponent } from '../../pop-ups/alert-popup/alert-popup.component';
 
 /**

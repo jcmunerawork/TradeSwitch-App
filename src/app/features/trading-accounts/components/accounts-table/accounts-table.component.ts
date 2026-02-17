@@ -10,6 +10,7 @@ import { ShowConfirmationComponent } from '../show-confirmation/show-confirmatio
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
+import { AppContextService } from '../../../../shared/context';
 
 /**
  * Component for displaying trading accounts in a table format.
@@ -69,10 +70,15 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
 
   // Balance properties (now handled by parent component)
   private subscriptions: Subscription[] = [];
+  
+  // Real-time balances from streams (usando signal del contexto)
+  // Se inicializa en ngOnInit después de que appContext esté disponible
+  accountBalances: Map<string, number> = new Map();
 
   constructor(
     private router: Router,
-    private numberFormatter: NumberFormatterService
+    private numberFormatter: NumberFormatterService,
+    private appContext: AppContextService
   ) {
     // Initialize inputs as empty to show placeholders
     this.minBalanceInput = '';
@@ -98,10 +104,12 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
         .toLowerCase()
         .includes(lower);
 
-      let matchesMinBalance = (account.balance ?? 0) >= this.appliedMinBalance;
-      let matchesMaxBalance = (account.balance ?? 0) <= this.appliedMaxBalance;
+      // Usar solo initialBalance para el filtro
+      const accountBalance = account.initialBalance ?? 0;
+      let matchesMinBalance = accountBalance >= this.appliedMinBalance;
+      let matchesMaxBalance = accountBalance <= this.appliedMaxBalance;
 
-      if (account.balance === undefined) {
+      if (account.initialBalance === undefined) {
         matchesMinBalance = true;
         matchesMaxBalance = true;
       }
@@ -110,14 +118,10 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
     });
 
     result = result.sort((a, b) => {
-      const fieldA =
-        a[this.sortField] instanceof Timestamp
-          ? (a[this.sortField] as Timestamp).toDate().getTime()
-          : String(a[this.sortField]).toLowerCase();
-      const fieldB =
-        b[this.sortField] instanceof Timestamp
-          ? (b[this.sortField] as Timestamp).toDate().getTime()
-          : String(b[this.sortField]).toLowerCase();
+      // Manejar createdAt de manera segura
+      // this.sortField siempre es 'createdAt' según la definición del tipo
+      const fieldA = this.getCreatedAtDate(a).getTime();
+      const fieldB = this.getCreatedAtDate(b).getTime();
 
       if (fieldA < fieldB) return this.sortAsc ? -1 : 1;
       if (fieldA > fieldB) return this.sortAsc ? 1 : -1;
@@ -197,6 +201,104 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
     return new Date(date);
   }
 
+  /**
+   * Convierte createdAt a Date de manera segura
+   * Maneja Timestamp de Firestore, Date, string o number
+   * Siempre devuelve una fecha válida
+   */
+  getCreatedAtDate(account: AccountData): Date {
+    if (!account || !account.createdAt) {
+      return new Date();
+    }
+
+    const createdAt = account.createdAt as any;
+    let date: Date | null = null;
+
+    // Si es un Timestamp de Firestore
+    if (createdAt instanceof Timestamp) {
+      try {
+        date = createdAt.toDate();
+        if (date && !isNaN(date.getTime())) {
+          return date;
+        }
+      } catch (e) {
+        console.warn('Error converting Timestamp to Date:', e);
+      }
+      return new Date();
+    }
+
+    // Si ya es un Date
+    if (createdAt instanceof Date) {
+      if (!isNaN(createdAt.getTime())) {
+        return createdAt;
+      }
+      return new Date();
+    }
+
+    // Si es un objeto con formato Firestore serializado (seconds, nanoseconds)
+    if (createdAt && typeof createdAt === 'object' && 'seconds' in createdAt) {
+      const seconds = createdAt.seconds;
+      if (typeof seconds === 'number' && seconds > 0) {
+        try {
+          date = new Date(seconds * 1000);
+          if (date && !isNaN(date.getTime())) {
+            return date;
+          }
+        } catch (e) {
+          console.warn('Error converting Firestore seconds to Date:', e);
+        }
+      }
+      return new Date();
+    }
+
+    // Si es un string, intentar parsear
+    if (typeof createdAt === 'string') {
+      // Si está vacío, devolver fecha actual
+      if (createdAt.trim() === '') {
+        return new Date();
+      }
+      
+      try {
+        date = new Date(createdAt);
+        // Validar que la fecha sea válida y no sea "Invalid Date"
+        if (date && !isNaN(date.getTime()) && date.toString() !== 'Invalid Date') {
+          return date;
+        }
+      } catch (e) {
+        console.warn('Error parsing date string:', createdAt, e);
+      }
+      return new Date();
+    }
+
+    // Si es un number (timestamp en milisegundos o segundos)
+    if (typeof createdAt === 'number') {
+      // Si es muy pequeño, probablemente está en segundos, convertir a milisegundos
+      const timestamp = createdAt < 10000000000 ? createdAt * 1000 : createdAt;
+      try {
+        date = new Date(timestamp);
+        if (date && !isNaN(date.getTime())) {
+          return date;
+        }
+      } catch (e) {
+        console.warn('Error converting number to Date:', timestamp, e);
+      }
+      return new Date();
+    }
+
+    // Fallback: intentar convertir a Date
+    try {
+      date = new Date(createdAt);
+      if (date && !isNaN(date.getTime()) && date.toString() !== 'Invalid Date') {
+        return date;
+      }
+    } catch (e) {
+      console.warn('Error in fallback date conversion:', e);
+    }
+
+    // Si todo falla, devolver fecha actual
+    return new Date();
+  }
+
   deleteAccount(account: AccountData) {
     this.showConfirmation = true;
     this.accountToDelete = account;
@@ -218,8 +320,33 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   ngOnInit() {
-    // Cargar balances para todas las cuentas
-    this.loadAccountBalances();
+    // Inicializar accountBalances con el valor actual del signal
+    this.accountBalances = this.appContext.accountBalances();
+    
+    // Suscribirse a balances en tiempo real del contexto
+    this.subscriptions.push(
+      this.appContext.accountBalances$.subscribe(balances => {
+        this.accountBalances = balances;
+      })
+    );
+    
+    // Cargar balances para todas las cuentas (método antiguo comentado)
+    // this.loadAccountBalances();
+  }
+  
+  /**
+   * Get initial balance for an account (the balance entered when adding the account)
+   */
+  getAccountBalance(account: AccountData): number | undefined {
+    // Retornar solo el balance inicial que se ingresó al añadir la cuenta
+    return account.initialBalance;
+  }
+
+  /**
+   * Check if balances are currently loading
+   */
+  isBalancesLoading(): boolean {
+    return this.appContext.balancesLoading();
   }
 
   ngOnChanges(changes: SimpleChanges) {

@@ -171,14 +171,16 @@ export class CalendarComponent {
 
       for (const [key, instrument] of uniqueInstruments) {
         try {
-          // Obtener el token real del usuario desde el contexto
-          const userKey = await this.getUserToken();
-          if (!userKey) {
-            throw new Error('Token de usuario no disponible');
+          // Obtener accountId desde el contexto (el backend gestiona el accessToken automáticamente)
+          const accounts = this.appContext.userAccounts();
+          if (!accounts || accounts.length === 0) {
+            throw new Error('No hay cuentas disponibles');
           }
+          const currentAccount = accounts[0]; // Tomar la primera cuenta
+          const accountId = currentAccount.accountID;
 
           const instrumentDetails = await this.reportSvc.getInstrumentDetails(
-            userKey, // Token real del usuario
+            accountId,
             instrument.tradableInstrumentId,
             instrument.routeId,
             1
@@ -549,10 +551,13 @@ export class CalendarComponent {
       index === self.findIndex(t => t.positionId === trade.positionId)
     );
 
-    // Agrupar trades únicos por día usando la zona horaria del dispositivo
+    // Agrupar trades únicos por día usando la fecha de apertura (createdDate)
     uniqueTrades.forEach((trade) => {
-      // MEJORA: Usar conversión correcta de fecha de trade
-      const tradeDate = this.convertToUTCWithTimezone(Number(trade.lastModified));
+      // IMPORTANTE: Usar createdDate (fecha de apertura) para agrupar trades por día
+      // El trade debe aparecer en el calendario el día que se abrió, no el día que se cerró
+      const tradeDate = this.convertToUTCWithTimezone(
+        Number(trade.createdDate) || Number(trade.lastModified) // Fallback a lastModified si no hay createdDate
+      );
       
       // Usar la zona horaria local del dispositivo
       const key = `${tradeDate.getFullYear()}-${tradeDate.getMonth()}-${tradeDate.getDate()}`;
@@ -600,10 +605,13 @@ export class CalendarComponent {
       let strategyName: string | null = null;
       
       if (tradesCount > 0) {
-        // Verificar cada trade individualmente usando su fecha/hora exacta
+        // Verificar cada trade individualmente usando su fecha/hora exacta de apertura
         for (const trade of trades) {
-          // MEJORA: Usar conversión correcta de fecha de trade
-          const tradeDate = this.convertToUTCWithTimezone(Number(trade.lastModified));
+          // Usar createdDate (fecha de apertura) para verificar si se siguió la estrategia
+          // La estrategia se verifica en el momento que se abrió la posición
+          const tradeDate = this.convertToUTCWithTimezone(
+            Number(trade.createdDate) || Number(trade.lastModified) // Fallback a lastModified si no hay createdDate
+          );
           const tradeStrategyInfo = this.getTradeStrategyInfo(tradeDate);
           
           if (tradeStrategyInfo.followedStrategy) {
@@ -709,14 +717,20 @@ export class CalendarComponent {
   private getEarliestTradeDate(): Date {
     if (!this.groupedTrades || this.groupedTrades.length === 0) return new Date();
     
-    const dates = this.groupedTrades.map(trade => new Date(Number(trade.lastModified)));
+    // Usar createdDate (fecha de apertura) para determinar la fecha más temprana
+    const dates = this.groupedTrades.map(trade => 
+      new Date(Number(trade.createdDate) || Number(trade.lastModified))
+    );
     return new Date(Math.min(...dates.map(d => d.getTime())));
   }
 
   private getLatestTradeDate(): Date {
     if (!this.groupedTrades || this.groupedTrades.length === 0) return new Date();
     
-    const dates = this.groupedTrades.map(trade => new Date(Number(trade.lastModified)));
+    // Usar createdDate (fecha de apertura) para determinar la fecha más reciente
+    const dates = this.groupedTrades.map(trade => 
+      new Date(Number(trade.createdDate) || Number(trade.lastModified))
+    );
     return new Date(Math.max(...dates.map(d => d.getTime())));
   }
 
@@ -887,8 +901,10 @@ export class CalendarComponent {
       if (day.trades && day.trades.length > 0) {
         day.trades.forEach(trade => {
           totalTrades++;
-          // MEJORA: Usar conversión correcta de fecha de trade
-          const tradeDate = this.convertToUTCWithTimezone(Number(trade.lastModified));
+          // Usar createdDate (fecha de apertura) para verificar estrategia
+          const tradeDate = this.convertToUTCWithTimezone(
+            Number(trade.createdDate) || Number(trade.lastModified) // Fallback a lastModified si no hay createdDate
+          );
           const tradeStrategyInfo = this.getTradeStrategyInfo(tradeDate);
           
           if (!tradeStrategyInfo.pluginActive) {

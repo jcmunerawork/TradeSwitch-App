@@ -23,7 +23,9 @@ import { setUserData } from '../store/user.actions';
 import { Store } from '@ngrx/store';
 import { AppContextService } from '../../../shared/context';
 import { StripeLoaderPopupComponent } from '../../../shared/pop-ups/stripe-loader-popup/stripe-loader-popup.component';
-import { AlertService } from '../../../shared/services/alert.service';
+import { AlertService } from '../../../core/services';
+import { BackendApiService } from '../../../core/services/backend-api.service';
+import { ToastNotificationService } from '../../../shared/services/toast-notification.service';
 
 @Component({
   selector: 'app-signup',
@@ -57,6 +59,10 @@ export class SignupComponent implements OnInit {
   showStripeError = false;
   stripeErrorMessage = '';
   
+  // Estados para carga y error del formulario
+  isLoading = false;
+  errorMessage = '';
+  
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
@@ -65,7 +71,9 @@ export class SignupComponent implements OnInit {
     private subscriptionService: SubscriptionService,
     private store: Store,
     private appContext: AppContextService,
-    private alertService: AlertService
+    private alertService: AlertService,
+    private backendApi: BackendApiService,
+    private toastService: ToastNotificationService
   ) {
     this.signupForm = this.fb.group({
       firstName: ['', [Validators.required, Validators.minLength(2)]],
@@ -97,58 +105,59 @@ export class SignupComponent implements OnInit {
   }
 
   onChange(): void {
-    console.log('Form changed:', this.signupForm.value);
   }
   async onSubmit(): Promise<void> {
     if (this.signupForm.valid) {
       try {
-        // Establecer estado de carga
+        // Establecer estado de carga y limpiar error previo
+        this.isLoading = true;
+        this.errorMessage = '';
         this.appContext.setLoading('user', true);
         this.appContext.setError('user', null);
 
         // Crear credenciales del usuario
         const userCredentials = this.createUserCredentialsObject();
         
-        // Verificar que el email no esté ya registrado
-        const existingUser = await this.authService.getUserByEmail(userCredentials.email);
-        
-        if (existingUser) {
-          this.alertService.showError('This email is already registered. Please use a different email or try logging in.', 'Email Already Registered');
-          this.appContext.setLoading('user', false);
-          return;
+        // Verificar que el email no esté ya registrado (opcional, el backend también lo valida)
+        try {
+          const existingUser = await this.authService.getUserByEmail(userCredentials.email);
+          if (existingUser) {
+            this.isLoading = false;
+            this.errorMessage = 'This email is already registered. Please use a different email or try logging in.';
+            this.toastService.showError(this.errorMessage);
+            this.appContext.setLoading('user', false);
+            return;
+          }
+        } catch (error) {
+          // Si falla la verificación, continuar (el backend también validará)
+          console.warn('Could not verify email existence, continuing with registration');
         }
         
-        // Crear el usuario en Firebase Auth
-        const userResponse = await this.authService.register(userCredentials);
-        const userId = userResponse.user.uid;
+        // Llamar al backend - EL BACKEND HACE TODO:
+        // 1. Crea usuario en Firebase Auth
+        // 2. Crea documento de usuario en Firestore
+        // 3. Crea link token
+        // 4. Crea suscripción inicial (Free)
+        // 5. Hace sign in automático en Firebase Auth
+        const signupResponse = await this.backendApi.signup({
+          email: userCredentials.email,
+          password: userCredentials.password,
+          firstName: this.signupForm.value.firstName,
+          lastName: this.signupForm.value.lastName,
+          phoneNumber: this.signupForm.value.phoneNumber,
+          birthday: this.signupForm.value.birthday,
+          isAdmin: this.isAdminSignup
+        });
         
-        // Crear el token y objeto usuario
-        const token = this.createTokenObject(userId);
-        const user: User = await this.createUserObject(userId, token.id);
-        
-        // Configurar como admin si corresponde
-        if (this.isAdminSignup) {
-          user.isAdmin = true;
-          user.status = UserStatus.ADMIN;
-        } else {
-          user.status = UserStatus.ACTIVE;
+        if (!signupResponse.success || !signupResponse.data) {
+          throw signupResponse;
         }
         
-        // Crear usuario y token en Firestore
-        await this.authService.createUser(user as User);
-        await this.authService.createLinkToken(token);
-
-        // Crear suscripción gratuita activa por defecto
-        const freeSubscriptionData: Omit<Subscription, 'id' | 'created_at' | 'updated_at'> = {
-          planId: "Cb1B0tpxdE6AP6eMZDo0",
-          status: UserStatus.ACTIVE,
-          userId: userId,
-        };
-
-        await this.subscriptionService.createSubscription(userId, freeSubscriptionData);
-        // Iniciar sesión automáticamente
-        const loginResponse = await this.authService.login(userCredentials);
-        const userData = await this.authService.getUserData(loginResponse.user.uid);
+        // El backend ya hizo sign in automáticamente, obtener el userId
+        const userId = signupResponse.data.user.uid;
+        
+        // Obtener datos completos del usuario desde el backend
+        const userData = await this.authService.getUserData(userId);
         
         // Actualizar contexto con datos completos del usuario
         this.appContext.setCurrentUser(userData);
@@ -160,6 +169,7 @@ export class SignupComponent implements OnInit {
         this.currentUserId = userId;
         
         // Limpiar estado de carga
+        this.isLoading = false;
         this.appContext.setLoading('user', false);
         
         // Guardar datos del usuario para mostrar en la selección de planes
@@ -174,11 +184,9 @@ export class SignupComponent implements OnInit {
         }
         
       } catch (error: any) {
+        this.isLoading = false;
         this.appContext.setLoading('user', false);
         this.appContext.setError('user', 'Error during registration');
-        
-        const errorMessage = error.message || 'An error occurred during registration. Please try again.';
-        this.alertService.showError(errorMessage, 'Registration Error');
         
         this.handleRegistrationError(error);
       }
@@ -195,11 +203,9 @@ export class SignupComponent implements OnInit {
   }
 
   signInWithGoogle(): void {
-    console.log('Sign in with Google');
   }
 
   signInWithApple(): void {
-    console.log('Sign in with Apple');
   }
 
   private createUserCredentialsObject(): UserCredentials {
@@ -343,7 +349,7 @@ export class SignupComponent implements OnInit {
 
     // Mostrar alerta con todos los errores
     if (errors.length > 0) {
-      this.alertService.showError('Validation errors:\n\n' + errors.join('\n'), 'Validation Error');
+      this.toastService.showError('Validation errors:\n\n' + errors.join('\n'));
     }
 
     this.markFormGroupTouched();
@@ -406,28 +412,22 @@ export class SignupComponent implements OnInit {
         throw new Error('Plan price ID not found');
       }
 
+      console.log(selectedPlan);
+
       // Obtener el token de Firebase
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.currentUserId);
 
-      // Crear checkout session
-      const response = await fetch('https://api.tradeswitch.io/payments/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${bearerTokenFirebase}`
-        },
-        body: JSON.stringify({
-          priceId: selectedPlan.planPriceId,
-        })
-      });
+      // Crear checkout session usando backend
+      const response = await this.backendApi.createCheckoutSession(
+        selectedPlan.planPriceId,
+        bearerTokenFirebase
+      );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error creating checkout session: ${response.status} ${response.statusText} - ${errorText}`);
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Error creating checkout session');
       }
 
-      const responseData = await response.json();
-      const checkoutUrl = responseData.body?.url || responseData.url;
+      const checkoutUrl = response.data.url;
       
       if (!checkoutUrl) {
         throw new Error('Checkout URL not found in response');
@@ -454,7 +454,46 @@ export class SignupComponent implements OnInit {
   }
 
   private handleRegistrationError(error: any): void {
-    console.log('Registration error:', error);
-    // Los errores comunes serán manejados por Firebase
+    console.error('Registration error:', error);
+    
+    // Extraer mensaje de error del formato del backend
+    const errorMessage = this.extractErrorMessage(error);
+    const errorDetails = this.extractErrorDetails(error);
+    
+    // Si hay múltiples errores de validación, mostrarlos todos
+    if (errorDetails && errorDetails.length > 0) {
+      this.errorMessage = errorDetails.join(', ');
+    } else {
+      this.errorMessage = errorMessage;
+    }
+    
+    // Mostrar toast notification
+    this.toastService.showBackendError(error, 'Registration error');
+  }
+
+  // Función helper para extraer el mensaje de error del formato del backend
+  private extractErrorMessage(error: any): string {
+    // El error puede estar en diferentes ubicaciones dependiendo de cómo Angular maneje la respuesta
+    if (error?.error?.error?.message) {
+      // Formato del backend: error.error.error.message
+      return error.error.error.message;
+    } else if (error?.error?.message) {
+      // Formato alternativo
+      return error.error.message;
+    } else if (error?.message) {
+      // Mensaje genérico de HTTP
+      return error.message;
+    }
+    
+    // Mensaje por defecto
+    return 'An error occurred during registration. Please try again.';
+  }
+
+  // Extraer detalles de validación (array de errores)
+  private extractErrorDetails(error: any): string[] | null {
+    if (error?.error?.error?.details && Array.isArray(error.error.error.details)) {
+      return error.error.error.details;
+    }
+    return null;
   }
 }

@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { NgIf } from '@angular/common';
 import { allRules } from '../store/strategy.selectors';
@@ -28,10 +28,12 @@ import { EditHoursAllowedComponent } from './components/edit-hours-allowed/edit-
 import { AuthService } from '../../auth/service/authService';
 import { AccountData } from '../../auth/models/userModel';
 import { PluginHistoryService, PluginHistory } from '../../../shared/services/plugin-history.service';
-import { AlertService } from '../../../shared/services/alert.service';
+import { AlertService } from '../../../core/services';
+import { ToastNotificationService } from '../../../shared/services/toast-notification.service';
 import { Instrument } from '../../report/models/report.model';
 import { StrategyCacheService } from '../services/strategy-cache.service';
 import { BalanceCacheService } from '../services/balance-cache.service';
+import { AppContextService } from '../../../shared/context';
 
 /**
  * Component for editing trading strategy configurations.
@@ -128,7 +130,9 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     private pluginHistoryService: PluginHistoryService,
     private strategyCacheService: StrategyCacheService,
     private balanceCacheService: BalanceCacheService,
-    private alertService: AlertService
+    private alertService: AlertService,
+    private appContext: AppContextService,
+    private toastService: ToastNotificationService
   ) {
     this.config$ = this.store.select(allRules);
   }
@@ -209,15 +213,15 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * MÉTODO PRINCIPAL: Cargar estrategia desde cache
+   * MÉTODO PRINCIPAL: Cargar estrategia desde backend
    * FLUJO SIMPLIFICADO:
-   * - Si hay strategyId: Cargar desde cache del componente Strategy
+   * - Si hay strategyId: Cargar desde backend (siempre solicita al backend)
    * - Si no hay strategyId: Inicializar como nueva estrategia
    */
   loadStrategyFromCache() {
     if (this.strategyId) {
-      // Cargar estrategia existente desde cache
-      this.loadExistingStrategyFromCache();
+      // Cargar estrategia existente desde backend (siempre solicita al backend)
+      this.loadStrategyFromBackend();
     } else {
       // Inicializar como nueva estrategia
       this.initializeAsNewStrategy();
@@ -225,66 +229,80 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Cargar estrategia existente desde cache o Firebase
+   * Cargar estrategia directamente desde backend (siempre solicita al backend)
    */
-  loadExistingStrategyFromCache() {
-    if (!this.strategyId) return;
-    
-    // Verificar si el cache está disponible
-    if (!this.strategyCacheService.isCacheLoaded()) {
-      // Si el cache no está disponible, cargar directamente desde Firebase
-      this.loadStrategyFromFirebase();
-      return;
-    }
-
-    // Obtener estrategia del cache
-    const cachedStrategy = this.strategyCacheService.getStrategy(this.strategyId);
-    
-    if (!cachedStrategy) {
-      // Si no está en cache, cargar desde Firebase
-      this.loadStrategyFromFirebase();
-      return;
-    }
-
-    // Actualizar mini card
-    this.currentStrategyName = cachedStrategy.overview.name;
-    this.lastModifiedText = this.formatDate(cachedStrategy.overview.updated_at.toDate());
-    this.isFavorited = false;
-
-    // Cargar balance si es necesario
-    this.loadBalanceAndInitializeWithConfig(cachedStrategy.configuration);
-  }
-
-  /**
-   * Cargar estrategia directamente desde Firebase (fallback cuando cache no está disponible)
-   */
-  async loadStrategyFromFirebase() {
+  async loadStrategyFromBackend() {
     if (!this.strategyId || !this.user?.id) {
       this.initializeAsNewStrategy();
       return;
     }
 
     try {
-      // Cargar estrategia directamente desde Firebase
+      this.initialLoading = true;
+      
+      // Cargar estrategia directamente desde backend
       const strategyData = await this.strategySvc.getStrategyView(this.strategyId);
       
       if (!strategyData || !strategyData.configuration) {
+        console.error('Strategy data not found or missing configuration');
         this.initializeAsNewStrategy();
         return;
       }
 
       // Actualizar mini card
       this.currentStrategyName = strategyData.overview.name;
-      this.lastModifiedText = this.formatDate(strategyData.overview.updated_at.toDate());
+      
+      // Manejar diferentes formatos de updated_at (Firebase Timestamp o objeto con seconds/nanoseconds)
+      const updatedAt = this.parseDate(strategyData.overview.updated_at);
+      this.lastModifiedText = this.formatDate(updatedAt);
       this.isFavorited = false;
 
       // Cargar balance y inicializar con configuración
       this.loadBalanceAndInitializeWithConfig(strategyData.configuration);
       
     } catch (error) {
-      console.error('Error loading strategy from Firebase:', error);
+      console.error('Error loading strategy from backend:', error);
       this.initializeAsNewStrategy();
+    } finally {
+      this.initialLoading = false;
     }
+  }
+
+  /**
+   * Parsear fecha desde diferentes formatos (Firebase Timestamp, objeto con seconds/nanoseconds, o string ISO)
+   */
+  private parseDate(dateValue: any): Date {
+    if (!dateValue) {
+      return new Date();
+    }
+    
+    // Si es un objeto Date, retornarlo directamente
+    if (dateValue instanceof Date) {
+      return dateValue;
+    }
+    
+    // Si tiene método toDate() (Firebase Timestamp)
+    if (typeof dateValue.toDate === 'function') {
+      return dateValue.toDate();
+    }
+    
+    // Si es un objeto con seconds y nanoseconds (formato del backend)
+    if (dateValue.seconds !== undefined) {
+      return new Date(dateValue.seconds * 1000 + (dateValue.nanoseconds || 0) / 1000000);
+    }
+    
+    // Si es una string ISO
+    if (typeof dateValue === 'string') {
+      return new Date(dateValue);
+    }
+    
+    // Si es un número (timestamp)
+    if (typeof dateValue === 'number') {
+      return new Date(dateValue);
+    }
+    
+    // Fallback: fecha actual
+    return new Date();
   }
 
   /**
@@ -314,19 +332,14 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
    * Actualizar balance en background sin bloquear la UI
    */
   private updateBalanceInBackground(account: AccountData) {
-    this.store.select(selectUserKey).pipe().subscribe({
-      next: (userKey) => {
-        if (userKey && userKey !== '') {
-          this.reportSvc.getBalanceData(account.accountID as string, userKey, account.accountNumber as number).subscribe({
-            next: (balance) => {
-              // Actualizar cache con nuevo balance
-              this.balanceCacheService.setBalance(account.accountID, balance);
-            },
-            error: (err) => {
-              console.error('Error fetching balance data in background:', err);
-            },
-          });
-        }
+    // El backend gestiona el accessToken automáticamente
+    this.reportSvc.getBalanceData(account.accountID as string, account.accountNumber as number).subscribe({
+      next: (balance) => {
+        // Actualizar cache con nuevo balance
+        this.balanceCacheService.setBalance(account.accountID, balance);
+      },
+      error: (err) => {
+        console.error('Error fetching balance data in background:', err);
       },
     });
   }
@@ -478,6 +491,23 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       try {
         const accounts = await this.authService.getUserAccounts(this.user.id);
         this.accountsData = accounts || [];
+        
+        // Cargar instruments para todas las cuentas si no están en el contexto
+        if (this.accountsData.length > 0) {
+          await this.loadInstrumentsForAllAccounts();
+          
+          // Actualizar availableInstruments con la primera cuenta
+          const firstAccount = this.accountsData[0];
+          if (firstAccount?.accountID) {
+            const cachedInstruments = this.appContext.getInstrumentsForAccount(firstAccount.accountID);
+            if (cachedInstruments && cachedInstruments.length > 0) {
+              this.availableInstruments = cachedInstruments.map((instrument: any) => 
+                instrument.name || instrument.localizedName || ''
+              ).filter((name: string) => name);
+            }
+          }
+        }
+        
         // After loading accounts, try to fetch user key
         await this.fetchUserKeyAsync();
       } catch (error) {
@@ -506,11 +536,11 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       const firstAccount = this.accountsData[0];
       
       try {
-        const key = await this.reportSvc.getUserKey(
+        const key = await firstValueFrom(this.reportSvc.getUserKey(
           firstAccount.emailTradingAccount, 
           firstAccount.brokerPassword, 
           firstAccount.server
-        ).toPromise();
+        ));
         
         this.store.dispatch(setUserKey({ userKey: key || '' }));
         // After getting userKey, load instruments
@@ -546,51 +576,184 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         }
   }
 
+  /**
+   * Guardar instruments en localStorage
+   * Los instrumentos son iguales para todas las cuentas, así que se guardan con key genérica
+   */
+  private saveInstrumentsToLocalStorage(accountId: string, instruments: any[]): void {
+    try {
+      // Key genérica sin accountId ya que los instrumentos son iguales para todas las cuentas
+      const key = 'tradeswitch_instruments';
+      localStorage.setItem(key, JSON.stringify({
+        instruments,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+    }
+  }
+
+  /**
+   * Obtener instruments desde localStorage
+   * Los instrumentos son iguales para todas las cuentas, así que se leen con key genérica
+   * @param accountId - Parámetro mantenido por compatibilidad, pero no se usa
+   */
+  private getInstrumentsFromLocalStorage(accountId: string): any[] | null {
+    try {
+      // Key genérica sin accountId ya que los instrumentos son iguales para todas las cuentas
+      const key = 'tradeswitch_instruments';
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.instruments && Array.isArray(parsed.instruments)) {
+          return parsed.instruments;
+        }
+      }
+    } catch (error) {
+    }
+    
+    return null;
+  }
+
+  /**
+   * Cargar instruments UNA SOLA VEZ si no están en el contexto o localStorage
+   * Los instrumentos son iguales para todas las cuentas, así que solo se hace una petición
+   */
+  private async loadInstrumentsForAllAccounts(): Promise<void> {
+    if (!this.accountsData || this.accountsData.length === 0) {
+      return;
+    }
+
+    const firstAccount = this.accountsData[0];
+    if (!firstAccount.accountID || firstAccount.accountNumber === undefined) {
+      return;
+    }
+
+    // 1. Verificar si ya están cargados en el contexto (usar primera cuenta como referencia)
+    let cachedInstruments = this.appContext.getInstrumentsForAccount(firstAccount.accountID);
+    if (cachedInstruments && cachedInstruments.length > 0) {
+      // Ya están en contexto, no hacer nada más
+      return;
+    }
+
+    // 2. Verificar localStorage (key genérica)
+    cachedInstruments = this.getInstrumentsFromLocalStorage(firstAccount.accountID);
+    if (cachedInstruments && cachedInstruments.length > 0) {
+      // Guardar en el contexto para todas las cuentas
+      this.accountsData.forEach(account => {
+        if (account.accountID) {
+          this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
+        }
+      });
+      return;
+    }
+
+    // 3. Si no están cargados, cargarlos desde el backend UNA SOLA VEZ
+    // El backend gestiona el accessToken automáticamente, no es necesario userKey
+    try {
+      const instruments = await firstValueFrom(this.reportSvc.getAllInstruments(
+        firstAccount.accountID,
+        firstAccount.accountNumber
+      ));
+
+      if (instruments && instruments.length > 0) {
+        // Guardar en el contexto para TODAS las cuentas
+        this.accountsData.forEach(account => {
+          if (account.accountID) {
+            this.appContext.setInstrumentsForAccount(account.accountID, instruments);
+          }
+        });
+        // Guardar en localStorage con key genérica (sin accountId)
+        this.saveInstrumentsToLocalStorage(firstAccount.accountID, instruments);
+      }
+    } catch (error) {
+      console.error(`❌ EditStrategy: Error cargando instruments:`, error);
+      // No lanzar error, los instrumentos se pueden cargar después cuando se necesiten
+    }
+  }
+
   loadInstruments(userKey: string, account: AccountData) {
+    // 1. Primero intentar obtener instrumentos del contexto
+    let cachedInstruments = this.appContext.getInstrumentsForAccount(account.accountID);
+    
+    // 2. Si no están en el contexto, verificar localStorage
+    if (!cachedInstruments || cachedInstruments.length === 0) {
+      cachedInstruments = this.getInstrumentsFromLocalStorage(account.accountID);
+      if (cachedInstruments && cachedInstruments.length > 0) {
+        // Guardar en el contexto también
+        this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
+      }
+    }
+    
+    if (cachedInstruments && cachedInstruments.length > 0) {
+      // Extraer solo los nombres de los instrumentos
+      this.availableInstruments = cachedInstruments.map((instrument: any) => 
+        instrument.name || instrument.localizedName || ''
+      ).filter((name: string) => name);
+      
+      // Guardar instrumentos en localStorage para uso en reglas de estrategia (formato antiguo para compatibilidad)
+      try {
+        const instrumentNames = cachedInstruments
+          .map((instrument: any) => instrument.name || instrument.localizedName)
+          .filter((name: string) => name && name.trim() !== '');
+        localStorage.setItem('tradeswitch_available_instruments', JSON.stringify(instrumentNames));
+      } catch (error) {
+        console.error('   ❌ [LOCALSTORAGE] Error guardando instrumentos en localStorage:', error);
+      }
+      return;
+    }
+    
+    // 3. Si no están en el contexto ni localStorage, cargarlos desde el backend
+    // El backend gestiona el accessToken automáticamente, no es necesario userKey
     this.reportSvc.getAllInstruments(
-      userKey, 
-      account.accountNumber, 
-      account.accountID
+      account.accountID,
+      account.accountNumber
     ).subscribe({
       next: (instruments: Instrument[]) => {
         // Extraer solo los nombres de los instrumentos
         this.availableInstruments = instruments.map(instrument => instrument.name);
+        
+        // Guardar en el contexto para futuras referencias
+        if (instruments.length > 0) {
+          this.appContext.setInstrumentsForAccount(account.accountID, instruments);
+          // Guardar en localStorage con la nueva clave
+          this.saveInstrumentsToLocalStorage(account.accountID, instruments);
+          
+          // Guardar instrumentos en localStorage para uso en reglas de estrategia (formato antiguo para compatibilidad)
+          try {
+            const instrumentNames = instruments
+              .map((instrument: Instrument) => instrument.name || instrument.localizedName)
+              .filter((name: string) => name && name.trim() !== '');
+            localStorage.setItem('tradeswitch_available_instruments', JSON.stringify(instrumentNames));
+          } catch (error) {
+            console.error('   ❌ [LOCALSTORAGE] Error guardando instrumentos en localStorage:', error);
+          }
+        }
       },
       error: (err) => {
-        console.error('Error loading instruments:', err);
+        console.error('   ❌ [API] Error loading instruments:', err);
         this.availableInstruments = [];
       }
     });
   }
 
   getActualBalance() {
-    this.store
-      .select(selectUserKey)
-      .pipe()
-      .subscribe({
-        next: (userKey) => {
-          if (userKey === '') {
-            this.fetchUserKey();
-          } else {
-            // Use the first account's data dynamically
-            if (this.accountsData.length > 0) {
-              const firstAccount = this.accountsData[0];
-              // El servicio ya actualiza el contexto automáticamente
-              this.reportSvc.getBalanceData(firstAccount.accountID as string, userKey, firstAccount.accountNumber as number).subscribe({
-                next: (balance) => {
-                  this.initializeWithConfigAndBalance(initialStrategyState, balance);
-                },
-                error: (err) => {
-                  console.error('Error fetching balance data', err);
-                  this.initializeWithConfigAndBalance(initialStrategyState, 0);
-                },
-              });
-            } else {
-              this.initializeWithConfigAndBalance(initialStrategyState, 0);
-            }
-          }
+    // El backend gestiona el accessToken automáticamente, no es necesario userKey para getBalanceData
+    // Use the first account's data dynamically
+    if (this.accountsData.length > 0) {
+      const firstAccount = this.accountsData[0];
+      // El servicio ya actualiza el contexto automáticamente
+      this.reportSvc.getBalanceData(firstAccount.accountID as string, firstAccount.accountNumber as number).subscribe({
+        next: (balance) => {
+          this.initializeWithConfigAndBalance(initialStrategyState, balance);
+        },
+        error: (err) => {
+          console.error('Error fetching balance data', err);
+          this.initializeWithConfigAndBalance(initialStrategyState, 0);
         },
       });
+    } else {
+      this.initializeWithConfigAndBalance(initialStrategyState, 0);
+    }
   }
 
   /**
@@ -607,7 +770,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
             await this.fetchUserAccountsAsync();
             this.setupPluginHistoryListener();
           } else {
-            console.warn('User ID not available yet');
           }
           resolve();
         },
@@ -629,7 +791,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           this.fetchUserAccounts();
           this.setupPluginHistoryListener();
         } else {
-          console.warn('User ID not available yet');
         }
       },
       error: (err) => {
@@ -747,14 +908,14 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
             // Actualizar fecha de modificación en la mini card
             this.lastModifiedText = this.formatDate(new Date());
             
-            // Limpiar cache para forzar recarga
-            this.strategyCacheService.clearCache();
+            // NOTA: updateStrategyView ya llama a reloadAllStrategiesToCache internamente
+            // No es necesario limpiar el cache aquí, ya se recarga automáticamente
             
             this.router.navigate(['/strategy']);
           })
           .catch((err) => {
             console.error('Update Error:', err);
-            this.alertService.showError('Error Updating Strategy', 'Update Error');
+            this.toastService.showBackendError(err, 'Error updating strategy');
           })
           .finally(() => {
             this.loading = false;
@@ -765,14 +926,14 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         this.strategySvc
           .createStrategyView(this.user.id, this.currentStrategyName, newConfig)
           .then(async (strategyId) => {
-            // Limpiar cache para forzar recarga
-            this.strategyCacheService.clearCache();
+            // ✅ createStrategyView ya guarda la strategy en cache y localStorage automáticamente
+            // No es necesario recargar todas las strategies
             
             this.router.navigate(['/strategy']);
           })
           .catch((err) => {
             console.error('Create Error:', err);
-            this.alertService.showError('Error Creating Strategy', 'Creation Error');
+            this.toastService.showBackendError(err, 'Error creating strategy');
           })
           .finally(() => {
             this.loading = false;
@@ -890,8 +1051,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
     try {
       if (this.strategyId) {
-        // Actualizar nombre en configuration-overview
-        await this.strategySvc.updateConfigurationOverview(this.strategyId, { 
+        // ✅ Usar updateStrategyView para que se actualice automáticamente el cache y localStorage
+        await this.strategySvc.updateStrategyView(this.strategyId, { 
           name: this.editingStrategyName.trim() 
         });
         
@@ -907,7 +1068,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       this.isEditingName = false;
     } catch (error) {
       console.error('Error updating strategy name:', error);
-      this.alertService.showError('Error updating strategy name', 'Name Update Error');
+      this.toastService.showBackendError(error, 'Error updating strategy name');
       this.cancelEditName();
     }
   }
@@ -920,7 +1081,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   toggleFavorite() {
     this.isFavorited = !this.isFavorited;
     // TODO: Implementar persistencia de favoritos en Firebase
-    console.log('Strategy favorited:', this.isFavorited);
   }
 
   formatDate(date: Date): string {
@@ -964,6 +1124,13 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Desuscribirse de la suscripción anterior antes de crear una nueva
+    // Esto evita múltiples suscripciones y múltiples intervalos
+    if (this.pluginSubscription) {
+      this.pluginSubscription.unsubscribe();
+      this.pluginSubscription = null;
+    }
+
     try {
       
       // Suscribirse al Observable del servicio con userId
@@ -978,7 +1145,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           } else {
             // No hay plugin para este usuario
             this.isPluginActive = false;
-            console.log('No plugin found for user');
           }
           
         },

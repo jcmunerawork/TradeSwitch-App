@@ -1,6 +1,9 @@
-import { Component, Input, forwardRef, OnInit } from '@angular/core';
+import { Component, Input, forwardRef, OnInit, OnDestroy, HostListener, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, FormsModule, ReactiveFormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 import { CountryOption, CountryService } from '../../services/countryService';
 
 interface CountryCode {
@@ -54,7 +57,7 @@ interface CountryCode {
     }
   ]
 })
-export class PhoneInputComponent implements ControlValueAccessor, OnInit {
+export class PhoneInputComponent implements ControlValueAccessor, OnInit, OnDestroy {
   @Input() label: string = 'Phone number';
   @Input() placeholder: string = '(000) 00-0000';
   @Input() required: boolean = false;
@@ -68,11 +71,48 @@ export class PhoneInputComponent implements ControlValueAccessor, OnInit {
   filteredCountries: CountryCode[] = [];
   countries: CountryCode[] = [];
   loading: boolean = true;
+  isSignupPage: boolean = false;
+  private routerSubscription?: Subscription;
 
-  constructor(private countryService: CountryService) {}
+  constructor(
+    private countryService: CountryService,
+    private router: Router,
+    private elementRef: ElementRef
+  ) {}
 
   ngOnInit(): void {
     this.loadCountries();
+    this.checkIfSignupPage();
+    
+    // Escuchar cambios de ruta
+    this.routerSubscription = this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe(() => {
+        this.checkIfSignupPage();
+      });
+  }
+
+  ngOnDestroy(): void {
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    // Verificar si el clic fue fuera del componente
+    // Solo cerrar si el dropdown está abierto y el clic fue fuera
+    if (this.showCountryDropdown) {
+      const clickedInside = this.elementRef.nativeElement.contains(event.target as Node);
+      if (!clickedInside) {
+        this.showCountryDropdown = false;
+        this.searchTerm = '';
+      }
+    }
+  }
+
+  private checkIfSignupPage(): void {
+    this.isSignupPage = this.router.url.includes('/signup');
   }
 
   private loadCountries(): void {
@@ -149,9 +189,13 @@ export class PhoneInputComponent implements ControlValueAccessor, OnInit {
     }
   }
 
-  selectCountry(country: CountryCode): void {
+  selectCountry(country: CountryCode, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
     this.selectedCountry = country;
     this.showCountryDropdown = false;
+    this.searchTerm = '';
     this.onChange(this.formatPhoneNumber(this.phoneNumber));
   }
 

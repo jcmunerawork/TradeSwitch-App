@@ -1,7 +1,7 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { getFirestore, collection, query, getDocs, updateDoc, doc, Timestamp, where } from 'firebase/firestore';
-import { firebaseApp } from '../../firebase/firebase.init';
+import { BackendApiService } from '../../core/services/backend-api.service';
+import { getAuth } from 'firebase/auth';
 
 /**
  * Service for updating strategy active days in Firebase.
@@ -35,13 +35,24 @@ import { firebaseApp } from '../../firebase/firebase.init';
 })
 export class StrategyDaysUpdaterService {
   private isBrowser: boolean;
-  private db: ReturnType<typeof getFirestore> | null = null;
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private backendApi: BackendApiService
+  ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
-    if (this.isBrowser) {
-      this.db = getFirestore(firebaseApp);
+  }
+
+  /**
+   * Get Firebase ID token for backend API calls
+   */
+  private async getIdToken(): Promise<string> {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User not authenticated');
     }
+    return await currentUser.getIdToken();
   }
 
   /**
@@ -49,46 +60,18 @@ export class StrategyDaysUpdaterService {
    * @param userId - User ID
    */
   async updateAllStrategiesDaysActive(userId: string): Promise<void> {
-    if (!this.isBrowser || !this.db) {
+    if (!this.isBrowser) {
       console.warn('StrategyDaysUpdaterService: Cannot execute on server');
       return;
     }
 
     try {
-      // Get all user strategies
-      const strategiesRef = collection(this.db, 'configuration-overview');
-      const q = query(strategiesRef);
-      const querySnapshot = await getDocs(q);
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.updateAllUserStrategiesDaysActive(userId, idToken);
       
-      const strategiesToUpdate: { id: string; daysActive: number }[] = [];
-
-      querySnapshot.forEach((docSnapshot) => {
-        const data = docSnapshot.data();
-        
-        // Verify that the strategy belongs to the user
-        if (data['userId'] === userId && data['created_at']) {
-          const daysActive = this.calculateDaysActive(data['created_at']);
-          
-          // Always update to keep synchronized
-          strategiesToUpdate.push({
-            id: docSnapshot.id,
-            daysActive: daysActive
-          });
-        }
-      });
-
-      // Update all strategies
-      const updatePromises = strategiesToUpdate.map(strategy => 
-        updateDoc(doc(this.db!, 'configuration-overview', strategy.id), {
-          days_active: strategy.daysActive,
-          updated_at: Timestamp.now()
-        })
-      );
-
-      if (updatePromises.length > 0) {
-        await Promise.all(updatePromises);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to update all strategies days active');
       }
-
     } catch (error) {
       console.error('StrategyDaysUpdaterService: Error updating active days:', error);
       throw error;
@@ -100,46 +83,18 @@ export class StrategyDaysUpdaterService {
    * @param userId - User ID
    */
   async updateActiveStrategyDaysActive(userId: string): Promise<void> {
-    if (!this.isBrowser || !this.db) {
+    if (!this.isBrowser) {
       console.warn('StrategyDaysUpdaterService: Cannot execute on server');
       return;
     }
 
     try {
-      // Find the user's active strategy
-      const strategiesRef = collection(this.db, 'configuration-overview');
-      const q = query(
-        strategiesRef,
-        where('userId', '==', userId),
-        where('status', '==', true)
-      );
-      const querySnapshot = await getDocs(q);
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.updateActiveStrategyDaysActive(userId, idToken);
       
-      if (querySnapshot.empty) {
-        console.log('StrategyDaysUpdaterService: No active strategy found for user:', userId);
-        return;
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to update active strategy days active');
       }
-
-      // There should only be one active strategy
-      const activeStrategyDoc = querySnapshot.docs[0];
-      const data = activeStrategyDoc.data();
-      
-      if (!data['created_at']) {
-        console.warn('StrategyDaysUpdaterService: Active strategy without creation date');
-        return;
-      }
-
-      const daysActive = this.calculateDaysActive(data['created_at']);
-      
-      // Only update if days have changed
-      if (data['days_active'] !== daysActive) {
-        await updateDoc(activeStrategyDoc.ref, {
-          days_active: daysActive,
-          updated_at: Timestamp.now()
-        });
-        console.log(`StrategyDaysUpdaterService: Updated active strategy ${activeStrategyDoc.id} with ${daysActive} active days`);
-      }
-
     } catch (error) {
       console.error('StrategyDaysUpdaterService: Error updating active strategy days:', error);
       throw error;
@@ -152,37 +107,18 @@ export class StrategyDaysUpdaterService {
    * @param userId - User ID (for security verification)
    */
   async updateStrategyDaysActive(strategyId: string, userId: string): Promise<void> {
-    if (!this.isBrowser || !this.db) {
+    if (!this.isBrowser) {
       console.warn('StrategyDaysUpdaterService: Cannot execute on server');
       return;
     }
 
     try {
-      const strategyRef = doc(this.db, 'configuration-overview', strategyId);
-      const strategyDoc = await getDocs(query(collection(this.db, 'configuration-overview')));
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.updateStrategyDaysActive(strategyId, idToken);
       
-      let strategyData: any = null;
-      strategyDoc.forEach(docSnapshot => {
-        if (docSnapshot.id === strategyId && docSnapshot.data()['userId'] === userId) {
-          strategyData = docSnapshot.data();
-        }
-      });
-
-      if (!strategyData || !strategyData['created_at']) {
-        console.warn('StrategyDaysUpdaterService: Strategy not found or without creation date');
-        return;
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to update strategy days active');
       }
-
-      const daysActive = this.calculateDaysActive(strategyData['created_at']);
-      
-      // Only update if days have changed
-      if (strategyData['days_active'] !== daysActive) {
-        await updateDoc(strategyRef, {
-          days_active: daysActive,
-          updated_at: Timestamp.now()
-        });
-      }
-
     } catch (error) {
       console.error('StrategyDaysUpdaterService: Error updating strategy active days:', error);
       throw error;

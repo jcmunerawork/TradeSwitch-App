@@ -46,6 +46,7 @@
 .export-button-desktop {
   display: flex;
   width: auto;
+  cursor: pointer;
 
   @media (max-width: 480px) {
     display: none;

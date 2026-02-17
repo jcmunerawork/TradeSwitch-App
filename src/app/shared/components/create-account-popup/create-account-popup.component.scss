@@ -76,11 +76,65 @@
       gap: 8px;
       
       .form-label {
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 6px;
         color: #ffffff;
         font-size: 14px;
         font-weight: 500;
         font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+        
+        .info-icon {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          
+          .material-symbols-outlined {
+            font-size: 18px;
+            color: #8e8e93;
+            transition: color 0.2s ease;
+          }
+          
+          &:hover .material-symbols-outlined {
+            color: #9bf526;
+          }
+          
+          .tooltip {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2a2a2a;
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #ffffff;
+            font-size: 13px;
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            white-space: nowrap;
+            z-index: 10002;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            min-width: 200px;
+            max-width: 300px;
+            white-space: normal;
+            line-height: 1.4;
+            
+            &::after {
+              content: '';
+              position: absolute;
+              top: 100%;
+              left: 50%;
+              transform: translateX(-50%);
+              width: 0;
+              height: 0;
+              border-left: 6px solid transparent;
+              border-right: 6px solid transparent;
+              border-top: 6px solid #2a2a2a;
+            }
+          }
+        }
       }
       
       .form-input {
@@ -110,6 +164,26 @@
           
           &:focus {
             border-color: #3a3a3a;
+          }
+        }
+        
+        &.broker-logo-container {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 12px 16px;
+          cursor: not-allowed;
+          background: #1a1a1a;
+          border: 1px solid #4a4a4a;
+          min-height: 44px; /* Altura mínima para coincidir con inputs (padding + línea base) */
+          box-sizing: border-box;
+          
+          .broker-logo {
+            max-width: 100%;
+            max-height: 20px;
+            height: auto;
+            width: auto;
+            object-fit: contain;
           }
         }
       }
@@ -363,4 +437,28 @@
       }
     }
   }
+}
+
+// Loading Popup (shown during account creation/update)
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001; // Higher than modal-overlay (1000) to appear above it
+  backdrop-filter: blur(4px);
+}
+
+.loading-popup {
+  background: #2a2a2a;
+  border-radius: 12px;
+  padding: 40px;
+  min-width: 300px;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }

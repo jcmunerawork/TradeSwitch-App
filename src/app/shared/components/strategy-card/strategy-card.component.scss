@@ -245,7 +245,62 @@
 }
 
 .metrics {
-  margin-bottom: 20px;
+  margin-bottom: 8px;
+}
+
+// Rules Dropdown Styles
+.rules-dropdown-container {
+  position: relative;
+  margin-bottom: 12px;
+  
+  .rules-dropdown-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: #e3e3e3;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s;
+    
+    &:hover {
+      color: #ffffff;
+    }
+    
+    .chevron {
+      font-size: 20px;
+      transition: transform 0.2s;
+      
+      &.open {
+        transform: rotate(180deg);
+      }
+    }
+  }
+  
+  .rules-dropdown-list {
+    margin-top: 4px;
+    padding-left: 0;
+    
+    .rules-dropdown-item {
+      padding: 0;
+      margin-bottom: 8px;
+      color: #b0b0b0;
+      font-size: 13px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+      
+      &.empty {
+        color: #666;
+        font-style: italic;
+      }
+    }
+  }
 }
 
 .metric-row {
@@ -310,6 +365,7 @@
 .action-buttons {
   display: flex;
   gap: 12px;
+  margin-top: 18px;
   width: 100%;
 }
 

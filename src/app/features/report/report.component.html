@@ -86,50 +86,64 @@
     </button>
   </div>
 } @else {
-<div class="stats-card-container">
-  <app-stat-card
-    class="stat-card"
-    title="Balance"
-    [value]="balanceData?.balance"
-    formatType="currency"
-  ></app-stat-card>
-  <app-stat-card
-    class="stat-card"
-    title="Total P&L"
-    [value]="stats?.netPnl ? stats?.netPnl : 0"
-    formatType="currency"
-  ></app-stat-card>
-  <app-stat-card
-    class="stat-card"
-    title="Trade win %"
-    [value]="stats?.tradeWinPercent"
-    formatType="percentage"
-  ></app-stat-card>
-  <app-stat-card
-    class="stat-card"
-    title="Profit Factor"
-    [value]="stats?.profitFactor"
-    formatType="number"
-  ></app-stat-card>
-  <app-stat-card
-    class="stat-card"
-    title="Total trades"
-    [value]="stats?.totalTrades"
-    formatType="number"
-  ></app-stat-card>
-</div>
+<!-- Metrics Section -->
+@if (stats) {
+  <div class="stats-card-container">
+    <app-stat-card
+      class="stat-card"
+      title="Balance"
+      [value]="realTimeBalance ?? undefined"
+      formatType="currency"
+      [loading]="isBalancesLoading()"
+    ></app-stat-card>
+    <app-stat-card
+      class="stat-card"
+      title="Total P&L"
+      [value]="stats.netPnl"
+      formatType="currency"
+    ></app-stat-card>
+    <app-stat-card
+      class="stat-card"
+      title="Trade win %"
+      [value]="stats.tradeWinPercent"
+      formatType="percentage"
+    ></app-stat-card>
+    <app-stat-card
+      class="stat-card"
+      title="Profit Factor"
+      [value]="stats.profitFactor"
+      formatType="number"
+    ></app-stat-card>
+    <app-stat-card
+      class="stat-card"
+      title="Total trades"
+      [value]="stats.totalTrades"
+      formatType="number"
+    ></app-stat-card>
+  </div>
+}
 <div class="middle-container d-flex mb-24">
   <app-PnL-Graph
     [values]="accountHistory"
-    (onYearChange)="onYearChange($event)"
+    [totalProfit]="stats.netPnl"
+    (onDataFiltered)="onDataFiltered($event)"
   ></app-PnL-Graph>
   <app-win-loss-chart [values]="accountHistory"></app-win-loss-chart>
 </div>
-<app-calendar
-  [strategies]="strategies"
-  [groupedTrades]="accountHistory"
-  (strategyFollowedPercentageChange)="onStrategyPercentageChange($event)"
-></app-calendar>
+
+<!-- Calendar Section -->
+@if (accountHistory && accountHistory.length > 0) {
+  <app-calendar
+    [strategies]="strategies"
+    [groupedTrades]="filteredAccountHistory || accountHistory"
+    (strategyFollowedPercentageChange)="onStrategyPercentageChange($event)"
+  ></app-calendar>
+} @else {
+  <!-- Empty State for Calendar -->
+  <div class="calendar-empty-container d-flex flex-col align-items-center justify-center p-50">
+    <p class="regularText color-secondary-300">No trading data available for calendar view.</p>
+  </div>
+}
 
 <!-- Plan Limitation Modal -->
 <app-plan-limitation-modal

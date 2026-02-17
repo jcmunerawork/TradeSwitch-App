@@ -5,11 +5,12 @@ import { Store } from '@ngrx/store';
 import { User } from '../../../overview/models/overview';
 import { selectUser } from '../../../auth/store/user.selectios';
 import { AuthService } from '../../../auth/service/authService';
-import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
-import { AccountDeletionService } from '../../../../shared/services/account-deletion.service';
 import { Router } from '@angular/router';
 import { AppContextService } from '../../../../shared/context';
 import { PasswordInputComponent } from '../../../../shared/components/password-input/password-input.component';
+import { BackendApiService } from '../../../../core/services/backend-api.service';
+import { ToastNotificationService } from '../../../../shared/services/toast-notification.service';
+import { ToastContainerComponent } from '../../../../shared/components/toast-container/toast-container.component';
 
 /**
  * Component for managing user profile details.
@@ -40,7 +41,7 @@ import { PasswordInputComponent } from '../../../../shared/components/password-i
  */
 @Component({
   selector: 'app-profile-details',
-  imports: [CommonModule, ReactiveFormsModule, PasswordInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, PasswordInputComponent, ToastContainerComponent],
   templateUrl: './profile-details.component.html',
   styleUrl: './profile-details.component.scss',
   standalone: true,
@@ -60,9 +61,10 @@ export class ProfileDetailsComponent implements OnInit {
   // Inyectar servicios
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
-  private accountDeletionService = inject(AccountDeletionService);
   private router = inject(Router);
   private appContext = inject(AppContextService);
+  private backendApi = inject(BackendApiService);
+  private toastService = inject(ToastNotificationService);
 
   constructor(private store: Store) {
     this.profileForm = this.fb.group({
@@ -123,13 +125,108 @@ export class ProfileDetailsComponent implements OnInit {
    */
   private populateForm(): void {
     if (this.user) {
+      const formattedBirthday = this.formatBirthdayForInput(this.user.birthday);
+      
+      // Usar patchValue para todos los campos
       this.profileForm.patchValue({
         firstName: this.user.firstName || '',
         lastName: this.user.lastName || '',
         email: this.user.email || '',
         phoneNumber: this.user.phoneNumber || '',
-        birthday: this.user.birthday || '',
       });
+      
+      // Establecer birthday directamente en el formControl para asegurar que se asigne
+      const birthdayControl = this.profileForm.get('birthday');
+      if (birthdayControl && formattedBirthday) {
+        birthdayControl.setValue(formattedBirthday, { emitEvent: false });
+      } else if (birthdayControl && !formattedBirthday) {
+        // Si no hay birthday, establecer como vacío pero no marcar como inválido si no es requerido
+        birthdayControl.setValue('', { emitEvent: false });
+      }
+    }
+  }
+
+  /**
+   * Formats birthday date for date input (YYYY-MM-DD format).
+   * 
+   * Handles different date formats:
+   * - Firestore Timestamp (with toDate method)
+   * - Date object
+   * - String (ISO format or other)
+   * - Number (timestamp)
+   * 
+   * @private
+   * @param birthday - Birthday value from user object
+   * @returns Formatted date string (YYYY-MM-DD) or empty string
+   * @memberof ProfileDetailsComponent
+   */
+  private formatBirthdayForInput(birthday: any): string {
+    if (!birthday) {
+      return '';
+    }
+
+    try {
+      let date: Date;
+
+      // Handle Firestore Timestamp with toDate method
+      if (birthday && typeof birthday === 'object' && 'toDate' in birthday && typeof birthday.toDate === 'function') {
+        date = birthday.toDate();
+      }
+      // Handle Firestore Timestamp as plain object with _seconds and _nanoseconds
+      else if (birthday && typeof birthday === 'object' && '_seconds' in birthday) {
+        // Convert Firestore Timestamp object to Date
+        const seconds = birthday._seconds || 0;
+        const nanoseconds = birthday._nanoseconds || 0;
+        date = new Date(seconds * 1000 + nanoseconds / 1000000);
+      }
+      // Handle Date object
+      else if (birthday instanceof Date) {
+        date = birthday;
+      }
+      // Handle string (could be ISO string or formatted string)
+      else if (typeof birthday === 'string') {
+        // Try parsing as ISO string first
+        date = new Date(birthday);
+        // If invalid, try parsing as formatted date string
+        if (isNaN(date.getTime()) && birthday.includes('/')) {
+          const parts = birthday.split('/');
+          if (parts.length === 3) {
+            // Assume format: DD/MM/YYYY or MM/DD/YYYY
+            // Try DD/MM/YYYY first (common format)
+            date = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+            if (isNaN(date.getTime())) {
+              // Try MM/DD/YYYY
+              date = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+            }
+          }
+        }
+      }
+      // Handle number (timestamp in milliseconds or seconds)
+      else if (typeof birthday === 'number') {
+        // If number is less than a certain threshold, assume it's in seconds, otherwise milliseconds
+        date = birthday < 10000000000 ? new Date(birthday * 1000) : new Date(birthday);
+      }
+      else {
+        console.warn('⚠️ ProfileDetails - Unknown birthday format:', typeof birthday, birthday);
+        console.warn('⚠️ ProfileDetails - Birthday structure:', JSON.stringify(birthday));
+        return '';
+      }
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.error('❌ ProfileDetails - Invalid date after conversion:', date);
+        return '';
+      }
+
+      // Format as YYYY-MM-DD for date input
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+
+      return `${year}-${month}-${day}`;
+    } catch (error) {
+      console.error('❌ ProfileDetails - Error formatting birthday for input:', error, birthday);
+      return '';
     }
   }
 
@@ -157,17 +254,17 @@ export class ProfileDetailsComponent implements OnInit {
   }
 
   /**
-   * Updates user profile with form data.
+   * Updates user profile with form data via backend.
    * 
    * This method synchronizes changes in three places:
-   * 1. Firebase: Updates data in database
+   * 1. Backend: Updates data via PUT /api/v1/users/:userId
    * 2. AppContextService: Updates user in context (source of truth)
    * 3. Store (NgRx): Updates user state in store
    * 
    * Only updates firstName, lastName and birthday (email cannot be changed here).
    * 
    * Related to:
-   * - AuthService.updateUser(): Updates data in Firebase
+   * - BackendApiService.updateUser(): Updates data via backend
    * - AppContextService.updateUserData(): Updates context
    * - Store.dispatch(): Updates NgRx store
    * 
@@ -184,13 +281,20 @@ export class ProfileDetailsComponent implements OnInit {
           birthday: this.profileForm.value.birthday,
         };
 
-        // 1. Actualizar en Firebase
-        await this.authService.updateUser(this.user.id, updatedData);
+        // Get Firebase ID token
+        const idToken = await this.authService.getBearerTokenFirebase(this.user.id);
+
+        // 1. Update via backend
+        const response = await this.backendApi.updateUser(this.user.id, updatedData, idToken);
         
-        // 2. Actualizar el usuario en el contexto (fuente de verdad)
+        if (!response.success) {
+          throw new Error(response.error?.message || 'Error updating profile');
+        }
+
+        // 2. Update user in context (source of truth)
         this.appContext.updateUserData(updatedData);
         
-        // 3. Actualizar el usuario en el store
+        // 3. Update user in store
         this.store.dispatch({
           type: '[User] Update User',
           user: {
@@ -198,10 +302,12 @@ export class ProfileDetailsComponent implements OnInit {
             ...updatedData
           }
         });
-        
-        console.log('✅ Profile updated successfully');
-      } catch (error) {
+
+        // Show success message
+        this.toastService.showSuccess('Profile updated successfully');
+      } catch (error: any) {
         console.error('❌ Error updating profile:', error);
+        this.toastService.showBackendError(error, 'Error updating profile');
       } finally {
         this.isLoading = false;
       }
@@ -209,23 +315,24 @@ export class ProfileDetailsComponent implements OnInit {
   }
 
   /**
-   * Changes user password.
+   * Changes user password via backend.
    * 
-   * This method requires reauthentication for security before changing password.
+   * This method uses the backend endpoint POST /api/v1/users/:userId/change-password
+   * which verifies the current password and updates it in Firebase Auth.
+   * 
    * Performs:
    * 1. Verifies user is authenticated
-   * 2. Reauthenticates user with current password
-   * 3. Updates password in Firebase Auth
-   * 4. Resets form and hides password form
+   * 2. Calls backend to verify current password and update password
+   * 3. Resets form and hides password form
    * 
    * Handles specific errors:
-   * - auth/wrong-password: Current password incorrect
-   * - auth/weak-password: New password too weak
-   * - auth/requires-recent-login: Requires signing in again
+   * - Current password incorrect
+   * - New password too weak
+   * - Passwords do not match
    * 
    * Related to:
-   * - Firebase Auth: reauthenticateWithCredential, updatePassword
-   * - AuthService.getCurrentUser(): Gets current user from Firebase
+   * - BackendApiService.changePassword(): Changes password via backend
+   * - AuthService.getBearerTokenFirebase(): Gets Firebase ID token
    * 
    * @async
    * @memberof ProfileDetailsComponent
@@ -237,41 +344,67 @@ export class ProfileDetailsComponent implements OnInit {
       this.passwordChangeError = '';
 
       try {
-        const currentUser = this.authService.getCurrentUser();
-        if (!currentUser) {
-          throw new Error('User not authenticated');
-        }
-
         const currentPassword = this.passwordForm.value.currentPassword;
         const newPassword = this.passwordForm.value.newPassword;
+        const confirmPassword = this.passwordForm.value.confirmPassword;
 
-        // Reautenticar al usuario antes de cambiar la contraseña
-        const credential = EmailAuthProvider.credential(
-          this.user.email,
-          currentPassword
+        // Get Firebase ID token
+        const idToken = await this.authService.getBearerTokenFirebase(this.user.id);
+
+        // Change password via backend
+        const response = await this.backendApi.changePassword(
+          this.user.id,
+          currentPassword,
+          newPassword,
+          confirmPassword,
+          idToken
         );
 
-        await reauthenticateWithCredential(currentUser, credential);
+        if (!response.success) {
+          throw new Error(response.error?.message || 'Error changing password');
+        }
         
-        // Cambiar la contraseña
-        await updatePassword(currentUser, newPassword);
+        // Password changed successfully - show message and logout
+        this.passwordChangeMessage = 'Password updated successfully. Please sign in again.';
+        this.toastService.showSuccess('Password updated successfully. Please sign in again.');
         
-        this.passwordChangeMessage = 'Password updated successfully';
-        this.passwordForm.reset();
-        this.showPasswordForm = false;
+        // Wait a moment to show the success message
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Logout and clear all data
+        await this.logoutAndClearAll();
+        
+        // Redirect to login
+        this.router.navigate(['/login'], {
+          queryParams: { 
+            reason: 'password_changed',
+            message: 'Your password has been changed. Please sign in with your new password.'
+          }
+        });
+
+        window.location.reload();
         
       } catch (error: any) {
         console.error('❌ Error changing password:', error);
         
-        if (error.code === 'auth/wrong-password') {
+        // Extract error message from backend
+        const errorMessage = error?.error?.error?.message || error?.message || 'Error changing password. Please try again';
+        
+        // Handle specific error cases
+        if (errorMessage.toLowerCase().includes('current password') || 
+            errorMessage.toLowerCase().includes('incorrect password')) {
           this.passwordChangeError = 'Current password is incorrect';
-        } else if (error.code === 'auth/weak-password') {
-          this.passwordChangeError = 'New password is too weak';
-        } else if (error.code === 'auth/requires-recent-login') {
-          this.passwordChangeError = 'For security, please sign in again';
+        } else if (errorMessage.toLowerCase().includes('weak') || 
+                   errorMessage.toLowerCase().includes('too short')) {
+          this.passwordChangeError = 'New password is too weak. Please use at least 6 characters';
+        } else if (errorMessage.toLowerCase().includes('match') || 
+                   errorMessage.toLowerCase().includes('mismatch')) {
+          this.passwordChangeError = 'Passwords do not match';
         } else {
-          this.passwordChangeError = 'Error changing password. Please try again';
+          this.passwordChangeError = errorMessage;
         }
+
+        this.toastService.showBackendError(error, 'Error changing password');
       } finally {
         this.isLoading = false;
       }
@@ -290,6 +423,45 @@ export class ProfileDetailsComponent implements OnInit {
     this.passwordChangeMessage = '';
     this.passwordChangeError = '';
     this.passwordForm.reset();
+  }
+
+  /**
+   * Logout and clear all stored data.
+   * 
+   * This method performs a complete logout:
+   * - AuthService.logout() now handles:
+   *   1. Clearing session cookie
+   *   2. Clearing all localStorage items
+   *   3. Clearing all sessionStorage items
+   *   4. Clearing all cookies
+   *   5. Clearing app context
+   *   6. Signing out from Firebase Auth
+   * - This method only needs to clear NgRx store
+   * 
+   * Used after password change to force re-authentication.
+   * 
+   * @private
+   * @async
+   * @memberof ProfileDetailsComponent
+   */
+  private async logoutAndClearAll(): Promise<void> {
+    try {
+      // AuthService.logout() ya limpia todo: localStorage, sessionStorage, cookies, AppContext y Firebase Auth
+      await this.authService.logout();
+      
+      // Solo necesitamos limpiar el store de NgRx
+      this.store.dispatch({
+        type: '[User] Clear User'
+      });
+      
+    } catch (error) {
+      console.error('❌ ProfileDetailsComponent: Error during logout:', error);
+      // Continuar con el logout incluso si hay un error
+      // Asegurarse de limpiar el store
+      this.store.dispatch({
+        type: '[User] Clear User'
+      });
+    }
   }
 
   /**
@@ -323,10 +495,31 @@ export class ProfileDetailsComponent implements OnInit {
   }
 
   /**
+   * Converts field name to readable text format.
+   * 
+   * Converts camelCase to Title Case with spaces:
+   * - currentPassword -> "Current Password"
+   * - newPassword -> "New Password"
+   * - confirmPassword -> "Confirm Password"
+   * 
+   * @private
+   * @param fieldName - Field name in camelCase
+   * @returns Formatted field name
+   * @memberof ProfileDetailsComponent
+   */
+  private formatFieldName(fieldName: string): string {
+    // Convert camelCase to Title Case with spaces
+    return fieldName
+      .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+      .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+      .trim();
+  }
+
+  /**
    * Gets error message for a password form field.
    * 
    * Returns specific error messages based on error type:
-   * - required: Field required
+   * - required: Field required (with formatted field name)
    * - minlength: Password must have at least 6 characters
    * - passwordMismatch: Passwords do not match
    * 
@@ -340,7 +533,8 @@ export class ProfileDetailsComponent implements OnInit {
     const field = this.passwordForm.get(fieldName);
     if (field?.errors && field.touched) {
       if (field.errors['required']) {
-        return `${fieldName} is required`;
+        const formattedName = this.formatFieldName(fieldName);
+        return `${formattedName} is required`;
       }
       if (field.errors['minlength']) {
         return 'Password must have at least 6 characters';
@@ -382,9 +576,8 @@ export class ProfileDetailsComponent implements OnInit {
    * 
    * This method performs complete deletion in the following order:
    * 1. Deletes all user data from Firebase (AccountDeletionService)
-   * 2. Deletes user from Firebase Authentication
-   * 3. Clears local NgRx store
-   * 4. Redirects user to login page
+   * 2. Clears local NgRx store
+   * 3. Redirects user to login page
    * 
    * Handles specific errors:
    * - auth/requires-recent-login: Requires signing in again for security
@@ -392,7 +585,6 @@ export class ProfileDetailsComponent implements OnInit {
    * 
    * Related to:
    * - AccountDeletionService.deleteUserData(): Deletes Firebase data
-   * - Firebase Auth deleteUser(): Deletes user from authentication
    * - Store.dispatch(): Clears user state
    * - Router.navigate(): Redirects to login
    * 
@@ -408,39 +600,31 @@ export class ProfileDetailsComponent implements OnInit {
     this.isDeletingAccount = true;
     this.deleteAccountError = '';
 
+    
     try {
-
-      // 1. Delete all Firebase data
-      const firebaseDataDeleted: boolean = await this.accountDeletionService.deleteUserData(this.user.id);
       
-      if (!firebaseDataDeleted) {
-        throw new Error('Error deleting Firebase data');
+      // Get Firebase ID token
+      const idToken = await this.authService.getBearerTokenFirebase(this.user.id);
+      
+      const response = await this.backendApi.deleteUser(this.user.id, idToken);
+
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Error deleting account');
       }
 
-      // 2. Delete user from Firebase Auth
-      const currentUser = this.authService.getCurrentUser();
-      if (currentUser) {
-        await deleteUser(currentUser);
-      }
+      // Show success message
+      this.toastService.showSuccess('Account deleted successfully');
 
-      // 3. Clear local store
-      this.store.dispatch({
-        type: '[User] Clear User'
-      });
+      // Clear NgRx store
+      this.store.dispatch({ type: '[User] Clear User' });
 
-      // 4. Redirect to login
+      // Redirect to login
       this.router.navigate(['/login']);
+
+      window.location.reload();
 
     } catch (error: any) {
       console.error('❌ Error deleting account:', error);
-      
-      if (error.code === 'auth/requires-recent-login') {
-        this.deleteAccountError = 'For security, you need to sign in again before deleting your account';
-      } else if (error.code === 'auth/too-many-requests') {
-        this.deleteAccountError = 'Too many attempts. Please try again later';
-      } else {
-        this.deleteAccountError = 'Error deleting account. Please try again';
-      }
     } finally {
       this.isDeletingAccount = false;
     }

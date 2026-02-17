@@ -6,11 +6,15 @@ import {
 } from '@angular/ssr/node';
 import express from 'express';
 import { join } from 'node:path';
+import { createServer } from 'http';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
+
+// Crear servidor HTTP
+const httpServer = createServer(app);
 
 /**
  * Example Express Rest API endpoints can be defined here.
@@ -53,12 +57,14 @@ app.use((req, res, next) => {
  */
 if (isMainModule(import.meta.url)) {
   const port = process.env['PORT'] || 4000;
-  app.listen(port, (error) => {
-    if (error) {
+  httpServer.listen(port, () => {
+    // Server started
+  });
+  
+  // Manejar errores del servidor
+  httpServer.on('error', (error: Error) => {
+    console.error('Error starting server:', error);
       throw error;
-    }
-
-    console.log(`Node Express server listening on http://localhost:${port}`);
   });
 }
 

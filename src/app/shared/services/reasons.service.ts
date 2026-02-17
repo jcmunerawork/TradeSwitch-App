@@ -1,18 +1,7 @@
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  updateDoc,
-  getDocs,
-  doc,
-  query,
-  where,
-  orderBy,
-  limit,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { BackendApiService } from '../../core/services/backend-api.service';
+import { getAuth } from 'firebase/auth';
 
 /**
  * Interface for ban reason record data.
@@ -54,45 +43,80 @@ export interface BanReasonRecord {
 @Injectable({ providedIn: 'root' })
 export class ReasonsService {
   private isBrowser: boolean;
-  private db: ReturnType<typeof getFirestore> | null = null;
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private backendApi: BackendApiService
+  ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
-    if (this.isBrowser) {
-      const { firebaseApp } = require('../../firebase/firebase.init.ts');
-      this.db = getFirestore(firebaseApp);
-    }
   }
 
-  private reasonsCollectionPath(userId: string) {
-    if (!this.db) throw new Error('Firestore not available in SSR');
-    return collection(this.db, 'users', userId, 'reasons');
+  /**
+   * Get Firebase ID token for backend API calls
+   */
+  private async getIdToken(): Promise<string> {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+    return await currentUser.getIdToken();
   }
 
   async createReason(userId: string, reason: string): Promise<string> {
-    const colRef = this.reasonsCollectionPath(userId);
-    const docRef = await addDoc(colRef, {
-      reason,
-      dateBan: serverTimestamp(),
-      dateUnban: null,
-    } as BanReasonRecord);
-    return docRef.id;
+    if (!this.isBrowser) {
+      throw new Error('Not available in SSR');
+    }
+
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.createBanReason(userId, reason, idToken);
+      
+      if (response.success && response.data?.banReason) {
+        return response.data.banReason.id || '';
+      }
+      throw new Error(response.error?.message || 'Failed to create ban reason');
+    } catch (error) {
+      console.error('Error creating ban reason:', error);
+      throw error;
+    }
   }
 
   async updateReason(userId: string, reasonId: string, data: Partial<BanReasonRecord>): Promise<void> {
-    if (!this.db) throw new Error('Firestore not available in SSR');
-    await updateDoc(doc(this.db, 'users', userId, 'reasons', reasonId), data as any);
+    if (!this.isBrowser) {
+      throw new Error('Not available in SSR');
+    }
+
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.updateBanReason(userId, reasonId, data, idToken);
+      
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to update ban reason');
+      }
+    } catch (error) {
+      console.error('Error updating ban reason:', error);
+      throw error;
+    }
   }
 
   async getOpenLatestReason(userId: string): Promise<BanReasonRecord | null> {
-    // Para evitar índices compuestos, ordenamos por dateBan y tomamos el más reciente
-    const colRef = this.reasonsCollectionPath(userId);
-    const qRef = query(colRef, orderBy('dateBan', 'desc'), limit(1));
-    const snapshot = await getDocs(qRef);
-    if (snapshot.empty) return null;
-    const docSnap = snapshot.docs[0];
-    const data = docSnap.data() as BanReasonRecord;
-    return { ...data, id: docSnap.id };
+    if (!this.isBrowser) {
+      return null;
+    }
+
+    try {
+      const idToken = await this.getIdToken();
+      const response = await this.backendApi.getLatestBanReason(userId, idToken);
+      
+      if (response.success && response.data?.banReason) {
+        return response.data.banReason as BanReasonRecord;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting latest ban reason:', error);
+      return null;
+    }
   }
 }
 

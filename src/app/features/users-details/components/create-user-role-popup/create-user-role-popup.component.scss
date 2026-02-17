@@ -19,7 +19,7 @@
   z-index: 1000;
   font-family: "SF Pro Display";
   max-height: 85vh;
-  overflow: hidden;
+  overflow: visible; /* Allow dropdown to overflow */
 }
 
 .create-user-form-container { 
@@ -34,6 +34,9 @@
   max-width: 560px;
   max-height: calc(85vh - 20px);
   overflow-y: auto;
+  overflow-x: visible; /* Allow dropdown to overflow horizontally */
+  position: relative;
+  z-index: 0; /* Lower z-index to allow dropdown to appear above */
 }
 
 .create-user-form {
@@ -41,6 +44,8 @@
   grid-template-columns: 1fr;
   gap: 12px;
   width: 100%;
+  position: relative;
+  z-index: 0; /* Lower z-index to allow dropdown to appear above */
 }
 
 .form-row {
@@ -49,11 +54,20 @@
   align-items: center;
   gap: 14px;
   width: 100%;
+  position: relative;
+  z-index: 0; /* Lower z-index to allow dropdown to appear above */
 }
 
 .form-row label { color: #e4e7ec; }
 .error-text { color: #ef4444; font-size: 12px; grid-column: 2 / -1; margin-top: -6px; }
 .optional-title { color: #e4e7ec; margin: 12px 0 4px 0; }
+
+.phone-input-row {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  z-index: 12000; /* Higher z-index to ensure dropdown appears above */
+}
 
 .timezone-select {
   background: transparent;
@@ -64,7 +78,7 @@
 }
 
 .actions { gap: 10px; margin-top: 10px; }
-.btn { border-radius: 8px; padding: 8px 14px; border: 1.5px solid #e4e7ec; background: transparent; color: #e4e7ec; transition: all 0.2s ease; }
+.btn { border-radius: 8px; padding: 8px 14px; border: 1.5px solid #e4e7ec; background: transparent; color: #e4e7ec; cursor: pointer; transition: all 0.2s ease; }
 .btn.primary { background: #9bf526; color: #0b0b0c; border: none; &:hover { background: #468506; } }
 .btn.cancel { background: transparent; &:hover { color: #4a4a4a; border-color: #4a4a4a; } }
 

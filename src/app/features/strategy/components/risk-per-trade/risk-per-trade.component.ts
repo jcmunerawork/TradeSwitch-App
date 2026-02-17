@@ -122,7 +122,25 @@ export class RiskPerTradeComponent implements OnInit {
 
   onChangePercentage(event: Event) {
     const percentage = Number((event.target as HTMLInputElement).value);
-    this.actualBalance = this.appContext.reportData()?.balanceData?.balance || 0;
+    
+    // Obtener balance actual: PRIMERO desde Firebase (account.balance), luego contexto, luego reportData
+    const userAccounts = this.appContext.userAccounts();
+    const account = userAccounts && userAccounts.length > 0 ? userAccounts[0] : null;
+    
+    // Prioridad 1: account.balance de Firebase (balance actual guardado)
+    if (account?.balance !== undefined && account.balance !== null && account.balance >= 0) {
+      this.actualBalance = account.balance;
+    } else {
+      // Prioridad 2: contexto (balances en tiempo real)
+      const accountBalances = this.appContext.accountBalances();
+      const balanceFromContext = account ? 
+        (accountBalances.get(account.accountID) || accountBalances.get(account.id)) : null;
+      
+      this.actualBalance = balanceFromContext !== undefined && balanceFromContext !== null ? 
+        balanceFromContext : 
+        (this.appContext.reportData()?.balanceData?.balance || 0);
+    }
+    
     const moneyRisk = Number(
       ((percentage / 100) * this.actualBalance).toFixed(2)
     );
@@ -152,10 +170,10 @@ export class RiskPerTradeComponent implements OnInit {
     return 0;
   }
 
-  // Método para cargar el balance actual desde el servicio
+  // Método para cargar el balance actual desde Firebase/contexto o API
   async loadActualBalance() {
     try {
-      // Obtener datos del usuario para hacer la petición
+      // Obtener datos del usuario
       const currentUser = this.appContext.currentUser();
       if (!currentUser) {
         console.warn('No hay usuario autenticado');
@@ -163,7 +181,7 @@ export class RiskPerTradeComponent implements OnInit {
         return;
       }
 
-      // Obtener la primera cuenta del usuario
+      // Obtener las cuentas del usuario
       const userAccounts = this.appContext.userAccounts();
       if (!userAccounts || userAccounts.length === 0) {
         console.warn('No hay cuentas disponibles');
@@ -172,12 +190,26 @@ export class RiskPerTradeComponent implements OnInit {
       }
 
       const account = userAccounts[0];
-      const accessToken = await this.authService.getBearerTokenFirebase(currentUser.id);
       
-      // Hacer la petición al servicio de reportes para obtener el balance
+      // 1. PRIMERO: Usar el balance desde Firebase (account.balance) - Este es el balance actual guardado
+      if (account.balance !== undefined && account.balance !== null && account.balance >= 0) {
+        this.actualBalance = account.balance;
+        return;
+      }
+      
+      // 2. SEGUNDO: Intentar obtener el balance desde el contexto (balances en tiempo real)
+      const accountBalances = this.appContext.accountBalances();
+      const balanceFromContext = accountBalances.get(account.accountID) || 
+                                accountBalances.get(account.id);
+      
+      if (balanceFromContext !== undefined && balanceFromContext !== null && balanceFromContext > 0) {
+        this.actualBalance = balanceFromContext;
+        return;
+      }
+      
+      // 3. Fallback: Hacer petición a la API
       const balanceData = await this.reportService.getBalanceData(
         account.accountID,
-        accessToken,
         account.accountNumber
       ).toPromise();
 
@@ -187,9 +219,10 @@ export class RiskPerTradeComponent implements OnInit {
         this.appContext.updateReportBalance(balanceData);
       } else {
         this.actualBalance = 0;
+        console.warn('⚠️ RiskPerTradeComponent: No se pudo obtener el balance');
       }
     } catch (error) {
-      console.error('Error loading actual balance:', error);
+      console.error('❌ RiskPerTradeComponent: Error loading actual balance:', error);
       this.actualBalance = 0;
     }
   }
@@ -201,7 +234,25 @@ export class RiskPerTradeComponent implements OnInit {
 
   onChangeAmount(event: Event) {
     const moneyRisk = Number((event.target as HTMLInputElement).value);
-    this.actualBalance = this.appContext.reportData()?.balanceData?.balance || 0;
+    
+    // Obtener balance actual: PRIMERO desde Firebase (account.balance), luego contexto, luego reportData
+    const userAccounts = this.appContext.userAccounts();
+    const account = userAccounts && userAccounts.length > 0 ? userAccounts[0] : null;
+    
+    // Prioridad 1: account.balance de Firebase (balance actual guardado)
+    if (account?.balance !== undefined && account.balance !== null && account.balance >= 0) {
+      this.actualBalance = account.balance;
+    } else {
+      // Prioridad 2: contexto (balances en tiempo real)
+      const accountBalances = this.appContext.accountBalances();
+      const balanceFromContext = account ? 
+        (accountBalances.get(account.accountID) || accountBalances.get(account.id)) : null;
+      
+      this.actualBalance = balanceFromContext !== undefined && balanceFromContext !== null ? 
+        balanceFromContext : 
+        (this.appContext.reportData()?.balanceData?.balance || 0);
+    }
+    
     const percentage = Number(
       ((moneyRisk / this.actualBalance) * 100).toFixed(2)
     );

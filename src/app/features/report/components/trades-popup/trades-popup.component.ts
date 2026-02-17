@@ -4,6 +4,8 @@ import { CalendarDay } from '../../models/report.model';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 import { GroupedTradeFinal } from '../../models/report.model';
 import { ConfigurationOverview } from '../../../strategy/models/strategy.model';
+import { ReportService } from '../../service/report.service';
+import { AppContextService } from '../../../../shared/context';
 
 /**
  * Interface representing a trade detail for display in the popup.
@@ -11,7 +13,8 @@ import { ConfigurationOverview } from '../../../strategy/models/strategy.model';
  * @interface TradeDetail
  */
 export interface TradeDetail {
-  openTime: string;
+  positionOpened: string; // Date and time when position was opened
+  positionClosed: string; // Date and time when position was closed
   ticker: string;
   side: 'Long' | 'Short';
   netPnl: number;
@@ -54,13 +57,19 @@ export class TradesPopupComponent {
   @Output() close = new EventEmitter<void>();
 
   trades: TradeDetail[] = [];
+  originalTrades: TradeDetail[] = [];
+  isReversed: boolean = false;
   netPnl: number = 0;
   netRoi: number = 0;
   private numberFormatter = new NumberFormatterService();
   selectedDate: string = '';
 
-  // Expose Math to template
   Math = Math;
+
+  constructor(
+    private reportService: ReportService,
+    private appContext: AppContextService
+  ) {}
 
   ngOnChanges() {
     if (this.selectedDay && this.visible) {
@@ -68,26 +77,93 @@ export class TradesPopupComponent {
     }
   }
 
-  loadTradesData() {
+  async loadTradesData() {
     if (!this.selectedDay) return;
 
     this.selectedDate = this.formatDate(this.selectedDay.date);
     this.netPnl = this.selectedDay.pnlTotal;
-
-    console.log(this.selectedDay.trades);
     
-    // Convertir trades del día a formato de detalle
-    this.trades = this.selectedDay.trades.map((trade, index) => ({
-      openTime: this.formatTime(new Date(Number(trade.lastModified))),
-      ticker: trade.instrument ?? 'N/A',
-      side: this.determineSide(trade),
-      netPnl: trade.pnl ?? 0,
-      followedStrategy: this.selectedDay?.followedStrategy ?? false,
-      strategyName: this.getStrategyNameForTrade(trade)
-    }));
+    // Obtener cache de instrumentos una sola vez para todos los trades del día
+    const accounts = this.appContext.userAccounts();
+    let instrumentsCache: any[] | null = null;
+    
+    if (accounts && accounts.length > 0) {
+      const currentAccount = accounts[0];
+      const accountId = currentAccount.accountID;
+      instrumentsCache = this.getInstrumentsFromCache(accountId);
+    }
+    
+    // Convertir trades del día a formato de detalle (sin ordenar, aparecen como llegan)
+    this.trades = this.selectedDay.trades.map((trade) => {
+      const openedDate = trade.createdDate 
+        ? new Date(Number(trade.createdDate))
+        : new Date(Number(trade.lastModified));
+      
+      const closedDate = (trade as any).closedDate 
+        ? new Date(Number((trade as any).closedDate))
+        : new Date(Number(trade.lastModified));
+      
+      // Obtener nombre del instrumento desde la cache
+      let instrumentName = trade.instrument ?? 'N/A';
+      
+      // Si el instrument es un número (ID) o no es un nombre válido, buscarlo en la cache
+      if (trade.tradableInstrumentId && instrumentsCache) {
+        const isNumericId = !isNaN(Number(instrumentName)) || instrumentName === trade.tradableInstrumentId;
+        
+        if (isNumericId || !instrumentName || instrumentName === 'N/A') {
+          // Buscar en la cache comparando el tradableInstrumentId con el id de cada instrumento
+          const instrumentId = Number(trade.tradableInstrumentId);
+          const cachedInstrument = instrumentsCache.find(
+            (inst: any) => inst.id === instrumentId
+          );
+          
+          if (cachedInstrument && cachedInstrument.name) {
+            instrumentName = cachedInstrument.name;
+          } else {
+            // Si no se encuentra en cache, usar el ID como fallback
+            instrumentName = trade.tradableInstrumentId;
+          }
+        }
+      }
+      
+      return {
+        positionOpened: this.formatDateTime(openedDate),
+        positionClosed: this.formatDateTime(closedDate),
+        ticker: instrumentName,
+        side: this.determineSide(trade),
+        netPnl: trade.pnl ?? 0,
+        followedStrategy: this.selectedDay?.followedStrategy ?? false,
+        strategyName: this.getStrategyNameForTrade(trade)
+      };
+    });
 
-    // Ordenar por tiempo (más reciente primero)
-    this.trades.sort((a, b) => b.openTime.localeCompare(a.openTime));
+    // Guardar orden original (sin ordenar, aparecen como llegan)
+    this.originalTrades = [...this.trades];
+    this.isReversed = false;
+  }
+
+  /**
+   * Obtener instrumentos desde localStorage cache
+   * Los instrumentos son iguales para todas las cuentas, así que se usa key genérica
+   * @param accountId - Parámetro mantenido por compatibilidad, pero no se usa
+   * @returns array de instrumentos o null si no existe
+   */
+  private getInstrumentsFromCache(accountId: string): any[] | null {
+    try {
+      // Key genérica sin accountId ya que los instrumentos son iguales para todas las cuentas
+      const key = 'tradeswitch_instruments';
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.instruments && Array.isArray(parsed.instruments)) {
+          return parsed.instruments;
+        }
+      }
+    } catch (error) {
+      console.warn('Error obteniendo instrumentos desde cache:', error);
+    }
+    
+    return null;
   }
 
   formatDate(date: Date): string {
@@ -107,6 +183,25 @@ export class TradesPopupComponent {
       minute: '2-digit', 
       second: '2-digit' 
     });
+  }
+
+  /**
+   * Format date and time for position opened/closed display
+   * Format: "MM/DD/YYYY HH:MM:SS"
+   */
+  formatDateTime(date: Date): string {
+    const dateStr = date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    return `${dateStr} ${timeStr}`;
   }
 
   determineSide(trade: GroupedTradeFinal): 'Long' | 'Short' {
@@ -196,17 +291,16 @@ export class TradesPopupComponent {
   }
 
   onClose() {
+    // Restaurar orden original al cerrar
+    this.trades = [...this.originalTrades];
+    this.isReversed = false;
     this.close.emit();
   }
 
-  onSortByTime() {
-    // Implementar lógica de ordenamiento
-    this.trades.sort((a, b) => b.openTime.localeCompare(a.openTime));
-  }
-
   onFilter() {
-    // Implementar lógica de filtrado
-    console.log('Filter clicked');
+    // Invertir el orden de la lista
+    this.trades.reverse();
+    this.isReversed = !this.isReversed;
   }
 
   formatCurrency(value: number): string {

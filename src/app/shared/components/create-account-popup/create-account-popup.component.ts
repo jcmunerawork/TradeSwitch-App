@@ -6,6 +6,8 @@ import { AuthService } from '../../../features/auth/service/authService';
 import { AccountData } from '../../../features/auth/models/userModel';
 import { Timestamp } from 'firebase/firestore';
 import { NumberFormatterService } from '../../utils/number-formatter.service';
+import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner.component';
+import { ToastNotificationService } from '../../services/toast-notification.service';
 
 /**
  * Component for creating and editing trading accounts.
@@ -50,7 +52,7 @@ import { NumberFormatterService } from '../../utils/number-formatter.service';
 @Component({
   selector: 'app-create-account-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LoadingSpinnerComponent],
   templateUrl: './create-account-popup.component.html',
   styleUrls: ['./create-account-popup.component.scss']
 })
@@ -68,7 +70,8 @@ export class CreateAccountPopupComponent implements OnChanges {
   constructor(
     private authService: AuthService,
     private tradeLockerApiService: TradeLockerApiService,
-    private numberFormatter: NumberFormatterService
+    private numberFormatter: NumberFormatterService,
+    private toastService: ToastNotificationService
   ) {}
 
   ngOnChanges(changes: SimpleChanges) {
@@ -88,7 +91,7 @@ export class CreateAccountPopupComponent implements OnChanges {
     emailTradingAccount: '',
     brokerPassword: '',
     accountName: '',
-    broker: '',
+    broker: 'TradeLocker',
     server: '',
     accountID: '',
     initialBalance: 0,
@@ -102,6 +105,9 @@ export class CreateAccountPopupComponent implements OnChanges {
   // Confirmation modals
   showCancelConfirm = false;
   showSuccessModal = false;
+  showAccountNumberTooltip = false;
+  showAccountIDTooltip = false;
+  isCreatingAccount = false;
 
   onClose() {
     this.close.emit();
@@ -124,25 +130,30 @@ export class CreateAccountPopupComponent implements OnChanges {
 
   async onCreate() {
     // Basic validation
-    if (!this.newAccount.accountName || !this.newAccount.broker || 
+    if (!this.newAccount.accountName || 
         !this.newAccount.emailTradingAccount || !this.newAccount.brokerPassword || 
         !this.newAccount.server || !this.newAccount.accountID || !this.newAccount.accountNumber) {
-      alert('Please fill in all required fields.');
+      this.toastService.showError('Please fill in all required fields.');
       return;
     }
+    
+    // Show loading popup
+    this.isCreatingAccount = true;
     
     try {
       // 1. Validate account exists in TradeLocker
       const accountExists = await this.validateAccountInTradeLocker();
       if (!accountExists) {
-        alert('Account does not exist in TradeLocker. Please verify the credentials.');
+        this.isCreatingAccount = false;
+        this.toastService.showError('Account does not exist in TradeLocker. Please verify the credentials.');
         return;
       }
       
       // 2. Validate account email and ID uniqueness
       const validationResult = await this.validateAccountUniqueness();
       if (!validationResult.isValid) {
-        alert(validationResult.message);
+        this.isCreatingAccount = false;
+        this.toastService.showError(validationResult.message);
         return;
       }
       
@@ -154,9 +165,13 @@ export class CreateAccountPopupComponent implements OnChanges {
         await this.createNewAccount();
       }
       
+      // Hide loading popup before showing success modal
+      this.isCreatingAccount = false;
+      
     } catch (error) {
       console.error('Error processing trading account:', error);
-      alert(`Failed to ${this.editMode ? 'update' : 'create'} trading account. Please try again.`);
+      this.isCreatingAccount = false;
+      this.toastService.showBackendError(error, `Failed to ${this.editMode ? 'update' : 'create'} trading account. Please try again.`);
     }
   }
 
@@ -164,8 +179,12 @@ export class CreateAccountPopupComponent implements OnChanges {
     // Create account object for Firebase
     const accountData = this.createAccountObject();
     
-    // Save to Firebase
-    await this.authService.createAccount(accountData);
+    // Save to Firebase and get response
+    const response = await this.authService.createAccount(accountData);
+    
+    // Show success toast with message from backend (if available)
+    const successMessage = response?.message || response?.data?.message || 'Trading account added successfully!';
+    this.toastService.showSuccess(successMessage);
     
     // Show success modal
     this.showSuccessModal = true;
@@ -181,20 +200,24 @@ export class CreateAccountPopupComponent implements OnChanges {
     const updatedAccountData: AccountData = {
       ...this.accountToEdit,
       accountName: this.newAccount.accountName,
-      broker: this.newAccount.broker,
+      broker: 'TradeLocker',
       server: this.newAccount.server,
       emailTradingAccount: this.newAccount.emailTradingAccount,
       brokerPassword: this.newAccount.brokerPassword,
       accountID: this.newAccount.accountID,
       accountNumber: this.newAccount.accountNumber,
-      initialBalance: this.newAccount.initialBalance,
+      initialBalance: this.newAccount.initialBalance || 0,
       netPnl: this.accountToEdit.netPnl || 0,
       profit: this.accountToEdit.profit || 0,
       bestTrade: this.accountToEdit.bestTrade || 0,
     };
+
+    // Update in Firebase and get response
+    const response = await this.authService.updateAccount(this.accountToEdit.id, updatedAccountData);
     
-    // Update in Firebase
-    await this.authService.updateAccount(this.accountToEdit.id, updatedAccountData);
+    // Show success toast with message from backend (if available)
+    const successMessage = response?.message || response?.data?.message || 'Trading account updated successfully!';
+    this.toastService.showSuccess(successMessage);
     
     // Show success modal
     this.showSuccessModal = true;
@@ -204,8 +227,15 @@ export class CreateAccountPopupComponent implements OnChanges {
   }
 
   onGoToList() {
+    // Close success modal first
     this.showSuccessModal = false;
-    this.close.emit();
+    // Reset form
+    this.resetForm();
+    // Use setTimeout to ensure the success modal closes before emitting close event
+    // This prevents any potential z-index or event propagation issues
+    setTimeout(() => {
+      this.close.emit();
+    }, 0);
   }
 
   // Balance input event handlers
@@ -246,7 +276,7 @@ export class CreateAccountPopupComponent implements OnChanges {
   resetForm() {
     this.newAccount = {
       accountName: '',
-      broker: '',
+      broker: 'TradeLocker',
       server: '',
       emailTradingAccount: '',
       brokerPassword: '',
@@ -264,7 +294,7 @@ export class CreateAccountPopupComponent implements OnChanges {
     if (this.accountToEdit) {
       this.newAccount = {
         accountName: this.accountToEdit.accountName || '',
-        broker: this.accountToEdit.broker || '',
+        broker: 'TradeLocker',
         server: this.accountToEdit.server || '',
         emailTradingAccount: this.accountToEdit.emailTradingAccount || '',
         brokerPassword: this.accountToEdit.brokerPassword || '',
@@ -294,12 +324,13 @@ export class CreateAccountPopupComponent implements OnChanges {
       userId: this.userId,
       emailTradingAccount: this.newAccount.emailTradingAccount,
       brokerPassword: this.newAccount.brokerPassword,
-      broker: this.newAccount.broker,
+      broker: 'TradeLocker',
       server: this.newAccount.server,
       accountName: this.newAccount.accountName,
       accountID: this.newAccount.accountID,
       accountNumber: this.newAccount.accountNumber,
       initialBalance: this.newAccount.initialBalance,
+      balance: this.newAccount.initialBalance || 0, // Usar initialBalance como balance inicial
       createdAt: Timestamp.now(),
       netPnl: 0,
       profit: 0,
@@ -327,15 +358,18 @@ export class CreateAccountPopupComponent implements OnChanges {
   /**
    * Validates that broker + server + accountId combination is unique across all accounts
    * Returns validation result with appropriate message
+   * When in edit mode, excludes the current account being edited
    */
   private async validateAccountUniqueness(): Promise<{isValid: boolean, message: string}> {
     try {
       // Check if broker + server + accountId combination already exists
+      // If editing, exclude the current account being edited
       const accountExists = await this.authService.checkAccountExists(
-        this.newAccount.broker,
+        'TradeLocker',
         this.newAccount.server,
         this.newAccount.accountID,
-        this.userId
+        this.userId,
+        this.editMode && this.accountToEdit ? this.accountToEdit.id : undefined
       );
       
       if (accountExists) {
@@ -350,6 +384,7 @@ export class CreateAccountPopupComponent implements OnChanges {
         message: ''
       };
     } catch (error) {
+      console.error('Error validating account uniqueness:', error);
       return {
         isValid: false,
         message: 'This account is already registered. Try with another account or delete the existing trade account it is linked to.'

@@ -1,18 +1,9 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
-import {
-    collection,
-    getDocs,
-    getFirestore,
-    where,
-    query,
-    onSnapshot,
-    doc,
-    getDoc,
-} from 'firebase/firestore';
-import { Observable, from } from 'rxjs';
-import { firebaseApp } from '../../firebase/firebase.init';
+import { Observable, from, interval, switchMap, startWith, catchError, of, share } from 'rxjs';
 import { TimezoneService } from './timezone.service';
+import { BackendApiService } from '../../core/services/backend-api.service';
+import { getAuth } from 'firebase/auth';
 
 /**
  * Interface for plugin history data.
@@ -65,44 +56,47 @@ export interface PluginHistory {
 export class PluginHistoryService {
 
     private isBrowser: boolean;
-    private db: ReturnType<typeof getFirestore> | null = null;
+    // Cachear el Observable por userId para compartir entre suscriptores y evitar múltiples intervalos
+    private realtimeObservables: Map<string, Observable<PluginHistory[]>> = new Map();
 
     constructor(
         @Inject(PLATFORM_ID) private platformId: Object,
-        private timezoneService: TimezoneService
+        private timezoneService: TimezoneService,
+        private backendApi: BackendApiService
     ) {
         this.isBrowser = isPlatformBrowser(this.platformId);
-        if (this.isBrowser) {
-            this.db = getFirestore(firebaseApp);
+    }
+
+    /**
+     * Get Firebase ID token for backend API calls
+     */
+    private async getIdToken(): Promise<string> {
+        const auth = getAuth();
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            throw new Error('User not authenticated');
         }
+        return await currentUser.getIdToken();
     }
 
     async getPluginUsageHistory(userId: string): Promise<PluginHistory[]> {
-        if (!this.db) {
-            console.warn('Firestore not available in SSR');
+        if (!this.isBrowser) {
+            console.warn('Not available in SSR');
             return [];
         }
 
         try {
-            // NUEVA LÓGICA: Buscar por document ID = plugin_{userId}
-            const pluginDocId = `plugin_${userId}`;
-            const docRef = doc(this.db, 'plugin_history', pluginDocId);
-            const docSnap = await getDoc(docRef);
-
-            if (!docSnap.exists()) {
-                return [];
+            const idToken = await this.getIdToken();
+            const response = await this.backendApi.getPluginHistory(userId, idToken);
+            
+            if (response.success && response.data?.pluginHistory) {
+                return [response.data.pluginHistory] as PluginHistory[];
             }
-
-            const data = docSnap.data();
-            const pluginHistory = { id: docSnap.id, ...data };
-
-            return [pluginHistory] as PluginHistory[];
-
+            return [];
         } catch (error) {
             console.error('Error getting plugin usage history:', error);
             return [];
         }
-
     }
 
     /**
@@ -150,43 +144,51 @@ export class PluginHistoryService {
     /**
      * MÉTODO NUEVO: Listener en tiempo real para plugin history
      * FLUJO DINÁMICO:
-     * - Retorna un Observable que emite cambios en tiempo real
+     * - Retorna un Observable que emite cambios periódicamente (polling cada 5 segundos)
      * - Filtra por userId específico
      * - El componente se suscribe y recibe actualizaciones automáticas
      * - Maneja errores y limpieza de recursos
+     * - COMPARTE el Observable entre múltiples suscriptores para evitar múltiples intervalos
+     * 
+     * Nota: Como no hay WebSockets, usamos polling para simular tiempo real
      */
     getPluginHistoryRealtime(userId: string): Observable<PluginHistory[]> {
-        if (!this.db) {
-            console.warn('Firestore not available in SSR');
+        if (!this.isBrowser) {
+            console.warn('Not available in SSR');
             return from([]);
         }
 
-        return new Observable<PluginHistory[]>(subscriber => {
-            // NUEVA LÓGICA: Buscar por document ID = plugin_{userId}
-            const pluginDocId = `plugin_${userId}`;
-            const pluginHistoryRef = collection(this.db!, 'plugin_history');
-            const q = query(pluginHistoryRef, where('__name__', '==', pluginDocId));
-            
-            const unsubscribe = onSnapshot(q, 
-                (snapshot) => {
-                    const pluginHistory = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    } as PluginHistory));
-                    
-                    subscriber.next(pluginHistory);
-                }, 
-                (error) => {
-                    console.error('Error in plugin history listener:', error);
-                    subscriber.error(error);
-                }
-            );
+        // Si ya existe un Observable para este userId, reutilizarlo para evitar múltiples intervalos
+        if (this.realtimeObservables.has(userId)) {
+            return this.realtimeObservables.get(userId)!;
+        }
 
-            // Retornar función de limpieza
-            return () => {
-                unsubscribe();
-            };
-        });
+        // Crear un nuevo Observable y compartirlo entre múltiples suscriptores
+        const observable = interval(5000).pipe(
+            startWith(0), // Emitir inmediatamente al suscribirse
+            switchMap(() => {
+                return from(this.getIdToken()).pipe(
+                    switchMap(idToken => {
+                        return from(this.backendApi.getPluginHistory(userId, idToken));
+                    }),
+                    switchMap(response => {
+                        if (response.success && response.data?.pluginHistory) {
+                            return of([response.data.pluginHistory] as PluginHistory[]);
+                        }
+                        return of([]);
+                    }),
+                    catchError(error => {
+                        console.error('Error in plugin history polling:', error);
+                        return of([]);
+                    })
+                );
+            }),
+            share() // Compartir el Observable entre múltiples suscriptores (evita múltiples intervalos)
+        );
+
+        // Guardar el Observable en el cache para reutilizarlo
+        this.realtimeObservables.set(userId, observable);
+        return observable;
     }
 
 }

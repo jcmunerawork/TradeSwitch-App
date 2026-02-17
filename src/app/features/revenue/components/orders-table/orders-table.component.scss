@@ -76,23 +76,15 @@ tbody tr {
 
 .status {
   border-radius: 4px;
-  width: 100%;
   width: fit-content;
 }
 
-.Completed {
-  background: rgba(0, 122, 255, 0.15);
-  color: #9fcdff;
+.green {
+  background: rgba(0, 200, 83, 0.15);
+  color: #4caf50;
 }
-.Pending {
-  background: rgba(255, 149, 0, 0.15);
-  color: #ffc16b;
-}
-.Cancelled {
-  background: rgba(180, 180, 180, 0.15);
-  color: #b3b3bd;
-}
-.Failed {
+
+.red {
   background: rgba(255, 59, 48, 0.15);
   color: #ff3b30;
 }
@@ -229,4 +221,5 @@ input[type="number"] {
   border-radius: 0.375rem;
   background: rgba(158, 196, 242, 0.1);
   border: none;
+  cursor: pointer;
 }

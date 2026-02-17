@@ -1,5 +1,6 @@
 import {
   ApplicationConfig,
+  APP_INITIALIZER,
   provideBrowserGlobalErrorListeners,
   provideZoneChangeDetection,
 } from '@angular/core';
@@ -14,16 +15,45 @@ import { provideStore } from '@ngrx/store';
 import { appReducers } from './store/app.reducer';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { provideHttpClient, withFetch } from '@angular/common/http';
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
+import { HTTP_INTERCEPTORS } from '@angular/common/http';
+import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
+import { AuthService } from './shared/services/auth.service';
+import { withInMemoryScrolling } from '@angular/router';
+
+/**
+ * Función de inicialización para verificar token de sesión al iniciar la aplicación
+ */
+export function initializeApp(authService: AuthService) {
+  return () => {
+    // Verificar token de sesión y hacer login automático si es válido
+    return authService.checkSessionTokenAndAutoLogin().catch((error) => {
+      console.warn('Error during app initialization:', error);
+      // No lanzar error para que la app pueda continuar
+      return Promise.resolve();
+    });
+  };
+}
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes),
+    provideRouter(
+      routes,
+      withInMemoryScrolling({
+        scrollPositionRestoration: 'top',  // siempre arriba
+        anchorScrolling: 'enabled',        // opcional, para hash links
+      })
+    ),
     provideAnimations(),
     provideHttpClient(withFetch()),
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: AuthInterceptor,
+      multi: true,
+    },
     provideClientHydration(withEventReplay()),
     provideStore(appReducers),
     provideStoreDevtools({
@@ -31,5 +61,11 @@ export const appConfig: ApplicationConfig = {
       logOnly: false,
     }),
     provideCharts(withDefaultRegisterables()),
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeApp,
+      deps: [AuthService],
+      multi: true,
+    },
   ],
 };
