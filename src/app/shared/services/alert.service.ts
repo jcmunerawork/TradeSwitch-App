@@ -47,8 +47,12 @@ export class AlertService {
     config: null
   });
 
+  /** Observable del estado actual del alert (visible y configuración). */
   public alert$ = this.alertSubject.asObservable();
 
+  /**
+   * Muestra un alert con la configuración indicada (título, mensaje, tipo, texto del botón).
+   */
   showAlert(config: AlertConfig): void {
     this.alertSubject.next({
       visible: true,
@@ -61,6 +65,7 @@ export class AlertService {
     });
   }
 
+  /** Oculta el alert actual. */
   hideAlert(): void {
     this.alertSubject.next({
       visible: false,
@@ -68,7 +73,11 @@ export class AlertService {
     });
   }
 
-  // Métodos de conveniencia
+  /**
+   * Muestra un alert de tipo error.
+   * @param message - Mensaje a mostrar
+   * @param title - Título (por defecto 'Error')
+   */
   showError(message: string, title: string = 'Error'): void {
     this.showAlert({
       title,
@@ -77,6 +86,11 @@ export class AlertService {
     });
   }
 
+  /**
+   * Muestra un alert de tipo advertencia.
+   * @param message - Mensaje a mostrar
+   * @param title - Título (por defecto 'Warning')
+   */
   showWarning(message: string, title: string = 'Warning'): void {
     this.showAlert({
       title,
@@ -85,6 +99,11 @@ export class AlertService {
     });
   }
 
+  /**
+   * Muestra un alert de tipo éxito.
+   * @param message - Mensaje a mostrar
+   * @param title - Título (por defecto 'Success')
+   */
   showSuccess(message: string, title: string = 'Success'): void {
     this.showAlert({
       title,
@@ -93,6 +112,11 @@ export class AlertService {
     });
   }
 
+  /**
+   * Muestra un alert de tipo información.
+   * @param message - Mensaje a mostrar
+   * @param title - Título (por defecto 'Information')
+   */
   showInfo(message: string, title: string = 'Information'): void {
     this.showAlert({
       title,

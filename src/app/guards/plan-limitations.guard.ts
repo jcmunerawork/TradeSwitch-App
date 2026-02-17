@@ -9,6 +9,9 @@ import { Observable, of, switchMap, catchError } from 'rxjs';
 import { Subscription } from '../shared/services/subscription-service';
 import { AppContextService } from '../shared/context';
 
+/**
+ * Limitaciones del plan del usuario (cuentas, estrategias, estado).
+ */
 export interface PlanLimitations {
   maxAccounts: number;
   maxStrategies: number;
@@ -19,6 +22,9 @@ export interface PlanLimitations {
   needsSubscription: boolean;
 }
 
+/**
+ * Resultado de una comprobación de límite (crear cuenta o estrategia).
+ */
 export interface LimitationCheck {
   canCreate: boolean;
   reason?: string;
@@ -28,6 +34,9 @@ export interface LimitationCheck {
   blockedMessage: string;
 }
 
+/**
+ * Datos para mostrar un modal de upgrade o bloqueo.
+ */
 export interface ModalData {
   showModal: boolean;
   modalType: 'upgrade' | 'blocked';
@@ -82,6 +91,10 @@ export class PlanLimitationsGuard implements CanActivate {
   private router = inject(Router);
   private appContext = inject(AppContextService);
 
+  /**
+   * Determina si la ruta puede activarse según el plan del usuario.
+   * Requiere usuario con plan activo y sin necesidad de suscripción.
+   */
   canActivate(): Observable<boolean> {
     return this.store.select(selectUser).pipe(
       switchMap(async (userState) => {
