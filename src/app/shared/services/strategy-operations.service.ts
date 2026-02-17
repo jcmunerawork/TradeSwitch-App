@@ -407,13 +407,6 @@ export class StrategyOperationsService {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.getUserStrategyViews(userId, idToken);
 
-      // Validar respuesta del backend (puedes quitar el log después de validar)
-      console.log('[Strategies API] Response:', JSON.stringify({
-        success: response.success,
-        strategiesCount: response.data?.strategies?.length ?? 0,
-        button_state: response.data?.button_state
-      }));
-
       if (!response.success || !response.data) {
         return { strategies: [], button_state: 'available' };
       }

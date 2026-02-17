@@ -132,6 +132,14 @@
     gap: 4px;
   }
 
+  .field-hint {
+    color: rgba(255, 255, 255, 0.55);
+    font-family: "SF Pro Display";
+    font-size: 12px;
+    line-height: 1.3;
+    margin: 2px 0 0 0;
+  }
+
   .field-error {
     color: #ef4444;
     font-family: "SF Pro Display";

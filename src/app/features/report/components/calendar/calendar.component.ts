@@ -36,7 +36,10 @@ export class CalendarComponent {
   calendar: CalendarDay[][] = [];
   currentDate!: Date;
   selectedMonth!: Date;
-  
+
+  /** Copia mutable de groupedTrades para rellenar instrument sin tocar el estado NgRx (read-only). */
+  processedTradesForCalendar: GroupedTradeFinal[] = [];
+
   // Popup properties
   showTradesPopup = false;
   selectedDay: CalendarDay | null = null;
@@ -57,12 +60,13 @@ export class CalendarComponent {
     this.currentDate = new Date();
     this.selectedMonth = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth());
 
-    // Obtener userId desde el contexto de autenticación
+    // Copia mutable para no modificar el input (NgRx read-only)
+    this.processedTradesForCalendar = this.groupedTrades?.length
+      ? this.groupedTrades.map(t => ({ ...t }))
+      : [];
+
     this.loadUserIdAndInitialize();
-
-    // Procesar trades para obtener nombres de instrumentos
     this.processTradesForCalendar();
-
     this.generateCalendar(this.selectedMonth);
 
     if (this.strategies && this.strategies.length > 0) {
@@ -125,29 +129,28 @@ export class CalendarComponent {
   }
 
   /**
-   * Procesar trades para obtener nombres de instrumentos
+   * Procesar trades para obtener nombres de instrumentos.
+   * Trabaja sobre processedTradesForCalendar (copia mutable) para no tocar el input read-only.
    */
   private async processTradesForCalendar() {
-    if (!this.groupedTrades || this.groupedTrades.length === 0) {
+    if (!this.processedTradesForCalendar.length) {
       return;
     }
 
-    // Verificar si los trades ya tienen nombres de instrumentos correctos
-    const firstTrade = this.groupedTrades[0];
-    const needsProcessing = !firstTrade.instrument || 
+    const firstTrade = this.processedTradesForCalendar[0];
+    const needsProcessing = !firstTrade.instrument ||
                            firstTrade.instrument === firstTrade.tradableInstrumentId ||
                            firstTrade.instrument === '' ||
                            firstTrade.instrument === 'Cargando...';
 
     if (!needsProcessing) {
-      return; // Ya están procesados
+      return;
     }
 
     try {
-      // Obtener instrumentos únicos (optimización: solo una petición por combinación única)
       const uniqueInstruments = new Map<string, { tradableInstrumentId: string, routeId: string }>();
-      
-      this.groupedTrades.forEach(trade => {
+
+      this.processedTradesForCalendar.forEach(trade => {
         if (trade.tradableInstrumentId && trade.routeId) {
           const key = `${trade.tradableInstrumentId}-${trade.routeId}`;
           if (!uniqueInstruments.has(key)) {
@@ -159,24 +162,21 @@ export class CalendarComponent {
         }
       });
 
-      // Establecer "Cargando..." como valor inicial para todos los trades
-      this.groupedTrades.forEach(trade => {
+      this.processedTradesForCalendar.forEach(trade => {
         if (trade.tradableInstrumentId && trade.routeId) {
           trade.instrument = 'Cargando...';
         }
       });
 
-      // Obtener detalles de instrumentos (una sola petición por combinación única)
       const instrumentDetailsMap = new Map<string, { lotSize: number, name: string }>();
 
       for (const [key, instrument] of uniqueInstruments) {
         try {
-          // Obtener accountId desde el contexto (el backend gestiona el accessToken automáticamente)
           const accounts = this.appContext.userAccounts();
           if (!accounts || accounts.length === 0) {
             throw new Error('No hay cuentas disponibles');
           }
-          const currentAccount = accounts[0]; // Tomar la primera cuenta
+          const currentAccount = accounts[0];
           const accountId = currentAccount.accountID;
 
           const instrumentDetails = await this.reportSvc.getInstrumentDetails(
@@ -197,7 +197,6 @@ export class CalendarComponent {
               name: instrument.tradableInstrumentId
             });
           }
-
         } catch (error) {
           console.warn(`Error obteniendo detalles del instrumento ${key}:`, error);
           instrumentDetailsMap.set(key, {
@@ -207,28 +206,27 @@ export class CalendarComponent {
         }
       }
 
-      // Actualizar trades con nombres de instrumentos (aplicar a todos los trades con la misma combinación)
-      this.groupedTrades.forEach(trade => {
+      this.processedTradesForCalendar.forEach(trade => {
         if (trade.tradableInstrumentId && trade.routeId) {
           const key = `${trade.tradableInstrumentId}-${trade.routeId}`;
           const instrumentDetails = instrumentDetailsMap.get(key);
-          
           if (instrumentDetails) {
             trade.instrument = instrumentDetails.name;
           } else {
-            trade.instrument = trade.tradableInstrumentId; // Fallback al ID
+            trade.instrument = trade.tradableInstrumentId;
           }
         }
       });
 
+      this.generateCalendar(this.selectedMonth);
     } catch (error) {
       console.error('Error procesando trades para calendario:', error);
-      // En caso de error, establecer fallback
-      this.groupedTrades.forEach(trade => {
+      this.processedTradesForCalendar.forEach(trade => {
         if (trade.tradableInstrumentId && trade.routeId) {
           trade.instrument = trade.tradableInstrumentId;
         }
       });
+      this.generateCalendar(this.selectedMonth);
     }
   }
 
@@ -499,8 +497,7 @@ export class CalendarComponent {
   generateCalendar(targetMonth: Date) {
     const tradesByDay: { [date: string]: GroupedTradeFinal[] } = {};
 
-    // Primero, filtrar trades válidos (con positionId válido) y deduplicar
-    const validTrades = this.groupedTrades.filter(trade => 
+    const validTrades = this.processedTradesForCalendar.filter(trade => 
       trade.positionId && 
       trade.positionId !== 'null' && 
       trade.positionId !== '' &&
@@ -658,7 +655,7 @@ export class CalendarComponent {
 
   // Navigation methods
   canNavigateLeft(): boolean {
-    if (!this.groupedTrades || this.groupedTrades.length === 0) return false;
+    if (!this.processedTradesForCalendar.length) return false;
     
     const earliestTradeDate = this.getEarliestTradeDate();
     const firstDayOfSelectedMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth(), 1);
@@ -667,7 +664,7 @@ export class CalendarComponent {
   }
 
   canNavigateRight(): boolean {
-    if (!this.groupedTrades || this.groupedTrades.length === 0) return false;
+    if (!this.processedTradesForCalendar.length) return false;
     
     const latestTradeDate = this.getLatestTradeDate();
     const lastDayOfSelectedMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() + 1, 0);
@@ -676,20 +673,16 @@ export class CalendarComponent {
   }
 
   private getEarliestTradeDate(): Date {
-    if (!this.groupedTrades || this.groupedTrades.length === 0) return new Date();
-    
-    // Usar createdDate (fecha de apertura) para determinar la fecha más temprana
-    const dates = this.groupedTrades.map(trade => 
+    if (!this.processedTradesForCalendar.length) return new Date();
+    const dates = this.processedTradesForCalendar.map(trade => 
       new Date(Number(trade.createdDate) || Number(trade.lastModified))
     );
     return new Date(Math.min(...dates.map(d => d.getTime())));
   }
 
   private getLatestTradeDate(): Date {
-    if (!this.groupedTrades || this.groupedTrades.length === 0) return new Date();
-    
-    // Usar createdDate (fecha de apertura) para determinar la fecha más reciente
-    const dates = this.groupedTrades.map(trade => 
+    if (!this.processedTradesForCalendar.length) return new Date();
+    const dates = this.processedTradesForCalendar.map(trade => 
       new Date(Number(trade.createdDate) || Number(trade.lastModified))
     );
     return new Date(Math.max(...dates.map(d => d.getTime())));

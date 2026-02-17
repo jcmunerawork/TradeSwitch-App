@@ -9,7 +9,6 @@ import {
   TradingMetrics,
   SyncMetadata,
   InstrumentCacheEntry,
-  StreamsPositionUpdate,
   SyncResult
 } from '../models/trading-history.model';
 import { LoggerService } from '../../../core/services';
@@ -24,7 +23,7 @@ import { getAuth } from 'firebase/auth';
  * - Loads trading history from backend (which reads from Firebase)
  * - Synchronizes historical data from TradeLocker API via backend
  * - Backend handles: fetching, caching, merging, calculating metrics, and saving to Firebase
- * - Updates from Streams API in real-time (future: should go through backend)
+ * - Solo API REST
  * - Handles errors gracefully with fallback values
  * 
  * Features:
@@ -42,7 +41,6 @@ import { getAuth } from 'firebase/auth';
  * Relations:
  * - BackendApiService: All Firebase operations
  * - ReportService: Fetches trading history and instrument details
- * - StreamsService: Receives real-time position updates
  * - ReportComponent: Uses this service to load and display data
  * 
  * @service
@@ -130,66 +128,6 @@ export class TradingHistorySyncService {
       success: false,
       error: 'Sync endpoint has been removed. Use loadFromFirebase() instead.'
     };
-  }
-
-  /**
-   * Update trading history from Streams API.
-   * 
-   * Note: Streams updates should be handled by the backend in the future.
-   * For now, this method loads data and processes updates locally, but
-   * the actual persistence should go through the backend.
-   */
-  async updateFromStreams(
-    userId: string,
-    accountId: string,
-    streamUpdate: StreamsPositionUpdate
-  ): Promise<SyncResult> {
-    if (!this.isBrowser) {
-      return {
-        success: false,
-        error: 'Not available in SSR'
-      };
-    }
-
-    try {
-      // 1. Cargar datos actuales desde el backend
-      const currentData = await this.loadFromFirebase(userId, accountId);
-      
-      if (!currentData) {
-        // Si no hay datos, no podemos actualizar desde streams
-        // Streams solo actualiza, no crea histórico completo
-        this.logger.warn('No existing data to update from streams', 'TradingHistorySyncService', { accountId });
-        return {
-          success: false,
-          error: 'No existing data to update'
-        };
-      }
-
-      // 2. Actualizar/crear posiciones desde streams
-      const updatedPositions = this.mergeStreamsUpdate(
-        currentData.positions,
-        streamUpdate
-      );
-
-      // 3. Recalcular métricas (solo cerrados)
-      const metrics = this.calculateMetrics(updatedPositions);
-
-      // NOTE: Sync endpoint removed - streams updates are handled by backend automatically
-      // No need to manually trigger sync as it consumes too much resources
-
-      return {
-        success: true,
-        positionsUpdated: 1,
-        metricsUpdated: true
-      };
-
-    } catch (error) {
-      this.logger.error('Error updating from streams', 'TradingHistorySyncService', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
   }
 
   /**
@@ -295,7 +233,7 @@ export class TradingHistorySyncService {
   private mergePositions(
     existing: { [positionId: string]: PositionData },
     newTrades: GroupedTradeFinal[],
-    source: 'history' | 'streams'
+    source: 'history'
   ): { [positionId: string]: PositionData } {
     const merged: { [positionId: string]: PositionData } = { ...existing };
 
@@ -328,44 +266,11 @@ export class TradingHistorySyncService {
   }
 
   /**
-   * Merge streams update into existing positions.
-   */
-  private mergeStreamsUpdate(
-    existing: { [positionId: string]: PositionData },
-    streamUpdate: StreamsPositionUpdate
-  ): { [positionId: string]: PositionData } {
-    const updated = { ...existing };
-    const existingPosition = updated[streamUpdate.positionId];
-
-    if (existingPosition) {
-      // Actualizar posición existente
-      updated[streamUpdate.positionId] = {
-        ...existingPosition,
-        pnl: streamUpdate.pnl !== undefined ? streamUpdate.pnl : existingPosition.pnl,
-        isOpen: streamUpdate.isOpen !== undefined ? streamUpdate.isOpen : existingPosition.isOpen,
-        lastModified: streamUpdate.lastModified || existingPosition.lastModified,
-        syncedAt: Date.now(),
-        source: 'streams',
-        version: existingPosition.version + 1,
-        closeDate: streamUpdate.isOpen === false ? Date.now() : existingPosition.closeDate
-      };
-    } else {
-      // Nueva posición desde streams (raro, pero posible)
-      // Nota: Streams normalmente no crea histórico completo, solo actualiza
-      this.logger.warn('New position from streams (unexpected)', 'TradingHistorySyncService', {
-        positionId: streamUpdate.positionId
-      });
-    }
-
-    return updated;
-  }
-
-  /**
    * Convert GroupedTradeFinal to PositionData.
    */
   private convertToPositionData(
     trade: GroupedTradeFinal,
-    source: 'history' | 'streams'
+    source: 'history'
   ): PositionData {
     const openDate = trade.createdDate ? new Date(trade.createdDate).getTime() : undefined;
     const closeDate = !trade.isOpen && trade.lastModified ? new Date(trade.lastModified).getTime() : undefined;

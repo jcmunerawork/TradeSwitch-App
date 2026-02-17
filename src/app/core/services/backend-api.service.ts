@@ -1423,19 +1423,6 @@ export class BackendApiService extends BaseApiService {
   }
 
   /**
-   * Get account tokens for Streams API
-   */
-  async getTradeLockerAccountTokens(credentials: { email: string; password: string; server: string }, idToken: string): Promise<BackendApiResponse<{ data: any[] }>> {
-    return firstValueFrom(
-      this.post<BackendApiResponse<{ data: any[] }>>('/tradelocker/accounts/tokens', credentials, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
-      })
-    );
-  }
-
-  /**
    * Refresh TradeLocker token
    */
   async refreshTradeLockerToken(accessToken: string, idToken: string): Promise<BackendApiResponse<any>> {

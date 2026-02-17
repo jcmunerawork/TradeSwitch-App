@@ -148,32 +148,28 @@ export class SettingsService {
   }
 
   // Obtener estrategia completa (configuration-overview + configurations)
-  // Primero intenta desde el cache (localStorage), si no está, hace petición al backend
+  // Siempre pide al backend primero; si falla, usa cache (localStorage) como respaldo
   async getStrategyView(overviewId: string): Promise<{ overview: ConfigurationOverview; configuration: StrategyState } | null> {
-    // 1. Intentar obtener desde el cache primero
-    const cached = this.strategyCacheService.getStrategy(overviewId);
-    if (cached) {
-      return cached;
+    try {
+      // 1. Siempre pedir al backend primero
+      const overview = await this.getConfigurationOverview(overviewId);
+      if (!overview) {
+        return this.strategyCacheService.getStrategy(overviewId);
+      }
+
+      const configuration = await this.getConfigurationById(overview.configurationId);
+      if (!configuration) {
+        return this.strategyCacheService.getStrategy(overviewId);
+      }
+
+      // 2. Actualizar cache (localStorage) con los datos frescos
+      this.strategyCacheService.setStrategy(overviewId, overview, configuration);
+
+      return { overview, configuration };
+    } catch {
+      // 3. Si el backend falla, usar cache como respaldo
+      return this.strategyCacheService.getStrategy(overviewId);
     }
-
-    // 2. Si no está en cache, obtener desde el backend
-    const overview = await this.getConfigurationOverview(overviewId);
-
-    if (!overview) {
-      return null;
-    }
-
-    // 3. Luego obtener configuration usando el configurationId
-    const configuration = await this.getConfigurationById(overview.configurationId);
-
-    if (!configuration) {
-      return null;
-    }
-
-    // 4. Guardar en cache para futuras consultas
-    this.strategyCacheService.setStrategy(overviewId, overview, configuration);
-
-    return { overview, configuration };
   }
 
   // Obtener configuración por ID

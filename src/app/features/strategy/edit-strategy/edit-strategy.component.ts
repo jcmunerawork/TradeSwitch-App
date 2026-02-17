@@ -249,6 +249,14 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         return;
       }
 
+      // Debug: verificar que se trae la estrategia con su id
+      console.log('[EditStrategy] Strategy loaded from backend', {
+        strategyId: this.strategyId,
+        overview: strategyData.overview,
+        hasConfiguration: !!strategyData.configuration,
+        configurationId: strategyData.overview?.configurationId
+      });
+
       // Actualizar mini card
       this.currentStrategyName = strategyData.overview.name;
 
@@ -306,9 +314,30 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Normaliza la configuración para asegurar que todas las reglas tengan la estructura esperada.
+   * El backend o la caché pueden devolver configuraciones con reglas faltantes o incompletas.
+   */
+  private normalizeConfiguration(configuration: StrategyState): StrategyState {
+    return {
+      maxDailyTrades: { ...initialStrategyState.maxDailyTrades, ...configuration?.maxDailyTrades },
+      riskReward: { ...initialStrategyState.riskReward, ...configuration?.riskReward },
+      riskPerTrade: {
+        ...initialStrategyState.riskPerTrade,
+        ...(configuration?.riskPerTrade || {}),
+        percentage_type: configuration?.riskPerTrade?.percentage_type ?? initialStrategyState.riskPerTrade.percentage_type
+      },
+      daysAllowed: { ...initialStrategyState.daysAllowed, ...configuration?.daysAllowed },
+      assetsAllowed: { ...initialStrategyState.assetsAllowed, ...configuration?.assetsAllowed },
+      hoursAllowed: { ...initialStrategyState.hoursAllowed, ...configuration?.hoursAllowed }
+    };
+  }
+
+  /**
    * Cargar balance e inicializar con configuración específica
    */
   loadBalanceAndInitializeWithConfig(configuration: StrategyState) {
+    const normalized = this.normalizeConfiguration(configuration);
+
     // Obtener balance desde AppContext primero
     let balance = 0;
     if (this.accountsData.length > 0) {
@@ -320,7 +349,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     }
 
     // Inicializar con balance del cache
-    this.initializeWithConfigAndBalance(configuration, balance);
+    this.initializeWithConfigAndBalance(normalized, balance);
 
     // Si necesita actualización, hacer petición en background
     if (this.accountsData.length > 0) {

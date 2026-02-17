@@ -84,6 +84,14 @@ export class SignupComponent implements OnInit {
       birthday: ['', [Validators.required, this.ageValidator]],
       email: ['', [Validators.required, Validators.email, this.emailValidator]],
       password: ['', [Validators.required, Validators.minLength(6)]],
+      confirmPassword: ['', [Validators.required]],
+    });
+    this.signupForm.get('confirmPassword')?.setValidators([
+      Validators.required,
+      () => this.passwordMatchValidator(),
+    ]);
+    this.signupForm.get('password')?.valueChanges.subscribe(() => {
+      this.signupForm.get('confirmPassword')?.updateValueAndValidity();
     });
 
     this.accountForm = this.fb.group({
@@ -341,14 +349,23 @@ export class SignupComponent implements OnInit {
     if (errors['hasNumberOrSymbol']) return 'Password must include at least one number or symbol';
     if (errors['hasUppercase']) return 'Password must include at least one uppercase letter';
     if (errors['hasLowercase']) return 'Password must include at least one lowercase letter';
+    if (errors['passwordMismatch']) return 'Passwords do not match';
+    if (controlName === 'confirmPassword' && errors['required']) return 'Please confirm your password';
 
     return null;
+  }
+
+  private passwordMatchValidator(): ValidationErrors | null {
+    const pass = this.signupForm.get('password')?.value;
+    const confirm = this.signupForm.get('confirmPassword')?.value;
+    if (!confirm) return null;
+    return pass === confirm ? null : { passwordMismatch: true };
   }
 
   private showValidationErrors(): void {
     this.markFormGroupTouched();
     const errors: string[] = [];
-    const fields = ['firstName', 'lastName', 'email', 'phoneNumber', 'birthday', 'password'] as const;
+    const fields = ['firstName', 'lastName', 'email', 'phoneNumber', 'birthday', 'password', 'confirmPassword'] as const;
     for (const name of fields) {
       const msg = this.getControlError(name);
       if (msg) errors.push(msg);

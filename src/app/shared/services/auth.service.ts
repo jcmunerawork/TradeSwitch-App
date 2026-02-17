@@ -22,7 +22,6 @@ import { User } from '../../features/overview/models/overview';
 import { AccountData, UserCredentials } from '../../features/auth/models/userModel';
 import { BackendApiService } from '../../core/services/backend-api.service';
 import { SessionCookieService } from './session-cookie.service';
-import { AccountStatusService } from './account-status.service';
 
 /**
  * Authentication service for Firebase Auth and user management.
@@ -80,8 +79,7 @@ export class AuthService {
     private planService: PlanService,
     private subscriptionService: SubscriptionService,
     private backendApi: BackendApiService,
-    private sessionCookie: SessionCookieService,
-    private accountStatusService: AccountStatusService
+    private sessionCookie: SessionCookieService
   ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
 
@@ -90,13 +88,10 @@ export class AuthService {
         this.authStateSubject.next(user !== null);
         if (user?.uid) {
           await this.startUserPlanListener(user.uid);
-          // Conectar WebSocket y cargar cuentas para AccountStatus
-          await this.connectAccountStatusService(user.uid);
+          await this.loadBalancesAndAccountsWhenAuthenticated(user.uid);
         } else {
           this.stopUserPlanListener();
           this.appContext.setUserPlan(null);
-          // Desconectar WebSocket cuando el usuario cierre sesión
-          this.accountStatusService.disconnect();
         }
       });
     } else {
@@ -105,37 +100,18 @@ export class AuthService {
   }
 
   private subscriptionUnsubscribe: (() => void) | null = null;
-  private accountsSubscription?: RxSubscription;
 
   /**
-   * Connect to AccountStatus WebSocket service when user is authenticated
-   * Solo se conecta si el usuario tiene cuentas en Firebase
+   * Cargar balances por REST cuando el usuario está autenticado (solo API REST de TradeLocker).
    */
-  private async connectAccountStatusService(userId: string): Promise<void> {
+  private async loadBalancesAndAccountsWhenAuthenticated(userId: string): Promise<void> {
     try {
-      // Get user accounts
       const accounts = await this.accountsOperationsService.getUserAccounts(userId);
-
-      // Solo conectar si hay cuentas
       if (accounts && accounts.length > 0) {
-        // Cargar balances de todas las cuentas después del login
         await this.loadAccountBalancesOnLogin(userId, accounts);
-
-        // Conectar a streams
-        this.accountStatusService.connect(userId, accounts);
-      } else {
-        return; // No conectar si no hay cuentas
       }
-
-      // Subscribe to account changes to update backend
-      this.accountsSubscription = this.appContext.userAccounts$.subscribe(accounts => {
-        if (this.accountStatusService.isConnected() && accounts && accounts.length > 0) {
-          this.accountStatusService.updateAccounts(accounts);
-        }
-      });
     } catch (error) {
-      console.error('❌ AuthService: Error connecting AccountStatus service:', error);
-      // No intentar conectar si hay error obteniendo cuentas
+      console.error('❌ AuthService: Error loading account balances:', error);
     }
   }
 
@@ -288,13 +264,11 @@ export class AuthService {
     // Cargar planes globales si no están cargados
     await this.loadGlobalPlansIfNeeded();
 
-    // Usar WebSocket del backend en lugar de Firebase listener
     this.subscriptionUnsubscribe = this.subscriptionService.listenToUserLatestSubscription(
       userId,
       async (subscription) => {
         await this.updateUserPlanFromSubscription(subscription);
-      },
-      this.accountStatusService
+      }
     );
   }
 

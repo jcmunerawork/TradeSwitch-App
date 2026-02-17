@@ -125,13 +125,12 @@ export class AccountsOperationsService {
       throw new Error('balance is required and cannot be undefined or null');
     }
 
-    // Campos permitidos en UpdateAccountDto (según el backend)
+    // Campos permitidos en UpdateAccountDto (según el backend). brokerPassword no se envía en PUT.
     const allowedFields = [
       'accountName',
       'broker',
       'server',
       'emailTradingAccount',
-      'brokerPassword',
       'accountID',
       'accountNumber',
       'initialBalance',

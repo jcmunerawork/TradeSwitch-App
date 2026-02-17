@@ -71,7 +71,7 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   // Balance properties (now handled by parent component)
   private subscriptions: Subscription[] = [];
   
-  // Real-time balances from streams (usando signal del contexto)
+  // Balances from REST (context updated on login and report load)
   // Se inicializa en ngOnInit después de que appContext esté disponible
   accountBalances: Map<string, number> = new Map();
 
@@ -333,21 +333,15 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   }
   
   /**
-   * Get balance for an account (from real-time streams or account data)
+   * Get balance for an account (from REST context or account data)
    */
   getAccountBalance(account: AccountData): number | undefined {
-    // Obtener balance actualizado del signal
     const currentBalances = this.appContext.accountBalances();
-    
-    // Primero intentar obtener del balance en tiempo real
-    const realTimeBalance = currentBalances.get(account.accountID) || 
-                           currentBalances.get(account.id);
-    
-    if (realTimeBalance !== undefined && realTimeBalance !== null) {
-      return realTimeBalance;
+    const balance = currentBalances.get(account.accountID) || 
+                            currentBalances.get(account.id);
+    if (balance !== undefined && balance !== null) {
+      return balance;
     }
-    
-    // Fallback al balance del objeto account
     return account.balance;
   }
 

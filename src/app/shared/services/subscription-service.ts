@@ -4,7 +4,6 @@ import { Timestamp } from 'firebase/firestore';
 import { UserStatus } from '../../features/overview/models/overview';
 import { BackendApiService } from '../../core/services/backend-api.service';
 import { getAuth } from 'firebase/auth';
-import { AccountStatusService } from './account-status.service';
 
 /**
  * Interface for user subscription data.
@@ -116,40 +115,32 @@ export class SubscriptionService {
   }
 
   /**
-   * Escucha cambios en la última suscripción del usuario usando WebSocket del backend
-   * 
-   * El backend emite el evento 'subscription:updated' cuando:
-   * - Se actualiza una suscripción desde Stripe webhook (customer.subscription.updated, customer.subscription.deleted, invoice.paid)
-   * - Se actualiza una suscripción manualmente desde ProfileService.updateSubscription()
-   * 
-   * Devuelve una función para desuscribirse
-   * 
+   * Escucha cambios en la última suscripción del usuario mediante polling al backend (REST).
+   *
    * @param userId - ID del usuario
-   * @param handler - Función que se ejecuta cuando cambia la suscripción
-   * @param accountStatusService - Servicio de WebSocket (debe estar conectado)
-   * @returns Función para desuscribirse
+   * @param handler - Función que se ejecuta cuando se obtiene la suscripción (y en cada poll)
+   * @returns Función para desuscribirse (detener el polling)
    */
   listenToUserLatestSubscription(
     userId: string,
-    handler: (subscription: Subscription | null) => void,
-    accountStatusService: AccountStatusService
+    handler: (subscription: Subscription | null) => void
   ): () => void {
-    // Usar WebSocket del backend en lugar de Firebase listener
-    const subscription = accountStatusService.subscriptionUpdated$.subscribe((event) => {
-      // Solo procesar eventos para este usuario
-      if (event.userId === userId) {
-        // Convertir subscription del evento a tipo Subscription
-        const subscription = event.subscription ? {
-          ...event.subscription,
-          status: event.subscription.status as UserStatus
-        } as Subscription : null;
-        handler(subscription);
-      }
-    });
+    const POLL_INTERVAL_MS = 60 * 1000; // 1 minuto
 
-    // Retornar función para desuscribirse
+    const poll = async () => {
+      try {
+        const subscription = await this.getUserLatestSubscription(userId);
+        handler(subscription ?? null);
+      } catch {
+        // Ignorar errores de polling
+      }
+    };
+
+    poll();
+    const intervalId = setInterval(poll, POLL_INTERVAL_MS);
+
     return () => {
-      subscription.unsubscribe();
+      clearInterval(intervalId);
     };
   }
 

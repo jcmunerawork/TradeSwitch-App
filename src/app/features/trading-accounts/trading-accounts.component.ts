@@ -1,7 +1,7 @@
 import { Store } from '@ngrx/store';
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy } from '@angular/core';
-import { Subscription, concatMap, from, catchError, of, firstValueFrom } from 'rxjs';
+import { Subscription, concatMap, from, catchError, of } from 'rxjs';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { FormsModule } from '@angular/forms';
 import { OverviewService } from '../overview/services/overview.service';
@@ -20,7 +20,6 @@ import { PlanLimitationModalData } from '../../shared/interfaces/plan-limitation
 import { PlanLimitationModalComponent } from '../../shared/components/plan-limitation-modal/plan-limitation-modal.component';
 import { PlanBannerComponent } from '../../shared/components/plan-banner/plan-banner.component';
 import { AppContextService } from '../../shared/context';
-import { TradeLockerApiService, TradeLockerCredentials } from '../../shared/services/tradelocker-api.service';
 import { ToastNotificationService } from '../../shared/services/toast-notification.service';
 
 /**
@@ -83,7 +82,6 @@ export class TradingAccountsComponent implements OnDestroy {
     private router: Router,
     private planLimitationsGuard: PlanLimitationsGuard,
     private appContext: AppContextService,
-    private tradeLockerApi: TradeLockerApiService,
     private toastService: ToastNotificationService
   ) {}
 
@@ -193,71 +191,19 @@ export class TradingAccountsComponent implements OnDestroy {
   }
 
   /**
-   * Fetches all trading accounts for the current user.
-   *
-   * First checks if there are accounts in Firebase. If accounts exist:
-   * - Gets accessToken using getAccountTokens
-   * - Connects to streams for real-time balance updates
-   * - Updates balances in Firebase when received from streams
-   *
-   * If no accounts exist:
-   * - Validates account using getAccountTokens (if returns token, account exists)
-   * - Saves user info for display in other sections
-   *
-   * Related to:
-   * - AuthService.getUserAccounts(): Fetches accounts from Firebase
-   * - TradeLockerApiService.getAccountTokens(): Gets access tokens
-   * - checkAccountLimitations(): Checks plan limitations
-   *
-   * @memberof TradingAccountsComponent
+   * Fetches all trading accounts for the current user (REST API).
    */
   async getUserAccounts() {
     try {
       const docSnap = await this.userSvc.getUserAccounts(this.user?.id || '');
-      
+
       if (docSnap && docSnap.length > 0) {
-        // Hay cuentas en Firebase: obtener accessToken y conectar streams
         this.usersData = docSnap;
-        
-        // Obtener accessToken para todas las cuentas usando la primera cuenta
-        const firstAccount = docSnap[0];
-        const credentials: TradeLockerCredentials = {
-          email: firstAccount.emailTradingAccount,
-          password: firstAccount.brokerPassword,
-          server: firstAccount.server
-        };
-        
-        try {
-          // Obtener tokens para todas las cuentas del usuario
-          const tokenResponse = await firstValueFrom(
-            this.tradeLockerApi.getAccountTokens(credentials)
-          );
-          
-          if (tokenResponse && tokenResponse.data && tokenResponse.data.length > 0) {
-            // Streams removido - los balances se actualizarán desde el backend
-          } else {
-          }
-        } catch (error: any) {
-          // Manejar error 404 de manera silenciosa (endpoint puede no estar disponible)
-          if (error?.status === 404 || error?.error?.status === 404) {
-          } else {
-            console.error('Error obteniendo tokens o inicializando streams:', error);
-          }
-        }
-        
-        this.loading = false;
       } else {
-        // No hay cuentas en Firebase: validar con getAccountTokens
         this.usersData = [];
-        
-        // COMENTADO: Validación de cuenta deshabilitada por ahora
-        // La validación se hará cuando el usuario intente crear una cuenta
-        // await this.validateAccountWithoutFirebase();
-        
-        this.loading = false;
       }
-      
-      // Verificar limitaciones después de cargar las cuentas
+
+      this.loading = false;
       await this.checkAccountLimitations();
     } catch (err) {
       this.loading = false;
@@ -278,25 +224,8 @@ export class TradingAccountsComponent implements OnDestroy {
   }
 
   /**
-   * Validates account without Firebase registration.
-   *
-   * Uses getAccountTokens to check if account exists. If it returns a token,
-   * the account exists. Saves user info for display in other sections.
-   *
-   * COMENTADO: Este método está deshabilitado por ahora según requerimientos.
-   * La validación se hará cuando el usuario intente crear una cuenta.
-   *
-   * @private
-   * @memberof TradingAccountsComponent
-   */
-  // private async validateAccountWithoutFirebase() {
-  //   // Este método se puede usar en el futuro para validar cuentas sin registrarlas en Firebase
-  //   // Por ahora está comentado según los requerimientos
-  // }
-
-  /**
    * COMENTADO: Método antiguo para obtener balance de la API
-   * Ahora se usa solo el balance de streams API (tiempo real)
+   * Los balances se obtienen por REST (batch en login y contexto)
    * 
    * Fetches balance data for all accounts.
    *
@@ -331,9 +260,7 @@ export class TradingAccountsComponent implements OnDestroy {
   // }
 
   /**
-   * COMENTADO: Método antiguo para obtener balance de la API
-   * Ahora se usa solo el balance de streams API (tiempo real)
-   * 
+   * COMENTADO: Método antiguo para obtener balance de la API.
    * Fetches user authentication key for an account.
    *
    * Authenticates with trading account credentials and stores the key
@@ -364,10 +291,7 @@ export class TradingAccountsComponent implements OnDestroy {
   // }
 
   /**
-   * COMENTADO: Método antiguo para obtener balance de la API
-   * Ahora se usa solo el balance de streams API (tiempo real)
-   * 
-   * Fetches actual balance for an account from the trading API.
+   * COMENTADO: Método antiguo. Fetches actual balance for an account from the trading API.
    *
    * Uses the authentication key to fetch balance data and updates
    * the account's balance property.

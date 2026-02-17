@@ -52,6 +52,7 @@
             class="form-input"
             type="email"
           ></app-text-input>
+          <p class="field-hint">Check for uppercase letters in the email</p>
           @if (getControlError('email'); as err) {
             <div class="field-error">{{ err }}</div>
           }
@@ -68,6 +69,19 @@
             [userName]="signupForm.get('firstName')?.value || ''"
           ></app-password-input>
           @if (getControlError('password'); as err) {
+            <div class="field-error">{{ err }}</div>
+          }
+        </div>
+
+        <div class="form-field">
+          <app-password-input
+            label="Confirm Password"
+            placeholder="Repeat your password"
+            formControlName="confirmPassword"
+            class="form-input"
+            [showValidation]="false"
+          ></app-password-input>
+          @if (getControlError('confirmPassword'); as err) {
             <div class="field-error">{{ err }}</div>
           }
         </div>
