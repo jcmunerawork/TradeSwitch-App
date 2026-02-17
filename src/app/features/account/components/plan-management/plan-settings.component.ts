@@ -1,3 +1,10 @@
+/**
+ * Plan management sub-feature of the account module.
+ *
+ * Shows current plan, renewal info, and plan cards to switch plans. Handles
+ * Stripe checkout (free → paid) and Stripe portal (manage/cancel), plus
+ * downgrade validation (accounts/strategies over target limit).
+ */
 import { Component, Input, OnInit, inject } from '@angular/core';
 
 import { CommonModule } from '@angular/common';
@@ -60,41 +67,44 @@ import { ToastContainerComponent } from '../../../../shared/components/toast-con
   standalone: true,
 })
 export class PlanSettingsComponent implements OnInit {
-  /** Plan details received from parent component (AccountComponent) */
+  /** Plan details passed from parent (AccountComponent); optional. */
   @Input() planDetails: PlanDetails | null = null;
 
-  /** Array of available plan cards to display in the interface */
+  /** Plan cards built from context (name, price, features, CTA) for the plan selection UI. */
   plansData: PlanCard[] = [];
-  
-  /** Current user plan obtained from the service */
-  userPlan: Plan | undefined = undefined;
-  
-  /** Plan renewal date formatted as string */
-  renewalDate: string = '';
-  
-  /** Remaining days until next renewal */
-  remainingDays: number = 0;
-  
-  /** Flag to determine if user has free plan (shows N/A for renewal) */
-  isFreePlan: boolean = false;
-  
-  // Estado de carga inicial
-  initialLoading: boolean = true;
-  
 
+  /** Current user plan from backend/context; used for renewal and "current plan" state. */
+  userPlan: Plan | undefined = undefined;
+
+  /** Human-readable renewal date (or "N/A" for free plan). */
+  renewalDate: string = '';
+
+  /** Days until next renewal; 0 if past or free plan. */
+  remainingDays: number = 0;
+
+  /** True when user is on Free plan; renewal is shown as N/A. */
+  isFreePlan: boolean = false;
+
+  /** True while initial data (plans, user plan) is loading. */
+  initialLoading: boolean = true;
+
+  /** Current user from store; used for API calls and subscription operations. */
   user: User | null = null;
+  /** Index of the selected tab in the local tab set. */
   selectedIndex: number = 0;
+  /** Tab labels for Profile Details, Plan Management, Billing Management. */
   tabs: { label: string }[] = [
     { label: 'Profile Details' },
     { label: 'Plan Management' },
     { label: 'Billing Management' },
   ];
 
-  // Estados para cancelar plan
+  /** True when the cancel-plan confirmation/processing modal is visible. */
   showCancelPlanProcessing = false;
-  
-  // Estados para validación de downgrade
+
+  /** True when the downgrade validation modal is visible (user must remove resources first). */
   showDowngradeValidation = false;
+  /** Data for the downgrade modal: target plan, current/max accounts and strategies, counts to delete. */
   downgradeValidationData: {
     targetPlan: string;
     currentAccounts: number;
@@ -105,13 +115,15 @@ export class PlanSettingsComponent implements OnInit {
     strategiesToDelete: number;
   } | null = null;
 
-  // Estados para pop-up de carga y error de redirección
+  /** True while redirecting to Stripe (checkout or portal) and waiting for user to return. */
   showRedirectLoading = false;
+  /** True when redirect to Stripe failed; error message is shown. */
   showRedirectError = false;
+  /** Message shown in the redirect-error pop-up. */
   redirectErrorMessage = '';
+  /** Interval id for checking if the Stripe pop-up window was closed. */
   private windowCheckInterval: any = null;
 
-  // Inyectar servicios
   private subscriptionService = inject(SubscriptionService);
   private planService = inject(PlanService);
   private authService = inject(AuthService);
@@ -120,6 +132,12 @@ export class PlanSettingsComponent implements OnInit {
   private backendApi = inject(BackendApiService);
   private toastService = inject(ToastNotificationService);
 
+  /**
+   * Builds the component with Store for user, and strategy/report services for legacy wiring.
+   * @param store - NgRx store for selectUser
+   * @param strategySvc - Strategy settings service (injected for compatibility)
+   * @param reportSvc - Report service (injected for compatibility)
+   */
   constructor(
     private store: Store,
     private strategySvc: SettingsService,
@@ -501,6 +519,10 @@ export class PlanSettingsComponent implements OnInit {
     }
   }
 
+  /**
+   * Switches the visible tab by index (Profile Details, Plan Management, Billing Management).
+   * @param index - Tab index to select (0-based)
+   */
   selectTypeData(index: number): void {
     this.selectedIndex = index;
   }

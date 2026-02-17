@@ -1,3 +1,10 @@
+/**
+ * Overview feature module.
+ *
+ * Admin dashboard: user stats, revenue from subscriptions, top 10 users by profit,
+ * subscription overview data, and CSV export with optional date range. Uses
+ * OverviewService, AppContextService, PlanService, SubscriptionService.
+ */
 import { Store } from '@ngrx/store';
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
@@ -52,20 +59,19 @@ import { ToastNotificationService } from '../../shared/services/toast-notificati
   standalone: true,
 })
 export class Overview {
-  /** Top 10 users sorted by profit */
+  /** Top 10 users sorted by profit (used by TopListComponent). */
   topUsers: User[] = [];
-  
+
   /**
-   * Constructor for Overview component.
-   * 
-   * @param store - NgRx Store (injected but not currently used)
-   * @param overviewSvc - Service for fetching overview data
-   * @param appContext - Application context service for global state management
-   * @param planService - Service for fetching plan information
-   * @param subscriptionService - Service for fetching subscription data
+   * @param store - NgRx store (injected for compatibility)
+   * @param overviewSvc - Fetches users and subscription overview data
+   * @param appContext - Overview data and loading state
+   * @param planService - Plan list for revenue calculation
+   * @param subscriptionService - User subscriptions for revenue
+   * @param toastService - Error and validation toasts
    */
   constructor(
-    private store: Store, 
+    private store: Store,
     private overviewSvc: OverviewService,
     private appContext: AppContextService,
     private planService: PlanService,
@@ -73,15 +79,22 @@ export class Overview {
     private toastService: ToastNotificationService
   ) {}
 
+  /** True while any overview section is still loading. */
   loading = false;
+  /** Subscription overview stats (month, revenue, users) from Firebase. */
   subscriptionsData: overviewSubscriptionData | null = null;
+  /** All non-admin users; used for table, export, and metrics. */
   usersData: User[] = [];
+  /** Count of users registered today. */
   newUsers = 0;
+  /** New users as percentage of total (one decimal). */
   newUsersGrowthPercentage = 0;
+  /** Total revenue from plan prices × user counts. */
   calculatedRevenue = 0;
+  /** Number of users on a paid plan (price > 0). */
   paidSubscriptions = 0;
 
-  // Loading granular por sección
+  /** Per-section loading flags; when all true, main loading is hidden. */
   private loadingStates = {
     users: false,
     cards: false,
@@ -89,15 +102,21 @@ export class Overview {
     subscriptions: false,
   };
 
-  // Export modal state
+  /** True when the CSV export modal is visible. */
   showExportModal = false;
+  /** Export date range start (YYYY-MM-DD). */
   exportStartDate: string = '';
+  /** Export date range end (YYYY-MM-DD). */
   exportEndDate: string = '';
+  /** Export validation or error message. */
   exportError: string = '';
+  /** Whether the date dropdown is open in the export modal. */
   showDateDropdown = false;
-  // Calendar state (single-picker for range)
+  /** Current calendar view year. */
   calYear = 0;
-  calMonth = 0; // 0-11
+  /** Current calendar view month (0–11). */
+  calMonth = 0;
+  /** Calendar grid: 6 weeks of 7 days; each cell has date and inMonth. */
   weeks: { date: Date; inMonth: boolean }[][] = [];
 
   /**

@@ -1,3 +1,9 @@
+/**
+ * Auth feature: login page.
+ *
+ * Email/password login form. On success: fetches user data, sets AppContext and NgRx,
+ * then navigates to /overview (admin) or /strategy (user). Includes forgot-password popup.
+ */
 import { Component } from '@angular/core';
 import { NgIf } from '@angular/common';
 import {
@@ -19,8 +25,13 @@ import { UserCredentials } from '../models/userModel';
 import { AppContextService } from '../../../shared/context';
 import { AlertService } from '../../../core/services';
 import { ToastNotificationService } from '../../../shared/services/toast-notification.service';
-import { ForgotPasswordPopupComponent } from '../../../shared/pop-ups/forgot-password/forgot-password.component';  
+import { ForgotPasswordPopupComponent } from '../../../shared/pop-ups/forgot-password/forgot-password.component';
 
+/**
+ * Login page component: email/password form, optional remember me, forgot password.
+ *
+ * Submit: AuthService.login → getUserData → setCurrentUser + setUserData → navigate by role.
+ */
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -35,12 +46,26 @@ import { ForgotPasswordPopupComponent } from '../../../shared/pop-ups/forgot-pas
   styleUrl: './login.scss',
 })
 export class Login {
+  /** Form with loginEmail, password, rememberMe. */
   loginForm: FormGroup;
+  /** Toggles password visibility in the template. */
   showPassword = false;
+  /** Whether the forgot-password popup is visible. */
   forgotVisible = false;
+  /** True while login request is in progress. */
   isLoading = false;
+  /** Error message shown when login fails. */
   errorMessage = '';
 
+  /**
+   * @param fb - FormBuilder for login form
+   * @param authService - Auth service for login and getUserData
+   * @param store - NgRx store for setUserData
+   * @param router - Router for post-login navigation
+   * @param appContext - AppContext for setCurrentUser, setLoading, setError
+   * @param alertService - Alert service (injected)
+   * @param toastService - Toast for validation and backend errors
+   */
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
@@ -58,8 +83,11 @@ export class Login {
 
   }
 
+  /**
+   * Validates form, then if valid: sets loading, calls AuthService.login, getUserData,
+   * updates context and store, and navigates by role. On error calls handleLoginError.
+   */
   onSubmit(): void {
-    // Validar campos antes de proceder
     this.validateLoginFields();
     
     if (this.loginForm.valid) {
@@ -110,14 +138,17 @@ export class Login {
     }
   }
 
+  /** Opens the forgot-password popup. */
   openForgot(): void {
     this.forgotVisible = true;
   }
 
+  /** Closes the forgot-password popup. */
   closeForgot(): void {
     this.forgotVisible = false;
   }
 
+  /** Builds UserCredentials from login form (loginEmail → email, password). */
   private createUserCredentialsObject(): UserCredentials {
     return {
       email: this.loginForm.value.loginEmail,
@@ -125,19 +156,22 @@ export class Login {
     };
   }
 
+  /** Toggles showPassword for the password field. */
   togglePasswordVisibility(): void {
     this.showPassword = !this.showPassword;
   }
 
+  /** Placeholder for Google sign-in; not implemented. */
   signInWithGoogle(): void {
     // TODO: Implement Google sign-in
   }
 
+  /** Placeholder for Apple sign-in; not implemented. */
   signInWithApple(): void {
     // TODO: Implement Apple sign-in
   }
 
-  // Validador personalizado para email
+  /** Custom validator: email must match standard email regex. */
   private emailValidator(control: AbstractControl): ValidationErrors | null {
     if (!control.value) return null;
     
@@ -150,7 +184,7 @@ export class Login {
     return null;
   }
 
-  // Validar campos del formulario
+  /** Validates email and password controls and shows a toast if any validation fails. */
   private validateLoginFields(): void {
     const errors: string[] = [];
     
@@ -177,7 +211,7 @@ export class Login {
     }
   }
 
-  // Manejar errores de login
+  /** Sets errorMessage from error and shows backend error toast. */
   private handleLoginError(error: any): void {
     console.error('Login error:', error);
     
@@ -191,7 +225,7 @@ export class Login {
     this.toastService.showBackendError(error, 'Login error');
   }
 
-  // Función helper para extraer el mensaje de error del formato del backend
+  /** Extracts a single error message from backend/HTTP or Firebase Auth error shape. */
   private extractErrorMessage(error: any): string {
     // El error puede estar en diferentes ubicaciones dependiendo de cómo Angular maneje la respuesta
     if (error?.error?.error?.message) {

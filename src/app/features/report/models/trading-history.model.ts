@@ -1,3 +1,9 @@
+/**
+ * Trading history feature models (Firebase/sync).
+ *
+ * PositionData, TradingMetrics, SyncMetadata, InstrumentCacheEntry,
+ * TradingHistoryDocument, SyncResult. Used by TradingHistorySyncService and report components.
+ */
 import { GroupedTradeFinal } from './report.model';
 
 /**

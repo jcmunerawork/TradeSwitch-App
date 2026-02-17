@@ -1,3 +1,10 @@
+/**
+ * Overview feature: user table with search, filters, expandable rows, and pagination.
+ *
+ * Displays users from the overview; loads all trading accounts and shows them
+ * in expandable rows. Filters: status, strategy followed %, strategies count,
+ * trading accounts count. Uses AuthService for accounts, NumberFormatterService for currency.
+ */
 import { Component, Input, Injectable, HostListener, ElementRef, ViewChild, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { User, UserStatus } from '../../models/overview';
@@ -34,45 +41,50 @@ import { AccountData } from '../../../../features/auth/models/userModel';
 })
 @Injectable()
 export class TradeSwitchTableComponent implements OnInit, OnDestroy {
+  /** List of users to display (passed from Overview). */
   @Input() users: User[] = [];
   @ViewChild('filterModal', { static: false }) filterModal!: ElementRef;
   @ViewChild('filterButton', { static: false }) filterButton!: ElementRef;
-  
-  // Mapa de userId -> AccountData[]
+
+  /** Map of userId to their trading accounts (loaded once on init). */
   userAccountsMap: Map<string, AccountData[]> = new Map();
-  // Set de userIds expandidos
+  /** Set of user ids whose rows are expanded (showing accounts). */
   expandedUsers: Set<string> = new Set();
-  // Flag para saber si las cuentas están cargadas
+  /** True once trading accounts have been loaded. */
   accountsLoaded = false;
-  
-  // Valores iniciales (usados en el formulario)
+
+  /** Filter form values (status, strategy % range, strategies count, trading accounts count). */
   initialStatus: UserStatus | string = '';
   initialMinStrat: number = 0;
   initialMaxStrat: number = 100;
-  initialStrategies: number = 0; // 0-8, si es 0 no filtra
-  initialTradingAccounts: number = 0; // 0-8, si es 0 no filtra
-  
-  // Valores aplicados (usados para filtrar)
+  initialStrategies: number = 0;
+  initialTradingAccounts: number = 0;
+
+  /** Currently applied filter values (used for filtering the list). */
   appliedStatus: UserStatus | string = '';
   appliedMinStrat: number = 0;
   appliedMaxStrat: number = 100;
-  appliedStrategies: number = 0; // 0-8, si es 0 no filtra
-  appliedTradingAccounts: number = 0; // 0-8, si es 0 no filtra
-  
+  appliedStrategies: number = 0;
+  appliedTradingAccounts: number = 0;
+
+  /** True when the filter panel is visible. */
   showFilter = false;
+  /** Current page number (1-based). */
   currentPage: number = 1;
+  /** Number of rows per page. */
   itemsPerPage: number = 10;
 
   private numberFormatter = new NumberFormatterService();
-  
+
   constructor(private authService: AuthService) {}
-  
+
+  /** Loads all trading accounts and builds userAccountsMap. */
   ngOnInit() {
     this.loadAllAccounts();
   }
-  
+
   ngOnDestroy() {
-    // Cleanup si es necesario
+    // Cleanup if needed
   }
   
   /**

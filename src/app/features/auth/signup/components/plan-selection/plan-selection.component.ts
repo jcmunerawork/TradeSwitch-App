@@ -1,7 +1,14 @@
+/**
+ * Plan selection sub-component used after signup.
+ *
+ * Displays a fixed list of plans (Free, Starter, Pro) and emits the selected plan
+ * or a go-back event. Used only by SignupComponent in the auth flow.
+ */
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 
+/** Data for a single plan card: name, price, period, optional highlight, icon, color, features, CTA text. */
 export interface PlanCard {
   name: string;
   price: number;
@@ -16,6 +23,10 @@ export interface PlanCard {
   cta: string;
 }
 
+/**
+ * Renders plan cards (Free, Starter, Pro) and emits planSelected or goBack.
+ * Parent (SignupComponent) handles Stripe checkout when a paid plan is selected.
+ */
 @Component({
   selector: 'app-plan-selection',
   standalone: true,
@@ -24,10 +35,14 @@ export interface PlanCard {
   styleUrl: './plan-selection.component.scss'
 })
 export class PlanSelectionComponent {
+  /** Optional user data passed from parent (e.g. for display). */
   @Input() userData: any = null;
+  /** Emitted when the user selects a plan. */
   @Output() planSelected = new EventEmitter<PlanCard>();
+  /** Emitted when the user clicks go back to signup form. */
   @Output() goBack = new EventEmitter<void>();
 
+  /** Fixed list of plan cards shown in the UI. */
   plansData: PlanCard[] = [
     {
       name: 'Free',
@@ -79,14 +94,17 @@ export class PlanSelectionComponent {
 
   constructor(private router: Router) {}
 
+  /** Emits the selected plan to the parent. */
   onPlanSelect(plan: PlanCard): void {
     this.planSelected.emit(plan);
   }
 
+  /** Emits go-back to the parent. */
   onGoBack(): void {
     this.goBack.emit();
   }
 
+  /** Returns true if the value is a number or a numeric string (for template feature display). */
   isNumeric(value: string | number): boolean {
     if (typeof value === 'number') {
       return true;

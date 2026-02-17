@@ -1,3 +1,9 @@
+/**
+ * Report feature: service for report data and API.
+ *
+ * Fetches trading history, balance, and instrument details via TradeLockerApiService;
+ * updates monthly reports via MonthlyReportsService; manages report loading state in AppContext.
+ */
 import { TradeLockerApiService } from '../../../shared/services/tradelocker-api.service';
 import { MonthlyReportsService } from '../../../shared/services/monthly-reports.service';
 import { Injectable } from '@angular/core';

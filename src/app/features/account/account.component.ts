@@ -1,3 +1,9 @@
+/**
+ * Account feature module.
+ *
+ * Contains the main account container and child components for profile,
+ * plan management, and subscription history. Entry point for the /account route.
+ */
 import { Component, OnInit } from '@angular/core';
 import { User } from '../overview/models/overview';
 import { Store } from '@ngrx/store';

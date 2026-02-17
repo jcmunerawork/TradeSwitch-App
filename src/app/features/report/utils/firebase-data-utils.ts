@@ -1,3 +1,8 @@
+/**
+ * Report feature: Firebase/data helpers for report.
+ *
+ * getBestTrade, getTotalSpend, newDataId. Used for monthly reports and report summaries.
+ */
 import { GroupedTrade, GroupedTradeFinal } from '../models/report.model';
 
 /**

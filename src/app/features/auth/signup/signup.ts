@@ -1,3 +1,10 @@
+/**
+ * Auth feature: signup flow.
+ *
+ * Multi-step registration: signup form (name, email, phone, birthday, password),
+ * optional email check, backend signup (Firebase Auth + Firestore user + link token + Free subscription),
+ * then plan selection (Free → strategy; paid → Stripe checkout). Admin signup skips plan selection.
+ */
 import { Component, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -16,6 +23,7 @@ import { AuthService } from '../../../shared/services/auth.service';
 import { PasswordInputComponent } from '../../../shared/components/password-input/password-input.component';
 import { User, UserStatus } from '../../overview/models/overview';
 import { UserCredentials } from '../models/userModel';
+import { LinkToken } from '../models/linkModels';
 import { Plan, PlanService } from '../../../shared/services/planService';
 import { PlanSelectionComponent, PlanCard } from './components/plan-selection/plan-selection.component';
 import { Subscription, SubscriptionService } from '../../../shared/services/subscription-service';
@@ -27,6 +35,13 @@ import { AlertService } from '../../../core/services';
 import { BackendApiService } from '../../../core/services/backend-api.service';
 import { ToastNotificationService } from '../../../shared/services/toast-notification.service';
 
+/**
+ * Signup page component: registration form and post-signup plan selection.
+ *
+ * Handles /signup and /admin-signup. On valid submit: optional email check, backend signup,
+ * then sets user in AppContext and NgRx, and either shows plan selection (normal user) or
+ * navigates to overview (admin). Plan selection can redirect to Stripe checkout for paid plans.
+ */
 @Component({
   selector: 'app-signup',
   standalone: true,
@@ -45,24 +60,50 @@ import { ToastNotificationService } from '../../../shared/services/toast-notific
   styleUrl: './signup.scss',
 })
 export class SignupComponent implements OnInit {
+  /** Main signup form: firstName, lastName, phoneNumber, birthday, email, password, confirmPassword. */
   signupForm: FormGroup;
+  /** Secondary account form (trading account fields); built but not used in main flow. */
   accountForm: FormGroup;
+  /** Current step in a multi-step flow (1-based); currently only step 1 is used. */
   currentStep = 1;
+  /** True when URL is /admin-signup; admin users skip plan selection. */
   isAdminSignup: boolean = false;
+  /** True after successful signup when the plan selection UI should be shown. */
   showPlanSelection = false;
+  /** Snapshot of signup form values passed to plan selection. */
   userData: any = null;
+  /** Plan chosen by the user in the plan selection step. */
   selectedPlan: PlanCard | null = null;
+  /** User id from backend after signup; used for Stripe checkout token. */
   currentUserId: string = '';
-  
-  // Estados para loader y error de Stripe
+
+  /** True while redirecting to Stripe checkout (loader visible). */
   showStripeLoader = false;
+  /** True when Stripe redirect failed; error pop-up is shown. */
   showStripeError = false;
+  /** Message shown in the Stripe error pop-up. */
   stripeErrorMessage = '';
-  
-  // Estados para carga y error del formulario
+
+  /** True while signup request is in progress. */
   isLoading = false;
+  /** Error message shown when registration fails. */
   errorMessage = '';
-  
+  /** True when the user submitted with invalid fields and validation messages were shown. */
+  showCorrectFieldsMessage = false;
+
+  /**
+   * Builds signup and account forms with validators (phone, age, email, password match).
+   * @param fb - FormBuilder
+   * @param authService - Auth service for getUserByEmail, getUserData, getBearerTokenFirebase
+   * @param router - Router for navigation and URL check (admin-signup)
+   * @param planService - Plan service for checkout (searchPlansByName)
+   * @param subscriptionService - Subscription service (injected, not used in main flow)
+   * @param store - NgRx store for setUserData
+   * @param appContext - AppContext for setCurrentUser, setLoading, setError
+   * @param alertService - Alert service (injected)
+   * @param backendApi - Backend API for signup and createCheckoutSession
+   * @param toastService - Toast for errors and validation messages
+   */
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
@@ -97,6 +138,9 @@ export class SignupComponent implements OnInit {
     });
   }
 
+  /**
+   * Detects admin signup from URL (/admin-signup) and sets isAdminSignup.
+   */
   ngOnInit(): void {
     const currentUrl = this.router.url;
     if (currentUrl === '/admin-signup') {
@@ -104,8 +148,15 @@ export class SignupComponent implements OnInit {
     }
   }
 
+  /** Placeholder for change handlers; no-op. */
   onChange(): void {
   }
+
+  /**
+   * Handles signup form submit. If valid: checks email existence, calls backend signup,
+   * sets user in context and store, then shows plan selection or navigates (admin).
+   * If invalid: marks form touched and shows validation errors via toast.
+   */
   async onSubmit(): Promise<void> {
     if (this.signupForm.valid) {
       try {
@@ -195,6 +246,7 @@ export class SignupComponent implements OnInit {
     }
   }
 
+  /** Marks every control in signupForm as touched so validation errors appear. */
   private markFormGroupTouched(): void {
     Object.keys(this.signupForm.controls).forEach((key) => {
       const control = this.signupForm.get(key);
@@ -202,12 +254,15 @@ export class SignupComponent implements OnInit {
     });
   }
 
+  /** Placeholder for Google sign-in; not implemented. */
   signInWithGoogle(): void {
   }
 
+  /** Placeholder for Apple sign-in; not implemented. */
   signInWithApple(): void {
   }
 
+  /** Builds UserCredentials from signup form (email, password). */
   private createUserCredentialsObject(): UserCredentials {
     return {
       email: this.signupForm.value.email,
@@ -215,8 +270,12 @@ export class SignupComponent implements OnInit {
     };
   }
 
+  /**
+   * Builds a User object from signup form values and the given id/tokenId.
+   * Used for initial user state (status CREATED, zeroed metrics).
+   * @private
+   */
   private async createUserObject(id: string, tokenId: string): Promise<User> {
-
     return {
       id: id,
       email: this.signupForm.value.email,
@@ -240,6 +299,10 @@ export class SignupComponent implements OnInit {
     };
   }
 
+  /**
+   * Builds a LinkToken from the signup email and userId (id = email prefix + first 4 chars of userId).
+   * @private
+   */
   private createTokenObject(userId: string): LinkToken {
     return {
       id: this.signupForm.value.email.split('@')[0] + userId.substring(0, 4),
@@ -247,7 +310,7 @@ export class SignupComponent implements OnInit {
     };
   }
 
-  // Validadores personalizados
+  /** Custom validator: phone must be 10–15 digits (optional leading +). */
   private phoneValidator(control: AbstractControl): ValidationErrors | null {
     if (!control.value) return null;
     
@@ -265,6 +328,7 @@ export class SignupComponent implements OnInit {
     return null;
   }
 
+  /** Custom validator: user must be at least 18 years old. */
   private ageValidator(control: AbstractControl): ValidationErrors | null {
     if (!control.value) return null;
     
@@ -284,6 +348,7 @@ export class SignupComponent implements OnInit {
     return null;
   }
 
+  /** Custom validator: email must match standard email regex. */
   private emailValidator(control: AbstractControl): ValidationErrors | null {
     if (!control.value) return null;
     
@@ -296,58 +361,68 @@ export class SignupComponent implements OnInit {
     return null;
   }
 
+  /**
+   * Returns the inline error message for a signup form control.
+   * Only returns a message when the control is touched and has validation errors.
+   * @param controlName - Name of the form control
+   * @returns Error message or null
+   */
+  getControlError(controlName: string): string | null {
+    const control = this.signupForm.get(controlName);
+    if (!control?.errors || !control.touched) return null;
+
+    const errors = control.errors;
+    if (errors['required']) {
+      const messages: Record<string, string> = {
+        firstName: 'First name is required',
+        lastName: 'Last name is required',
+        email: 'Email is required',
+        phoneNumber: 'Phone number is required',
+        birthday: 'Birthday is required',
+        password: 'Password is required',
+      };
+      return messages[controlName] ?? 'This field is required';
+    }
+    if (errors['minlength']) {
+      const min = errors['minlength'].requiredLength;
+      if (controlName === 'firstName') return 'First name must be at least 2 characters';
+      if (controlName === 'lastName') return 'Last name must be at least 2 characters';
+      if (controlName === 'password') return `Password must be at least ${min} characters`;
+    }
+    if (errors['email'] || errors['invalidEmailFormat']) {
+      return 'Enter a valid email address (e.g. name@domain.com)';
+    }
+    if (errors['invalidPhone']) return 'Invalid phone number format (only digits and optional + at start)';
+    if (errors['invalidPhoneLength']) return 'Phone number must be between 10 and 15 digits';
+    if (errors['underage']) return 'You must be 18 years or older to register';
+    if (errors['minLength']) return 'Password must be at least 8 characters';
+    if (errors['containsNameOrEmail']) return 'Password cannot contain your name or email';
+    if (errors['hasNumberOrSymbol']) return 'Password must include at least one number or symbol';
+    if (errors['hasUppercase']) return 'Password must include at least one uppercase letter';
+    if (errors['hasLowercase']) return 'Password must include at least one lowercase letter';
+    if (errors['passwordMismatch']) return 'Passwords do not match';
+    if (controlName === 'confirmPassword' && errors['required']) return 'Please confirm your password';
+
+    return null;
+  }
+
+  /** Custom validator: confirmPassword must match password. */
+  private passwordMatchValidator(): ValidationErrors | null {
+    const pass = this.signupForm.get('password')?.value;
+    const confirm = this.signupForm.get('confirmPassword')?.value;
+    if (!confirm) return null;
+    return pass === confirm ? null : { passwordMismatch: true };
+  }
+
+  /** Marks form touched, collects all control errors, and shows them in a single toast. */
   private showValidationErrors(): void {
+    this.markFormGroupTouched();
     const errors: string[] = [];
-    
-    // Verificar errores específicos de cada campo
-    const firstNameControl = this.signupForm.get('firstName');
-    const lastNameControl = this.signupForm.get('lastName');
-    const emailControl = this.signupForm.get('email');
-    const phoneControl = this.signupForm.get('phoneNumber');
-    const birthdayControl = this.signupForm.get('birthday');
-    const passwordControl = this.signupForm.get('password');
-
-    if (firstNameControl?.errors?.['required']) {
-      errors.push('First name is required');
-    } else if (firstNameControl?.errors?.['minlength']) {
-      errors.push('First name must be at least 2 characters');
+    const fields = ['firstName', 'lastName', 'email', 'phoneNumber', 'birthday', 'password', 'confirmPassword'] as const;
+    for (const name of fields) {
+      const msg = this.getControlError(name);
+      if (msg) errors.push(msg);
     }
-
-    if (lastNameControl?.errors?.['required']) {
-      errors.push('Last name is required');
-    } else if (lastNameControl?.errors?.['minlength']) {
-      errors.push('Last name must be at least 2 characters');
-    }
-
-    if (emailControl?.errors?.['required']) {
-      errors.push('Email is required');
-    } else if (emailControl?.errors?.['email']) {
-      errors.push('Invalid email format');
-    } else if (emailControl?.errors?.['invalidEmailFormat']) {
-      errors.push('Invalid email format. Must contain @ and a valid domain');
-    }
-
-    if (phoneControl?.errors?.['required']) {
-      errors.push('Phone number is required');
-    } else if (phoneControl?.errors?.['invalidPhone']) {
-      errors.push('Invalid phone number format');
-    } else if (phoneControl?.errors?.['invalidPhoneLength']) {
-      errors.push('Phone number must be between 10 and 15 digits');
-    }
-
-    if (birthdayControl?.errors?.['required']) {
-      errors.push('Birthday is required');
-    } else if (birthdayControl?.errors?.['underage']) {
-      errors.push('You must be 18 years or older to register');
-    }
-
-    if (passwordControl?.errors?.['required']) {
-      errors.push('Password is required');
-    } else if (passwordControl?.errors?.['minlength']) {
-      errors.push('Password must be at least 6 characters');
-    }
-
-    // Mostrar alerta con todos los errores
     if (errors.length > 0) {
       this.toastService.showError('Validation errors:\n\n' + errors.join('\n'));
     }
@@ -355,6 +430,11 @@ export class SignupComponent implements OnInit {
     this.markFormGroupTouched();
   }
 
+  /**
+   * Handles plan selection after signup. Free plan → navigate to /strategy.
+   * Paid plan → show Stripe loader, create checkout session, redirect to Stripe; on error show pop-up.
+   * @param plan - Selected plan card
+   */
   async onPlanSelected(plan: PlanCard): Promise<void> {
     this.selectedPlan = plan;
     
@@ -402,6 +482,12 @@ export class SignupComponent implements OnInit {
     }
   }
 
+  /**
+   * Creates a Stripe checkout session for the given plan and redirects to the checkout URL.
+   * Uses PlanService.searchPlansByName, AuthService.getBearerTokenFirebase, BackendApiService.createCheckoutSession.
+   * @private
+   * @param planName - Name of the selected plan
+   */
   private async createCheckoutSession(planName: string): Promise<void> {
     try {
       // Obtener el plan completo desde el servicio
@@ -442,17 +528,19 @@ export class SignupComponent implements OnInit {
     }
   }
 
+  /** Hides plan selection and returns to the signup form view. */
   onGoBackToSignup(): void {
     this.showPlanSelection = false;
   }
 
-  // Método para cerrar el pop-up de error de Stripe
+  /** Closes the Stripe error pop-up and shows plan selection again. */
   closeStripeError(): void {
     this.showStripeError = false;
     this.stripeErrorMessage = '';
     this.showPlanSelection = true; // Volver a mostrar la selección de planes
   }
 
+  /** Extracts message/details from backend error, sets errorMessage, and shows toast. */
   private handleRegistrationError(error: any): void {
     console.error('Registration error:', error);
     
@@ -471,7 +559,7 @@ export class SignupComponent implements OnInit {
     this.toastService.showBackendError(error, 'Registration error');
   }
 
-  // Función helper para extraer el mensaje de error del formato del backend
+  /** Extracts a single error message from backend/HTTP error shape (error.error.error.message, etc.). */
   private extractErrorMessage(error: any): string {
     // El error puede estar en diferentes ubicaciones dependiendo de cómo Angular maneje la respuesta
     if (error?.error?.error?.message) {
@@ -489,7 +577,7 @@ export class SignupComponent implements OnInit {
     return 'An error occurred during registration. Please try again.';
   }
 
-  // Extraer detalles de validación (array de errores)
+  /** Extracts validation details array from backend error (error.error.error.details). */
   private extractErrorDetails(error: any): string[] | null {
     if (error?.error?.error?.details && Array.isArray(error.error.error.details)) {
       return error.error.error.details;

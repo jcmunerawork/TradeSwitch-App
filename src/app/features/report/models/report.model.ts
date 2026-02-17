@@ -1,4 +1,9 @@
-
+/**
+ * Report feature models.
+ *
+ * Defines trade types (historyTrade, GroupedTrade, GroupedTradeFinal), balance/instrument types,
+ * StatConfig, displayConfigData, CalendarDay, ReportState, MonthlyReport, PluginHistoryRecord.
+ */
 import { RuleType } from '../../strategy/models/strategy.model';
 
 /**

@@ -1,3 +1,9 @@
+/**
+ * Report feature: NgRx selectors for report state.
+ *
+ * selectReport (feature), selectGroupedTrades, selectUserKey, selectNetPnL,
+ * selectTradeWin, selectProfitFactor, selectAvgWnL, selectTotalTrades.
+ */
 import { createFeatureSelector, createSelector } from '@ngrx/store';
 import { ReportState } from '../models/report.model';
 

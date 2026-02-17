@@ -1,3 +1,10 @@
+/**
+ * Overview feature: data service for the admin dashboard.
+ *
+ * Fetches users and subscription overview data via OverviewDataService,
+ * updates AppContext loading/error state and overview data. Used by the
+ * main Overview component on init.
+ */
 import { Injectable } from '@angular/core';
 import { OverviewDataService } from '../../../shared/services/overview-data.service';
 import { AppContextService } from '../../../shared/context';
@@ -19,10 +26,8 @@ import { AppContextService } from '../../../shared/context';
 @Injectable({ providedIn: 'root' })
 export class OverviewService {
   /**
-   * Constructor for OverviewService.
-   * 
-   * @param overviewDataService - Service for fetching overview data from Firebase
-   * @param appContext - Application context service for state management
+   * @param overviewDataService - Fetches users and subscription data from backend/Firebase
+   * @param appContext - Sets loading/error and updates overview users/subscriptions
    */
   constructor(
     private overviewDataService: OverviewDataService,

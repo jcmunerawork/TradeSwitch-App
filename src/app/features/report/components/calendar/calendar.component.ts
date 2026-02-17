@@ -1,3 +1,9 @@
+/**
+ * Report feature: calendar view of trades by day.
+ *
+ * Builds a month grid with CalendarDay (trades, PnL, strategy compliance). Shows trades
+ * popup on day click. Uses plugin history and strategy timelines for compliance.
+ */
 import { CommonModule } from '@angular/common';
 import {
   Component,
@@ -20,6 +26,9 @@ import { AppContextService } from '../../../../shared/context';
 import { TradeLockerApiService } from '../../../../shared/services/tradelocker-api.service';
 import { TimezoneService } from '../../../../shared/services/timezone.service';
 
+/**
+ * Calendar component: month grid of trading days with PnL and strategy compliance.
+ */
 @Component({
   selector: 'app-calendar',
   templateUrl: './calendar.component.html',
@@ -28,20 +37,28 @@ import { TimezoneService } from '../../../../shared/services/timezone.service';
   imports: [CommonModule, TradesPopupComponent],
 })
 export class CalendarComponent {
+  /** Grouped trades to display (from report store). */
   @Input() groupedTrades!: GroupedTradeFinal[];
+  /** Emitted when strategy-followed percentage is calculated (e.g. last 30 days). */
   @Output() strategyFollowedPercentageChange = new EventEmitter<number>();
+  /** User strategies (for compliance and strategy name). */
   @Input() strategies!: ConfigurationOverview[];
-  @Input() userId!: string; // Necesario para obtener el plugin history
+  /** User id (for plugin history). */
+  @Input() userId!: string;
 
+  /** Calendar grid: weeks and days with CalendarDay data. */
   calendar: CalendarDay[][] = [];
   currentDate!: Date;
   selectedMonth!: Date;
-  
-  // Popup properties
+
+  /** Mutable copy of groupedTrades used to fill instrument names without mutating NgRx state. */
+  processedTradesForCalendar: GroupedTradeFinal[] = [];
+
+  /** Whether the trades popup is visible. */
   showTradesPopup = false;
+  /** Day currently selected for the popup. */
   selectedDay: CalendarDay | null = null;
-  
-  // Plugin history properties
+
   pluginHistory: PluginHistory | null = null;
 
   constructor(
@@ -53,6 +70,7 @@ export class CalendarComponent {
   ) {}
   private numberFormatter = new NumberFormatterService();
 
+  /** Builds calendar grid, processes trades, and loads plugin history when inputs change. */
   ngOnChanges(changes: SimpleChanges) {
     this.currentDate = new Date();
     this.selectedMonth = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth());
@@ -74,9 +92,7 @@ export class CalendarComponent {
     this.strategyFollowedPercentageChange.emit(value);
   }
 
-  /**
-   * Obtener userId desde el contexto de autenticación y inicializar
-   */
+  /** Gets current user id from context and loads plugin history. */
   private async loadUserIdAndInitialize() {
     try {
       // Obtener el usuario actual desde el contexto
@@ -93,9 +109,7 @@ export class CalendarComponent {
     }
   }
 
-  /**
-   * Convertir Timestamp de Firestore o ISO 8601 string a Date
-   */
+  /** Converts Firestore Timestamp or ISO string to Date. */
   private convertFirestoreTimestamp(timestamp: any): Date {
     // Si es string ISO 8601 (formato prioritario)
     if (typeof timestamp === 'string') {
@@ -109,10 +123,7 @@ export class CalendarComponent {
     return new Date(timestamp);
   }
 
-  /**
-   * MEJORA: Convertir fecha a UTC considerando zona horaria del usuario
-   * MÉTODO ESPECÍFICO: Para fechas de trades del servidor
-   */
+  /** Converts date to UTC using user timezone (for trade dates from server). */
   private convertToUTCWithTimezone(date: Date | string | number): Date {
     try {
       // Usar el método específico para fechas de trades
@@ -124,9 +135,7 @@ export class CalendarComponent {
     }
   }
 
-  /**
-   * Procesar trades para obtener nombres de instrumentos
-   */
+  /** Fills instrument names on processedTradesForCalendar (mutable copy) without touching read-only input. */
   private async processTradesForCalendar() {
     if (!this.groupedTrades || this.groupedTrades.length === 0) {
       return;

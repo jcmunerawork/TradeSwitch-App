@@ -1,3 +1,18 @@
+/**
+ * Report feature module.
+ *
+ * Trading reports and analytics: stats (Net PnL, Win %, Profit Factor, etc.), PnL chart,
+ * calendar of trades with strategy compliance, win/loss chart, account selector, CSV export.
+ * Data comes from ReportService (TradeLocker/backend), AppContext, and localStorage cache.
+ * Plan limitations (reports access) are enforced via PlanLimitationsGuard.
+ */
+/**
+ * Report feature module.
+ *
+ * Trading reports and analytics: stats (Net PnL, Win %, Profit Factor, etc.), PnL chart,
+ * calendar of trades, win/loss chart, account selector, strategy rules, and CSV export.
+ * Data comes from ReportService (TradeLocker/backend), AppContext, and localStorage cache.
+ */
 import { Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -120,10 +135,14 @@ import { ToastNotificationService } from '../../shared/services/toast-notificati
 export class ReportComponent implements OnInit {
   accessToken: string | null = null;
   accountDetails: any = null;
+  /** User's trading accounts from context. */
   accountsData: AccountData[] = [];
+  /** Grouped trades for the current account (from API or cache). */
   accountHistory: GroupedTradeFinal[] = [];
+  /** Filtered trades when PnL date range is applied; null means no filter. */
   filteredAccountHistory: GroupedTradeFinal[] | null = null;
   errorMessage: string | null = null;
+  /** Calculated stats: netPnl, tradeWinPercent, profitFactor, avgWinLossTrades, totalTrades, activePositions. */
   stats: StatConfig = {
     netPnl: 0,
     tradeWinPercent: 0,
@@ -133,35 +152,39 @@ export class ReportComponent implements OnInit {
     activePositions: 0
   };
   userKey!: string;
+  /** Strategy rules for display (from strategy config). */
   config!: displayConfigData[];
+  /** True while report or account data is loading. */
   loading = false;
   fromDate = '';
   toDate = '';
   user: User | null = null;
+  /** Year used for history requests. */
   requestYear: number = 0;
   private updateSubscription?: Subscription;
   private loadingTimeout?: any;
+  /** User's strategy overviews (for calendar compliance). */
   strategies: ConfigurationOverview[] = [];
-  
-  // Account management
+
+  /** Currently selected trading account. */
   currentAccount: AccountData | null = null;
+  /** Whether the account dropdown is open. */
   showAccountDropdown = false;
   showReloadButton = false;
-  
-  // Balance data from API (mantener para compatibilidad)
-  balanceData: any = null;
-  
-  // Real-time balance from streams
-  realTimeBalance: number | null = null;
-  
-  // Flag para rastrear si hay peticiones en curso
-  private hasPendingRequests = false;
-  
-  // Flag para evitar cargar la misma cuenta múltiples veces
-  private isLoadingAccount: string | null = null;
-  
 
-  // Plan limitation modal
+  /** Balance data from API (legacy shape). */
+  balanceData: any = null;
+
+  /** Real-time balance from context (updated by loadAccountBalancesOnLogin / loadAccountMetricsFromBackend). */
+  realTimeBalance: number | null = null;
+
+  /** True while any report fetch is in progress. */
+  private hasPendingRequests = false;
+
+  /** Account id currently being loaded (prevents duplicate concurrent loads). */
+  private isLoadingAccount: string | null = null;
+
+  /** Plan limitation modal state (show/hide, message, actions). */
   planLimitationModal: PlanLimitationModalData = {
     showModal: false,
     modalType: 'blocked',
@@ -171,9 +194,19 @@ export class ReportComponent implements OnInit {
     onPrimaryAction: () => {}
   };
 
-  // Flag para rastrear si los listeners de Socket.IO están configurados
-  private socketListenersSetup = false;
-
+  /**
+   * @param platformId - For browser checks (e.g. scroll, localStorage)
+   * @param store - NgRx store for report state (grouped trades, stats)
+   * @param reportService - Fetches history, balance, instrument details
+   * @param userService - User accounts, user data, plan checks
+   * @param strategySvc - Strategy config and rules
+   * @param router - Navigation (strategy, trading-accounts)
+   * @param planLimitationsGuard - Report access and plan limits
+   * @param appContext - User, accounts, strategies, balances, trading history cache
+   * @param tradingHistorySync - Load/sync trading history (backend)
+   * @param backendApi - Account metrics, strategy followed
+   * @param toastService - Error and success toasts
+   */
   constructor(
     @Inject(PLATFORM_ID) private platformId: any,
     private store: Store,

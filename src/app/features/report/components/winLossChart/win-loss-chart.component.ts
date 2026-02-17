@@ -1,3 +1,9 @@
+/**
+ * Report feature: win/loss donut chart.
+ *
+ * Shows win vs loss percentage and value from GroupedTradeFinal[]. Uses ApexCharts;
+ * responsive donut size, custom tooltips, empty state.
+ */
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnInit, OnChanges, SimpleChanges, OnDestroy } from '@angular/core';
 import { NgApexchartsModule } from 'ng-apexcharts';
@@ -35,10 +41,12 @@ import { NumberFormatterService } from '../../../../shared/utils/number-formatte
   imports: [CommonModule, NgApexchartsModule],
 })
 export class WinLossChartComponent implements OnInit, OnChanges, OnDestroy {
+  /** Grouped trades used to compute win/loss. */
   @Input() values!: GroupedTradeFinal[];
 
   public chartOptions: any;
   private numberFormatter = new NumberFormatterService();
+  /** Win/loss value and percentage. */
   public winLossData: {
     winValue: number;
     lossValue: number;

@@ -1,3 +1,9 @@
+/**
+ * Report feature: PnL area chart.
+ *
+ * Cumulative PnL over time; year or date-range filter; monthly or dynamic aggregation.
+ * Emits filtered data for calendar/stats sync.
+ */
 import { CommonModule } from '@angular/common';
 import {
   Component,
@@ -49,21 +55,26 @@ import { NumberFormatterService } from '../../../../shared/utils/number-formatte
   imports: [CommonModule, NgApexchartsModule, FormsModule],
 })
 export class PnlGraphComponent implements OnInit, OnChanges {
+  /** Grouped trades for the chart. */
   @Input() values!: GroupedTradeFinal[];
-  @Input() totalProfit: number = 0; // Profit desde stats.netPnl del report component (solo referencia)
+  /** Total profit reference (e.g. from report stats.netPnl). */
+  @Input() totalProfit: number = 0;
+  /** Emitted when filtered data changes (for calendar/stats). */
   @Output() onDataFiltered = new EventEmitter<GroupedTradeFinal[]>();
 
   public chartOptions: any;
   private numberFormatter = new NumberFormatterService();
 
   year!: string;
+  /** Year options for dropdown. */
   dateRanges: { label: string; value: string }[] = [];
 
-  // Date filter properties
   showDateFilter = false;
   selectedStartDate: string = '';
   selectedEndDate: string = '';
+  /** Data after year/date filter. */
   filteredData: GroupedTradeFinal[] = [];
+  /** Full data before filtering. */
   originalData: GroupedTradeFinal[] = [];
 
   constructor(@Inject(PLATFORM_ID) private platformId: any) {}

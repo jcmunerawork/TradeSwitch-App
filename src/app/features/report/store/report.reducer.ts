@@ -1,3 +1,9 @@
+/**
+ * Report feature: NgRx reducer for report state.
+ *
+ * Handles setUserKey, setGroupedTrades, setNetPnL, setTradeWin, setProfitFactor,
+ * setAvgWnL, setTotalTrades. State: groupedTrades, netPnL, tradeWin, profitFactor, AvgWnL, totalTrades, userKey.
+ */
 import { createReducer, on } from '@ngrx/store';
 
 import { ReportState } from '../models/report.model';

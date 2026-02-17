@@ -1,10 +1,18 @@
+/**
+ * Auth feature: user and account data models.
+ *
+ * UserCredentials for login/signup; AccountData for trading account documents
+ * (used by add-account and auth/account flows).
+ */
 import { Timestamp } from 'firebase/firestore';
 
+/** Email and password for login or signup. */
 export interface UserCredentials {
   email: string;
   password: string;
 }
 
+/** Trading account document: broker, server, account ids, optional balance/metrics, createdAt. */
 export interface AccountData {
   id: string;
   userId: string;

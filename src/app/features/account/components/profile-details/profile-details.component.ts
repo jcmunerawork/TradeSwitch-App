@@ -1,3 +1,9 @@
+/**
+ * Profile details sub-feature of the account module.
+ *
+ * Handles viewing/editing profile (name, email, phone, birthday), changing password
+ * via backend, and account deletion. Syncs with backend, AppContext, and NgRx store.
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -47,18 +53,27 @@ import { ToastContainerComponent } from '../../../../shared/components/toast-con
   standalone: true,
 })
 export class ProfileDetailsComponent implements OnInit {
+  /** Current user from context; used to populate forms and perform updates. */
   user: User | null = null;
+  /** Form for profile fields: firstName, lastName, email, phoneNumber, birthday. */
   profileForm: FormGroup;
+  /** Form for password change: currentPassword, newPassword, confirmPassword. */
   passwordForm: FormGroup;
+  /** True while a profile update, password change, or account deletion is in progress. */
   isLoading = false;
+  /** Whether the password change section is visible. */
   showPasswordForm = false;
+  /** Success message shown after password change. */
   passwordChangeMessage = '';
+  /** Error message shown when password change fails. */
   passwordChangeError = '';
+  /** Whether the delete-account confirmation modal is visible. */
   showDeleteModal = false;
+  /** True while account deletion request is in progress. */
   isDeletingAccount = false;
+  /** Error message shown when account deletion fails. */
   deleteAccountError = '';
 
-  // Inyectar servicios
   private authService = inject(AuthService);
   private fb = inject(FormBuilder);
   private router = inject(Router);
@@ -66,6 +81,10 @@ export class ProfileDetailsComponent implements OnInit {
   private backendApi = inject(BackendApiService);
   private toastService = inject(ToastNotificationService);
 
+  /**
+   * Builds the component with reactive forms and NgRx store for user state updates.
+   * @param store - NgRx store to dispatch user update/clear actions
+   */
   constructor(private store: Store) {
     this.profileForm = this.fb.group({
       firstName: ['', [Validators.required, Validators.minLength(2)]],

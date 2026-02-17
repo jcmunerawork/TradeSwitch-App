@@ -1,3 +1,10 @@
+/**
+ * Add-account feature module.
+ *
+ * Single component that provides a form to register a new trading account:
+ * email, broker password, broker name, server, account name, account ID, and account number.
+ * On submit, creates the account (via AuthService) and navigates to the trading accounts page.
+ */
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import {
@@ -21,17 +28,17 @@ import { first } from 'rxjs';
 
 /**
  * Component for adding a new trading account.
- * 
- * This component provides a form interface for users to register
- * a new trading account with their broker. It collects account
- * information including email, password, broker details, and account
- * identification data.
- * 
- * Related to:
- * - AuthService: Creates the account in Firebase
- * - Store (NgRx): Gets current user data
- * - Router: Navigates to trading accounts page after creation
- * 
+ *
+ * Provides a form to register a new trading account: email, broker password,
+ * broker, server, account name, account ID, and account number. On valid submit,
+ * builds an AccountData object, creates the account via AuthService, and navigates
+ * to the trading accounts page.
+ *
+ * Dependencies:
+ * - AuthService: creates the account in Firebase
+ * - Store (NgRx): provides current user for userId
+ * - Router: redirects to /trading-accounts after creation
+ *
  * @component
  * @selector app-add-account
  * @standalone true
@@ -50,25 +57,20 @@ import { first } from 'rxjs';
   styleUrls: ['./add-account.component.scss'],
 })
 export class AddAccountComponent {
-  /** Form group containing all trading account input fields */
+  /** Reactive form group for all trading account fields (email, password, broker, server, account name/ID/number). */
   accountForm: FormGroup;
-  
+
   /**
-   * Constructor for AddAccountComponent.
-   * 
-   * Initializes the reactive form with all required fields and validators:
-   * - emailTradingAccount: Required email validation
-   * - brokerPassword: Required, minimum 6 characters
-   * - broker: Required broker name
-   * - server: Required server name
-   * - accountName: Required account name
-   * - accountID: Required account ID
-   * - accountNumber: Required, numeric pattern only
-   * 
-   * @param fb - FormBuilder for creating reactive forms
-   * @param authService - Service for authentication and account operations
-   * @param router - Router for navigation
-   * @param store - NgRx Store for accessing user state
+   * Initializes the component and builds the account form with validators.
+   *
+   * Form fields: emailTradingAccount (required, email), brokerPassword (required, min 6),
+   * broker (required), server (required), accountName (required), accountID (required),
+   * accountNumber (required, digits only).
+   *
+   * @param fb - FormBuilder for creating the reactive form
+   * @param authService - Auth service used to create the account
+   * @param router - Router used to navigate after creation
+   * @param store - NgRx store to read current user
    */
   constructor(
     private fb: FormBuilder,
@@ -91,13 +93,10 @@ export class AddAccountComponent {
   }
 
   /**
-   * Handles form submission when user clicks the submit button.
-   * 
-   * Validates the form and either:
-   * - Processes registration if form is valid
-   * - Marks all form fields as touched to show validation errors if invalid
-   * 
-   * @memberof AddAccountComponent
+   * Handles form submit from the template.
+   *
+   * If the form is valid, runs processRegistration(); otherwise marks all controls
+   * as touched so validation messages are shown.
    */
   onSubmit(): void {
     if (this.accountForm.valid) {
@@ -108,20 +107,10 @@ export class AddAccountComponent {
   }
 
   /**
-   * Processes the account registration.
-   * 
-   * Gets the current user from the store, creates an account object
-   * with the form data, and saves it to Firebase. After successful
-   * creation, navigates to the trading accounts page.
-   * 
-   * Related to:
-   * - Store.select(selectUser): Gets current user from NgRx store
-   * - AuthService.createAccount(): Creates account in Firebase
-   * - createAccountObject(): Builds account data object
-   * - Router.navigate(): Redirects to trading accounts page
-   * 
+   * Performs account creation: reads current user from store, builds AccountData
+   * from form values, calls AuthService.createAccount, then navigates to /trading-accounts.
+   *
    * @private
-   * @memberof AddAccountComponent
    */
   private processRegistration(): void {
     this.store
@@ -135,13 +124,10 @@ export class AddAccountComponent {
   }
 
   /**
-   * Marks all form controls as touched to trigger validation error display.
-   * 
-   * This method iterates through all form controls and marks them as touched,
-   * which causes Angular to display validation error messages for invalid fields.
-   * 
+   * Marks every control in accountForm as touched so that validation errors
+   * are shown for invalid fields.
+   *
    * @private
-   * @memberof AddAccountComponent
    */
   private markFormGroupTouched(): void {
     Object.keys(this.accountForm.controls).forEach((key) => {
@@ -151,20 +137,15 @@ export class AddAccountComponent {
   }
 
   /**
-   * Creates an AccountData object from form values.
-   * 
-   * Generates a unique ID for the account using timestamp and random string,
-   * then constructs an AccountData object with all form values and metadata.
-   * 
-   * The unique ID is generated using:
-   * - Current timestamp in base36 format
-   * - Random string (6 characters)
-   * - Format: `id_{timestamp}_{random}`
-   * 
+   * Builds an AccountData object from the current form values and the given user id.
+   *
+   * Generates a unique account id as `id_{timestampBase36}_{random6}`. Includes
+   * emailTradingAccount, brokerPassword, broker, server, accountName, accountID,
+   * accountNumber (as number), and createdAt (Firestore Timestamp).
+   *
    * @private
-   * @param id - User ID to associate with the account
-   * @returns AccountData object ready to be saved to Firebase
-   * @memberof AddAccountComponent
+   * @param id - User id to set as userId on the account
+   * @returns AccountData instance ready to pass to AuthService.createAccount
    */
   private createAccountObject(id: string): AccountData {
     const timestamp = Date.now().toString(36);

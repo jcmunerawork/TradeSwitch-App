@@ -1,3 +1,9 @@
+/**
+ * Overview feature: single card in the top-users list.
+ *
+ * Displays one user's initials, name, and formatted profit. Used by the
+ * overview dashboard to render the top 10 users by profit.
+ */
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import { User, UserStatus } from '../../models/overview';
@@ -24,6 +30,7 @@ import { User, UserStatus } from '../../models/overview';
   imports: [CommonModule],
 })
 export class TopListComponent {
+  /** User data to display (initials, name, profit). */
   @Input() user: User = {
     best_trade: 0,
     birthday: new Date(),
@@ -49,14 +56,9 @@ export class TopListComponent {
   constructor() {}
 
   /**
-   * Gets user initials from first and last name.
-   * 
-   * Takes the first character of firstName and lastName,
-   * converts them to uppercase, and concatenates them.
-   * 
-   * @param user - User object containing firstName and lastName
-   * @returns Two-letter initials string (e.g., "JD" for John Doe)
-   * @memberof TopListComponent
+   * Gets user initials from first and last name (first letter of each, uppercase).
+   * @param user - User with firstName and lastName
+   * @returns Two-letter initials (e.g. "JD" for John Doe)
    */
   onlyNameInitials(user: User) {
     return (

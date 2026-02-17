@@ -1,3 +1,9 @@
+/**
+ * Subscription history sub-feature of the account module.
+ *
+ * Displays the user's subscription history with filtering, search, and pagination.
+ * Uses SubscriptionService and PlanService; currently not shown in the account tabs (tab commented out).
+ */
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -47,34 +53,49 @@ import { UserStatus } from '../../../overview/models/overview';
   standalone: true,
 })
 export class SubscriptionHistoryComponent implements OnInit {
+  /** Current user from the store; used to load their subscriptions. */
   user: User | null = null;
+  /** All subscriptions loaded for the user (e.g. latest only). */
   subscriptions: Subscription[] = [];
+  /** Subscriptions after applying search and date filters. */
   filteredSubscriptions: Subscription[] = [];
+  /** All available plans from PlanService; used for plan names in the list. */
   plans: Plan[] = [];
+  /** Map of plan id to Plan for quick lookup when displaying plan names. */
   plansMap: { [key: string]: Plan } = {};
-  
-  // Pagination
+
+  /** Current page number (1-based) for pagination. */
   currentPage = 1;
+  /** Number of items to show per page. */
   itemsPerPage = 10;
+  /** Total number of pages given filtered results and itemsPerPage. */
   totalPages = 0;
-  
-  // Filters
+
+  /** Search term applied to subscription id. */
   searchTerm = '';
+  /** Whether the filter panel is visible. */
   showFilter = false;
+  /** Selected plan id for filtering (currently unused in filter logic). */
   selectedPlan = '';
+  /** Start date for date-range filter. */
   dateFrom = '';
+  /** End date for date-range filter. */
   dateTo = '';
-  
+
+  /** Plan names list used for filter dropdown options. */
   planNames: string[] = [];
-  
-  // Loading state
+
+  /** True while subscriptions or plans are being loaded. */
   isLoading = false;
 
-  // Inyectar servicios
   private subscriptionService = inject(SubscriptionService);
   private planService = inject(PlanService);
   private toastService = inject(ToastNotificationService);
 
+  /**
+   * Builds the component with NgRx Store to read the current user.
+   * @param store - NgRx store for selectUser
+   */
   constructor(private store: Store) {}
 
   async ngOnInit(): Promise<void> {

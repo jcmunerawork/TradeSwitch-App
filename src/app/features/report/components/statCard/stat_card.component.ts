@@ -1,3 +1,8 @@
+/**
+ * Report feature: single stat card (title + value).
+ *
+ * Formats value as currency, percentage, or number; applies color by metric (e.g. P&L, profit factor).
+ */
 import { CommonModule } from '@angular/common';
 import { Component, Input, Injectable } from '@angular/core';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
@@ -32,8 +37,11 @@ import { NumberFormatterService } from '../../../../shared/utils/number-formatte
 })
 @Injectable()
 export class statCardComponent {
+  /** Card title (e.g. "Net P&L", "Trade Win %"). */
   @Input() title!: string;
+  /** Raw value to format. */
   @Input() value?: string | number;
+  /** Optional format; otherwise auto-detected from title. */
   @Input() formatType?: 'currency' | 'percentage' | 'number';
   @Input() loading: boolean = false;
 

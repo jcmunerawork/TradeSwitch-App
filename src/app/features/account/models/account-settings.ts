@@ -1,4 +1,11 @@
 /**
+ * Account feature models.
+ *
+ * Defines PlanDetails (current plan summary) and PlanCard (plan option for the plan-selection UI).
+ * Used by AccountComponent, PlanSettingsComponent, and account mocks.
+ */
+
+/**
  * Interface that represents the details of the user's current plan.
  * 
  * This interface contains all information related to the user's active

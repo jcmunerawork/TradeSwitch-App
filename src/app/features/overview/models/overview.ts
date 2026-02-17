@@ -1,4 +1,11 @@
 /**
+ * Overview feature models.
+ *
+ * Defines UserStatus enum, overviewSubscriptionData (subscription stats),
+ * and User interface used across the overview dashboard and table.
+ */
+
+/**
  * Enumeration of possible user statuses in the system.
  * 
  * Represents the different states a user account can have,

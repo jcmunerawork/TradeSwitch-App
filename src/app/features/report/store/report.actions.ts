@@ -1,3 +1,9 @@
+/**
+ * Report feature: NgRx actions for report state.
+ *
+ * Actions for user key, grouped trades, net PnL, trade win %, profit factor,
+ * avg win/loss, and total trades. Dispatched by ReportComponent and reducer.
+ */
 import { createAction, props } from '@ngrx/store';
 import { GroupedTrade, GroupedTradeFinal } from '../models/report.model';
 

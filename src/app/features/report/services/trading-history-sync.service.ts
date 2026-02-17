@@ -18,33 +18,12 @@ import { BackendApiService } from '../../../core/services/backend-api.service';
 import { getAuth } from 'firebase/auth';
 
 /**
- * Service for synchronizing trading history via backend API.
- * 
- * This service manages the complete lifecycle of trading history data:
- * - Loads trading history from backend (which reads from Firebase)
- * - Synchronizes historical data from TradeLocker API via backend
- * - Backend handles: fetching, caching, merging, calculating metrics, and saving to Firebase
- * - Updates from Streams API in real-time (future: should go through backend)
- * - Handles errors gracefully with fallback values
- * 
- * Features:
- * - All Firebase operations go through backend API
- * - Backend handles incremental synchronization
- * - Backend handles instrument name caching
- * - Backend preserves createdDate for open positions
- * - Backend calculates aggregated metrics
- * - Robust error handling
- * 
- * Data Structure:
- * - Stored in: `users/{userId}/trading_history/{accountId}` (managed by backend)
- * - Contains: positions, metrics, sync metadata, instrument cache
- * 
- * Relations:
- * - BackendApiService: All Firebase operations
- * - ReportService: Fetches trading history and instrument details
- * - StreamsService: Receives real-time position updates
- * - ReportComponent: Uses this service to load and display data
- * 
+ * Report feature: trading history sync service.
+ *
+ * Loads trading history from backend (Firebase). Sync-from-API is deprecated.
+ * Handles instrument cache, position merge, and GroupedTradeFinal conversion.
+ * All Firebase access goes through the backend API.
+ *
  * @service
  * @injectable
  * @providedIn root

@@ -1,3 +1,9 @@
+/**
+ * Account feature mocks.
+ *
+ * Provides MOCK_PLAN_DETAILS and PLANS for development and fallback when
+ * real subscription/plan data is not yet loaded. Replace with service data in production.
+ */
 import { PlanCard, PlanDetails } from '../models/account-settings';
 
 /**

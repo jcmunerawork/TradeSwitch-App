@@ -1,3 +1,9 @@
+/**
+ * Report feature: trades popup for a selected calendar day.
+ *
+ * Shows list of trades (time, ticker, side, PnL, strategy compliance) for the day
+ * selected in the calendar. Uses instrument cache and NumberFormatterService.
+ */
 import { CommonModule } from '@angular/common';
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CalendarDay } from '../../models/report.model';
@@ -51,17 +57,26 @@ export interface TradeDetail {
   styleUrls: ['./trades-popup.component.scss']
 })
 export class TradesPopupComponent {
+  /** Whether the popup is visible. */
   @Input() visible: boolean = false;
+  /** Calendar day whose trades are shown. */
   @Input() selectedDay: CalendarDay | null = null;
+  /** User strategies (for strategy name per trade). */
   @Input() strategies: ConfigurationOverview[] = [];
+  /** Emitted when the user closes the popup. */
   @Output() close = new EventEmitter<void>();
 
+  /** Trade details for the selected day (display order). */
   trades: TradeDetail[] = [];
+  /** Original order before filter/reverse. */
   originalTrades: TradeDetail[] = [];
+  /** True when list is shown in reversed order. */
   isReversed: boolean = false;
+  /** Net PnL for the selected day. */
   netPnl: number = 0;
   netRoi: number = 0;
   private numberFormatter = new NumberFormatterService();
+  /** Formatted selected date string. */
   selectedDate: string = '';
 
   Math = Math;
@@ -71,6 +86,7 @@ export class TradesPopupComponent {
     private appContext: AppContextService
   ) {}
 
+  /** When selectedDay or visible changes, reload trades for the day. */
   ngOnChanges() {
     if (this.selectedDay && this.visible) {
       this.loadTradesData();
@@ -143,10 +159,9 @@ export class TradesPopupComponent {
   }
 
   /**
-   * Obtener instrumentos desde localStorage cache
-   * Los instrumentos son iguales para todas las cuentas, así que se usa key genérica
-   * @param accountId - Parámetro mantenido por compatibilidad, pero no se usa
-   * @returns array de instrumentos o null si no existe
+   * Gets instruments from localStorage cache (generic key; same for all accounts).
+   * @param accountId - Kept for compatibility; not used
+   * @returns Array of instruments or null if not cached
    */
   private getInstrumentsFromCache(accountId: string): any[] | null {
     try {

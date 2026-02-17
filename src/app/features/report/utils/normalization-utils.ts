@@ -1,3 +1,10 @@
+/**
+ * Report feature: trade data normalization utilities.
+ *
+ * arrayToHistoryTrade maps API array to historyTrade; groupOrdersByPosition groups
+ * orders by position and returns GroupedTradeFinal[]. getMonthlyPnL and other helpers
+ * are used by report and calendar.
+ */
 import { GroupedTrade, GroupedTradeFinal, historyTrade } from '../models/report.model';
 
 /**
