@@ -90,6 +90,7 @@ export class HoursAllowedComponent implements OnInit {
 
   timezoneInfoTooltip = 'This timezone is where you make your trades (e.g. market/exchange), not your physical location.';
   showTimezoneTooltip = false;
+  timeRangeError = '';
   private _defaultTimezoneSet = false;
 
   constructor(private store: Store, private settingsService: SettingsService, private alertService: AlertService) {}
@@ -149,16 +150,20 @@ export class HoursAllowedComponent implements OnInit {
 
   onTimeChange(field: 'tradingOpenTime' | 'tradingCloseTime', value: string) {
     const tempConfig = { ...this.config, [field]: value };
-    const openMinutes = this.toMinutes(tempConfig.tradingOpenTime);
-    const closeMinutes = this.toMinutes(tempConfig.tradingCloseTime);
-    if (openMinutes >= closeMinutes) {
-      this.alertService.showWarning('Opening time must be earlier than closing time.', 'Invalid Time Range');
-      return;
+
+    if (tempConfig.tradingOpenTime && tempConfig.tradingCloseTime) {
+      const openMinutes = this.toMinutes(tempConfig.tradingOpenTime);
+      const closeMinutes = this.toMinutes(tempConfig.tradingCloseTime);
+
+      if (openMinutes >= closeMinutes || closeMinutes - openMinutes < 30) {
+        this.timeRangeError = 'End time must be at least 30 minutes after start time.';
+        const correctedClose = this.fromMinutes(openMinutes + 30);
+        this.updateConfig({ ...tempConfig, tradingCloseTime: correctedClose });
+        return;
+      }
     }
-    if (closeMinutes - openMinutes < 30) {
-      this.alertService.showWarning('There must be at least a 30-minute difference between opening and closing times.', 'Minimum Time Difference');
-      return;
-    }
+
+    this.timeRangeError = '';
     this.updateConfig(tempConfig);
   }
 
@@ -169,6 +174,7 @@ export class HoursAllowedComponent implements OnInit {
       .subscribe((config) => {
         if (!config.isActive) {
           this._defaultTimezoneSet = false;
+          this.timeRangeError = '';
         } else if (this.isMyChoices && (!config.timezone || config.timezone.trim() === '') && !this._defaultTimezoneSet) {
           this._defaultTimezoneSet = true;
           this.updateConfig({ ...config, timezone: this.getBrowserTimezone() });
@@ -183,12 +189,11 @@ export class HoursAllowedComponent implements OnInit {
   }
 
   private toMinutes(time: string): number {
+    if (!time || time.trim() === '') return 0;
     const is12hFormat =
       time.toUpperCase().includes('AM') || time.toUpperCase().includes('PM');
-
     let hours: number;
     let minutes: number;
-
     if (is12hFormat) {
       const [timePart, period] = time.split(' ');
       [hours, minutes] = timePart.split(':').map(Number);
@@ -201,7 +206,15 @@ export class HoursAllowedComponent implements OnInit {
     } else {
       [hours, minutes] = time.split(':').map(Number);
     }
-
     return hours * 60 + minutes;
+  }
+
+  private fromMinutes(totalMinutes: number): string {
+    const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+    const hours24 = Math.floor(normalized / 60);
+    const mins = normalized % 60;
+    const isPm = hours24 >= 12;
+    const h12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
+    return `${h12}:${mins.toString().padStart(2, '0')} ${isPm ? 'PM' : 'AM'}`;
   }
 }

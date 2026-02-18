@@ -82,4 +82,8 @@
       />
     </div>
   </div>
+
+  @if (timeRangeError && config.isActive) {
+    <div class="time-range-error">{{ timeRangeError }}</div>
+  }
 </div>

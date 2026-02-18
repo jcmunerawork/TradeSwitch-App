@@ -71,14 +71,8 @@ export class ScrollTimePickerComponent implements OnChanges {
     this.isOpen = false;
   }
 
-  onInputChange(raw: string): void {
-    const parsed = this.parseInput(raw);
-    if (parsed) {
-      this.hour = parsed.hour;
-      this.minute = parsed.minute;
-      this.period = parsed.period;
-      this.emit();
-    }
+  onInputChange(_raw: string): void {
+    // No formatear en tiempo real; solo al salir del input (onInputBlur)
   }
 
   onInputBlur(): void {
@@ -129,7 +123,7 @@ export class ScrollTimePickerComponent implements OnChanges {
     const hasPm = upper.includes('PM');
     const period: 'AM' | 'PM' = hasPm ? 'PM' : 'AM';
     let clean = v.replace(/\s*(AM|PM)\s*/gi, '').trim().replace(/\s/g, '');
-    let match = clean.match(/^(\d{1,2}):(\d{1,2})$/);
+    const match = clean.match(/^(\d{1,2}):(\d{1,2})$/);
     if (match) {
       const h = parseInt(match[1], 10);
       const m = parseInt(match[2], 10);
@@ -148,6 +142,12 @@ export class ScrollTimePickerComponent implements OnChanges {
     if (digitsOnly.length === 2) {
       const h = parseInt(digitsOnly, 10);
       if (h >= 1 && h <= 12) {
+        return { hour: h, minute: 0, period };
+      }
+    }
+    if (digitsOnly.length === 1) {
+      const h = parseInt(digitsOnly, 10);
+      if (h >= 1 && h <= 9) {
         return { hour: h, minute: 0, period };
       }
     }

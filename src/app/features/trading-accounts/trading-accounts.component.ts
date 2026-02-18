@@ -514,17 +514,18 @@ export class TradingAccountsComponent implements OnDestroy {
       if (currentAccountCount >= limitations.maxAccounts && currentAccountCount < 6) {
         // User reached plan limit but not absolute maximum: show banner, button stays active
         this.showPlanBanner = true;
-        this.planBannerMessage = `You've reached the account limit for your ${limitations.planName} plan. Move to a higher plan and keep growing your account.`;
+        this.planBannerMessage = `You've reached the trading account limit for your ${limitations.planName} plan. Move to a higher plan to add more trading accounts.`;
         this.planBannerType = 'warning';
       } else if (currentAccountCount >= limitations.maxAccounts - 1 && currentAccountCount < 6) {
         // Show warning when close to limit
         this.showPlanBanner = true;
-        this.planBannerMessage = `You have ${limitations.maxAccounts - currentAccountCount} account(s) left on your current plan. Want more? Upgrade anytime.`;
+        const left = limitations.maxAccounts - currentAccountCount;
+        this.planBannerMessage = `You have ${left} trading account${left === 1 ? '' : 's'} left to add on your current plan. Want more?`;
         this.planBannerType = 'info';
       } else if (currentAccountCount >= 6) {
         // Absolute maximum reached
         this.showPlanBanner = true;
-        this.planBannerMessage = `You've reached the maximum number of accounts (6).`;
+        this.planBannerMessage = `You've reached the maximum number of trading accounts (6).`;
         this.planBannerType = 'warning';
       } else {
         this.showPlanBanner = false;

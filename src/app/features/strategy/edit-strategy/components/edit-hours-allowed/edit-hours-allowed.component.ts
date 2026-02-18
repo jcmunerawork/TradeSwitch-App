@@ -46,6 +46,8 @@ export class EditHoursAllowedComponent implements OnInit {
   // Estado de validación
   isValid: boolean = true;
   errorMessage: string = '';
+  /** Error cuando la hora final es menor o igual a la inicial (se muestra debajo de los inputs). */
+  timeRangeError = '';
   showTimezoneTooltip = false;
   private _defaultTimezoneSet = false;
 
@@ -146,22 +148,20 @@ export class EditHoursAllowedComponent implements OnInit {
 
   onTimeChange(field: 'tradingOpenTime' | 'tradingCloseTime', value: string) {
     const tempConfig = { ...this.config, [field]: value };
-    
-    // Solo validar si ambos valores están presentes
+
     if (tempConfig.tradingOpenTime && tempConfig.tradingCloseTime) {
       const openMinutes = this.toMinutes(tempConfig.tradingOpenTime);
       const closeMinutes = this.toMinutes(tempConfig.tradingCloseTime);
-      
-      if (openMinutes >= closeMinutes) {
-        this.alertService.showWarning('Opening time must be earlier than closing time.', 'Invalid Time Range');
-        return;
-      }
-      if (closeMinutes - openMinutes < 30) {
-        this.alertService.showWarning('There must be at least a 30-minute difference between opening and closing times.', 'Minimum Time Difference');
+
+      if (openMinutes >= closeMinutes || closeMinutes - openMinutes < 30) {
+        this.timeRangeError = 'End time must be at least 30 minutes after start time.';
+        const correctedClose = this.fromMinutes(openMinutes + 30);
+        this.updateConfig({ ...tempConfig, tradingCloseTime: correctedClose });
         return;
       }
     }
-    
+
+    this.timeRangeError = '';
     this.updateConfig(tempConfig);
   }
 
@@ -172,6 +172,7 @@ export class EditHoursAllowedComponent implements OnInit {
       .subscribe((config) => {
         if (!config.isActive) {
           this._defaultTimezoneSet = false;
+          this.timeRangeError = '';
           this.config = {
             ...config,
             tradingOpenTime: '',
@@ -251,6 +252,16 @@ export class EditHoursAllowedComponent implements OnInit {
     }
 
     return hours * 60 + minutes;
+  }
+
+  /** Convierte minutos desde medianoche a formato "h:mm AM/PM". */
+  private fromMinutes(totalMinutes: number): string {
+    const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+    const hours24 = Math.floor(normalized / 60);
+    const mins = normalized % 60;
+    const isPm = hours24 >= 12;
+    const h12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
+    return `${h12}:${mins.toString().padStart(2, '0')} ${isPm ? 'PM' : 'AM'}`;
   }
 
   // Método público para verificar si la regla es válida

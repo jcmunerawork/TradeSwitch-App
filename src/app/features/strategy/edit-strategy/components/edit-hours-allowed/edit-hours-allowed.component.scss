@@ -41,8 +41,8 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 1px solid #8e8e93;
-  color: #8e8e93;
+  border: 1px solid #9bf526;
+  color: #9bf526;
   font-size: 12px;
   font-weight: 700;
   cursor: help;
@@ -50,8 +50,8 @@
   background: transparent;
 
   &:hover {
-    color: #9bf526;
-    border-color: #9bf526;
+    color: #468506;
+    border-color: #468506;
   }
 
   .timezone-tooltip {
@@ -169,6 +169,14 @@
   flex: 1;
   min-width: 0;
   align-items: center;
+}
+
+.time-range-error {
+  margin-top: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #ef4444;
+  font-family: "SF Pro Display", sans-serif;
 }
 label {
   color: #ccc;
