@@ -1,0 +1,126 @@
+.scroll-time-picker {
+  position: relative;
+  width: 100%;
+}
+
+.time-input-wrapper {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: #18181b;
+  border: 1px solid #8e8e93;
+  border-radius: 8px;
+  transition: border-color 0.2s;
+
+  &:focus-within {
+    border-color: #4CAF50;
+  }
+}
+
+.time-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px 8px 16px;
+  background: transparent;
+  color: #e3e3e3;
+  border: none;
+  font-size: 1rem;
+  outline: none;
+
+  &::placeholder {
+    color: #999;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.time-picker-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid rgba(142, 142, 147, 0.5);
+  color: #8e8e93;
+  cursor: pointer;
+  transition: color 0.2s;
+
+  &:hover:not(:disabled) {
+    color: #4CAF50;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.clock-icon {
+  display: flex;
+}
+
+.time-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 100;
+  display: flex;
+  gap: 0;
+  max-height: 200px;
+  background: #18181b;
+  border: 1px solid #8e8e93;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.time-dropdown-column {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0;
+  max-height: 184px;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: #242428;
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #4CAF50;
+    border-radius: 3px;
+  }
+}
+
+.time-option {
+  display: block;
+  width: 100%;
+  min-width: 2.5em;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  color: #e3e3e3;
+  font-size: 0.9rem;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: rgba(76, 175, 80, 0.2);
+  }
+
+  &.selected {
+    background: #4CAF50;
+    color: #0a0a0a;
+    font-weight: 600;
+  }
+}

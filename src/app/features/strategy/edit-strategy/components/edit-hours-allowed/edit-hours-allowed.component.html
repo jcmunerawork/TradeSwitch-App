@@ -19,10 +19,25 @@
       <span
         [ngClass]="{ deactivated: !config.isActive }"
         class="rule-label"
-        >Only allow trades between:</span
+        >Trades allowed during</span
       >
     </div>
-    <div class="timezone-select-container">
+    <div class="timezone-select-wrapper">
+      @if (isMyChoices) {
+        <span
+          class="timezone-info-icon"
+          (mouseenter)="showTimezoneTooltip = true"
+          (mouseleave)="showTimezoneTooltip = false"
+          (click)="showTimezoneTooltip = !showTimezoneTooltip"
+          aria-label="Information about timezone"
+        >
+          i
+          @if (showTimezoneTooltip) {
+            <div class="timezone-tooltip">This timezone is where you make your trades (e.g. market or exchange), not your physical location.</div>
+          }
+        </span>
+      }
+      <div class="timezone-select-container">
       <select
         id="timezone"
         [ngModel]="config.timezone || ''"
@@ -46,35 +61,25 @@
         {{ timezonePlaceholder }}
       </span>
     </div>
+    </div>
   </div>
 
-  <div class="d-flex">
-    <div class="time-input-row d-flex flex-row">
-      <input
-        [ngxTimepicker]="picker1"
-        [format]="12"
+  <div class="d-flex time-inputs-row">
+    <div class="time-input-row">
+      <app-scroll-time-picker
+        [value]="config.tradingOpenTime"
+        [placeholder]="config.isActive ? 'Select start time' : '--:--'"
         [disabled]="!config.isActive"
-        [ngModel]="config.tradingOpenTime"
-        (ngModelChange)="onTimeChange('tradingOpenTime', $event)"
-        [placeholder]="config.isActive ? 'Select start time' : 'Enter a date'"
-        class="inputText time-input color-light-gray"
-        id="openTradingTime"
+        (valueChange)="onTimeChange('tradingOpenTime', $event)"
       />
-      <ngx-material-timepicker #picker1></ngx-material-timepicker>
     </div>
-
-    <div class="time-input-row color-light-gray">
-      <input
-        [ngxTimepicker]="pickerClose"
-        [format]="12"
+    <div class="time-input-row">
+      <app-scroll-time-picker
+        [value]="config.tradingCloseTime"
+        [placeholder]="config.isActive ? 'Select end time' : '--:--'"
         [disabled]="!config.isActive"
-        [ngModel]="config.tradingCloseTime"
-        (ngModelChange)="onTimeChange('tradingCloseTime', $event)"
-        [placeholder]="config.isActive ? 'Select end time' : 'Enter a date'"
-        class="timepicker-input inputText time-input color-light-gray"
-        id="closeTradingTime"
+        (valueChange)="onTimeChange('tradingCloseTime', $event)"
       />
-      <ngx-material-timepicker #pickerClose></ngx-material-timepicker>
     </div>
   </div>
 </div>
