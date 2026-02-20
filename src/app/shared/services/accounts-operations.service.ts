@@ -68,14 +68,21 @@ export class AccountsOperationsService {
    * Now uses backend API but maintains same interface
    * Invalidates cache and refetches accounts after creation
    */
-  async createAccount(account: AccountData): Promise<void> {
+  /**
+   * Creates a trading account. On success returns the backend message for user feedback.
+   * Backend success: { success: true, data: { account }, message }
+   * Backend error (filter): { success: false, error: { message, statusCode }, timestamp }
+   */
+  async createAccount(account: AccountData): Promise<string> {
     try {
       const idToken = await this.getIdToken();
       
-      // Preparar objeto para el backend: remover campos no serializables y asegurar tipos correctos
       const accountToSend = this.prepareAccountForBackend(account);
-
       accountToSend.userId = account.userId;
+
+      if (account.brokerPassword != null && String(account.brokerPassword).trim().length > 0) {
+        accountToSend.brokerPassword = String(account.brokerPassword);
+      }
       
       const response = await this.backendApi.createAccount(accountToSend, idToken);
       
@@ -83,16 +90,15 @@ export class AccountsOperationsService {
         throw new Error(response.error?.message || 'Failed to create account');
       }
       
-      // Invalidar caché y recargar cuentas después de crear cuenta
       if (account.userId) {
         this.accountsCache.clearUserCache(account.userId);
-        // Recargar cuentas del backend y guardar en caché
         await this.refreshUserAccounts(account.userId);
       }
+
+      return response.message ?? 'Trading account created successfully.';
     } catch (error: any) {
       console.error('Error creating account:', error);
-      // 409 Conflict: cuenta ya registrada por otro usuario — mostrar mensaje del backend
-      if (error?.status === 409 || (error?.error && error.error.statusCode === 409)) {
+      if (error?.status === 409 || (error?.error && error.error?.statusCode === 409)) {
         const message = this.extractErrorMessage(error);
         throw new Error(message);
       }
@@ -339,21 +345,19 @@ export class AccountsOperationsService {
   }
 
   /**
-   * Actualizar cuenta
-   * Now uses backend API but maintains same interface
-   * Invalidates cache and refetches accounts after update
+   * Updates a trading account. On success returns the backend message for user feedback.
+   * Backend success: { success: true, data: { account }, message }
+   * Backend error (filter): { success: false, error: { message, statusCode }, timestamp }
    */
-  async updateAccount(accountId: string, accountData: AccountData): Promise<void> {
+  async updateAccount(accountId: string, accountData: AccountData): Promise<string> {
     try {
       const idToken = await this.getIdToken();
       
-      // Preparar objeto para el backend: remover campos no serializables y asegurar tipos correctos
       const accountToSend = this.prepareAccountForBackend(accountData);
       
       const response = await this.backendApi.updateAccount(accountId, accountToSend, idToken);
       
       if (!response.success) {
-        // Extraer mensaje de error del formato del backend
         const errorMessage = this.extractErrorMessage(response.error);
         const errorDetails = this.extractErrorDetails(response.error);
         
@@ -366,12 +370,12 @@ export class AccountsOperationsService {
         throw new Error(errorMessage);
       }
       
-      // Invalidar caché y recargar cuentas después de actualizar cuenta
       if (accountData.userId) {
         this.accountsCache.clearUserCache(accountData.userId);
-        // Recargar cuentas del backend y guardar en caché
         await this.refreshUserAccounts(accountData.userId);
       }
+
+      return response.message ?? 'Trading account updated successfully.';
     } catch (error: any) {
       // 🔍 LOG DE DEPURACIÓN: Ver la estructura completa del error
       console.error('❌ AccountsOperationsService: Error completo:', error);
@@ -411,28 +415,17 @@ export class AccountsOperationsService {
    * Función helper para extraer el mensaje de error del formato del backend
    */
   private extractErrorMessage(error: any): string {
-    // Si es HttpErrorResponse, el error está en error.error (body de la respuesta)
+    // HttpErrorResponse: body en error.error. Filtro: { success: false, error: { message, statusCode }, timestamp }
     if (error instanceof HttpErrorResponse) {
-      if (error.error?.error?.message) {
-        return error.error.error.message;
-      }
-      if (error.error?.message) {
-        // Formato Nest: { statusCode, message, error }
-        return error.error.message;
-      }
-      if (error.message) {
-        return error.message;
-      }
+      const body = error.error;
+      if (body?.error?.message) return body.error.message;
+      if (body?.message) return body.message;
+      if (error.message) return error.message;
     } else {
-      if (error?.error?.error?.message) {
-        return error.error.error.message;
-      }
-      if (error?.error?.message) {
-        return error.error.message;
-      }
-      if (error?.message) {
-        return error.message;
-      }
+      // Objeto body directo o Error
+      if (error?.error?.message) return error.error.message;
+      if (error?.error?.error?.message) return error.error.error.message;
+      if (error?.message) return error.message;
     }
     return 'An error occurred while updating account';
   }

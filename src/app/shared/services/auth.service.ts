@@ -897,27 +897,24 @@ export class AuthService {
   async deleteUser(userId: string) { return this.usersOperationsService.deleteUser(userId); }
 
   // Accounts operations
-  async createAccount(account: AccountData) {
+  async createAccount(account: AccountData): Promise<string> {
     this.appContext.setLoading('accounts', true);
     this.appContext.setError('accounts', null);
     try {
-      await this.accountsOperationsService.createAccount(account);
+      const message = await this.accountsOperationsService.createAccount(account);
       this.appContext.addAccount(account);
 
-      // Actualizar conteos del usuario
-      // Nota: updateUserCounts() ya invalida el caché automáticamente a través de updateUser()
       if (account.userId) {
         await this.updateUserCounts(account.userId);
       }
 
-      // Cargar instrumentos para la nueva cuenta
       if (account.accountID && account.accountNumber !== undefined) {
         try {
-          // Verificar localStorage primero (key genérica)
           const cachedInstruments = this.getInstrumentsFromLocalStorage(account.accountID);
           if (cachedInstruments && cachedInstruments.length > 0) {
             this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
-            return;
+            this.appContext.setLoading('accounts', false);
+            return message;
           }
 
           // Si no hay cache, cargar desde el backend
@@ -946,20 +943,18 @@ export class AuthService {
               }
 
               if (instruments.length > 0) {
-                // Guardar en contexto
                 this.appContext.setInstrumentsForAccount(account.accountID, instruments);
-                // Guardar en localStorage con key genérica (sin accountId)
                 this.saveInstrumentsToLocalStorage(account.accountID, instruments);
               }
             }
           }
         } catch (error) {
           console.error(`❌ AuthService: Error cargando instrumentos para nueva cuenta ${account.accountID}:`, error);
-          // No lanzar error, solo loguear - la cuenta se creó exitosamente
         }
       }
 
       this.appContext.setLoading('accounts', false);
+      return message;
     } catch (error: any) {
       this.appContext.setLoading('accounts', false);
       this.appContext.setError('accounts', error?.message || 'Error al crear cuenta');
@@ -988,7 +983,7 @@ export class AuthService {
   async checkAccountExists(broker: string, server: string, accountID: string, currentUserId: string, excludeAccountId?: string): Promise<boolean> {
     return this.accountsOperationsService.checkAccountExists(broker, server, accountID, currentUserId, excludeAccountId);
   }
-  async updateAccount(accountId: string, accountData: AccountData): Promise<void> { return this.accountsOperationsService.updateAccount(accountId, accountData); }
+  async updateAccount(accountId: string, accountData: AccountData): Promise<string> { return this.accountsOperationsService.updateAccount(accountId, accountData); }
   async deleteAccount(accountId: string): Promise<void> {
     const userId = await this.accountsOperationsService.deleteAccount(accountId);
 

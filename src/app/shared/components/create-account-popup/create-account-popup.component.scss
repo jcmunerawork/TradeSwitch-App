@@ -187,6 +187,47 @@
           }
         }
       }
+
+      .field-error {
+        color: #e74c3c;
+        font-size: 12px;
+        font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+        margin-top: 2px;
+      }
+
+      .password-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+
+        .form-input {
+          padding-right: 44px;
+        }
+
+        .toggle-password {
+          position: absolute;
+          right: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #8e8e93;
+
+          .material-symbols-outlined {
+            font-size: 20px;
+          }
+
+          &:hover {
+            color: #9bf526;
+          }
+        }
+      }
       
       .form-textarea {
         width: 100%;
@@ -242,6 +283,14 @@
         }
       }
     }
+  }
+
+  .modal-backend-error {
+    padding: 12px 24px 0;
+    color: #e74c3c;
+    font-size: 14px;
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.4;
   }
   
   .modal-footer {

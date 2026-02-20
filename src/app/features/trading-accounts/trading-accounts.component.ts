@@ -21,6 +21,7 @@ import { PlanLimitationModalComponent } from '../../shared/components/plan-limit
 import { PlanBannerComponent } from '../../shared/components/plan-banner/plan-banner.component';
 import { AppContextService } from '../../shared/context';
 import { ToastNotificationService } from '../../shared/services/toast-notification.service';
+import { ToastContainerComponent } from '../../shared/components/toast-container/toast-container.component';
 
 /**
  * Main component for managing trading accounts.
@@ -62,6 +63,7 @@ import { ToastNotificationService } from '../../shared/services/toast-notificati
     CreateAccountPopupComponent,
     PlanLimitationModalComponent,
     PlanBannerComponent,
+    ToastContainerComponent,
   ],
   templateUrl: './trading-accounts.component.html',
   styleUrl: './trading-accounts.component.scss',

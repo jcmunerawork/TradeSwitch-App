@@ -27,12 +27,16 @@
             </span>
           </label>
           <input 
-            type="number" 
+            type="text" 
             class="form-input" 
-            [(ngModel)]="newAccount.accountNumber"
+            [ngModel]="accountNumberDisplay"
+            (input)="onAccountNumberInput($event)"
             placeholder="Account number"
-            min="1"
+            inputmode="numeric"
           >
+          @if (fieldErrors.accountNumber) {
+            <div class="field-error">{{ fieldErrors.accountNumber }}</div>
+          }
         </div>
         
         <div class="form-group">
@@ -64,28 +68,42 @@
             type="text" 
             class="form-input" 
             [(ngModel)]="newAccount.accountID"
+            (input)="onAccountIDInput($event)"
             placeholder="Account ID"
+            inputmode="numeric"
           >
+          @if (fieldErrors.accountID) {
+            <div class="field-error">{{ fieldErrors.accountID }}</div>
+          }
         </div>
 
         <div class="form-group">
           <label class="form-label">Email trading account*</label>
           <input 
-            type="text" 
+            type="email" 
             class="form-input" 
             [(ngModel)]="newAccount.emailTradingAccount"
+            (blur)="validateEmail()"
             placeholder="Email trading account"
           >
+          @if (fieldErrors.email) {
+            <div class="field-error">{{ fieldErrors.email }}</div>
+          }
         </div>
 
         <div class="form-group">
           <label class="form-label">Password*</label>
-          <input 
-            type="text" 
-            class="form-input" 
-            [(ngModel)]="newAccount.brokerPassword"
-            placeholder="Password"
-          >
+          <div class="password-input-wrapper">
+            <input 
+              [type]="showPassword ? 'text' : 'password'" 
+              class="form-input" 
+              [(ngModel)]="newAccount.brokerPassword"
+              placeholder="Password"
+            >
+            <button type="button" class="toggle-password" (click)="togglePasswordVisibility()" title="{{ showPassword ? 'Hide password' : 'Show password' }}">
+              <span class="material-symbols-outlined">{{ showPassword ? 'visibility' : 'visibility_off' }}</span>
+            </button>
+          </div>
         </div>
         
         <div class="form-group">
@@ -114,15 +132,24 @@
           <input 
             type="text" 
             class="form-input" 
-            [(ngModel)]="initialBalanceInput"
-            placeholder="Balance"
+            [ngModel]="initialBalanceInput"
             (input)="onInitialBalanceInput($event)"
             (focus)="onInitialBalanceFocus()"
             (blur)="onInitialBalanceBlur()"
+            placeholder="Balance"
+            inputmode="decimal"
           >
+          @if (fieldErrors.initialBalance) {
+            <div class="field-error">{{ fieldErrors.initialBalance }}</div>
+          }
         </div>
       </div>
     </div>
+    @if (backendErrorMessage) {
+      <div class="modal-backend-error">
+        {{ backendErrorMessage }}
+      </div>
+    }
     <div class="modal-footer">
       <button class="cancel-btn" (click)="onCancel()">
         Cancel
@@ -177,7 +204,7 @@
       <h2 class="modal-title">{{ editMode ? 'Trading account updated successfully' : 'Trading account added successfully' }}</h2>
     </div>
     <div class="modal-body">
-      <p class="modal-message">{{ editMode ? 'The account has been updated successfully.' : 'The new account has been added to your list and can now access it.' }}</p>
+      <p class="modal-message">{{ successMessage || (editMode ? 'The account has been updated successfully.' : 'The new account has been added to your list and can now access it.') }}</p>
     </div>
     <div class="modal-footer">
       <button class="success-btn" (click)="onGoToList()">

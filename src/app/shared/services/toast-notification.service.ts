@@ -116,22 +116,16 @@ export class ToastNotificationService {
   }
 
   /**
-   * Extract error message from backend error response
+   * Extract error message from backend error response.
+   * Filter format: { success: false, error: { message, statusCode }, timestamp }
+   * Body is at error.error (HttpErrorResponse) or error (thrown body).
    */
   extractErrorMessage(error: any): string {
-    // If it's HttpErrorResponse, the error is in error.error
-    if (error?.error?.error?.message) {
-      // Backend format: error.error.error.message
-      return error.error.error.message;
-    } else if (error?.error?.message) {
-      // Alternative format
-      return error.error.message;
-    } else if (error?.message) {
-      // Generic message
-      return error.message;
-    } else if (typeof error === 'string') {
-      return error;
-    }
+    const body = error?.error ?? error;
+    if (body?.error?.message) return body.error.message;
+    if (body?.message) return body.message;
+    if (error?.message) return error.message;
+    if (typeof error === 'string') return error;
     return 'An error occurred';
   }
 
