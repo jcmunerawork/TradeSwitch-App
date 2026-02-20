@@ -207,23 +207,6 @@ export class TradeLockerApiService {
       });
     });
   }
-  
-  /**
-   * COMENTADO: Método antiguo de obtención de balance - ahora se usa Streams API
-   * Get account balance from TradeLocker
-   * Este método se mantiene como backup pero los balances ahora vienen de streams en tiempo real
-   */
-  // getAccountBalance(accountId: string, userKey: string, accountNumber: number): Observable<any> {
-  //   const balanceUrl = `${this.baseUrl}/trade/accounts/${accountId}/state`;
-  //   
-  //   const headers = new HttpHeaders({
-  //     'Content-Type': 'application/json',
-  //     'Authorization': `Bearer ${userKey}`,
-  //     'accNum': accountNumber.toString()
-  //   });
-  //
-  //   return this.http.get(balanceUrl, { headers });
-  // }
 
   refreshToken(accessToken: string): Observable<any> {
     return new Observable(observer => {
@@ -268,17 +251,9 @@ export class TradeLockerApiService {
   }
 
   /**
-   * COMENTADO: Método antiguo de obtención de balance - ahora se usa Streams API
-   * Get account balance from TradeLocker
-   * Now uses backend API but maintains same interface
-   * Este método se mantiene como backup pero los balances ahora vienen de streams en tiempo real
-   * 
-   * Los balances se actualizan automáticamente a través de StreamsService cuando se reciben
-   * mensajes AccountStatus del Streams API.
-   * 
-   * NOTA: El backend gestiona el accessToken automáticamente, no es necesario enviarlo.
-   * 
-   * Endpoint correcto: GET /api/v1/tradelocker/balance/:accountId?accNum=1
+   * Get account balance from TradeLocker via backend API.
+   * Endpoint: GET /api/v1/tradelocker/balance/:accountId?accNum=1
+   * El backend gestiona el accessToken automáticamente.
    */
   getAccountBalance(accountId: string, accountNumber: number): Observable<any> {
     return new Observable(observer => {
@@ -543,34 +518,10 @@ export class TradeLockerApiService {
     });
   }
 
-  /**
-   * Get account tokens for Streams API
-   * Now uses backend API but maintains same interface
-   * Returns tokens for all accounts of a user
-   */
-  getAccountTokens(credentials: TradeLockerCredentials): Observable<AccountTokenResponse> {
-    return new Observable(observer => {
-      this.getIdToken().then(idToken => {
-        this.backendApi.getTradeLockerAccountTokens(credentials, idToken).then(response => {
-          if (response.success && response.data) {
-            observer.next({ data: response.data.data || [] } as AccountTokenResponse);
-            observer.complete();
-          } else {
-            observer.error(new Error(response.error?.message || 'Failed to get account tokens'));
-          }
-        }).catch(error => {
-          observer.error(error);
-        });
-      }).catch(error => {
-        observer.error(error);
-      });
-    });
-  }
-
 }
 
 /**
- * Interface for account token response from Streams API
+ * Interface for account token response (getJWTTokenStaging).
  */
 export interface AccountTokenData {
   accessToken: string;

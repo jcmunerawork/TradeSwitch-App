@@ -148,15 +148,10 @@ export class CreateAccountPopupComponent implements OnChanges {
         this.toastService.showError('Account does not exist in TradeLocker. Please verify the credentials.');
         return;
       }
-      
-      // 2. Validate account email and ID uniqueness
-      const validationResult = await this.validateAccountUniqueness();
-      if (!validationResult.isValid) {
-        this.isCreatingAccount = false;
-        this.toastService.showError(validationResult.message);
-        return;
-      }
-      
+
+      // La unicidad (accountID, email, broker+server+accountID) se valida en el backend al hacer POST.
+      // Si hay conflicto, el backend responde 409 con un mensaje concreto; se muestra en el catch.
+
       if (this.editMode && this.accountToEdit) {
         // Update existing account
         await this.updateAccount();
@@ -168,10 +163,11 @@ export class CreateAccountPopupComponent implements OnChanges {
       // Hide loading popup before showing success modal
       this.isCreatingAccount = false;
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing trading account:', error);
       this.isCreatingAccount = false;
-      this.toastService.showBackendError(error, `Failed to ${this.editMode ? 'update' : 'create'} trading account. Please try again.`);
+      const message = error?.message || `Failed to ${this.editMode ? 'update' : 'create'} trading account. Please try again.`;
+      alert(message);
     }
   }
 
@@ -355,40 +351,4 @@ export class CreateAccountPopupComponent implements OnChanges {
     }
   }
 
-  /**
-   * Validates that broker + server + accountId combination is unique across all accounts
-   * Returns validation result with appropriate message
-   * When in edit mode, excludes the current account being edited
-   */
-  private async validateAccountUniqueness(): Promise<{isValid: boolean, message: string}> {
-    try {
-      // Check if broker + server + accountId combination already exists
-      // If editing, exclude the current account being edited
-      const accountExists = await this.authService.checkAccountExists(
-        'TradeLocker',
-        this.newAccount.server,
-        this.newAccount.accountID,
-        this.userId,
-        this.editMode && this.accountToEdit ? this.accountToEdit.id : undefined
-      );
-      
-      if (accountExists) {
-        return {
-          isValid: false,
-          message: 'This account is already registered. Try with another account or delete the existing trade account it is linked to.'
-        };
-      }
-
-      return {
-        isValid: true,
-        message: ''
-      };
-    } catch (error) {
-      console.error('Error validating account uniqueness:', error);
-      return {
-        isValid: false,
-        message: 'This account is already registered. Try with another account or delete the existing trade account it is linked to.'
-      };
-    }
-  }
 }

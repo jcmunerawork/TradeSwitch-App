@@ -15,54 +15,100 @@
   
     <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="signup-form">
       <ng-container>
-        <app-text-input
-          name="firstName"
-          label="First Name"
-          placeholder="Your first name here"
-          formControlName="firstName"
-          class="form-input"
-        ></app-text-input>
-  
-        <app-text-input
-          name="lastName"
-          label="Last Name"
-          placeholder="Your last name here"
-          formControlName="lastName"
-          class="form-input"
-        ></app-text-input>
-  
-        <app-text-input
-          name="email"
-          label="Email"
-          placeholder="Your email here"
-          formControlName="email"
-          class="form-input"
-          type="email"
-        ></app-text-input>
-  
-        <app-password-input
-          label="Password"
-          placeholder="Your password here"
-          formControlName="password"
-          class="form-input"
-          [showValidation]="true"
-          [userEmail]="signupForm.get('email')?.value || ''"
-          [userName]="signupForm.get('firstName')?.value || ''"
-        ></app-password-input>
-  
-        <app-phone-input
-          label="Phone number"
-          placeholder="Your phone number here"
-          formControlName="phoneNumber"
-          class="form-input"
-        ></app-phone-input>
-  
-        <app-birthday-input
-          label="Birthday"
-          placeholder="Your birthday here"
-          formControlName="birthday"
-          class="form-input"
-        ></app-birthday-input>
+        <div class="form-field">
+          <app-text-input
+            name="firstName"
+            label="First Name"
+            placeholder="Your first name here"
+            formControlName="firstName"
+            class="form-input"
+            [lettersOnly]="true"
+          ></app-text-input>
+          @if (getControlError('firstName'); as err) {
+            <div class="field-error">{{ err }}</div>
+          }
+        </div>
+
+        <div class="form-field">
+          <app-text-input
+            name="lastName"
+            label="Last Name"
+            placeholder="Your last name here"
+            formControlName="lastName"
+            class="form-input"
+            [lettersOnly]="true"
+          ></app-text-input>
+          @if (getControlError('lastName'); as err) {
+            <div class="field-error">{{ err }}</div>
+          }
+        </div>
+
+        <div class="form-field">
+          <app-text-input
+            name="email"
+            label="Email"
+            placeholder="Your email here"
+            formControlName="email"
+            class="form-input"
+            type="email"
+          ></app-text-input>
+          <p class="field-hint">Check for uppercase letters in the email</p>
+          @if (getControlError('email'); as err) {
+            <div class="field-error">{{ err }}</div>
+          }
+        </div>
+
+        <div class="form-field">
+          <app-password-input
+            label="Password"
+            placeholder="Your password here"
+            formControlName="password"
+            class="form-input"
+            [showValidation]="true"
+            [userEmail]="signupForm.get('email')?.value || ''"
+            [userName]="signupForm.get('firstName')?.value || ''"
+          ></app-password-input>
+          @if (getControlError('password'); as err) {
+            <div class="field-error">{{ err }}</div>
+          }
+        </div>
+
+        <div class="form-field">
+          <app-password-input
+            label="Confirm Password"
+            placeholder="Repeat your password"
+            formControlName="confirmPassword"
+            class="form-input"
+            [showValidation]="false"
+          ></app-password-input>
+          @if (getControlError('confirmPassword'); as err) {
+            <div class="field-error">{{ err }}</div>
+          }
+        </div>
+
+        <div class="form-field">
+          <app-phone-input
+            label="Phone number"
+            placeholder="Your phone number here"
+            formControlName="phoneNumber"
+            class="form-input"
+          ></app-phone-input>
+          @if (getControlError('phoneNumber'); as err) {
+            <div class="field-error">{{ err }}</div>
+          }
+        </div>
+
+        <div class="form-field">
+          <app-birthday-input
+            label="Birthday"
+            placeholder="Your birthday here"
+            formControlName="birthday"
+            class="form-input"
+          ></app-birthday-input>
+          @if (getControlError('birthday'); as err) {
+            <div class="field-error">{{ err }}</div>
+          }
+        </div>
 
         @if (errorMessage) {
           <div class="error-message">
@@ -77,11 +123,18 @@
         >
           @if (isLoading) {
             <span class="spinner"></span>
-            <span>Loading...</span>
+            <span>Signing up...</span>
           } @else {
             Register
           }
         </button>
+
+        @if (showCorrectFieldsMessage && signupForm.invalid) {
+          <p class="correct-fields-message">
+            Please correct the errors in the fields above to continue.
+          </p>
+        }
+
         <!-- 
           <div class="signup-methods-separator">
             <span class="separator-line"></span>

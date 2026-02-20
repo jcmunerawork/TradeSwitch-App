@@ -90,11 +90,13 @@ export class AccountsOperationsService {
         // Recargar cuentas del backend y guardar en caché
         await this.refreshUserAccounts(account.userId);
       }
-      
-      // Retornar la respuesta para que el componente pueda acceder al mensaje
-      return response;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating account:', error);
+      // 409 Conflict: cuenta ya registrada por otro usuario — mostrar mensaje del backend
+      if (error?.status === 409 || (error?.error && error.error.statusCode === 409)) {
+        const message = this.extractErrorMessage(error);
+        throw new Error(message);
+      }
       throw error;
     }
   }
@@ -124,13 +126,12 @@ export class AccountsOperationsService {
       throw new Error('balance is required and cannot be undefined or null');
     }
 
-    // Campos permitidos en UpdateAccountDto (según el backend)
+    // Campos permitidos en UpdateAccountDto (según el backend). brokerPassword no se envía en PUT.
     const allowedFields = [
       'accountName',
       'broker',
       'server',
       'emailTradingAccount',
-      'brokerPassword',
       'accountID',
       'accountNumber',
       'initialBalance',
@@ -414,28 +415,26 @@ export class AccountsOperationsService {
    * Función helper para extraer el mensaje de error del formato del backend
    */
   private extractErrorMessage(error: any): string {
-    // Si es HttpErrorResponse, el error está en error.error
+    // Si es HttpErrorResponse, el error está en error.error (body de la respuesta)
     if (error instanceof HttpErrorResponse) {
       if (error.error?.error?.message) {
-        // Formato del backend: error.error.error.message
         return error.error.error.message;
-      } else if (error.error?.message) {
-        // Formato alternativo
+      }
+      if (error.error?.message) {
+        // Formato Nest: { statusCode, message, error }
         return error.error.message;
-      } else if (error.message) {
-        // Mensaje genérico de HTTP
+      }
+      if (error.message) {
         return error.message;
       }
     } else {
-      // El error puede estar en diferentes ubicaciones dependiendo de cómo Angular maneje la respuesta
       if (error?.error?.error?.message) {
-        // Formato del backend: error.error.error.message
         return error.error.error.message;
-      } else if (error?.error?.message) {
-        // Formato alternativo
+      }
+      if (error?.error?.message) {
         return error.error.message;
-      } else if (error?.message) {
-        // Mensaje genérico de HTTP
+      }
+      if (error?.message) {
         return error.message;
       }
     }

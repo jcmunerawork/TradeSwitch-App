@@ -87,16 +87,16 @@ export class BackendApiService extends BaseApiService {
     const response = await firstValueFrom(
       this.post<BackendApiResponse<SignupResponse>>('/auth/signup', data)
     );
-    
+
     // Solo hacer login automático si autoLogin no es false
     // Por defecto es true (compatibilidad con registro normal)
     const shouldAutoLogin = data.autoLogin !== false;
-    
+
     if (shouldAutoLogin && response.success && response.data) {
       try {
         const { signInWithEmailAndPassword, signInWithCustomToken } = await import('firebase/auth');
         const auth = getAuth();
-        
+
         // Opción 1: Si el backend devuelve customToken, usarlo
         if (response.data.customToken) {
           await signInWithCustomToken(auth, response.data.customToken);
@@ -111,7 +111,7 @@ export class BackendApiService extends BaseApiService {
         throw new Error(`User created but could not sign in: ${authError.message}`);
       }
     }
-    
+
     return response;
   }
 
@@ -132,7 +132,7 @@ export class BackendApiService extends BaseApiService {
         })
       );
     }
-    
+
     // Backend handles credential verification
     const response = await firstValueFrom(
       this.post<BackendApiResponse<LoginResponse>>('/auth/login', {
@@ -140,7 +140,7 @@ export class BackendApiService extends BaseApiService {
         password: data.password
       })
     );
-    
+
     // After backend verifies, sign in to Firebase Auth to get session
     // Only sign in if we have email and password (not for idToken-only login)
     if (response.success && response.data && data.email && data.password) {
@@ -153,7 +153,7 @@ export class BackendApiService extends BaseApiService {
         // Continue anyway, backend has verified the user
       }
     }
-    
+
     return response;
   }
 
@@ -187,7 +187,7 @@ export class BackendApiService extends BaseApiService {
   } | null> {
     try {
       const response = await this.getCurrentUser(idToken);
-      
+
       if (response.success && response.data) {
         // El backend devuelve la estructura completa con tokenInfo
         const data = response.data as any;
@@ -198,7 +198,7 @@ export class BackendApiService extends BaseApiService {
           uid: data.uid
         };
       }
-      
+
       return null;
     } catch (error: any) {
       // Si es un error 401, el token es inválido o expirado
@@ -446,7 +446,7 @@ export class BackendApiService extends BaseApiService {
    * Update account
    */
   async updateAccount(accountId: string, accountData: any, idToken: string): Promise<BackendApiResponse<{ account: any }>> {
-    
+
     try {
       const response = await firstValueFrom(
         this.put<BackendApiResponse<{ account: any }>>(`/accounts/${accountId}`, accountData, {
@@ -462,28 +462,28 @@ export class BackendApiService extends BaseApiService {
             console.error('❌ BackendApiService: error.status:', error.status);
             console.error('❌ BackendApiService: error.statusText:', error.statusText);
             console.error('❌ BackendApiService: error.url:', error.url);
-            
+
             // Si el error tiene la estructura del backend, extraer el mensaje
             if (error.error?.error?.message) {
               console.error('📝 BackendApiService: Mensaje del backend:', error.error.error.message);
               console.error('📝 BackendApiService: Detalles del backend:', error.error.error.details);
               console.error('📝 BackendApiService: StatusCode del backend:', error.error.error.statusCode);
             }
-            
+
             // Convertir HttpErrorResponse a formato que el código espera
             // El error ya tiene la estructura correcta, solo necesitamos re-lanzarlo
             return throwError(() => error);
           })
         )
       );
-      
+
       return response;
     } catch (error: any) {
       // Si el error ya es HttpErrorResponse, ya fue logueado arriba
       if (error instanceof HttpErrorResponse) {
         throw error;
       }
-      
+
       // Si es otro tipo de error, loguearlo también
       console.error('❌ BackendApiService: Error no HTTP en updateAccount:', error);
       throw error;
@@ -548,7 +548,7 @@ export class BackendApiService extends BaseApiService {
     if (excludeAccountId) {
       params.excludeAccountId = excludeAccountId;
     }
-    
+
     return firstValueFrom(
       this.get<BackendApiResponse<{ exists: boolean }>>('/accounts/check-exists', params, {
         headers: {
@@ -821,8 +821,8 @@ export class BackendApiService extends BaseApiService {
    * Create configuration overview
    */
   async createConfigurationOverview(
-    userId: string, 
-    name: string, 
+    userId: string,
+    name: string,
     idToken: string,
     configurationId?: string,
     shouldBeActive?: boolean
@@ -965,11 +965,18 @@ export class BackendApiService extends BaseApiService {
   }
 
   /**
-   * Get user strategy views
+   * Get user strategies (full) and button state for create strategy.
+   * Response: { strategies: Array<{ overview?, configuration? }>, button_state: 'available' | 'plan_reached' | 'block' }
    */
-  async getUserStrategyViews(userId: string, idToken: string): Promise<BackendApiResponse<{ strategies: any[] }>> {
+  async getUserStrategyViews(userId: string, idToken: string): Promise<BackendApiResponse<{
+    strategies: any[];
+    button_state: 'available' | 'plan_reached' | 'block';
+  }>> {
     return firstValueFrom(
-      this.get<BackendApiResponse<{ strategies: any[] }>>(`/strategies/user/${userId}`, undefined, {
+      this.get<BackendApiResponse<{
+        strategies: any[];
+        button_state: 'available' | 'plan_reached' | 'block';
+      }>>(`/strategies/user/${userId}`, undefined, {
         headers: {
           'Authorization': `Bearer ${idToken}`
         }
@@ -991,12 +998,14 @@ export class BackendApiService extends BaseApiService {
   }
 
   /**
-   * Activate strategy view
+   * Activate strategy (Transactional)
+   * Deactivates any currently active strategy and activates the new one
    */
-  async activateStrategyView(userId: string, strategyId: string, idToken: string): Promise<BackendApiResponse<void>> {
+  async activateStrategy(userId: string, strategyId: string, idToken: string): Promise<BackendApiResponse<void>> {
     return firstValueFrom(
-      this.post<BackendApiResponse<void>>(`/strategies/${strategyId}/activate`, {
-        userId
+      this.post<BackendApiResponse<void>>('/strategies/activate-transactional', {
+        userId,
+        strategyId
       }, {
         headers: {
           'Authorization': `Bearer ${idToken}`
@@ -1006,14 +1015,12 @@ export class BackendApiService extends BaseApiService {
   }
 
   /**
-   * Update strategy dates
+   * Activate strategy view
    */
-  async updateStrategyDates(userId: string, strategyId: string, dateActive?: Date, dateInactive?: Date, idToken?: string): Promise<BackendApiResponse<void>> {
+  async activateStrategyView(userId: string, strategyId: string, idToken: string): Promise<BackendApiResponse<void>> {
     return firstValueFrom(
-      this.put<BackendApiResponse<void>>(`/strategies/${strategyId}/dates`, {
-        userId,
-        dateActive,
-        dateInactive
+      this.post<BackendApiResponse<void>>(`/strategies/${strategyId}/activate`, {
+        userId
       }, {
         headers: {
           'Authorization': `Bearer ${idToken}`
@@ -1376,7 +1383,7 @@ export class BackendApiService extends BaseApiService {
         }
       })
     );
-    
+
     return response;
   }
 
@@ -1408,19 +1415,6 @@ export class BackendApiService extends BaseApiService {
       this.get<BackendApiResponse<any>>(`/tradelocker/instruments/${accountId}`, {
         accNum: accNum.toString()
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
-      })
-    );
-  }
-
-  /**
-   * Get account tokens for Streams API
-   */
-  async getTradeLockerAccountTokens(credentials: { email: string; password: string; server: string }, idToken: string): Promise<BackendApiResponse<{ data: any[] }>> {
-    return firstValueFrom(
-      this.post<BackendApiResponse<{ data: any[] }>>('/tradelocker/accounts/tokens', credentials, {
         headers: {
           'Authorization': `Bearer ${idToken}`
         }
@@ -1461,7 +1455,7 @@ export class BackendApiService extends BaseApiService {
    */
   async getTradingHistory(accountId: string, idToken: string, accNum?: number): Promise<BackendApiResponse<any>> {
     const params = accNum !== undefined ? { accNum: accNum.toString() } : undefined;
-    
+
     return firstValueFrom(
       this.get<BackendApiResponse<any>>(`/reports/history/${accountId}`, params, {
         headers: {
@@ -1984,7 +1978,7 @@ export class BackendApiService extends BaseApiService {
     if (startAfter) {
       params.startAfter = startAfter;
     }
-    
+
     return firstValueFrom(
       this.get<BackendApiResponse<{ users: any[]; pagination: { page: number; limit: number; total: number; hasMore: boolean; lastDocId?: string } }>>('/admin/overview/users', params, {
         headers: {

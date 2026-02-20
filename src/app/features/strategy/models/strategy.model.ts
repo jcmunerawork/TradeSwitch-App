@@ -143,37 +143,73 @@ export interface StrategyState {
 }
 
 /**
+ * Intervalo de actividad en el timeline de una estrategia.
+ * El backend gestiona timeline; end_date null = intervalo abierto (activa hasta ahora).
+ */
+export interface TimelineInterval {
+  start_date: string; // ISO 8601
+  end_date: string | null; // null = aún activa
+}
+
+/**
+ * Entrada del historial de actualizaciones (reglas activas en una fecha).
+ */
+export interface UpdatedAtHistoryEntry {
+  date: string; // ISO 8601
+  active_rules: string[];
+}
+
+/**
+ * Convierte el timeline de una estrategia en rangos { start, end } para comparar con una fecha.
+ * end_date null se trata como "hasta ahora" (now).
+ */
+export function getStrategyRangesFromTimeline(
+  timeline: TimelineInterval[] | undefined | null,
+  now: Date = new Date()
+): { start: Date; end: Date }[] {
+  if (!timeline || timeline.length === 0) return [];
+  return timeline.map((interval) => ({
+    start: new Date(interval.start_date),
+    end: interval.end_date ? new Date(interval.end_date) : now,
+  }));
+}
+
+/**
  * Interface representing strategy metadata (overview information).
  *
  * This interface contains metadata about a strategy, stored in the
- * 'configuration-overview' collection in Firebase. It includes information
+ * 'configuration-overview' collection. It includes information
  * like name, status, creation dates, and references to the actual configuration.
  *
  * The actual rules are stored separately in the 'configurations' collection
  * and referenced via configurationId.
  *
- * Features:
- * - Tracks activation/deactivation dates
- * - Supports soft delete (deleted flag)
- * - Links to configuration via configurationId
- *
- * Used in:
- * - StrategyComponent: Displaying strategy cards
- * - SettingsService: Managing strategy metadata
- * - CalendarComponent: Determining strategy compliance for trades
+ * Tracking de actividad:
+ * - timeline: intervalos de activación/desactivación (start_date, end_date | null).
+ * - updated_at_history: historial de cambios con reglas activas por fecha.
+ * - dateActive/dateInactive están deprecados; usar timeline.
  *
  * @interface ConfigurationOverview
  */
 export interface ConfigurationOverview {
+  id?: string;
   userId: string;
   name: string;
   status: boolean;
-  created_at: any; // Timestamp de Firebase
-  updated_at: any; // Timestamp de Firebase
+  created_at: any;
+  updated_at: any;
   days_active: number;
-  configurationId: string; // ID del documento en la colección 'configurations'
-  dateActive?: string[]; // ISO 8601 strings - Fechas cuando se activó la estrategia
-  dateInactive?: string[]; // ISO 8601 strings - Fechas cuando se desactivó la estrategia
-  deleted?: boolean; // Indica si la estrategia está marcada como eliminada
-  deleted_at?: any; // Timestamp de Firebase cuando se marcó como eliminada
+  configurationId: string;
+  /** Intervalos de actividad (backend); end_date null = activa hasta ahora */
+  timeline?: TimelineInterval[];
+  /** Historial de actualizaciones con reglas activas por fecha */
+  updated_at_history?: UpdatedAtHistoryEntry[];
+  /**
+   * @deprecated Usar timeline. Fechas cuando se activó la estrategia (legacy).
+   */
+  dateActive?: string[];
+  /**
+   * @deprecated Usar timeline. Fechas cuando se desactivó la estrategia (legacy).
+   */
+  dateInactive?: string[];
 }

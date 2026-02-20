@@ -62,6 +62,8 @@ export class SignupComponent implements OnInit {
   // Estados para carga y error del formulario
   isLoading = false;
   errorMessage = '';
+  /** Se muestra cuando el usuario intentó registrar con campos inválidos */
+  showCorrectFieldsMessage = false;
   
   constructor(
     private fb: FormBuilder,
@@ -82,6 +84,14 @@ export class SignupComponent implements OnInit {
       birthday: ['', [Validators.required, this.ageValidator]],
       email: ['', [Validators.required, Validators.email, this.emailValidator]],
       password: ['', [Validators.required, Validators.minLength(6)]],
+      confirmPassword: ['', [Validators.required]],
+    });
+    this.signupForm.get('confirmPassword')?.setValidators([
+      Validators.required,
+      () => this.passwordMatchValidator(),
+    ]);
+    this.signupForm.get('password')?.valueChanges.subscribe(() => {
+      this.signupForm.get('confirmPassword')?.updateValueAndValidity();
     });
 
     this.accountForm = this.fb.group({
@@ -191,7 +201,13 @@ export class SignupComponent implements OnInit {
         this.handleRegistrationError(error);
       }
     } else {
-      this.showValidationErrors();
+      this.isLoading = true;
+      this.showCorrectFieldsMessage = false;
+      setTimeout(() => {
+        this.isLoading = false;
+        this.showValidationErrors();
+        this.showCorrectFieldsMessage = true;
+      }, 450);
     }
   }
 
@@ -296,63 +312,67 @@ export class SignupComponent implements OnInit {
     return null;
   }
 
+  /**
+   * Devuelve el mensaje de error para un campo del formulario (para mostrar inline).
+   * Solo devuelve mensaje si el control está touched y tiene errores.
+   */
+  getControlError(controlName: string): string | null {
+    const control = this.signupForm.get(controlName);
+    if (!control?.errors || !control.touched) return null;
+
+    const errors = control.errors;
+    if (errors['required']) {
+      const messages: Record<string, string> = {
+        firstName: 'First name is required',
+        lastName: 'Last name is required',
+        email: 'Email is required',
+        phoneNumber: 'Phone number is required',
+        birthday: 'Birthday is required',
+        password: 'Password is required',
+      };
+      return messages[controlName] ?? 'This field is required';
+    }
+    if (errors['minlength']) {
+      const min = errors['minlength'].requiredLength;
+      if (controlName === 'firstName') return 'First name must be at least 2 characters';
+      if (controlName === 'lastName') return 'Last name must be at least 2 characters';
+      if (controlName === 'password') return `Password must be at least ${min} characters`;
+    }
+    if (errors['email'] || errors['invalidEmailFormat']) {
+      return 'Enter a valid email address (e.g. name@domain.com)';
+    }
+    if (errors['invalidPhone']) return 'Invalid phone number format (only digits and optional + at start)';
+    if (errors['invalidPhoneLength']) return 'Phone number must be between 10 and 15 digits';
+    if (errors['underage']) return 'You must be 18 years or older to register';
+    if (errors['minLength']) return 'Password must be at least 8 characters';
+    if (errors['containsNameOrEmail']) return 'Password cannot contain your name or email';
+    if (errors['hasNumberOrSymbol']) return 'Password must include at least one number or symbol';
+    if (errors['hasUppercase']) return 'Password must include at least one uppercase letter';
+    if (errors['hasLowercase']) return 'Password must include at least one lowercase letter';
+    if (errors['passwordMismatch']) return 'Passwords do not match';
+    if (controlName === 'confirmPassword' && errors['required']) return 'Please confirm your password';
+
+    return null;
+  }
+
+  private passwordMatchValidator(): ValidationErrors | null {
+    const pass = this.signupForm.get('password')?.value;
+    const confirm = this.signupForm.get('confirmPassword')?.value;
+    if (!confirm) return null;
+    return pass === confirm ? null : { passwordMismatch: true };
+  }
+
   private showValidationErrors(): void {
-    const errors: string[] = [];
-    
-    // Verificar errores específicos de cada campo
-    const firstNameControl = this.signupForm.get('firstName');
-    const lastNameControl = this.signupForm.get('lastName');
-    const emailControl = this.signupForm.get('email');
-    const phoneControl = this.signupForm.get('phoneNumber');
-    const birthdayControl = this.signupForm.get('birthday');
-    const passwordControl = this.signupForm.get('password');
-
-    if (firstNameControl?.errors?.['required']) {
-      errors.push('First name is required');
-    } else if (firstNameControl?.errors?.['minlength']) {
-      errors.push('First name must be at least 2 characters');
-    }
-
-    if (lastNameControl?.errors?.['required']) {
-      errors.push('Last name is required');
-    } else if (lastNameControl?.errors?.['minlength']) {
-      errors.push('Last name must be at least 2 characters');
-    }
-
-    if (emailControl?.errors?.['required']) {
-      errors.push('Email is required');
-    } else if (emailControl?.errors?.['email']) {
-      errors.push('Invalid email format');
-    } else if (emailControl?.errors?.['invalidEmailFormat']) {
-      errors.push('Invalid email format. Must contain @ and a valid domain');
-    }
-
-    if (phoneControl?.errors?.['required']) {
-      errors.push('Phone number is required');
-    } else if (phoneControl?.errors?.['invalidPhone']) {
-      errors.push('Invalid phone number format');
-    } else if (phoneControl?.errors?.['invalidPhoneLength']) {
-      errors.push('Phone number must be between 10 and 15 digits');
-    }
-
-    if (birthdayControl?.errors?.['required']) {
-      errors.push('Birthday is required');
-    } else if (birthdayControl?.errors?.['underage']) {
-      errors.push('You must be 18 years or older to register');
-    }
-
-    if (passwordControl?.errors?.['required']) {
-      errors.push('Password is required');
-    } else if (passwordControl?.errors?.['minlength']) {
-      errors.push('Password must be at least 6 characters');
-    }
-
-    // Mostrar alerta con todos los errores
-    if (errors.length > 0) {
-      this.toastService.showError('Validation errors:\n\n' + errors.join('\n'));
-    }
-
     this.markFormGroupTouched();
+    const errors: string[] = [];
+    const fields = ['firstName', 'lastName', 'email', 'phoneNumber', 'birthday', 'password', 'confirmPassword'] as const;
+    for (const name of fields) {
+      const msg = this.getControlError(name);
+      if (msg) errors.push(msg);
+    }
+    if (errors.length > 0) {
+      this.toastService.showError('Please fix the following:\n\n' + errors.join('\n'));
+    }
   }
 
   async onPlanSelected(plan: PlanCard): Promise<void> {

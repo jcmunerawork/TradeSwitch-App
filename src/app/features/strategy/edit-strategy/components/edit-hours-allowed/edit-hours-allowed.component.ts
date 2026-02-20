@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { AlertService } from '../../../../../core/services';
 import { Store } from '@ngrx/store';
 import { SettingsService } from '../../../service/strategy.service';
@@ -17,18 +17,20 @@ import {
 } from '../../../store/strategy.actions';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { NgxMaterialTimepickerModule } from 'ngx-material-timepicker';
 import * as moment from 'moment-timezone';
-import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { ScrollTimePickerComponent } from '../scroll-time-picker/scroll-time-picker.component';
 
 @Component({
   selector: 'app-edit-hours-allowed',
   templateUrl: './edit-hours-allowed.component.html',
   styleUrls: ['./edit-hours-allowed.component.scss'],
-  imports: [CommonModule, FormsModule, NgxMaterialTimepickerModule],
+  imports: [CommonModule, FormsModule, ScrollTimePickerComponent],
   standalone: true,
 })
 export class EditHoursAllowedComponent implements OnInit {
+  /** Cuando es true, el timezone por defecto es el del computador al activar la regla. */
+  @Input() isMyChoices = false;
+
   config: HoursAllowedConfig = {
     isActive: false,
     tradingOpenTime: '', // Inicialmente vacío para mostrar el placeholder
@@ -39,10 +41,15 @@ export class EditHoursAllowedComponent implements OnInit {
 
   // Placeholder opcional para el select de timezone
   timezonePlaceholder: string = 'Select a timezone';
+  timezoneInfoTooltip = 'This timezone is where you make your trades (e.g. market/exchange), not your physical location.';
   
   // Estado de validación
   isValid: boolean = true;
   errorMessage: string = '';
+  /** Error cuando la hora final es menor o igual a la inicial (se muestra debajo de los inputs). */
+  timeRangeError = '';
+  showTimezoneTooltip = false;
+  private _defaultTimezoneSet = false;
 
   timezones = [
     { value: 'Pacific/Auckland', label: 'Auckland (GMT+12:00)' },
@@ -80,20 +87,44 @@ export class EditHoursAllowedComponent implements OnInit {
   constructor(private store: Store, private settingsService: SettingsService, private alertService: AlertService) {}
 
   ngOnInit(): void {
+    if (this.isMyChoices) {
+      this.ensureBrowserTimezoneInList();
+    }
     this.listenRuleConfiguration();
+  }
+
+  private ensureBrowserTimezoneInList(): void {
+    const tz = this.getBrowserTimezone();
+    if (tz && !this.timezones.some(t => t.value === tz)) {
+      const offset = moment.tz(tz).format('Z');
+      const label = `${tz} (GMT${offset})`;
+      this.timezones = [{ value: tz, label }, ...this.timezones];
+    }
   }
 
   onToggleActive(event: Event) {
     const isActive = (event.target as HTMLInputElement).checked;
+    let timezone = isActive ? this.config.timezone : '';
+    if (isActive && this.isMyChoices && (!timezone || timezone.trim() === '')) {
+      timezone = this.getBrowserTimezone();
+    }
     const newConfig = {
       ...this.config,
       isActive: isActive,
-      // Reiniciar valores cuando se desactiva
-      tradingOpenTime: isActive ? this.config.tradingOpenTime : '', // Vacío para mostrar placeholder
-      tradingCloseTime: isActive ? this.config.tradingCloseTime : '', // Vacío para mostrar placeholder
-      timezone: isActive ? this.config.timezone : '', // Vacío para mostrar placeholder
+      tradingOpenTime: isActive ? this.config.tradingOpenTime : '',
+      tradingCloseTime: isActive ? this.config.tradingCloseTime : '',
+      timezone,
     };
     this.updateConfig(newConfig);
+  }
+
+  /** Zona horaria del navegador (ej. America/New_York). */
+  private getBrowserTimezone(): string {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || moment.tz.guess() || 'UTC';
+    } catch {
+      return 'UTC';
+    }
   }
   onTimezoneChange(newTz: string) {
     // Validar que la timezone sea válida
@@ -117,22 +148,20 @@ export class EditHoursAllowedComponent implements OnInit {
 
   onTimeChange(field: 'tradingOpenTime' | 'tradingCloseTime', value: string) {
     const tempConfig = { ...this.config, [field]: value };
-    
-    // Solo validar si ambos valores están presentes
+
     if (tempConfig.tradingOpenTime && tempConfig.tradingCloseTime) {
       const openMinutes = this.toMinutes(tempConfig.tradingOpenTime);
       const closeMinutes = this.toMinutes(tempConfig.tradingCloseTime);
-      
-      if (openMinutes >= closeMinutes) {
-        this.alertService.showWarning('Opening time must be earlier than closing time.', 'Invalid Time Range');
-        return;
-      }
-      if (closeMinutes - openMinutes < 30) {
-        this.alertService.showWarning('There must be at least a 30-minute difference between opening and closing times.', 'Minimum Time Difference');
+
+      if (openMinutes >= closeMinutes || closeMinutes - openMinutes < 30) {
+        this.timeRangeError = 'End time must be at least 30 minutes after start time.';
+        const correctedClose = this.fromMinutes(openMinutes + 30);
+        this.updateConfig({ ...tempConfig, tradingCloseTime: correctedClose });
         return;
       }
     }
-    
+
+    this.timeRangeError = '';
     this.updateConfig(tempConfig);
   }
 
@@ -141,8 +170,9 @@ export class EditHoursAllowedComponent implements OnInit {
       .select(hoursAllowed)
       .pipe()
       .subscribe((config) => {
-        // Si la configuración no está activa o es la primera vez, usar valores vacíos para mostrar placeholders
         if (!config.isActive) {
+          this._defaultTimezoneSet = false;
+          this.timeRangeError = '';
           this.config = {
             ...config,
             tradingOpenTime: '',
@@ -151,9 +181,12 @@ export class EditHoursAllowedComponent implements OnInit {
           };
         } else {
           this.config = { ...config };
+          if (this.isMyChoices && (!this.config.timezone || this.config.timezone.trim() === '') && !this._defaultTimezoneSet) {
+            this._defaultTimezoneSet = true;
+            this.updateConfig({ ...this.config, timezone: this.getBrowserTimezone() });
+            return;
+          }
         }
-        
-        // Validar la configuración después de actualizarla
         this.validateConfig(this.config);
       });
   }
@@ -219,6 +252,16 @@ export class EditHoursAllowedComponent implements OnInit {
     }
 
     return hours * 60 + minutes;
+  }
+
+  /** Convierte minutos desde medianoche a formato "h:mm AM/PM". */
+  private fromMinutes(totalMinutes: number): string {
+    const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+    const hours24 = Math.floor(normalized / 60);
+    const mins = normalized % 60;
+    const isPm = hours24 >= 12;
+    const h12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
+    return `${h12}:${mins.toString().padStart(2, '0')} ${isPm ? 'PM' : 'AM'}`;
   }
 
   // Método público para verificar si la regla es válida

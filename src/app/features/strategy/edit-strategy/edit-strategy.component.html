@@ -109,7 +109,7 @@
       } @if (config && config.assetsAllowed.isActive) {
       <app-edit-assets-allowed [availableSymbolsOptions]="availableInstruments"></app-edit-assets-allowed>
       } @if (config && config.hoursAllowed.isActive) {
-      <app-edit-hours-allowed></app-edit-hours-allowed>
+      <app-edit-hours-allowed [isMyChoices]="false"></app-edit-hours-allowed>
       }
     </div>
     
@@ -127,7 +127,7 @@
       } @if (myChoices && myChoices.assetsAllowed.isActive) {
       <app-edit-assets-allowed #assetsAllowedRef [availableSymbolsOptions]="availableInstruments"></app-edit-assets-allowed>
       } @if (myChoices && myChoices.hoursAllowed.isActive) {
-      <app-edit-hours-allowed #hoursAllowedRef></app-edit-hours-allowed>
+      <app-edit-hours-allowed #hoursAllowedRef [isMyChoices]="true"></app-edit-hours-allowed>
       }
     </div>
   </div>
@@ -146,7 +146,7 @@
     } @if (config && config.assetsAllowed.isActive || myChoices && myChoices.assetsAllowed.isActive) {
     <app-edit-assets-allowed #assetsAllowedRef [availableSymbolsOptions]="availableInstruments"></app-edit-assets-allowed>
     } @if (config && config.hoursAllowed.isActive || myChoices && myChoices.hoursAllowed.isActive) {
-    <app-edit-hours-allowed #hoursAllowedRef></app-edit-hours-allowed>
+    <app-edit-hours-allowed #hoursAllowedRef [isMyChoices]="true"></app-edit-hours-allowed>
     }
   </div>
 
