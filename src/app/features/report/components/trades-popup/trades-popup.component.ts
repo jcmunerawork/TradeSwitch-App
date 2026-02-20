@@ -216,53 +216,38 @@ export class TradesPopupComponent {
   }
 
   getStrategyNameForTrade(trade: GroupedTradeFinal): string {
-    // Si no se siguió estrategia, no mostrar nombre
-    if (!this.selectedDay?.followedStrategy) {
-      return '';
-    }
-
-    if (!this.strategies || this.strategies.length === 0) {
-      return '-';
-    }
+    if (!this.selectedDay?.followedStrategy) return '';
+    if (!this.strategies?.length) return '-';
 
     const tradeDate = new Date(Number(trade.lastModified));
-    const today = new Date();
-    today.setHours(23, 59, 59, 999); // 11:59 PM del día actual
-    
-    // Buscar la estrategia que estaba activa en la fecha del trade
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+
     for (const strategy of this.strategies) {
-      // IMPORTANTE: NO filtrar estrategias eliminadas aquí
-      // Las estrategias eliminadas (soft delete) SÍ deben considerarse
-      // porque en el momento del trade existían y podrían haber sido seguidas
-      
-      if (strategy.dateActive && strategy.dateActive.length > 0) {
-        // Revisar cada período de activación de esta estrategia
-        for (let i = 0; i < strategy.dateActive.length; i++) {
-          const activeDate = new Date(strategy.dateActive[i]);
-          let inactiveDate: Date;
-          
-          // Si hay fecha de desactivación correspondiente, usarla
-          if (strategy.dateInactive && strategy.dateInactive.length > i) {
-            inactiveDate = new Date(strategy.dateInactive[i]);
-          } else {
-            // No hay fecha de desactivación, verificar si está activa actualmente
-            // Si dateActive tiene más elementos que dateInactive, está activa
-            const isCurrentlyActive = strategy.dateActive.length > (strategy.dateInactive?.length || 0);
-            if (isCurrentlyActive) {
-              inactiveDate = today;
-            } else {
-              continue; // Esta activación ya fue desactivada
-            }
+      if (strategy.timeline?.length) {
+        for (const interval of strategy.timeline) {
+          const start = new Date(interval.start_date);
+          const end = interval.end_date ? new Date(interval.end_date) : now;
+          if (tradeDate >= start && tradeDate <= end) {
+            return strategy.name;
           }
-          
-          // Verificar si el trade está dentro de este rango de actividad
-          if (tradeDate >= activeDate && tradeDate <= inactiveDate) {
+        }
+        continue;
+      }
+      // Legacy: dateActive / dateInactive
+      if (strategy.dateActive?.length) {
+        const inactiveLen = strategy.dateInactive?.length ?? 0;
+        for (let i = 0; i < strategy.dateActive.length; i++) {
+          const start = new Date(strategy.dateActive[i]);
+          const end = strategy.dateInactive?.[i] != null
+            ? new Date(strategy.dateInactive[i])
+            : (strategy.dateActive.length > inactiveLen ? now : null);
+          if (end != null && tradeDate >= start && tradeDate <= end) {
             return strategy.name;
           }
         }
       }
     }
-    
     return '-';
   }
 

@@ -1,0 +1,71 @@
+<div class="scroll-time-picker">
+  <div class="time-input-wrapper">
+    <input
+      #inputRef
+      type="text"
+      class="time-input inputText color-light-gray"
+      [value]="value"
+      [placeholder]="placeholder"
+      [disabled]="disabled"
+      (input)="onInputChange($any($event.target).value)"
+      (blur)="onInputBlur()"
+    />
+    <button
+      type="button"
+      class="time-picker-trigger"
+      [disabled]="disabled"
+      (click)="toggle()"
+      aria-label="Open time picker"
+    >
+      <span class="clock-icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </span>
+    </button>
+  </div>
+
+  @if (isOpen) {
+    <div class="time-dropdown">
+      <div class="time-dropdown-column" #hoursScroll>
+        @for (h of hours; track h) {
+          <button
+            type="button"
+            class="time-option"
+            [class.selected]="hour === h"
+            [attr.data-hour]="h"
+            (click)="selectHour(h)"
+          >
+            {{ h.toString().padStart(2, '0') }}
+          </button>
+        }
+      </div>
+      <div class="time-dropdown-column" #minutesScroll>
+        @for (m of minutes; track m) {
+          <button
+            type="button"
+            class="time-option"
+            [class.selected]="minute === m"
+            [attr.data-minute]="m"
+            (click)="selectMinute(m)"
+          >
+            {{ m.toString().padStart(2, '0') }}
+          </button>
+        }
+      </div>
+      <div class="time-dropdown-column">
+        @for (p of periods; track p) {
+          <button
+            type="button"
+            class="time-option"
+            [class.selected]="period === p"
+            (click)="selectPeriod(p)"
+          >
+            {{ p }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+</div>

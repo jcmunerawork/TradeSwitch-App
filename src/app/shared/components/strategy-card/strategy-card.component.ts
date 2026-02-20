@@ -72,6 +72,7 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
     updated_at: null,
     userId: '',
     configurationId: '',
+    timeline: [],
     dateActive: [],
     dateInactive: []
   };

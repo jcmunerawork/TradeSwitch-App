@@ -47,7 +47,7 @@ export interface PositionData {
   
   // Metadata
   syncedAt: number;                 // Timestamp de última sincronización
-  source: 'history' | 'streams';    // Origen del dato
+  source: 'history';    // Origen del dato (solo histórico vía REST)
   version: number;                  // Versión para conflict resolution
 }
 
@@ -69,8 +69,7 @@ export interface TradingMetrics {
  */
 export interface SyncMetadata {
   lastHistorySync: number;          // Última sync completa desde getHistory
-  lastStreamSync: number;          // Última actualización desde streams
-  lastFullSync: number;             // Última sync completa (histórico + streams)
+  lastFullSync: number;             // Última sync completa
   totalPositions: number;           // Total de posiciones (abiertas + cerradas)
   closedPositions: number;          // Solo cerradas
   openPositions: number;            // Solo abiertas
@@ -108,18 +107,6 @@ export interface TradingHistoryDocument {
   instrumentCache: {
     [key: string]: InstrumentCacheEntry; // key: "tradableInstrumentId-routeId"
   };
-}
-
-/**
- * Interface representing a streams update for a position.
- */
-export interface StreamsPositionUpdate {
-  positionId: string;
-  pnl?: number;
-  isOpen?: boolean;
-  lastModified?: string;
-  // Otros campos que puedan venir de streams
-  [key: string]: any;
 }
 
 /**

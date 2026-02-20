@@ -71,7 +71,7 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   // Balance properties (now handled by parent component)
   private subscriptions: Subscription[] = [];
   
-  // Real-time balances from streams (usando signal del contexto)
+  // Balances from REST (context updated on login and report load)
   // Se inicializa en ngOnInit después de que appContext esté disponible
   accountBalances: Map<string, number> = new Map();
 
@@ -335,11 +335,16 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
   }
   
   /**
-   * Get initial balance for an account (the balance entered when adding the account)
+   * Get balance for an account (from REST context or account data)
    */
   getAccountBalance(account: AccountData): number | undefined {
-    // Retornar solo el balance inicial que se ingresó al añadir la cuenta
-    return account.initialBalance;
+    const currentBalances = this.appContext.accountBalances();
+    const balance = currentBalances.get(account.accountID) || 
+                            currentBalances.get(account.id);
+    if (balance !== undefined && balance !== null) {
+      return balance;
+    }
+    return account.balance;
   }
 
   /**

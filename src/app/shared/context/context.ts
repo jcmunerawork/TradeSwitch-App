@@ -799,12 +799,6 @@ export class AppContextService {
   }
   
   /**
-   * Update account balance in real-time
-   * 
-   * @param accountId - Account ID from backend (can be "D#1492655" format or regular accountID)
-   * @param balance - Balance value (equity from AccountStatus)
-   */
-  /**
    * Update account metrics (netPnl, profit, bestTrade) from backend
    */
   updateAccountMetrics(accountId: string, metrics: { netPnl: number; profit: number; bestTrade: number }): void {

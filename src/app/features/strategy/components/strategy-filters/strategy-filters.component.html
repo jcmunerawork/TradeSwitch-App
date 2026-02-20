@@ -1,0 +1,24 @@
+<div class="control-bar mb-4">
+  <div class="search-container">
+    <div class="search-input-wrapper">
+      <span class="material-symbols-outlined search-icon" style="font-size: 20px;">search</span>
+      <input
+        type="text"
+        class="search-input-native"
+        placeholder="Search by name"
+        [value]="searchTerm"
+        (input)="onSearchInput($event)"
+      />
+    </div>
+  </div>
+  <button
+    type="button"
+    class="add-strategy-btn d-flex align-items-center gap-8"
+    [class.disabled]="isAddStrategyDisabled"
+    [disabled]="isAddStrategyDisabled"
+    (click)="onAddClick()"
+  >
+    <span class="material-symbols-outlined" style="font-size: 20px;">add</span>
+    <span>Add Strategy</span>
+  </button>
+</div>

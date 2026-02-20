@@ -48,12 +48,6 @@ import { PlanLimitationModalComponent } from '../../shared/components/plan-limit
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { TradingHistorySyncService } from './services/trading-history-sync.service';
 import { BackendApiService } from '../../core/services/backend-api.service';
-import { AccountStatusService } from '../../shared/services/account-status.service';
-import {
-  AccountMetricsEvent,
-  PositionClosedEvent,
-  StrategyFollowedUpdateEvent
-} from '../../shared/services/metrics-events.interface';
 import { PositionData } from './models/trading-history.model';
 import { ToastNotificationService } from '../../shared/services/toast-notification.service';
 
@@ -151,7 +145,7 @@ export class ReportComponent implements OnInit {
   // Balance data from API (mantener para compatibilidad)
   balanceData: any = null;
   
-  // Real-time balance from streams
+  // Balance from REST (context updated by loadAccountBalancesOnLogin / loadAccountMetricsFromBackend)
   realTimeBalance: number | null = null;
   
   // Flag para rastrear si hay peticiones en curso
@@ -171,9 +165,6 @@ export class ReportComponent implements OnInit {
     onPrimaryAction: () => {}
   };
 
-  // Flag para rastrear si los listeners de Socket.IO están configurados
-  private socketListenersSetup = false;
-
   constructor(
     @Inject(PLATFORM_ID) private platformId: any,
     private store: Store,
@@ -185,7 +176,6 @@ export class ReportComponent implements OnInit {
     private appContext: AppContextService,
     private tradingHistorySync: TradingHistorySyncService,
     private backendApi: BackendApiService,
-    private accountStatusService: AccountStatusService,
     private toastService: ToastNotificationService,
   ) {}
 
@@ -212,7 +202,6 @@ export class ReportComponent implements OnInit {
     this.listenGroupedTrades();
     this.fetchUserRules();
     this.checkUserAccess();
-    this.setupSocketListeners();
   }
 
   private subscribeToContextData() {
@@ -473,15 +462,7 @@ export class ReportComponent implements OnInit {
 
   ngOnDestroy() {
     this.updateSubscription?.unsubscribe();
-    
-    this.socketSubscriptions.forEach(sub => {
-      if (sub && !sub.closed) {
-        sub.unsubscribe();
-      }
-    });
-    this.socketSubscriptions = [];
-    this.socketListenersSetup = false;
-    
+
     if (this.loadingTimeout) {
       clearTimeout(this.loadingTimeout);
     }
@@ -568,8 +549,15 @@ export class ReportComponent implements OnInit {
   }
 
   fetchUserRules() {
+    const userId = this.user?.id;
+    if (!userId) {
+      this.store.dispatch(resetConfig({ config: initialStrategyState }));
+      this.config = this.prepareConfigDisplayData(initialStrategyState);
+      this.checkIfAllDataLoaded();
+      return;
+    }
     this.strategySvc
-      .getStrategyConfig(this.user?.id)
+      .getConfiguration(userId)
       .then((data) => {
         if (data) {
           this.store.dispatch(resetConfig({ config: data }));
@@ -1018,8 +1006,8 @@ export class ReportComponent implements OnInit {
     }
   }
 
-  goToEditStrategy() {
-    this.router.navigate(['/edit-strategy']);
+  goToStrategy() {
+    this.router.navigate(['/strategy']);
   }
 
   async exportAllData() {
@@ -1328,36 +1316,6 @@ export class ReportComponent implements OnInit {
     }
   }
 
-  private socketSubscriptions: Subscription[] = [];
-
-  private setupSocketListeners(): void {
-    if (this.socketListenersSetup) {
-      return;
-    }
-
-    const accountMetricsSub = this.accountStatusService.accountMetrics$.subscribe(data => {
-      this.handleAccountMetrics(data);
-    });
-    this.socketSubscriptions.push(accountMetricsSub);
-
-    const positionClosedSub = this.accountStatusService.positionClosed$.subscribe(data => {
-      this.handlePositionClosed(data);
-    });
-    this.socketSubscriptions.push(positionClosedSub);
-
-    const strategyFollowedSub = this.accountStatusService.strategyFollowedUpdate$.subscribe(data => {
-      this.handleStrategyFollowedUpdate(data);
-    });
-    this.socketSubscriptions.push(strategyFollowedSub);
-
-    const calendarTradeSub = this.accountStatusService.calendarTrade$.subscribe(({ accountId, trade }) => {
-      this.handleCalendarTrade(accountId, trade);
-    });
-    this.socketSubscriptions.push(calendarTradeSub);
-
-    this.socketListenersSetup = true;
-  }
-
   private async loadAccountMetricsFromBackend(accountId: string): Promise<void> {
     try {
       const auth = await import('firebase/auth');
@@ -1505,68 +1463,6 @@ export class ReportComponent implements OnInit {
     }
   }
 
-  private handleAccountMetrics(data: AccountMetricsEvent): void {
-    try {
-      this.appContext.updateAccountMetrics(data.accountId, {
-        netPnl: data.metrics.netPnl,
-        profit: data.metrics.profit,
-        bestTrade: data.metrics.bestTrade
-      });
-
-      if (data.metrics.stats && this.currentAccount?.id === data.accountId) {
-        this.stats = {
-          netPnl: data.metrics.stats.netPnl,
-          tradeWinPercent: data.metrics.stats.tradeWinPercent,
-          profitFactor: data.metrics.stats.profitFactor,
-          totalTrades: data.metrics.stats.totalTrades,
-          avgWinLossTrades: data.metrics.stats.avgWinLossTrades,
-          activePositions: data.metrics.stats.activePositions
-        };
-        // Actualizar store
-        this.store.dispatch(setNetPnL({ netPnL: this.stats.netPnl }));
-        this.store.dispatch(setTradeWin({ tradeWin: this.stats.tradeWinPercent }));
-        this.store.dispatch(setProfitFactor({ profitFactor: this.stats.profitFactor }));
-        this.store.dispatch(setAvgWnL({ avgWnL: this.stats.avgWinLossTrades }));
-        this.store.dispatch(setTotalTrades({ totalTrades: this.stats.totalTrades }));
-      } else if (this.currentAccount?.id === data.accountId) {
-        this.loadAccountMetricsFromBackend(data.accountId);
-      }
-    } catch (error) {
-      console.error('Error handling accountMetrics:', error);
-    }
-  }
-
-  private handlePositionClosed(data: PositionClosedEvent): void {
-    try {
-      if (data.trade && !data.trade.isOpen) {
-        this.addTradeToCalendar(data.accountId, data.trade);
-      }
-
-      // 2. Actualizar métricas de la cuenta (incluye stats si vienen)
-      this.handleAccountMetrics({
-        accountId: data.accountId,
-        metrics: {
-          netPnl: data.updatedMetrics.netPnl,
-          profit: data.updatedMetrics.profit,
-          bestTrade: data.updatedMetrics.bestTrade,
-          stats: data.updatedMetrics.stats
-        },
-        timestamp: data.timestamp || Date.now()
-      });
-
-      if (!data.trade && data.position) {
-        const calendarTrade = this.convertPositionToCalendarTrade(data.position);
-        if (calendarTrade) {
-          this.addTradeToCalendar(data.accountId, calendarTrade);
-        } else if (this.currentAccount?.id === data.accountId) {
-          this.loadAccountData(this.currentAccount);
-        }
-      }
-    } catch (error) {
-      console.error('Error handling positionClosed:', error);
-    }
-  }
-
   private addTradeToCalendar(accountId: string, trade: any): void {
     try {
       if (!trade || !trade.positionId || !trade.createdDate || !trade.lastModified) {
@@ -1623,9 +1519,6 @@ export class ReportComponent implements OnInit {
     }
   }
 
-  private handleCalendarTrade(accountId: string, trade: any): void {
-    this.addTradeToCalendar(accountId, trade);
-  }
   private convertPositionToCalendarTrade(position: PositionData): GroupedTradeFinal | null {
     try {
       if (!position || !position.positionId) {
@@ -1669,16 +1562,6 @@ export class ReportComponent implements OnInit {
     } catch (error) {
       console.error('❌ ReportComponent: Error converting position to calendar trade:', error, position);
       return null;
-    }
-  }
-
-  private handleStrategyFollowedUpdate(data: StrategyFollowedUpdateEvent): void {
-    try {
-      this.appContext.updateUserData({
-        strategy_followed: data.strategy_followed
-      });
-    } catch (error) {
-      console.error('Error handling strategyFollowedUpdate:', error);
     }
   }
 

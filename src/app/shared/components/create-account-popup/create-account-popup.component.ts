@@ -109,6 +109,22 @@ export class CreateAccountPopupComponent implements OnChanges {
   showAccountIDTooltip = false;
   isCreatingAccount = false;
 
+  // Field validation errors (shown in red below inputs)
+  fieldErrors: { accountNumber: string; accountID: string; email: string; initialBalance: string } = {
+    accountNumber: '',
+    accountID: '',
+    email: '',
+    initialBalance: ''
+  };
+
+  // String used for account number input (only digits); synced with newAccount.accountNumber
+  accountNumberDisplay = '';
+
+  showPassword = false;
+  successMessage = '';
+  /** Backend error message shown inside the modal so it's always visible (e.g. 400 from API) */
+  backendErrorMessage = '';
+
   onClose() {
     this.close.emit();
   }
@@ -126,37 +142,86 @@ export class CreateAccountPopupComponent implements OnChanges {
     this.showCancelConfirm = false;
   }
 
-  
+  private clearFieldErrors() {
+    this.fieldErrors = { accountNumber: '', accountID: '', email: '', initialBalance: '' };
+  }
+
+  onAccountNumberInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const digits = (input.value || '').replace(/\D/g, '');
+    input.value = digits;
+    this.accountNumberDisplay = digits;
+    const num = parseInt(digits, 10);
+    this.newAccount.accountNumber = isNaN(num) || num < 1 ? 0 : num;
+  }
+
+  onAccountIDInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const digits = (input.value || '').replace(/\D/g, '');
+    input.value = digits;
+    this.newAccount.accountID = digits;
+  }
+
+  validateEmail(): boolean {
+    const email = (this.newAccount.emailTradingAccount || '').trim();
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    this.fieldErrors.email = valid || !email ? '' : 'Please enter a valid email address.';
+    return valid;
+  }
+
+  togglePasswordVisibility() {
+    this.showPassword = !this.showPassword;
+  }
 
   async onCreate() {
-    // Basic validation
-    if (!this.newAccount.accountName || 
-        !this.newAccount.emailTradingAccount || !this.newAccount.brokerPassword || 
-        !this.newAccount.server || !this.newAccount.accountID || !this.newAccount.accountNumber) {
+    this.clearFieldErrors();
+    this.backendErrorMessage = '';
+
+    if (!this.newAccount.accountName?.trim() ||
+        !this.newAccount.emailTradingAccount?.trim() ||
+        !this.newAccount.brokerPassword ||
+        !this.newAccount.server?.trim() ||
+        !this.newAccount.accountID ||
+        !this.newAccount.accountNumber) {
       this.toastService.showError('Please fill in all required fields.');
       return;
     }
-    
-    // Show loading popup
+
+    if (!this.validateEmail()) {
+      this.toastService.showError('Please enter a valid email address.');
+      return;
+    }
+
+    if (this.newAccount.accountNumber < 1) {
+      this.fieldErrors.accountNumber = 'Account number must be at least 1.';
+      this.toastService.showError('Please enter a valid account number.');
+      return;
+    }
+
+    const balanceValue = this.numberFormatter.parseCurrencyValue(this.initialBalanceInput);
+    const validBalance = !isNaN(balanceValue) && balanceValue >= 0;
+    if (!this.editMode && (!validBalance || (this.initialBalanceInput.trim() === ''))) {
+      this.fieldErrors.initialBalance = 'Please enter a valid initial balance (number ≥ 0).';
+      this.toastService.showError('Please enter a valid initial balance.');
+      return;
+    }
+    if (validBalance) {
+      this.newAccount.initialBalance = balanceValue;
+    }
+
     this.isCreatingAccount = true;
-    
+
     try {
-      // 1. Validate account exists in TradeLocker
       const accountExists = await this.validateAccountInTradeLocker();
       if (!accountExists) {
         this.isCreatingAccount = false;
         this.toastService.showError('Account does not exist in TradeLocker. Please verify the credentials.');
         return;
       }
-      
-      // 2. Validate account email and ID uniqueness
-      const validationResult = await this.validateAccountUniqueness();
-      if (!validationResult.isValid) {
-        this.isCreatingAccount = false;
-        this.toastService.showError(validationResult.message);
-        return;
-      }
-      
+
+      // La unicidad (accountID, email, broker+server+accountID) se valida en el backend al hacer POST.
+      // Si hay conflicto, el backend responde 409 con un mensaje concreto; se muestra en el catch.
+
       if (this.editMode && this.accountToEdit) {
         // Update existing account
         await this.updateAccount();
@@ -168,35 +233,26 @@ export class CreateAccountPopupComponent implements OnChanges {
       // Hide loading popup before showing success modal
       this.isCreatingAccount = false;
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error processing trading account:', error);
       this.isCreatingAccount = false;
-      this.toastService.showBackendError(error, `Failed to ${this.editMode ? 'update' : 'create'} trading account. Please try again.`);
+      this.backendErrorMessage = this.toastService.extractErrorMessage(error as any) || `Failed to ${this.editMode ? 'update' : 'create'} trading account. Please try again.`;
+      this.toastService.showBackendError(error as any, this.backendErrorMessage);
     }
   }
 
   private async createNewAccount() {
-    // Create account object for Firebase
     const accountData = this.createAccountObject();
-    
-    // Save to Firebase and get response
-    const response = await this.authService.createAccount(accountData);
-    
-    // Show success toast with message from backend (if available)
-    const successMessage = response?.message || response?.data?.message || 'Trading account added successfully!';
-    this.toastService.showSuccess(successMessage);
-    
-    // Show success modal
+    const message = await this.authService.createAccount(accountData);
+    this.successMessage = message || 'Trading account created successfully.';
+    this.toastService.showSuccess(this.successMessage);
     this.showSuccessModal = true;
-    
-    // Emit the created account data
     this.create.emit(accountData);
   }
 
   private async updateAccount() {
     if (!this.accountToEdit) return;
 
-    // Create updated account object
     const updatedAccountData: AccountData = {
       ...this.accountToEdit,
       accountName: this.newAccount.accountName,
@@ -212,17 +268,10 @@ export class CreateAccountPopupComponent implements OnChanges {
       bestTrade: this.accountToEdit.bestTrade || 0,
     };
 
-    // Update in Firebase and get response
-    const response = await this.authService.updateAccount(this.accountToEdit.id, updatedAccountData);
-    
-    // Show success toast with message from backend (if available)
-    const successMessage = response?.message || response?.data?.message || 'Trading account updated successfully!';
-    this.toastService.showSuccess(successMessage);
-    
-    // Show success modal
+    const message = await this.authService.updateAccount(this.accountToEdit.id, updatedAccountData);
+    this.successMessage = message || 'Trading account updated successfully.';
+    this.toastService.showSuccess(this.successMessage);
     this.showSuccessModal = true;
-    
-    // Emit the updated account data
     this.update.emit(updatedAccountData);
   }
 
@@ -238,10 +287,16 @@ export class CreateAccountPopupComponent implements OnChanges {
     }, 0);
   }
 
-  // Balance input event handlers
+  // Balance input: only digits and at most one decimal point
   onInitialBalanceInput(event: Event) {
-    const target = event.target as HTMLInputElement;
-    this.initialBalanceInput = target.value;
+    const input = event.target as HTMLInputElement;
+    let raw = (input.value || '').replace(/[^\d.]/g, '');
+    const parts = raw.split('.');
+    if (parts.length > 2) {
+      raw = parts[0] + '.' + parts.slice(1).join('');
+    }
+    input.value = raw;
+    this.initialBalanceInput = raw;
   }
 
   onInitialBalanceFocus() {
@@ -281,11 +336,14 @@ export class CreateAccountPopupComponent implements OnChanges {
       emailTradingAccount: '',
       brokerPassword: '',
       accountID: '',
-      accountNumber: 1, // Default to 1 as suggested
+      accountNumber: 1,
       initialBalance: 0,
     };
-    
-    // Reset balance input properties
+    this.accountNumberDisplay = '1';
+    this.clearFieldErrors();
+    this.showPassword = false;
+    this.successMessage = '';
+    this.backendErrorMessage = '';
     this.initialBalanceInput = '';
     this.initialBalanceDisplay = '';
   }
@@ -302,7 +360,11 @@ export class CreateAccountPopupComponent implements OnChanges {
         accountNumber: this.accountToEdit.accountNumber || 1,
         initialBalance: this.accountToEdit.initialBalance || 0,
       };
-      
+      this.accountNumberDisplay = String(this.newAccount.accountNumber || '1');
+      this.clearFieldErrors();
+      this.showPassword = false;
+      this.successMessage = '';
+      this.backendErrorMessage = '';
       // Set balance input values for display with currency format
       if (this.newAccount.initialBalance > 0) {
         this.initialBalanceDisplay = this.numberFormatter.formatCurrencyDisplay(this.newAccount.initialBalance);
@@ -355,40 +417,4 @@ export class CreateAccountPopupComponent implements OnChanges {
     }
   }
 
-  /**
-   * Validates that broker + server + accountId combination is unique across all accounts
-   * Returns validation result with appropriate message
-   * When in edit mode, excludes the current account being edited
-   */
-  private async validateAccountUniqueness(): Promise<{isValid: boolean, message: string}> {
-    try {
-      // Check if broker + server + accountId combination already exists
-      // If editing, exclude the current account being edited
-      const accountExists = await this.authService.checkAccountExists(
-        'TradeLocker',
-        this.newAccount.server,
-        this.newAccount.accountID,
-        this.userId,
-        this.editMode && this.accountToEdit ? this.accountToEdit.id : undefined
-      );
-      
-      if (accountExists) {
-        return {
-          isValid: false,
-          message: 'This account is already registered. Try with another account or delete the existing trade account it is linked to.'
-        };
-      }
-
-      return {
-        isValid: true,
-        message: ''
-      };
-    } catch (error) {
-      console.error('Error validating account uniqueness:', error);
-      return {
-        isValid: false,
-        message: 'This account is already registered. Try with another account or delete the existing trade account it is linked to.'
-      };
-    }
-  }
 }

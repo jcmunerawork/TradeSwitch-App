@@ -55,6 +55,8 @@ export class TextInputComponent implements ControlValueAccessor {
   @Input() type: string = 'text';
   @Input() required: boolean = false;
   @Input() disabled: boolean = false;
+  /** Si es true, solo se permiten letras y espacios (útil para nombre y apellido). */
+  @Input() lettersOnly: boolean = false;
 
   value: string = '';
   touched: boolean = false;
@@ -79,7 +81,12 @@ export class TextInputComponent implements ControlValueAccessor {
   }
 
   onInput(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
+    const input = event.target as HTMLInputElement;
+    let value = input.value;
+    if (this.lettersOnly) {
+      value = value.replace(/[^a-zA-Z\u00C0-\u024F\s]/g, '');
+      input.value = value;
+    }
     this.value = value;
     this.onChange(value);
   }
