@@ -14,7 +14,6 @@ import { AlertService } from '../../core/services';
 import { ReasonsService } from '../../shared/services/reasons.service';
 import { serverTimestamp } from 'firebase/firestore';
 import { ToastNotificationService } from '../../shared/services/toast-notification.service';
-import { ToastContainerComponent } from '../../shared/components/toast-container/toast-container.component';
 import { take } from 'rxjs/operators';
 import { firstValueFrom } from 'rxjs';
 
@@ -56,7 +55,6 @@ import { firstValueFrom } from 'rxjs';
     FormsModule,
     UsersTableComponent,
     UserModalComponent,
-    ToastContainerComponent,
   ],
   templateUrl: './users-details.component.html',
   styleUrl: './users-details.component.scss',

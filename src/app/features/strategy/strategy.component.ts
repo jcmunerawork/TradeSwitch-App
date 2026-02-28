@@ -134,6 +134,9 @@ export class Strategy implements OnInit, OnDestroy {
   userStrategies: ConfigurationOverview[] = [];
   activeStrategy: ConfigurationOverview | null = null;
   strategyCardsData: StrategyCardData[] = [];
+  
+  // Sync status text for UI display
+  syncStatusText: string = '';
   /** Lista filtrada por búsqueda (desde StrategyFilterService). */
   get filteredStrategies$() { return this.strategyFilterService.filteredStrategies$; }
   /** Término de búsqueda (desde StrategyFilterService). */
@@ -290,12 +293,22 @@ export class Strategy implements OnInit, OnDestroy {
   /** Carga estrategias al cache (servicio) y actualiza cards + limitaciones en el componente. */
   private async loadAllStrategiesToCache(): Promise<void> {
     if (!this.user?.id) return;
-    const result = await this.strategyLoadService.loadAllStrategiesToCache(this.user.id);
-    this.userStrategies = result.userStrategies;
-    this.activeStrategy = result.activeStrategy;
-    await this.loadStrategyCardsData();
-    if (this.activeStrategy) await this.updateStrategyCardWithActiveStrategy();
-    await this.checkPlanLimitationsWithButtonState(result.button_state);
+    const startTime = Date.now();
+    try {
+      const result = await this.strategyLoadService.loadAllStrategiesToCache(this.user.id);
+      this.userStrategies = result.userStrategies;
+      this.activeStrategy = result.activeStrategy;
+      await this.loadStrategyCardsData();
+      if (this.activeStrategy) await this.updateStrategyCardWithActiveStrategy();
+      await this.checkPlanLimitationsWithButtonState(result.button_state);
+      
+      const responseTime = Date.now() - startTime;
+      this.syncStatusText = `Synced from Firebase in ${this.toastService.formatResponseTime(responseTime)}`;
+    } catch (error) {
+      console.error('Error loading strategies:', error);
+      this.syncStatusText = 'Error loading strategies';
+      this.toastService.showError('Failed to load strategies');
+    }
   }
 
   /**

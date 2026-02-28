@@ -242,40 +242,4 @@ export class PlanService {
     }
   }
 
-  /**
-   * UTILIDAD: Verificar si un plan existe
-   * @param id ID del plan a verificar
-   * @returns Promise que se resuelve con true si existe, false si no
-   */
-  async planExists(id: string): Promise<boolean> {
-    if (!this.isBrowser) {
-      return false;
-    }
-
-    try {
-      const plan = await this.getPlanById(id);
-      return plan !== undefined;
-    } catch (error) {
-      console.error('❌ Error al verificar existencia del plan:', error);
-      return false;
-    }
-  }
-
-  /**
-   * UTILIDAD: Obtener el conteo total de planes
-   * @returns Promise con el número total de planes
-   */
-  async getPlansCount(): Promise<number> {
-    if (!this.isBrowser) {
-      return 0;
-    }
-
-    try {
-      const plans = await this.getAllPlans();
-      return plans.length;
-    } catch (error) {
-      console.error('❌ Error al obtener conteo de planes:', error);
-      return 0;
-    }
-  }
 }

@@ -1,3 +1,16 @@
+// Sync status text
+.sync-status-text {
+  font-size: 12px;
+  color: #9bf526;
+  margin-top: 8px;
+  margin-bottom: 0;
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
+  opacity: 0.8;
+  
+  &.error {
+    color: #ff6b6b;
+  }
+}
 
 // Control Bar
 .new-strategy-form {

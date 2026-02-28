@@ -168,122 +168,23 @@ export class SubscriptionService {
   }
 
   /**
-   * Crea un nuevo pago
-   * Now uses backend API but maintains same interface
+   * Update an existing subscription
    * @param userId ID del usuario
-   * @param paymentData Datos del pago (sin id)
-   * @returns Promise con el ID del pago creado
+   * @param subscriptionId ID de la suscripción a actualizar
+   * @param updateData Datos a actualizar (status, planId, etc.)
    */
-  async createSubscription(userId: string, paymentData: Omit<Subscription, 'id' | 'created_at' | 'updated_at'>): Promise<string> {
+  async updateSubscription(userId: string, subscriptionId: string, updateData: Partial<Subscription>): Promise<void> {
     try {
       const idToken = await this.getIdToken();
-      const response = await this.backendApi.createSubscription(userId, paymentData, idToken);
-      
-      if (!response.success || !response.data) {
-        throw new Error(response.error?.message || 'Failed to create subscription');
-      }
-      
-      return response.data.subscriptionId;
-    } catch (error) {
-      console.error('Error al crear pago:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Actualiza un pago existente
-   * Now uses backend API but maintains same interface
-   * @param userId ID del usuario
-   * @param paymentId ID del pago
-   * @param updateData Datos a actualizar
-   * @returns Promise void
-   */
-  async updateSubscription(userId: string, paymentId: string, updateData: Partial<Omit<Subscription, 'id' | 'created_at' | 'userId'>>): Promise<void> {
-    try {
-      const idToken = await this.getIdToken();
-      const updatePayload = {
-        ...updateData,
-        updated_at: Timestamp.now()
-      };
-      const response = await this.backendApi.updateSubscription(userId, paymentId, updatePayload, idToken);
+      const response = await this.backendApi.updateSubscription(userId, subscriptionId, updateData, idToken);
       
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update subscription');
       }
     } catch (error) {
-      console.error('Error al actualizar pago:', error);
+      console.error('Error updating subscription:', error);
       throw error;
     }
   }
 
-  /**
-   * Elimina un pago
-   * Now uses backend API but maintains same interface
-   * @param userId ID del usuario
-   * @param paymentId ID del pago
-   * @returns Promise void
-   */
-  async deleteSubscription(userId: string, paymentId: string): Promise<void> {
-    try {
-      const idToken = await this.getIdToken();
-      const response = await this.backendApi.deleteSubscription(userId, paymentId, idToken);
-      
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to delete subscription');
-      }
-    } catch (error) {
-      console.error('Error al eliminar pago:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtiene pagos filtrados por estado
-   * Now uses backend API but maintains same interface
-   * @param userId ID del usuario
-   * @param status Estado del pago
-   * @returns Promise con array de pagos filtrados
-   */
-  async getSubscriptionsByStatus(userId: string, status: Subscription['status']): Promise<Subscription[]> {
-    try {
-      const idToken = await this.getIdToken();
-      const response = await this.backendApi.getSubscriptionsByStatus(userId, status.toString(), idToken);
-      
-      if (!response.success || !response.data) {
-        return [];
-      }
-      
-      return response.data.subscriptions || [];
-    } catch (error) {
-      console.error('Error al obtener pagos por estado:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtiene el total de pagos de un usuario
-   * Now uses backend API but maintains same interface
-   * @param userId ID del usuario
-   * @returns Promise con el número total de pagos
-   */
-  async getTotalSubscriptionsCount(userId: string): Promise<number> {
-    try {
-      const idToken = await this.getIdToken();
-      const response = await this.backendApi.getTotalSubscriptionsCount(userId, idToken);
-      
-      if (!response.success || !response.data) {
-        return 0;
-      }
-      
-      return response.data.count;
-    } catch (error) {
-      console.error('Error al obtener conteo de pagos:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Método de debug para verificar la estructura de la base de datos
-   * @param userId ID del usuario
-   */
 }

@@ -326,11 +326,6 @@ export class SettingsService {
     return this.strategyOperationsService.updateStrategyDates(userId, strategyId, dateActive, dateInactive);
   }
 
-  // Eliminar una estrategia
-  async deleteStrategyView(strategyId: string): Promise<void> {
-    return this.strategyOperationsService.deleteStrategyView(strategyId);
-  }
-
   // Marcar una estrategia como deleted (soft delete)
   async markStrategyAsDeleted(strategyId: string): Promise<void> {
     // Validar que el ID no esté vacío

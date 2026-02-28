@@ -111,14 +111,19 @@ export class ReportService {
   getHistoryData(
     accountId: string,
     accNum: number
-  ): Observable<{ trades: GroupedTradeFinal[], metrics: any }> {
+  ): Observable<{ trades: GroupedTradeFinal[], metrics: any, source: string, warning: any, syncMetadata: any }> {
     this.appContext.setLoading('report', true);
     this.appContext.setError('report', null);
     
     return this.tradeLockerApiService.getTradingHistory(accountId, accNum)
       .pipe(
         switchMap(async (details) => {
-          // NUEVO FORMATO: El backend devuelve { trades: [...], metrics: {...} }
+          // Extract source, warning and syncMetadata from response
+          const source = details?.source || 'tradelocker';
+          const warning = details?.warning || null;
+          const syncMetadata = details?.syncMetadata || null;
+          
+          // NUEVO FORMATO: El backend devuelve { trades: [...], metrics: {...}, source, warning, syncMetadata }
           if (details && details.trades && Array.isArray(details.trades)) {
             const groupedTrades = details.trades as GroupedTradeFinal[];
             // Asegurar que todos los trades tengan los campos requeridos
@@ -129,13 +134,12 @@ export class ReportService {
               lastModified: trade.lastModified?.toString() || trade.createdDate?.toString() || Date.now().toString(),
               positionId: trade.positionId || trade.id || '',
               instrument: trade.instrument || trade.tradableInstrumentId || '',
-              closedDate: (trade as any).closedDate?.toString() || trade.lastModified?.toString() || undefined // Nuevo campo del backend
+              closedDate: (trade as any).closedDate?.toString() || trade.lastModified?.toString() || undefined
             }));
             
             this.appContext.updateReportHistory(normalizedTrades);
             this.appContext.setLoading('report', false);
-            // Retornar trades y métricas del endpoint
-            return { trades: normalizedTrades, metrics: details.metrics || null };
+            return { trades: normalizedTrades, metrics: details.metrics || null, source, warning, syncMetadata };
           }
           
           // FORMATO ANTIGUO: { d: { ordersHistory: [...] } } - necesita transformación
@@ -150,14 +154,13 @@ export class ReportService {
             this.appContext.updateReportHistory(groupedTrades);
             this.appContext.setLoading('report', false);
             
-            // Formato antiguo no tiene métricas, retornar null
-            return { trades: groupedTrades, metrics: null };
+            return { trades: groupedTrades, metrics: null, source, warning, syncMetadata };
           }
 
           // Si no hay datos válidos, retornar array vacío
           this.appContext.updateReportHistory([]);
           this.appContext.setLoading('report', false);
-          return { trades: [], metrics: null };
+          return { trades: [], metrics: null, source, warning, syncMetadata };
         })
       );
   }

@@ -1,5 +1,5 @@
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, deleteDoc, updateDoc, orderBy, limit, addDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc, orderBy, limit, addDoc } from 'firebase/firestore';
 import { isPlatformBrowser } from '@angular/common';
 import { Timestamp } from 'firebase/firestore';
 import { MaxDailyTradesConfig, StrategyState, ConfigurationOverview } from '../../features/strategy/models/strategy.model';
@@ -513,42 +513,6 @@ export class StrategyOperationsService {
    */
   async updateStrategyDates(_userId: string, _strategyId: string, _dateActive?: Date, _dateInactive?: Date): Promise<void> {
     // Timeline se actualiza en el backend al llamar activateStrategy / deactivateStrategy
-  }
-
-  /**
-   * Eliminar una estrategia
-   * TODO: Migrar completamente a backend cuando exista endpoint DELETE /api/v1/strategies/configuration/:configurationId
-   * Actualmente elimina el overview por backend pero el configuration aún se elimina directamente desde Firebase
-   */
-  async deleteStrategyView(strategyId: string): Promise<void> {
-    if (!this.db) {
-      return;
-    }
-
-    try {
-      // 1. Obtener el configurationId del overview
-      const strategy = await this.getConfigurationOverview(strategyId);
-      if (!strategy) {
-        throw new Error('Strategy not found');
-      }
-
-      // 2. Eliminar configuration-overview usando backend
-      await this.deleteConfigurationOverview(strategyId);
-
-      // 3. Eliminar configuration directamente desde Firebase
-      // TODO: Migrar a endpoint del backend cuando esté disponible
-      if (strategy.configurationId) {
-        try {
-          const configDocRef = doc(this.db, 'configurations', strategy.configurationId);
-          await deleteDoc(configDocRef);
-        } catch (error) {
-          // Configuration not found for deletion, continue
-        }
-      }
-    } catch (error) {
-      console.error('Error deleting strategy:', error);
-      throw error;
-    }
   }
 
   /**

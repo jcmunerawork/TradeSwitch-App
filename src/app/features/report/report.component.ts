@@ -154,6 +154,12 @@ export class ReportComponent implements OnInit {
   // Flag para evitar cargar la misma cuenta múltiples veces
   private isLoadingAccount: string | null = null;
   
+  // Flag para evitar mostrar toast duplicado en la carga inicial
+  private hasShownInitialToast = false;
+  
+  // Sync status text for UI display
+  syncStatusText: string = '';
+  
 
   // Plan limitation modal
   planLimitationModal: PlanLimitationModalData = {
@@ -297,14 +303,17 @@ export class ReportComponent implements OnInit {
     // Loading general solo para cuentas
     this.loading = true;
     
-    // Timeout de seguridad para cuentas
+    // Timeout de seguridad - increased to 15 seconds to allow all data to load
     if (this.loadingTimeout) {
       clearTimeout(this.loadingTimeout);
     }
     
     this.loadingTimeout = setTimeout(() => {
-      this.loading = false;
-    }, 2000); // 10 segundos máximo para cuentas
+      // Only force-stop loading if we have basic data, otherwise keep loading
+      if (this.currentAccount && this.stats) {
+        this.loading = false;
+      }
+    }, 15000);
   }
 
   private startInternalLoading() {
@@ -312,15 +321,11 @@ export class ReportComponent implements OnInit {
     this.hasPendingRequests = true;
     this.loading = true;
     
+    // Reset data - use empty/null to indicate "not loaded yet"
     this.accountHistory = [];
-    this.stats = {
-      netPnl: 0,
-      tradeWinPercent: 0,
-      profitFactor: 0,
-      avgWinLossTrades: 0,
-      totalTrades: 0,
-      activePositions: 0
-    };
+    this.syncStatusText = '';
+    // Don't reset stats to 0 values here - keep them null/undefined until real data arrives
+    // This prevents showing partial data (balance card with empty stats)
     
     this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
     this.store.dispatch(setNetPnL({ netPnL: 0 }));
@@ -328,10 +333,6 @@ export class ReportComponent implements OnInit {
     this.store.dispatch(setProfitFactor({ profitFactor: 0 }));
     this.store.dispatch(setAvgWnL({ avgWnL: 0 }));
     this.store.dispatch(setTotalTrades({ totalTrades: 0 }));
-    
-    setTimeout(() => {
-      this.checkIfAllDataLoaded();
-    }, 800);
   }
 
   private stopLoading() {
@@ -363,12 +364,18 @@ export class ReportComponent implements OnInit {
       return;
     }
 
-    const hasBasicData = this.currentAccount && 
-                         this.accountHistory !== null && 
-                         this.stats !== null &&
-                         Array.isArray(this.strategies);
+    // Verify ALL required data is loaded before removing loading state
+    const hasAccount = !!this.currentAccount;
+    const hasHistory = Array.isArray(this.accountHistory); // Can be empty array, that's ok
+    const hasStats = this.stats !== null && 
+                     this.stats.netPnl !== undefined &&
+                     this.stats.totalTrades !== undefined;
+    const hasStrategies = Array.isArray(this.strategies);
+    
+    // Only remove loading when all data is ready
+    const allDataReady = hasAccount && hasHistory && hasStats && hasStrategies;
 
-    if (hasBasicData) {
+    if (allDataReady) {
       setTimeout(() => {
         this.loading = false;
       }, 300);
@@ -420,6 +427,9 @@ export class ReportComponent implements OnInit {
               isOpen: trade.isOpen ?? false
             })) : [];
           this.store.dispatch(setGroupedTrades({ groupedTrades }));
+          
+          // Show sync status from cached data
+          this.syncStatusText = this.formatLocalCacheStatus(savedData.lastUpdated);
           
           this.hasPendingRequests = false;
           this.checkIfAllDataLoaded();
@@ -519,14 +529,14 @@ export class ReportComponent implements OnInit {
           activePositions: 0
         };
         this.balanceData = null;
+        // No accounts = stop loading (nothing to load)
+        this.hasPendingRequests = false;
         this.loading = false;
-        this.stopInternalLoading();
       } else {
         this.accountsData = accounts;
         this.currentAccount = accounts[0];
         this.saveDataToStorage();
-        this.loading = false;
-        this.loading = true;
+        // Keep loading = true, fetchHistoryData will handle it
         this.fetchHistoryData(this.currentAccount.accountID, this.currentAccount.accountNumber);
       }
     }).catch((error) => {
@@ -543,8 +553,9 @@ export class ReportComponent implements OnInit {
         activePositions: 0
       };
       this.balanceData = null;
+      // Error = stop loading
+      this.hasPendingRequests = false;
       this.loading = false;
-      this.stopInternalLoading();
     });
   }
 
@@ -693,6 +704,7 @@ export class ReportComponent implements OnInit {
     this.hasPendingRequests = true;
     this.loading = true;
 
+    const startTime = Date.now();
     try {
       const response = await this.reportService.getHistoryData(accountId, accNum).toPromise();
       
@@ -730,6 +742,38 @@ export class ReportComponent implements OnInit {
           this.saveAccountDataToLocalStorage(accountId, contextData);
         }
         
+        // Update sync status text based on data source
+        const responseTime = Date.now() - startTime;
+        const source = response.source || 'tradelocker';
+        
+        if (source === 'firebase') {
+          // Data came from Firebase (TradeLocker was unavailable)
+          const syncAt = response.syncMetadata?.sync_at;
+          if (syncAt) {
+            this.syncStatusText = `Synced from Firebase (last updated: ${this.formatSyncDate(syncAt)}) in ${this.toastService.formatResponseTime(responseTime)}`;
+          } else {
+            this.syncStatusText = `Synced from Firebase in ${this.toastService.formatResponseTime(responseTime)}`;
+          }
+          
+          // Show warning toast only once about TradeLocker being unavailable
+          if (!this.hasShownInitialToast) {
+            this.toastService.showWarning(
+              'TradeLocker unavailable. Showing cached data from Firebase.',
+              'Data Source Warning'
+            );
+            this.hasShownInitialToast = true;
+          }
+        } else {
+          // Data came from TradeLocker API
+          this.syncStatusText = `Synced from TradeLocker API in ${this.toastService.formatResponseTime(responseTime)}`;
+        }
+        
+        // Handle any additional warnings from backend
+        if (response.warning && !this.hasShownInitialToast) {
+          this.toastService.showFallbackWarning(response.warning, responseTime);
+          this.hasShownInitialToast = true;
+        }
+        
         this.hasPendingRequests = false;
         this.checkIfAllDataLoaded();
       } else {
@@ -746,6 +790,8 @@ export class ReportComponent implements OnInit {
           this.store.dispatch(setAvgWnL({ avgWnL: this.stats.avgWinLossTrades }));
           this.store.dispatch(setTotalTrades({ totalTrades: this.stats.totalTrades }));
           
+          this.syncStatusText = this.formatLocalCacheStatus(cachedData.lastUpdated);
+          
           this.hasPendingRequests = false;
           this.checkIfAllDataLoaded();
         } else {
@@ -756,7 +802,6 @@ export class ReportComponent implements OnInit {
       }
     } catch (error) {
       console.error('Error in fetchHistoryData:', error);
-      this.toastService.showBackendError(error, 'Error loading trading history');
       
       const cachedData = this.loadAccountDataFromLocalStorage(accountId);
       if (cachedData && cachedData.accountHistory && cachedData.accountHistory.length > 0) {
@@ -771,15 +816,58 @@ export class ReportComponent implements OnInit {
         this.store.dispatch(setAvgWnL({ avgWnL: this.stats.avgWinLossTrades }));
         this.store.dispatch(setTotalTrades({ totalTrades: this.stats.totalTrades }));
         
+        this.syncStatusText = `Error loading data. ${this.formatLocalCacheStatus(cachedData.lastUpdated)}`;
+        this.toastService.showError('Failed to load trading history. Showing cached data.');
+        
         this.hasPendingRequests = false;
         this.checkIfAllDataLoaded();
       } else {
         this.setInitialValues();
+        this.syncStatusText = 'Error loading data';
+        this.toastService.showError('Failed to load trading history');
         this.hasPendingRequests = false;
         this.checkIfAllDataLoaded();
       }
     } finally {
       this.isLoadingAccount = null;
+    }
+  }
+
+  /**
+   * Formats the sync_at date from backend to a human-readable relative time.
+   * @param syncAt - The sync date string from backend (ISO format or formatted string)
+   * @returns Human-readable relative time (e.g., "2 hours ago", "yesterday at 3:45 PM")
+   */
+  private formatSyncDate(syncAt: string): string {
+    try {
+      const syncMoment = moment(syncAt);
+      if (!syncMoment.isValid()) {
+        return syncAt;
+      }
+      return syncMoment.fromNow();
+    } catch {
+      return syncAt;
+    }
+  }
+
+  /**
+   * Formats the local cache status message with the last updated timestamp.
+   * @param lastUpdated - The timestamp (in milliseconds) when data was last saved to localStorage
+   * @returns Human-readable message (e.g., "Loaded from local cache (last updated: 2 hours ago)")
+   */
+  private formatLocalCacheStatus(lastUpdated?: number): string {
+    if (!lastUpdated) {
+      return 'Loaded from local cache';
+    }
+    
+    try {
+      const lastUpdatedMoment = moment(lastUpdated);
+      if (!lastUpdatedMoment.isValid()) {
+        return 'Loaded from local cache';
+      }
+      return `Loaded from local cache (last updated: ${lastUpdatedMoment.fromNow()})`;
+    } catch {
+      return 'Loaded from local cache';
     }
   }
 
@@ -947,6 +1035,9 @@ export class ReportComponent implements OnInit {
     this.showAccountDropdown = false;
     this.clearDataFilter();
     
+    // Reset toast flag when user manually changes account
+    this.hasShownInitialToast = false;
+    
     this.loading = true;
     this.startInternalLoading();
     this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
@@ -983,7 +1074,6 @@ export class ReportComponent implements OnInit {
       }
     } catch (error) {
       console.error('❌ [REPORT LOAD] selectAccount - Error al cargar datos de la nueva cuenta:', error);
-      this.toastService.showBackendError(error, 'Error loading account data');
       
       const cachedData = this.loadAccountDataFromLocalStorage(account.accountID);
       if (cachedData && cachedData.accountHistory && cachedData.accountHistory.length > 0) {
@@ -997,8 +1087,13 @@ export class ReportComponent implements OnInit {
         this.store.dispatch(setProfitFactor({ profitFactor: this.stats.profitFactor }));
         this.store.dispatch(setAvgWnL({ avgWnL: this.stats.avgWinLossTrades }));
         this.store.dispatch(setTotalTrades({ totalTrades: this.stats.totalTrades }));
+        
+        this.syncStatusText = `Error loading data. ${this.formatLocalCacheStatus(cachedData.lastUpdated)}`;
+        this.toastService.showError('Failed to load account data. Showing cached data.');
       } else {
         this.setInitialValues();
+        this.syncStatusText = 'Error loading data';
+        this.toastService.showError('Failed to load account data');
       }
     } finally {
       this.hasPendingRequests = false;
@@ -1092,6 +1187,9 @@ export class ReportComponent implements OnInit {
   reloadData() {
     this.showReloadButton = false;
     this.startLoading();
+    
+    // Reset toast flag when user manually reloads
+    this.hasShownInitialToast = false;
     
     this.store.dispatch(setGroupedTrades({ groupedTrades: [] }));
     this.accountHistory = [];
@@ -1211,7 +1309,6 @@ export class ReportComponent implements OnInit {
         });
       } else {
         console.warn(`⚠️ Error loading data from backend, attempting to load from cache...`);
-        this.toastService.showBackendError(error, 'Error loading account data');
         const cachedData = this.loadAccountDataFromLocalStorage(account.accountID);
         if (cachedData && cachedData.accountHistory) {
           this.accountHistory = cachedData.accountHistory || [];
@@ -1253,8 +1350,13 @@ export class ReportComponent implements OnInit {
               lastUpdated: cachedData.lastUpdated || Date.now()
             });
           }
+          
+          this.syncStatusText = `Error loading data. ${this.formatLocalCacheStatus(cachedData.lastUpdated)}`;
+          this.toastService.showError('Failed to load account data. Showing cached data.');
         } else {
           console.error(`❌ Error loading data for account ${account.accountID} and no cache available:`, error);
+          this.syncStatusText = 'Error loading data';
+          this.toastService.showError('Failed to load account data');
         }
       }
     }
@@ -1311,8 +1413,8 @@ export class ReportComponent implements OnInit {
     } catch (error) {
       console.error('❌ [REPORT LOAD] refreshCurrentAccountData - Error al refrescar datos desde el backend:', error);
     } finally {
-      this.stopInternalLoading();
-      this.loading = false;
+      this.hasPendingRequests = false;
+      this.checkIfAllDataLoaded();
     }
   }
 

@@ -12,17 +12,20 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { BaseApiService } from './api.service';
 import { getAuth } from 'firebase/auth';
 
+import { ApiDataSource, ApiWarning, ApiError, ApiRetryInfo } from '../models/api-response.model';
+
 /**
- * API Response interface
+ * API Response interface with fallback and retry support
  */
 export interface BackendApiResponse<T> {
   success: boolean;
   data?: T;
-  error?: {
-    message: string;
-    details?: any;
-  };
+  source?: ApiDataSource;
   message?: string;
+  warning?: ApiWarning;
+  error?: ApiError;
+  timestamp?: string;
+  retryInfo?: ApiRetryInfo;
 }
 
 /**

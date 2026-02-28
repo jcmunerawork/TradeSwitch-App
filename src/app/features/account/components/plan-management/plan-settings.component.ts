@@ -21,7 +21,6 @@ import { StripeLoaderPopupComponent } from '../../../../shared/pop-ups/stripe-lo
 import { ConfigService } from '../../../../core/services/config.service';
 import { BackendApiService } from '../../../../core/services/backend-api.service';
 import { ToastNotificationService } from '../../../../shared/services/toast-notification.service';
-import { ToastContainerComponent } from '../../../../shared/components/toast-container/toast-container.component';
 
 /**
  * Component for managing user subscription plans.
@@ -54,7 +53,7 @@ import { ToastContainerComponent } from '../../../../shared/components/toast-con
  */
 @Component({
   selector: 'app-plan-settings',
-  imports: [CommonModule, LoadingSpinnerComponent, StripeLoaderPopupComponent, ToastContainerComponent /*SubscriptionProcessingComponent OrderSummaryComponent*/],
+  imports: [CommonModule, LoadingSpinnerComponent, StripeLoaderPopupComponent /*SubscriptionProcessingComponent OrderSummaryComponent*/],
   templateUrl: './plan-settings.component.html',
   styleUrl: './plan-settings.component.scss',
   standalone: true,
@@ -80,7 +79,6 @@ export class PlanSettingsComponent implements OnInit {
   
   // Estado de carga inicial
   initialLoading: boolean = true;
-  
 
   user: User | null = null;
   selectedIndex: number = 0;
@@ -260,6 +258,7 @@ export class PlanSettingsComponent implements OnInit {
             this.remainingDays = 0;
           }
         }
+        
       } else {
         // Si no hay plan, usar plan gratuito por defecto
         this.setDefaultFreePlan();

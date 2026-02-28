@@ -1,6 +1,6 @@
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { User, UserStatus } from '../../features/overview/models/overview';
+import { User } from '../../features/overview/models/overview';
 import { BackendApiService } from '../../core/services/backend-api.service';
 import { AuthService } from './auth.service';
 
@@ -169,60 +169,6 @@ export class UserManagementService {
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get users by status from backend
-   */
-  async getUsersByStatus(status: UserStatus): Promise<User[]> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
-      return [];
-    }
-
-    try {
-      const idToken = await this.getIdToken();
-      const response = await this.backendApi.getAllUsers(idToken);
-      
-      if (response.success && response.data?.users) {
-        // Filter by status on frontend (backend should support query params in the future)
-        return (response.data.users as User[]).filter(user => user.status === status);
-      }
-      
-      return [];
-    } catch (error) {
-      console.error('Error getting users by status:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get top users (ordered by number of trades) from backend
-   */
-  async getTopUsers(limitCount: number = 10): Promise<User[]> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
-      return [];
-    }
-
-    try {
-      const idToken = await this.getIdToken();
-      const response = await this.backendApi.getAllUsers(idToken);
-      
-      if (response.success && response.data?.users) {
-        // Sort by number_trades descending and limit
-        const users = (response.data.users as User[])
-          .sort((a, b) => (b.number_trades || 0) - (a.number_trades || 0))
-          .slice(0, limitCount);
-        
-        return users;
-      }
-      
-      return [];
-    } catch (error) {
-      console.error('Error getting top users:', error);
       throw error;
     }
   }

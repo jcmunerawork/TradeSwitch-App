@@ -182,58 +182,6 @@ export class OverviewDataService {
   }
 
   /**
-   * Paginación de cuentas por usuario para la tabla (si se requiere desplegar cuentas)
-   * Nota: Este método aún no tiene endpoint específico en el backend
-   * Por ahora, filtra las cuentas del usuario desde todos los accounts
-   */
-  async getUserAccountsPage(userId: string, pageSize: number, startAfterAccountId?: string) {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
-      return { docs: [], lastDocId: undefined };
-    }
-
-    try {
-      const idToken = await this.getIdToken();
-      const response = await this.backendApi.getOverviewAccounts(idToken);
-      
-      if (response.success && response.data?.accounts) {
-        // Filtrar por userId y ordenar por accountID desc
-        const userAccounts = response.data.accounts
-          .filter((account: any) => account.userId === userId)
-          .sort((a: any, b: any) => {
-            const aId = parseInt(a.accountID || '0', 10);
-            const bId = parseInt(b.accountID || '0', 10);
-            return bId - aId;
-          });
-        
-        // Aplicar paginación manual
-        let startIndex = 0;
-        if (startAfterAccountId) {
-          const index = userAccounts.findIndex((acc: any) => acc.id === startAfterAccountId);
-          if (index >= 0) {
-            startIndex = index + 1;
-          }
-        }
-        
-        const paginatedAccounts = userAccounts.slice(startIndex, startIndex + pageSize);
-        const docs = paginatedAccounts.map((account: any) => ({
-          id: account.id,
-          data: () => account
-        }));
-        
-        return {
-          docs,
-          lastDocId: paginatedAccounts.length > 0 ? paginatedAccounts[paginatedAccounts.length - 1].id : undefined
-        };
-      }
-      return { docs: [], lastDocId: undefined };
-    } catch (error) {
-      console.error('Error getting user accounts page:', error);
-      return { docs: [], lastDocId: undefined };
-    }
-  }
-
-  /**
    * Get monthly reports data
    */
   async getMonthlyReportsData() {

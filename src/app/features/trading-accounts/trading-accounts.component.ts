@@ -21,7 +21,6 @@ import { PlanLimitationModalComponent } from '../../shared/components/plan-limit
 import { PlanBannerComponent } from '../../shared/components/plan-banner/plan-banner.component';
 import { AppContextService } from '../../shared/context';
 import { ToastNotificationService } from '../../shared/services/toast-notification.service';
-import { ToastContainerComponent } from '../../shared/components/toast-container/toast-container.component';
 
 /**
  * Main component for managing trading accounts.
@@ -63,7 +62,6 @@ import { ToastContainerComponent } from '../../shared/components/toast-container
     CreateAccountPopupComponent,
     PlanLimitationModalComponent,
     PlanBannerComponent,
-    ToastContainerComponent,
   ],
   templateUrl: './trading-accounts.component.html',
   styleUrl: './trading-accounts.component.scss',
@@ -110,6 +108,9 @@ export class TradingAccountsComponent implements OnDestroy {
   showPlanBanner = false;
   planBannerMessage = '';
   planBannerType = 'info'; // 'info', 'warning', 'success'
+  
+  // Sync status text for UI display
+  syncStatusText: string = '';
 
   /**
    * Initializes the component on load.
@@ -196,13 +197,17 @@ export class TradingAccountsComponent implements OnDestroy {
    * Fetches all trading accounts for the current user (REST API).
    */
   async getUserAccounts() {
+    const startTime = Date.now();
     try {
       const docSnap = await this.userSvc.getUserAccounts(this.user?.id || '');
 
       if (docSnap && docSnap.length > 0) {
         this.usersData = docSnap;
+        const responseTime = Date.now() - startTime;
+        this.syncStatusText = `Synced from TradeLocker API in ${this.toastService.formatResponseTime(responseTime)}`;
       } else {
         this.usersData = [];
+        this.syncStatusText = '';
       }
 
       this.loading = false;
@@ -210,6 +215,8 @@ export class TradingAccountsComponent implements OnDestroy {
     } catch (err) {
       this.loading = false;
       console.error('Error to get the config', err);
+      this.syncStatusText = 'Error loading accounts';
+      this.toastService.showError('Failed to load trading accounts');
     }
   }
 

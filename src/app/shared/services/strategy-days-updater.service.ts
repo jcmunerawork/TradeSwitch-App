@@ -56,29 +56,6 @@ export class StrategyDaysUpdaterService {
   }
 
   /**
-   * Updates active days for all user strategies
-   * @param userId - User ID
-   */
-  async updateAllStrategiesDaysActive(userId: string): Promise<void> {
-    if (!this.isBrowser) {
-      console.warn('StrategyDaysUpdaterService: Cannot execute on server');
-      return;
-    }
-
-    try {
-      const idToken = await this.getIdToken();
-      const response = await this.backendApi.updateAllUserStrategiesDaysActive(userId, idToken);
-      
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to update all strategies days active');
-      }
-    } catch (error) {
-      console.error('StrategyDaysUpdaterService: Error updating active days:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Updates active days for the user's active strategy
    * @param userId - User ID
    */

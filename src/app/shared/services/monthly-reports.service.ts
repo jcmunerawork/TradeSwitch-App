@@ -1,7 +1,6 @@
 import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { MonthlyReport } from '../../features/report/models/report.model';
-import { newDataId } from '../../features/report/utils/firebase-data-utils';
 import { BackendApiService } from '../../core/services/backend-api.service';
 import { getAuth } from 'firebase/auth';
 
@@ -127,32 +126,6 @@ export class MonthlyReportsService {
   }
 
   /**
-   * Get monthly reports by user ID
-   * Note: The backend endpoint returns all reports for the current user (from token)
-   */
-  async getMonthlyReportsByUserId(userId: string): Promise<MonthlyReport[]> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
-      return [];
-    }
-
-    try {
-      const idToken = await this.getIdToken();
-      const response = await this.backendApi.getMonthlyReports(idToken);
-      
-      if (response.success && response.data?.reports) {
-        // Filter by userId if needed (backend should already filter by token user)
-        const reports = response.data.reports as MonthlyReport[];
-        return reports.filter(report => report.id && report.id.includes(userId) || true); // Backend already filters by user
-      }
-      return [];
-    } catch (error) {
-      console.error('Error getting monthly reports by user ID:', error);
-      return [];
-    }
-  }
-
-  /**
    * Get monthly report by user, month and year
    */
   async getMonthlyReportByUserMonthYear(userId: string, month: number, year: number): Promise<MonthlyReport | null> {
@@ -175,21 +148,4 @@ export class MonthlyReportsService {
     }
   }
 
-  /**
-   * Delete monthly report
-   */
-  async deleteMonthlyReport(reportId: string): Promise<void> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
-      return;
-    }
-
-    try {
-      const idToken = await this.getIdToken();
-      await this.backendApi.deleteMonthlyReport(reportId, idToken);
-    } catch (error) {
-      console.error('Error deleting monthly report:', error);
-      throw error;
-    }
-  }
 }

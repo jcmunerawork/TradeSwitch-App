@@ -24,6 +24,9 @@
     <h3 class="regularText">
       View and manage all your connected trading accounts in one place.
     </h3>
+    @if (syncStatusText) {
+      <p class="sync-status-text" [class.error]="syncStatusText.toLowerCase().includes('error')">{{ syncStatusText }}</p>
+    }
     <!-- Mobile Add Account Button -->
     <button 
       class="add-account-mobile-btn mobile-add-btn" 
@@ -88,6 +91,3 @@
   [modalData]="planLimitationModal"
   (closeModal)="onClosePlanLimitationModal()"
 ></app-plan-limitation-modal>
-
-<!-- Toast notifications (so backend errors from create/edit account popup are visible) -->
-<app-toast-container></app-toast-container>

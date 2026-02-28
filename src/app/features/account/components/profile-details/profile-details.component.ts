@@ -10,7 +10,6 @@ import { AppContextService } from '../../../../shared/context';
 import { PasswordInputComponent } from '../../../../shared/components/password-input/password-input.component';
 import { BackendApiService } from '../../../../core/services/backend-api.service';
 import { ToastNotificationService } from '../../../../shared/services/toast-notification.service';
-import { ToastContainerComponent } from '../../../../shared/components/toast-container/toast-container.component';
 
 /**
  * Component for managing user profile details.
@@ -41,7 +40,7 @@ import { ToastContainerComponent } from '../../../../shared/components/toast-con
  */
 @Component({
   selector: 'app-profile-details',
-  imports: [CommonModule, ReactiveFormsModule, PasswordInputComponent, ToastContainerComponent],
+  imports: [CommonModule, ReactiveFormsModule, PasswordInputComponent],
   templateUrl: './profile-details.component.html',
   styleUrl: './profile-details.component.scss',
   standalone: true,

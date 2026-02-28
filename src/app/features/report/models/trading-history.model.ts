@@ -68,8 +68,10 @@ export interface TradingMetrics {
  * Interface representing synchronization metadata.
  */
 export interface SyncMetadata {
-  lastHistorySync: number;          // Última sync completa desde getHistory
-  lastFullSync: number;             // Última sync completa
+  sync_at?: string;                 // Fecha formateada del último guardado (nuevo formato del backend)
+  lastHistorySync?: number;         // Última sync completa desde getHistory (legacy)
+  lastFullSync?: number;            // Última sync completa (legacy)
+  lastStreamSync?: number;          // Última sync de stream (legacy)
   totalPositions: number;           // Total de posiciones (abiertas + cerradas)
   closedPositions: number;          // Solo cerradas
   openPositions: number;            // Solo abiertas

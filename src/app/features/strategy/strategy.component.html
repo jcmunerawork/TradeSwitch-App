@@ -11,6 +11,9 @@
     <div>
       <h2 class="titleText mb-16">My Strategy</h2>
       <p>Design a strategy that supports your consistency with TradeSwitch.</p>
+      @if (syncStatusText) {
+        <p class="sync-status-text" [class.error]="syncStatusText.toLowerCase().includes('error')">{{ syncStatusText }}</p>
+      }
     </div>
   </div>
   <!-- Control Bar (búsqueda + Add Strategy) -->

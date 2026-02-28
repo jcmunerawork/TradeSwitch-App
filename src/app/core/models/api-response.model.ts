@@ -12,13 +12,88 @@ export interface BaseEntity {
 }
 
 /**
- * Standard API response wrapper.
+ * Data source types for API responses
+ */
+export type ApiDataSource = 'tradelocker' | 'firebase' | 'stripe' | 'cache';
+
+/**
+ * Original error information when a source fails
+ */
+export interface ApiOriginalError {
+  source: ApiDataSource;
+  code: string;
+  message: string;
+  statusCode?: number;
+}
+
+/**
+ * Warning information when fallback data is used
+ */
+export interface ApiWarning {
+  failedSource: ApiDataSource;
+  actualSource: ApiDataSource;
+  message: string;
+  originalError?: ApiOriginalError;
+}
+
+/**
+ * Error information in API responses
+ */
+export interface ApiError {
+  message: string;
+  source?: ApiDataSource;
+  code?: string;
+  statusCode?: number;
+  details?: any;
+}
+
+/**
+ * Retry status types from backend automatic retry system
+ */
+export type ApiRetryStatus = 
+  | 'success_first_attempt'    // Success on first try, no retries needed
+  | 'success_after_retry'      // Success after one or more retries
+  | 'failed_after_retry'       // Failed after exhausting all retries
+  | 'failed_non_retryable';    // Failed with non-retryable error (no retries attempted)
+
+/**
+ * Retry information from backend automatic retry system
+ */
+export interface ApiRetryInfo {
+  attempted: boolean;              // Whether retries were attempted
+  totalAttempts: number;           // Total number of attempts (1 = no retries)
+  retriedAt: number[];             // Timestamps of each retry attempt
+  finalStatus: ApiRetryStatus;     // Final status of the operation
+  nextRetryAvailable: boolean;     // Whether frontend can trigger manual retry
+  suggestedRetryDelayMs?: number;  // Suggested delay for frontend manual retry
+}
+
+/**
+ * Standard API response wrapper with source and warning support.
  */
 export interface ApiResponse<T> {
   data: T;
   status: number;
   message?: string;
   errors?: string[];
+  source?: ApiDataSource;
+  warning?: ApiWarning;
+}
+
+/**
+ * Enhanced backend API response with fallback and retry support.
+ * Used for responses that may include data from alternative sources
+ * and information about automatic retry attempts.
+ */
+export interface EnhancedApiResponse<T> {
+  success: boolean;
+  data?: T;
+  source?: ApiDataSource;
+  message?: string;
+  warning?: ApiWarning;
+  error?: ApiError;
+  timestamp?: string;
+  retryInfo?: ApiRetryInfo;
 }
 
 /**
@@ -41,4 +116,5 @@ export interface ApiErrorResponse {
   message: string;
   errors?: string[];
   code?: string;
+  source?: ApiDataSource;
 }

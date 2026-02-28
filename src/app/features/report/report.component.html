@@ -20,6 +20,12 @@
   <h3 class="regularText">
     Visualize your consistency while growing with TradeSwitch.
   </h3>
+  @if (syncStatusText) {
+    <p class="sync-status-text" 
+       [class.error]="syncStatusText.toLowerCase().includes('error')" 
+       [class.warning]="syncStatusText.toLowerCase().includes('firebase')"
+       [class.cache]="syncStatusText.toLowerCase().includes('local cache')">{{ syncStatusText }}</p>
+  }
 </div>
 
 <!-- Account Info and Actions Header -->

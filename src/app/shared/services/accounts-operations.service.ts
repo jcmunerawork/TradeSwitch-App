@@ -43,13 +43,13 @@ import { AccountsCacheService } from './accounts-cache.service';
   providedIn: 'root'
 })
 export class AccountsOperationsService {
-  // Peticiones pendientes para evitar múltiples peticiones simultáneas
   private pendingRequests = new Map<string, Promise<AccountData[] | null>>();
 
   constructor(
     private backendApi: BackendApiService,
     private accountsCache: AccountsCacheService
   ) {}
+
 
   /**
    * Get Firebase ID token for backend API calls
@@ -230,6 +230,8 @@ export class AccountsOperationsService {
   /**
    * Realizar la petición HTTP para obtener las cuentas desde el backend
    * Guarda los resultados en el caché de localStorage
+   * 
+   * If the backend returns data from a fallback source, a warning toast will be shown.
    */
   private async fetchUserAccountsFromBackend(userId: string): Promise<AccountData[] | null> {
     try {
@@ -237,21 +239,17 @@ export class AccountsOperationsService {
       const response = await this.backendApi.getUserAccounts(userId, idToken);
       
       if (!response.success || !response.data) {
-        // Guardar array vacío en caché para evitar peticiones repetidas
         this.accountsCache.setAccounts(userId, []);
         return null;
       }
       
       const accounts = response.data.accounts.length > 0 ? response.data.accounts : [];
-      
-      // Guardar en caché de localStorage (con cifrado de datos sensibles)
       this.accountsCache.setAccounts(userId, accounts);
       
       return accounts.length > 0 ? accounts : null;
     } catch (error: any) {
       console.error('Error getting user accounts:', error);
       
-      // En caso de error 429 (Too Many Requests), intentar usar caché si existe
       if (error?.status === 429 || (error?.error && error.error.status === 429)) {
         const cached = this.accountsCache.getAccounts(userId);
         if (cached !== null) {

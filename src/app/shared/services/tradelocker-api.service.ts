@@ -97,6 +97,7 @@ export class TradeLockerApiService {
     private backendApi: BackendApiService
   ) {}
 
+
   /**
    * Get Firebase ID token for backend API calls
    */
@@ -254,11 +255,13 @@ export class TradeLockerApiService {
    * Get account balance from TradeLocker via backend API.
    * Endpoint: GET /api/v1/tradelocker/balance/:accountId?accNum=1
    * El backend gestiona el accessToken automáticamente.
+   * 
+   * If TradeLocker fails, the backend may return cached data from Firebase
+   * with a warning that will be shown to the user via toast.
    */
   getAccountBalance(accountId: string, accountNumber: number): Observable<any> {
     return new Observable(observer => {
       this.getIdToken().then(idToken => {
-        // Usar el endpoint correcto: /tradelocker/balance/:accountId?accNum=1
         this.backendApi.getTradeLockerBalance(accountId, accountNumber, idToken).then(response => {
           if (response.success && response.data) {
             observer.next(response.data);
@@ -286,19 +289,25 @@ export class TradeLockerApiService {
    * - Returns positions and metrics
    * - Syncs to Firebase in background
    * 
+   * If TradeLocker fails, the backend may return cached data from Firebase
+   * with a warning that will be shown to the user via toast.
+   * 
    * NOTA: El backend gestiona el accessToken automáticamente, no es necesario enviarlo.
    */
   getTradingHistory(accountId: string, accNum: number): Observable<any> {
     return new Observable(observer => {
       this.getIdToken().then(idToken => {
-        // Usar el endpoint unificado que hace todo el procesamiento
         this.backendApi.getTradingHistory(accountId, idToken, accNum).then(response => {
           if (response.success && response.data) {
-            // El backend devuelve { positions: {...}, metrics: {...} }
+            // Extract source, warning and syncMetadata from backend response
+            const source = response.source || 'tradelocker';
+            const warning = response.warning || null;
+            const syncMetadata = response.data.syncMetadata || null;
+            
+            // El backend devuelve { positions: {...}, metrics: {...}, syncMetadata: {...} }
             // Necesitamos convertir positions a formato de trades para mantener compatibilidad
             if (response.data.positions) {
               const positions = Object.values(response.data.positions || {}) as any[];
-              // Convertir posiciones a formato GroupedTradeFinal
               const trades = positions.map(pos => ({
                 ...pos,
                 pnl: pos.pnl ?? 0,
@@ -309,40 +318,36 @@ export class TradeLockerApiService {
                 closedDate: pos.closedDate?.toString() || pos.lastModified?.toString() || undefined
               }));
               
-              observer.next({ trades, metrics: response.data.metrics });
+              observer.next({ trades, metrics: response.data.metrics, source, warning, syncMetadata });
             } 
             // Formato legacy: { trades: [...] }
             else if (response.data.trades && Array.isArray(response.data.trades)) {
-              observer.next({ trades: response.data.trades, metrics: response.data.metrics });
+              observer.next({ trades: response.data.trades, metrics: response.data.metrics, source, warning, syncMetadata });
             } 
             // FORMATO ANTIGUO: { d: { ordersHistory: [...] } }
             else if (response.data.d && response.data.d.ordersHistory) {
-              observer.next(response.data);
+              observer.next({ ...response.data, source, warning, syncMetadata });
             } 
             // Si no hay estructura reconocida, devolver vacío
             else {
               console.warn(`⚠️ Formato de respuesta no reconocido para account ${accountId}:`, response.data);
-              observer.next({ trades: [], metrics: null });
+              observer.next({ trades: [], metrics: null, source, warning, syncMetadata });
             }
             observer.complete();
           } else {
-            // Si es 404, puede ser que la cuenta no tenga historial o no exista
             const errorMessage = response.error?.message || 'Failed to get trading history';
             console.warn(`⚠️ Trading history not found for account ${accountId}:`, errorMessage);
-            // Retornar array vacío en lugar de error para 404
             if (response.error?.message?.includes('404') || response.error?.message?.includes('Not Found')) {
-              observer.next({ trades: [], metrics: null }); // Estructura nueva vacía
+              observer.next({ trades: [], metrics: null, source: 'tradelocker', warning: null, syncMetadata: null });
               observer.complete();
             } else {
               observer.error(new Error(errorMessage));
             }
           }
         }).catch(error => {
-          // Manejar 404 específicamente
           if (error?.status === 404 || error?.statusText === 'Not Found') {
             console.warn(`⚠️ Trading history endpoint returned 404 for account ${accountId}. Account may not have history or may not exist.`);
-            // Retornar estructura vacía en lugar de error
-            observer.next({ trades: [], metrics: null });
+            observer.next({ trades: [], metrics: null, source: 'tradelocker', warning: null, syncMetadata: null });
             observer.complete();
           } else {
             console.error(`❌ Error getting trading history for account ${accountId}:`, error);
@@ -446,14 +451,6 @@ export class TradeLockerApiService {
   }
 
   /**
-   * Limpiar caché de tokens (útil para logout o cuando cambian las credenciales)
-   */
-  clearTokenCache(): void {
-    this.tokenCache.clear();
-    this.pendingRequests.clear();
-  }
-
-  /**
    * Limpiar tokens expirados del caché
    * Se llama automáticamente antes de hacer nuevas peticiones
    */
@@ -472,6 +469,7 @@ export class TradeLockerApiService {
    * Get instrument details
    * Now uses backend API but maintains same interface
    * 
+   * If TradeLocker fails, the backend may return cached data with a warning.
    * NOTA: El backend gestiona el accessToken automáticamente, se pasa accountId en su lugar.
    */
   getInstrumentDetails(accountId: string, tradableInstrumentId: string, routeId: string, accNum: number): Observable<any> {
@@ -497,6 +495,7 @@ export class TradeLockerApiService {
    * Get all instruments for an account
    * Now uses backend API but maintains same interface
    * 
+   * If TradeLocker fails, the backend may return cached data with a warning.
    * NOTA: El backend gestiona el accessToken automáticamente, no es necesario enviarlo.
    */
   getAllInstruments(accountId: string, accNum: number): Observable<any> {
