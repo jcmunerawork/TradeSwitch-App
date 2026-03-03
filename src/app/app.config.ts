@@ -18,6 +18,7 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
+import { CryptoInterceptor } from './core/interceptors/crypto.interceptor';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { AuthService } from './shared/services/auth.service';
 import { withInMemoryScrolling } from '@angular/router';
@@ -52,6 +53,11 @@ export const appConfig: ApplicationConfig = {
     {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthInterceptor,
+      multi: true,
+    },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: CryptoInterceptor,
       multi: true,
     },
     provideClientHydration(withEventReplay()),

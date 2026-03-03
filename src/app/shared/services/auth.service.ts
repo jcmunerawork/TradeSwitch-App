@@ -21,6 +21,7 @@ import { TokensOperationsService, LinkToken } from './tokens-operations.service'
 import { User } from '../../features/overview/models/overview';
 import { AccountData, UserCredentials } from '../../features/auth/models/userModel';
 import { BackendApiService } from '../../core/services/backend-api.service';
+import { CryptoSessionService } from '../../core/services/crypto-session.service';
 import { SessionCookieService } from './session-cookie.service';
 
 /**
@@ -79,7 +80,8 @@ export class AuthService {
     private planService: PlanService,
     private subscriptionService: SubscriptionService,
     private backendApi: BackendApiService,
-    private sessionCookie: SessionCookieService
+    private sessionCookie: SessionCookieService,
+    private cryptoSession: CryptoSessionService
   ) {
     this.isBrowser = isPlatformBrowser(this.platformId);
 
@@ -454,6 +456,7 @@ export class AuthService {
    */
   async logout() {
     try {
+      this.cryptoSession.clearKey();
 
       // 1. Limpiar cookie de sesión específica
       this.sessionCookie.clearSessionToken();

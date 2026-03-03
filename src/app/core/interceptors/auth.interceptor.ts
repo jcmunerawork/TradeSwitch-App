@@ -5,6 +5,7 @@ import { Observable, throwError, from } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { getAuth } from 'firebase/auth';
+import { CryptoSessionService } from '../services/crypto-session.service';
 
 /**
  * HTTP Interceptor para manejar autenticación y errores 401
@@ -19,6 +20,7 @@ export class AuthInterceptor implements HttpInterceptor {
   private router = inject(Router);
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
+  private cryptoSession = inject(CryptoSessionService);
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<any> {
     // Si la petición ya tiene Authorization header, no agregarlo de nuevo
@@ -85,6 +87,8 @@ export class AuthInterceptor implements HttpInterceptor {
 
   private handleUnauthorized(): void {
     if (!this.isBrowser) return;
+
+    this.cryptoSession.clearKey();
 
     // Limpiar todo el almacenamiento
     try {
