@@ -260,7 +260,8 @@ export class ToastNotificationService {
       tradelocker: 'TradeLocker',
       firebase: 'local cache',
       stripe: 'Stripe',
-      cache: 'cache'
+      cache: 'cache',
+      local: 'local data'
     };
     return labels[source] || source;
   }

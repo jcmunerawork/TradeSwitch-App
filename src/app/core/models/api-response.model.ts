@@ -14,7 +14,7 @@ export interface BaseEntity {
 /**
  * Data source types for API responses
  */
-export type ApiDataSource = 'tradelocker' | 'firebase' | 'stripe' | 'cache';
+export type ApiDataSource = 'tradelocker' | 'firebase' | 'stripe' | 'cache' | 'local';
 
 /**
  * Original error information when a source fails
@@ -45,6 +45,7 @@ export interface ApiError {
   code?: string;
   statusCode?: number;
   details?: any;
+  retryInfo?: ApiRetryInfo;
 }
 
 /**
@@ -54,7 +55,9 @@ export type ApiRetryStatus =
   | 'success_first_attempt'    // Success on first try, no retries needed
   | 'success_after_retry'      // Success after one or more retries
   | 'failed_after_retry'       // Failed after exhausting all retries
-  | 'failed_non_retryable';    // Failed with non-retryable error (no retries attempted)
+  | 'failed_non_retryable'     // Failed with non-retryable error (no retries attempted)
+  | 'circuit_open'             // Circuit breaker is open, calls are short-circuited
+  | 'rate_limited_local';      // Local backend rate limiting (before calling provider)
 
 /**
  * Retry information from backend automatic retry system
