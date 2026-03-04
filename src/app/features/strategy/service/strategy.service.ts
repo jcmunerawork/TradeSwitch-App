@@ -391,8 +391,8 @@ export class SettingsService {
    * Este método debe llamarse después de cualquier operación CRUD (crear, editar, borrar, activar)
    * para mantener el cache sincronizado con el backend.
    * 
-   * @param userId - ID del usuario
-   * @returns Promise que se resuelve cuando todas las estrategias han sido cargadas y guardadas en cache
+   * @param userId - User ID
+   * @returns Promise that resolves when all strategies have been loaded and saved to cache
    */
   async reloadAllStrategiesToCache(userId: string): Promise<void> {
     try {
@@ -422,7 +422,7 @@ export class SettingsService {
 
   /**
    * Generar nombre único para una estrategia
-   * @param baseName - Nombre base para la estrategia
+   * @param baseName - Base name for the strategy
    * @param existingStrategies - Lista de estrategias existentes para verificar duplicados
    */
   generateUniqueStrategyName(baseName: string, existingStrategies: ConfigurationOverview[]): string {
@@ -470,9 +470,9 @@ export class SettingsService {
    * Crear una estrategia genérica con configuración vacía
    * Maneja la lógica de "Primera Estrategia" (activa por defecto) y nombres únicos
    * 
-   * @param userId - ID del usuario
-   * @param existingStrategies - Lista de estrategias existentes para lógica de negocio
-   * @returns Promise<string> - ID de la nueva estrategia creada
+   * @param userId - User ID
+   * @param existingStrategies - List of existing strategies for business logic
+   * @returns Promise<string> - ID of the newly created strategy
    */
   async createGenericStrategy(userId: string, existingStrategies: ConfigurationOverview[]): Promise<string> {
     // 1. Generar nombre único

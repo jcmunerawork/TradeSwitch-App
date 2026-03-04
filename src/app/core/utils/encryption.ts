@@ -1,6 +1,6 @@
 /**
- * Helpers de cifrado AES-256-GCM con Web Crypto API.
- * Usado para cifrar/descifrar bodies en las peticiones al backend.
+ * AES-256-GCM encryption helpers using the Web Crypto API.
+ * Used to encrypt/decrypt request and response bodies when talking to the backend.
  */
 
 import type { EncryptedEnvelope } from '../models/encryption.model';
@@ -32,8 +32,8 @@ async function importAesKey(base64Key: string): Promise<CryptoKey> {
 }
 
 /**
- * Cifra un objeto para enviarlo como body.
- * Devuelve el sobre listo para JSON.stringify y enviar en el body.
+ * Encrypts an object to send as the request body.
+ * Returns the envelope ready for JSON.stringify and to send in the body.
  */
 export async function encryptRequestBody(
   body: unknown,
@@ -50,7 +50,7 @@ export async function encryptRequestBody(
     plaintext,
   );
 
-  // WebCrypto devuelve ciphertext || tag
+  // WebCrypto returns ciphertext || tag
   const ciphertext = new Uint8Array(ciphertextBuf);
   const tag = ciphertext.slice(-TAG_LENGTH);
   const ciphertextOnly = ciphertext.slice(0, -TAG_LENGTH);
@@ -64,7 +64,7 @@ export async function encryptRequestBody(
 }
 
 /**
- * Descifra la respuesta del backend (sobre con iv, ciphertext, tag).
+ * Decrypts the backend response (envelope with iv, ciphertext, tag).
  */
 export async function decryptResponseBody(
   envelope: EncryptedEnvelope,
@@ -94,7 +94,7 @@ export async function decryptResponseBody(
 }
 
 /**
- * Comprueba si un objeto parece un EncryptedEnvelope (respuesta cifrada del backend).
+ * Checks whether a value looks like an EncryptedEnvelope (encrypted response from the backend).
  */
 export function isEncryptedEnvelope(value: unknown): value is EncryptedEnvelope {
   if (!value || typeof value !== 'object') return false;

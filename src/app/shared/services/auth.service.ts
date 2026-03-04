@@ -105,9 +105,11 @@ export class AuthService {
 
   /**
    * Cargar balances por REST cuando el usuario está autenticado (solo API REST de TradeLocker).
+   * Tras login (o al cargar con sesión), obtiene la clave de sesión para cifrado (GET/POST con backend).
    */
   private async loadBalancesAndAccountsWhenAuthenticated(userId: string): Promise<void> {
     try {
+      await this.cryptoSession.getSessionKey().catch(() => {});
       const accounts = await this.accountsOperationsService.getUserAccounts(userId);
       if (accounts && accounts.length > 0) {
         await this.loadAccountBalancesOnLogin(userId, accounts);
@@ -521,10 +523,10 @@ export class AuthService {
   }
 
   /**
-   * Verificar autenticación antes de operaciones críticas
-   * Llama a /auth/me para verificar que el token es válido
-   * Si el token está por expirar, lo renueva automáticamente
-   * Retorna false si el usuario no está autenticado
+   * Verify authentication before critical operations
+   * Calls /auth/me to verify the token is valid
+   * If the token is about to expire, it is renewed automatically
+   * Returns false if the user is not authenticated
    */
   async checkAuth(): Promise<boolean> {
     if (!this.isBrowser) return false;
@@ -655,6 +657,7 @@ export class AuthService {
           // Cargar datos del usuario y actualizar contexto
           try {
             const userData = await this.getUserData(currentUser.uid);
+            await this.cryptoSession.getSessionKey().catch(() => {});
             return true;
           } catch (error) {
             // Error loading user data after auto-login, continue
@@ -688,6 +691,7 @@ export class AuthService {
             // Cargar datos del usuario
             try {
               const userData = await this.getUserData(currentUser.uid);
+              await this.cryptoSession.getSessionKey().catch(() => {});
               return true;
             } catch (error) {
               // Error loading user data after auto-login, continue
@@ -847,9 +851,9 @@ export class AuthService {
   }
 
   /**
-   * Obtener datos del usuario con opción de forzar refresh
-   * @param uid ID del usuario
-   * @param forceRefresh Si es true, ignora el caché y hace petición HTTP
+   * Get user data with option to force refresh
+   * @param uid User ID
+   * @param forceRefresh If true, ignores cache and performs HTTP request
    */
   async refreshUserData(uid: string, forceRefresh: boolean = false): Promise<User> {
     if (forceRefresh) {
@@ -859,8 +863,8 @@ export class AuthService {
   }
 
   /**
-   * Invalidar caché de datos del usuario
-   * Útil después de actualizar datos del usuario
+   * Invalidate user data cache
+   * Useful after updating user data
    */
   invalidateUserDataCache(uid: string): void {
     this.userDataCache.delete(uid);
@@ -998,12 +1002,12 @@ export class AuthService {
   }
 
   /**
-   * Verificar si un email de usuario ya está registrado
-   * Usa el endpoint GET /api/v1/users/email del backend
-   * 
-   * Retorna:
-   * - User si el email está registrado
-   * - null si el email no está registrado o hay un error
+   * Check if a user email is already registered
+   * Uses backend endpoint GET /api/v1/users/email
+   *
+   * Returns:
+   * - User if the email is registered
+   * - null if the email is not registered or on error
    */
   async getUserByEmail(email: string): Promise<User | null> {
     try {
@@ -1020,7 +1024,7 @@ export class AuthService {
     }
   }
 
-  // Método para obtener datos del usuario para validaciones (cuentas y estrategias)
+  // Get user data for validations (accounts and strategies)
   async getUserDataForValidation(userId: string): Promise<{
     accounts: AccountData[];
     strategies: any[];
@@ -1045,14 +1049,14 @@ export class AuthService {
   }
 
   /**
-   * Guardar instruments en localStorage
-   * Los instrumentos son iguales para todas las cuentas, así que se guardan con key genérica
+   * Save instruments to localStorage
+   * Instruments are the same for all accounts, so they are stored with a generic key
    */
   private saveInstrumentsToLocalStorage(accountId: string, instruments: any[]): void {
     if (!this.isBrowser) return;
 
     try {
-      // Key genérica sin accountId ya que los instrumentos son iguales para todas las cuentas
+      // Generic key without accountId since instruments are the same for all accounts
       const key = 'tradeswitch_instruments';
       localStorage.setItem(key, JSON.stringify({
         instruments,
@@ -1063,15 +1067,15 @@ export class AuthService {
   }
 
   /**
-   * Obtener instruments desde localStorage
-   * Los instrumentos son iguales para todas las cuentas, así que se leen con key genérica
-   * @param accountId - Parámetro mantenido por compatibilidad, pero no se usa
+   * Get instruments from localStorage
+   * Instruments are the same for all accounts, so they are read with a generic key
+   * @param accountId - Kept for compatibility, not used
    */
   private getInstrumentsFromLocalStorage(accountId: string): any[] | null {
     if (!this.isBrowser) return null;
 
     try {
-      // Key genérica sin accountId ya que los instrumentos son iguales para todas las cuentas
+      // Generic key without accountId since instruments are the same for all accounts
       const key = 'tradeswitch_instruments';
       const cached = localStorage.getItem(key);
       if (cached) {

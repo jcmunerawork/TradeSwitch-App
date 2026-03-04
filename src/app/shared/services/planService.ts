@@ -149,7 +149,7 @@ export class PlanService {
    * ACTUALIZAR: Actualizar un plan existente (admin only)
    * @param id ID del plan a actualizar
    * @param plan Datos actualizados del plan
-   * @returns Promise que se resuelve cuando se completa la actualización
+   * @returns Promise that resolves when the update completes
    */
   async updatePlan(id: string, plan: Partial<Omit<Plan, 'id' | 'createdAt'>>): Promise<void> {
     if (!this.isBrowser) {
@@ -172,7 +172,7 @@ export class PlanService {
   /**
    * ELIMINAR: Eliminar un plan (admin only)
    * @param id ID del plan a eliminar
-   * @returns Promise que se resuelve cuando se completa la eliminación
+   * @returns Promise that resolves when the deletion completes
    */
   async deletePlan(id: string): Promise<void> {
     if (!this.isBrowser) {

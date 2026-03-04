@@ -83,7 +83,7 @@ export class OverviewDataService {
           id: sub.id || `sub_${index}`,
           data: () => sub
         }));
-        // Retornar formato similar a Firestore snapshot para compatibilidad
+        // Return format similar to Firestore snapshot for compatibility
         return {
           docs,
           empty: docs.length === 0
@@ -124,7 +124,7 @@ export class OverviewDataService {
           id: user.id,
           data: () => user
         }));
-        // Retornar formato similar a Firestore snapshot para compatibilidad
+        // Return format similar to Firestore snapshot for compatibility
         return {
           docs,
           empty: docs.length === 0
@@ -199,7 +199,7 @@ export class OverviewDataService {
           id: report.id,
           data: () => report
         }));
-        // Retornar formato similar a Firestore snapshot para compatibilidad
+        // Return format similar to Firestore snapshot for compatibility
         return {
           docs,
           empty: docs.length === 0
@@ -230,7 +230,7 @@ export class OverviewDataService {
           id: strategy.id,
           data: () => strategy
         }));
-        // Retornar formato similar a Firestore snapshot para compatibilidad
+        // Return format similar to Firestore snapshot for compatibility
         return {
           docs,
           empty: docs.length === 0
@@ -261,7 +261,7 @@ export class OverviewDataService {
           id: account.id,
           data: () => account
         }));
-        // Retornar formato similar a Firestore snapshot para compatibilidad
+        // Return format similar to Firestore snapshot for compatibility
         return {
           docs,
           empty: docs.length === 0

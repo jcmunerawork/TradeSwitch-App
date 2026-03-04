@@ -170,7 +170,7 @@ export class RiskPerTradeComponent implements OnInit {
     return 0;
   }
 
-  // Método para cargar el balance actual desde Firebase/contexto o API
+  // Load current balance from Firebase/context or API
   async loadActualBalance() {
     try {
       // Obtener datos del usuario

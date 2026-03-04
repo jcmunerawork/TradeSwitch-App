@@ -1,8 +1,8 @@
 /**
- * Modelos para el cifrado de bodies (AES-256-GCM) con el backend.
+ * Models for request/response body encryption (AES-256-GCM) with the backend.
  */
 
-/** Sobre cifrado que envía/recibe el backend cuando se usa cifrado de body. */
+/** Encrypted envelope sent/received by the backend when body encryption is used. */
 export interface EncryptedEnvelope {
   keyId: string;
   iv: string;
@@ -10,7 +10,7 @@ export interface EncryptedEnvelope {
   tag?: string;
 }
 
-/** Respuesta del endpoint de clave de sesión (handshake). */
+/** Response from the session key endpoint (handshake). */
 export interface SessionKeyResponse {
   keyId: string;
   key: string;

@@ -80,7 +80,7 @@ export class SubscriptionService {
    * El endpoint siempre retorna 200, nunca 404.
    * Cuando no hay suscripción, retorna: { "success": true, "data": { "subscription": null } }
    * 
-   * @param userId ID del usuario (se mantiene por compatibilidad, pero el endpoint lo obtiene del token)
+   * @param userId User ID (kept for compatibility; endpoint gets it from the token)
    * @returns Promise con la suscripción o null si no existe
    */
   async getUserLatestSubscription(userId: string): Promise<Subscription | null> {
@@ -117,7 +117,7 @@ export class SubscriptionService {
   /**
    * Escucha cambios en la última suscripción del usuario mediante polling al backend (REST).
    *
-   * @param userId - ID del usuario
+   * @param userId - User ID
    * @param handler - Función que se ejecuta cuando se obtiene la suscripción (y en cada poll)
    * @returns Función para desuscribirse (detener el polling)
    */
@@ -147,7 +147,7 @@ export class SubscriptionService {
   /**
    * Obtiene un pago específico por ID
    * Now uses backend API but maintains same interface
-   * @param userId ID del usuario
+   * @param userId User ID
    * @param paymentId ID del pago
    * @returns Promise con el pago o null si no existe
    */
@@ -169,7 +169,7 @@ export class SubscriptionService {
 
   /**
    * Update an existing subscription
-   * @param userId ID del usuario
+   * @param userId User ID
    * @param subscriptionId ID de la suscripción a actualizar
    * @param updateData Datos a actualizar (status, planId, etc.)
    */

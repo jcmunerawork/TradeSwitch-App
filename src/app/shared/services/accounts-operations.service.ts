@@ -210,7 +210,7 @@ export class AccountsOperationsService {
     // Primero intentar obtener del caché (localStorage)
     const cachedAccounts = this.accountsCache.getAccounts(userId);
     if (cachedAccounts !== null) {
-      // Retornar datos del caché (puede ser array vacío o con datos)
+      // Return cached data (may be empty array or with data)
       return cachedAccounts;
     }
 

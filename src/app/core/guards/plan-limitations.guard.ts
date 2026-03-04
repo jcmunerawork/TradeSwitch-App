@@ -122,21 +122,21 @@ export class PlanLimitationsGuard implements CanActivate {
   /**
    * Check user's plan limitations and return detailed information
    * 
-   * Usa el endpoint GET /api/v1/users/:userId/plan que:
-   * - Obtiene la última suscripción activa del usuario
-   * - Extrae el planId de la suscripción
-   * - Busca el plan en la colección plans
-   * - Retorna el plan completo con límites (strategies, tradingAccounts)
-   * - Retorna null si el usuario no tiene suscripción (plan Free por defecto)
+   * Uses GET /api/v1/users/:userId/plan which:
+   * - Gets the user's latest active subscription
+   * - Extracts planId from the subscription
+   * - Looks up the plan in the plans collection
+   * - Returns the full plan with limits (strategies, tradingAccounts)
+   * - Returns null if the user has no subscription (Free plan by default)
    */
   async checkUserLimitations(userId: string): Promise<PlanLimitations> {
-    // Verificar si hay una petición pendiente para este usuario
+    // Check if there is a pending request for this user
     const pendingRequest = this.pendingRequests.get(userId);
     if (pendingRequest) {
       return pendingRequest;
     }
 
-    // Verificar caché
+    // Check cache
     const cached = this.planCache.get(userId);
     const now = Date.now();
     if (cached && (now - cached.timestamp) < this.CACHE_TTL) {
@@ -146,10 +146,10 @@ export class PlanLimitationsGuard implements CanActivate {
     // Crear promesa y guardarla para evitar peticiones duplicadas
     const requestPromise = (async () => {
       try {
-        // Obtener token de autenticación
+        // Get authentication token
         const idToken = await this.getIdToken();
         
-        // Usar el nuevo endpoint que retorna directamente el plan del usuario
+        // Use the new endpoint that returns the user plan directly
         const response = await this.backendApi.getUserPlan(userId, idToken);
       
         if (!response.success) {
@@ -183,7 +183,7 @@ export class PlanLimitationsGuard implements CanActivate {
         const maxAccounts = plan.tradingAccounts || 1;
         const maxStrategies = plan.strategies || 1;
 
-        // El plan siempre está activo si el backend lo retorna (ya validó la suscripción)
+        // Plan is always active if backend returns it (subscription already validated)
         const limitations: PlanLimitations = {
           maxAccounts,
           maxStrategies,
@@ -194,7 +194,7 @@ export class PlanLimitationsGuard implements CanActivate {
           needsSubscription: false
         };
 
-        // Guardar en caché
+        // Save to cache
         this.planCache.set(userId, {
           data: limitations,
           timestamp: now
@@ -220,7 +220,7 @@ export class PlanLimitationsGuard implements CanActivate {
               needsSubscription: !isActive && !isCancelled && !isBanned
             };
             
-            // Guardar en caché incluso el fallback
+            // Save to cache incluso el fallback
             this.planCache.set(userId, {
               data: fallbackLimitations,
               timestamp: now
@@ -229,7 +229,7 @@ export class PlanLimitationsGuard implements CanActivate {
             return fallbackLimitations;
           }
           
-          // Si no hay contexto, retornar plan Free por defecto (no error)
+          // If no context, return Free plan by default (not an error)
           const freePlanLimitations: PlanLimitations = {
             maxAccounts: 1,
             maxStrategies: 1,
@@ -240,7 +240,7 @@ export class PlanLimitationsGuard implements CanActivate {
             needsSubscription: false
           };
 
-          // Guardar en caché incluso el plan Free
+          // Save to cache incluso el plan Free
           this.planCache.set(userId, {
             data: freePlanLimitations,
             timestamp: now
@@ -253,7 +253,7 @@ export class PlanLimitationsGuard implements CanActivate {
         }
       })();
 
-      // Guardar la promesa para evitar peticiones duplicadas
+      // Store the promise to avoid duplicate requests
       this.pendingRequests.set(userId, requestPromise);
       
       return requestPromise;

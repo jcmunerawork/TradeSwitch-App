@@ -68,7 +68,7 @@ export class WinLossChartComponent implements OnInit, OnChanges, OnDestroy {
 
   private getChartSize(): number {
     // El tamaño ahora se controla completamente por CSS
-    // Retornamos un valor que será ignorado por ApexCharts
+    // Return a value that will be ignored by ApexCharts
     return 100;
   }
 

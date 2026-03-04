@@ -141,7 +141,7 @@ export class EditHoursAllowedComponent implements OnInit {
   }
 
   getTimezoneWithCountry(timezone: string): string {
-    // Buscar la zona horaria en la lista para obtener el label completo
+    // Find timezone in list to get full label
     const timezoneObj = this.timezones.find(tz => tz.value === timezone);
     return timezoneObj ? timezoneObj.label : timezone;
   }
@@ -264,12 +264,12 @@ export class EditHoursAllowedComponent implements OnInit {
     return `${h12}:${mins.toString().padStart(2, '0')} ${isPm ? 'PM' : 'AM'}`;
   }
 
-  // Método público para verificar si la regla es válida
+  // Public method to check if the rule is valid
   public isRuleValid(): boolean {
     return this.isValid;
   }
 
-  // Método público para obtener el mensaje de error
+  // Public method to get the error message
   public getErrorMessage(): string {
     return this.errorMessage;
   }

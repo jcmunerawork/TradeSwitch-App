@@ -65,7 +65,7 @@ export class MaxDailyTradesComponent implements OnInit {
     this.updateConfig(newConfig);
   }
 
-  // Métodos para spinner (solo incrementar/decrementar)
+  // Spinner methods (increment/decrement only)
   incrementValue() {
     if (this.config.isActive) {
       const newConfig: MaxDailyTradesConfig = {

@@ -5,9 +5,10 @@ import {
   HttpHandler,
   HttpEvent,
   HttpResponse,
+  HttpErrorResponse,
 } from '@angular/common/http';
-import { Observable, from, of } from 'rxjs';
-import { switchMap, map } from 'rxjs/operators';
+import { Observable, from, of, throwError } from 'rxjs';
+import { switchMap, map, catchError } from 'rxjs/operators';
 import { ConfigService } from '../services/config.service';
 import { CryptoSessionService } from '../services/crypto-session.service';
 import {
@@ -16,17 +17,29 @@ import {
   isEncryptedEnvelope,
 } from '../utils/encryption';
 
-/** Rutas que no deben cifrarse (body se envía en claro). */
+/** Paths that must not be encrypted (body is sent in clear). */
 const EXCLUDED_PATH_PATTERNS = [
   'crypto/session-key',
   'payments/webhook',
 ];
+
+/** Header to mark retry and avoid retrying again. */
+const CRYPTO_RETRY_HEADER = 'X-Crypto-Retry';
+
+/** Backend message when the session key is invalid or expired. */
+const SESSION_KEY_INVALID_MESSAGE = 'Invalid or expired session key';
 
 @Injectable()
 export class CryptoInterceptor implements HttpInterceptor {
   private config = inject(ConfigService);
   private cryptoSession = inject(CryptoSessionService);
 
+  /**
+   * Aplica cifrado a todas las peticiones al API (excepto rutas excluidas).
+   * - GET, POST, PUT, PATCH, DELETE, etc.: todas llevan X-Session-Key-Id para que el backend
+   *   cifre la respuesta (y el cliente la desencripte si viene como EncryptedEnvelope).
+   * - POST/PUT/PATCH con body: además se cifra el body como EncryptedEnvelope.
+   */
   intercept(
     req: HttpRequest<unknown>,
     next: HttpHandler
@@ -43,25 +56,77 @@ export class CryptoInterceptor implements HttpInterceptor {
       return next.handle(req);
     }
 
+    const isRetry = req.headers.has(CRYPTO_RETRY_HEADER);
+    return from(this.cryptoSession.getSessionKey()).pipe(
+      switchMap(({ keyId, key }) => this.buildRequestWithKey(req, keyId, key, isRetry)),
+      switchMap((newReq) => next.handle(newReq)),
+      switchMap((event) => this.decryptResponseIfNeeded(event)),
+      catchError((err) => this.handleCryptoError(err, req, next, isRetry))
+    );
+  }
+
+  /**
+   * Builds the request: adds X-Session-Key-Id and, when applicable, encrypts the body.
+   */
+  private buildRequestWithKey(
+    req: HttpRequest<unknown>,
+    keyId: string,
+    key: string,
+    isRetry: boolean
+  ): Observable<HttpRequest<unknown>> {
     const method = req.method.toUpperCase();
     const hasBody = method === 'POST' || method === 'PUT' || method === 'PATCH';
     const body = req.body;
 
+    const addHeader = (r: HttpRequest<unknown>, b: unknown) => {
+      let headers = r.headers.set('X-Session-Key-Id', keyId);
+      if (isRetry) {
+        headers = headers.set(CRYPTO_RETRY_HEADER, '1');
+      }
+      return r.clone({ headers, body: b });
+    };
+
     if (hasBody && body != null && typeof body === 'object' && !this.isEncryptedEnvelopeBody(body)) {
-      return from(this.cryptoSession.getSessionKey()).pipe(
-        switchMap(({ keyId, key }) =>
-          from(encryptRequestBody(body, key, keyId))
-        ),
-        switchMap((envelope) => {
-          const encryptedReq = req.clone({ body: envelope });
-          return next.handle(encryptedReq);
-        }),
-        switchMap((event) => this.decryptResponseIfNeeded(event))
+      return from(encryptRequestBody(body, key, keyId)).pipe(
+        map((envelope) => addHeader(req, envelope))
       );
     }
 
-    return next.handle(req).pipe(
-      switchMap((event) => this.decryptResponseIfNeeded(event))
+    return of(addHeader(req, body));
+  }
+
+  private handleCryptoError(
+    error: unknown,
+    req: HttpRequest<unknown>,
+    next: HttpHandler,
+    isRetry: boolean
+  ): Observable<HttpEvent<unknown>> {
+    if (isRetry || !(error instanceof HttpErrorResponse)) {
+      return throwError(() => error);
+    }
+    if (error.status !== 400) {
+      return throwError(() => error);
+    }
+    const message =
+      typeof error.error === 'string'
+        ? error.error
+        : (error.error && typeof (error.error as { message?: string }).message === 'string')
+          ? (error.error as { message: string }).message
+          : '';
+    if (!message.includes(SESSION_KEY_INVALID_MESSAGE)) {
+      return throwError(() => error);
+    }
+    this.cryptoSession.clearKey();
+    return from(this.cryptoSession.getSessionKey()).pipe(
+      switchMap(({ keyId }) => {
+        const retryReq = req.clone({
+          headers: req.headers.set(CRYPTO_RETRY_HEADER, '1').set('X-Session-Key-Id', keyId),
+        });
+        return next.handle(retryReq).pipe(
+          switchMap((event) => this.decryptResponseIfNeeded(event))
+        );
+      }),
+      catchError((retryErr) => throwError(() => retryErr))
     );
   }
 

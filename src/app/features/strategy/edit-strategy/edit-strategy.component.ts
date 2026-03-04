@@ -92,7 +92,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   config: StrategyState | null = null;
   myChoices: StrategyState | null = null;
   loading = false;
-  initialLoading = true; // Loading global para evitar tambaleo
+  initialLoading = true; // Global loading to avoid flicker
   user: User | null = null;
   editPopupVisible = false;
   confirmPopupVisible = false;
@@ -364,10 +364,10 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
    * Actualizar balance en background sin bloquear la UI
    */
   private updateBalanceInBackground(account: AccountData) {
-    // El backend gestiona el accessToken automáticamente
+    // Backend manages accessToken automatically
     this.reportSvc.getBalanceData(account.accountID as string, account.accountNumber as number).subscribe({
       next: (balance) => {
-        // Actualizar balance en el contexto
+        // Update balance in context
         if (account.accountID) {
           this.appContext.updateAccountBalance(account.accountID, balance);
         }
@@ -629,7 +629,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   /**
    * Obtener instruments desde localStorage
    * Los instrumentos son iguales para todas las cuentas, así que se leen con key genérica
-   * @param accountId - Parámetro mantenido por compatibilidad, pero no se usa
+   * @param accountId - Kept for compatibility, not used
    */
   private getInstrumentsFromLocalStorage(accountId: string): any[] | null {
     try {
@@ -681,8 +681,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // 3. Si no están cargados, cargarlos desde el backend UNA SOLA VEZ
-    // El backend gestiona el accessToken automáticamente, no es necesario userKey
+    // 3. If not loaded, load from backend ONCE
+    // Backend manages accessToken automatically, userKey not required
     try {
       const instruments = await firstValueFrom(this.reportSvc.getAllInstruments(
         firstAccount.accountID,
@@ -736,14 +736,14 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // 3. Si no están en el contexto ni localStorage, cargarlos desde el backend
-    // El backend gestiona el accessToken automáticamente, no es necesario userKey
+    // 3. If not in context or localStorage, load from backend
+    // Backend manages accessToken automatically, userKey not required
     this.reportSvc.getAllInstruments(
       account.accountID,
       account.accountNumber
     ).subscribe({
       next: (instruments: Instrument[]) => {
-        // Extraer solo los nombres de los instrumentos
+        // Extract instrument names only
         this.availableInstruments = instruments.map(instrument => instrument.name);
 
         // Guardar en el contexto para futuras referencias
@@ -771,11 +771,11 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   }
 
   getActualBalance() {
-    // El backend gestiona el accessToken automáticamente, no es necesario userKey para getBalanceData
+    // Backend manages accessToken automatically, userKey not required for getBalanceData
     // Use the first account's data dynamically
     if (this.accountsData.length > 0) {
       const firstAccount = this.accountsData[0];
-      // El servicio ya actualiza el contexto automáticamente
+      // Service already updates context automatically
       this.reportSvc.getBalanceData(firstAccount.accountID as string, firstAccount.accountNumber as number).subscribe({
         next: (balance) => {
           this.initializeWithConfigAndBalance(initialStrategyState, balance);
@@ -900,7 +900,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Validar todas las reglas activas
+    // Validate all active rules
     if (!this.validateActiveRules()) {
       return;
     }
@@ -991,24 +991,24 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   };
 
   /**
-   * Método que se ejecuta cuando se confirma el guardado
-   * Hace la validación final antes de proceder con el guardado
+   * Runs when save is confirmed
+   * Performs final validation before proceeding with save
    */
   confirmSave = () => {
-    // Validar todas las reglas activas una vez más
+    // Validate all active rules once more
     if (!this.validateActiveRules()) {
-      return; // No proceder con el guardado
+      return; // Do not proceed with save
     }
 
     this.save();
   };
 
   /**
-   * Valida todas las reglas activas antes de permitir guardar
+   * Validates all active rules before allowing save
    */
   private validateActiveRules(): boolean {
     if (!this.myChoices) {
-      return true; // Si no hay reglas activas, permitir guardar
+      return true; // If no active rules, allow save
     }
 
     const validationErrors: string[] = [];

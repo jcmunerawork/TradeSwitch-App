@@ -229,12 +229,12 @@ export class TradingAccountsComponent implements OnDestroy {
    * @memberof TradingAccountsComponent
    */
   ngOnDestroy(): void {
-    // Cleanup si es necesario
+    // Cleanup if needed
   }
 
   /**
-   * COMENTADO: Método antiguo para obtener balance de la API
-   * Los balances se obtienen por REST (batch en login y contexto)
+   * COMMENTED: Legacy method to get balance from API
+   * Balances are now obtained via REST (batch on login and context)
    * 
    * Fetches balance data for all accounts.
    *
@@ -261,7 +261,7 @@ export class TradingAccountsComponent implements OnDestroy {
   //       error: (err) => {
   //         this.loading = false;
   //         console.error(
-  //           'Error en el proceso de actualización de balances',
+  //           'Error in balance update process',
   //           err
   //         );
   //       },
@@ -300,7 +300,7 @@ export class TradingAccountsComponent implements OnDestroy {
   // }
 
   /**
-   * COMENTADO: Método antiguo. Fetches actual balance for an account from the trading API.
+   * COMMENTED: Legacy method. Fetches actual balance for an account from the trading API.
    *
    * Uses the authentication key to fetch balance data and updates
    * the account's balance property.

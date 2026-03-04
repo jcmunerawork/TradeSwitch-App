@@ -163,7 +163,13 @@ describe('CryptoInterceptor', () => {
   });
 
   describe('peticiones GET (sin body)', () => {
-    it('no debería cifrar ni llamar a getSessionKey', (done) => {
+    it('debería añadir X-Session-Key-Id y llamar a getSessionKey para respuesta cifrada', (done) => {
+      const keyId = 'get-key-id';
+      cryptoSessionSpy.getSessionKey.and.returnValue(
+        Promise.resolve({ keyId, key: btoa('x'.repeat(32)) })
+      );
+      cryptoSessionSpy.getStoredKey.and.returnValue(null);
+
       const url = `${API_BASE}/v1/accounts`;
       http.get(url).subscribe({
         next: () => done(),
@@ -171,7 +177,8 @@ describe('CryptoInterceptor', () => {
       });
       const req = httpMock.expectOne(url);
       expect(req.request.body).toBeNull();
-      expect(cryptoSessionSpy.getSessionKey).not.toHaveBeenCalled();
+      expect(cryptoSessionSpy.getSessionKey).toHaveBeenCalled();
+      expect(req.request.headers.get('X-Session-Key-Id')).toBe(keyId);
       req.flush([]);
     });
   });

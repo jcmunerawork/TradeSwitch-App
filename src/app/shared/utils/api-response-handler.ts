@@ -73,7 +73,7 @@ export function mapBackendResponseToUiState<T>(
           severity: 'warning',
           userMessage:
             response.warning.message ||
-            'No se pudieron obtener los datos en tiempo real. Mostrando una lista vacía controlada.',
+            'Could not get real-time data. Showing a controlled empty list.',
           canRetry: false,
         };
       }

@@ -218,12 +218,12 @@ export class EditAssetsAllowedComponent implements OnInit {
     }
   }
 
-  // Método público para verificar si la regla es válida
+  // Public method to check if the rule is valid
   public isRuleValid(): boolean {
     return this.isValid;
   }
 
-  // Método público para obtener el mensaje de error
+  // Public method to get the error message
   public getErrorMessage(): string {
     return this.errorMessage;
   }

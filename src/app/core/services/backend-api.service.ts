@@ -7,7 +7,7 @@
 
 import { Injectable } from '@angular/core';
 import { Observable, firstValueFrom, throwError, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, tap } from 'rxjs/operators';
 import { HttpErrorResponse } from '@angular/common/http';
 import { BaseApiService } from './api.service';
 import { getAuth } from 'firebase/auth';
@@ -337,17 +337,17 @@ export class BackendApiService extends BaseApiService {
    * 
    * Endpoint: POST /api/v1/payments/create-portal-session
    * 
-   * El backend obtiene el uid del usuario autenticado desde el token.
-   * No requiere parámetros en el body.
-   * 
-   * Retorna una URL del Customer Portal de Stripe que permite al usuario:
-   * - Ver su suscripción actual
-   * - Cambiar de plan
-   * - Cancelar suscripción
-   * - Actualizar método de pago
-   * - Ver historial de facturas
-   * 
-   * Respuesta del backend: { url: string }
+   * Backend gets the authenticated user uid from the token.
+   * No body parameters required.
+   *
+   * Returns a Stripe Customer Portal URL that allows the user to:
+   * - View current subscription
+   * - Change plan
+   * - Cancel subscription
+   * - Update payment method
+   * - View invoice history
+   *
+   * Backend response: { url: string }
    */
   async createPortalSession(idToken: string): Promise<BackendApiResponse<{ url: string }>> {
     return firstValueFrom(
@@ -357,10 +357,10 @@ export class BackendApiService extends BaseApiService {
         }
       }).pipe(
         catchError((error: HttpErrorResponse) => {
-          console.error('❌ BackendApiService: Error creando sesión del portal:', error);
+          console.error('❌ BackendApiService: Error creating portal session:', error);
           console.error('❌ BackendApiService: error.error:', error.error);
           console.error('❌ BackendApiService: error.error?.error:', (error.error as any)?.error);
-          console.error('📝 BackendApiService: Mensaje del backend:', (error.error as any)?.error?.message || error.message);
+          console.error('📝 BackendApiService: Backend message:', (error.error as any)?.error?.message || error.message);
           return throwError(() => error);
         })
       )
@@ -388,13 +388,13 @@ export class BackendApiService extends BaseApiService {
    * Get user plan based on active subscription
    * Endpoint: GET /api/v1/users/:userId/plan
    * 
-   * Obtiene el plan del usuario basado en su suscripción activa.
-   * El backend:
-   * - Obtiene la última suscripción activa del usuario (o la más reciente si no hay activas)
-   * - Extrae el planId de la suscripción
-   * - Busca el plan en la colección plans usando ese planId
-   * - Retorna el plan completo con límites (strategies, tradingAccounts)
-   * - Retorna null si el usuario no tiene suscripción
+   * Gets the user plan based on their active subscription.
+   * Backend:
+   * - Gets the user's latest active subscription (or most recent if none active)
+   * - Extracts planId from the subscription
+   * - Looks up the plan in the plans collection using that planId
+   * - Returns the full plan with limits (strategies, tradingAccounts)
+   * - Returns null if the user has no subscription
    */
   async getUserPlan(userId: string, idToken: string): Promise<BackendApiResponse<{ plan: any | null }>> {
     return firstValueFrom(
@@ -468,7 +468,7 @@ export class BackendApiService extends BaseApiService {
 
             // Si el error tiene la estructura del backend, extraer el mensaje
             if (error.error?.error?.message) {
-              console.error('📝 BackendApiService: Mensaje del backend:', error.error.error.message);
+              console.error('📝 BackendApiService: Backend message:', error.error.error.message);
               console.error('📝 BackendApiService: Detalles del backend:', error.error.error.details);
               console.error('📝 BackendApiService: StatusCode del backend:', error.error.error.statusCode);
             }
@@ -652,11 +652,11 @@ export class BackendApiService extends BaseApiService {
    * Get user by email
    * Endpoint: GET /api/v1/users/email?email=johndoe@gmail.com
    * 
-   * Busca un usuario por email en Firestore.
-   * El backend:
-   * - Retorna el usuario completo si existe (con timestamps convertidos a milisegundos)
-   * - Retorna null si el usuario no existe
-   * - Requiere autenticación
+   * Looks up a user by email in Firestore.
+   * Backend:
+   * - Returns the full user if they exist (with timestamps converted to milliseconds)
+   * - Returns null if the user does not exist
+   * - Requires authentication
    */
   async getUserByEmail(email: string, idToken: string): Promise<BackendApiResponse<{ user: any | null }>> {
     return firstValueFrom(
@@ -792,12 +792,12 @@ export class BackendApiService extends BaseApiService {
    * Get all users (admin only)
    * Endpoint: GET /api/v1/users
    * 
-   * Obtiene todos los usuarios del sistema.
-   * El backend:
-   * - Retorna todos los usuarios sin paginación
-   * - Convierte timestamps de Firestore a milisegundos
-   * - Incluye valores por defecto para todos los campos
-   * - Requiere autenticación y permisos de administrador
+   * Gets all users in the system.
+   * Backend:
+   * - Returns all users without pagination
+   * - Converts Firestore timestamps to milliseconds
+   * - Includes default values for all fields
+   * - Requires authentication and admin permissions
    */
   async getAllUsers(idToken: string): Promise<BackendApiResponse<{ users: any[] }>> {
     return firstValueFrom(
@@ -1125,7 +1125,7 @@ export class BackendApiService extends BaseApiService {
    * Respuesta cuando hay suscripción:
    * { "success": true, "data": { "subscription": { ... } } }
    * 
-   * El endpoint siempre retorna 200, nunca 404.
+   * The endpoint always returns 200, never 404.
    */
   async getUserLatestSubscription(userId: string, idToken: string): Promise<BackendApiResponse<{ subscription: any }>> {
     // Nota: userId se mantiene en la firma por compatibilidad, pero el endpoint lo obtiene del token
@@ -1136,16 +1136,16 @@ export class BackendApiService extends BaseApiService {
         }
       }).pipe(
         catchError((error: HttpErrorResponse) => {
-          // El endpoint nunca debería retornar 404, pero por si acaso lo manejamos
+          // Endpoint should never return 404, but we handle it just in case
           if (error.status === 404) {
-            console.warn('⚠️ BackendApiService: Endpoint retornó 404, pero debería retornar 200 con subscription: null');
-            // Retornar respuesta exitosa con subscription null
+            console.warn('⚠️ BackendApiService: Endpoint returned 404, but should return 200 with subscription: null');
+            // Return successful response with subscription null
             return of({
               success: true,
               data: { subscription: null }
             } as BackendApiResponse<{ subscription: any }>);
           }
-          console.error('❌ BackendApiService: Error obteniendo suscripción:', error);
+          console.error('❌ BackendApiService: Error getting subscription:', error);
           return throwError(() => error);
         })
       )
@@ -1261,15 +1261,15 @@ export class BackendApiService extends BaseApiService {
   }
 
   /**
-   * @deprecated Este método usa un endpoint que no existe en el backend.
-   * Usar getTradeLockerBalance() en su lugar.
-   * 
+   * @deprecated This method uses an endpoint that does not exist on the backend.
+   * Use getTradeLockerBalance() instead.
+   *
    * Get account balance from TradeLocker
-   * El backend gestiona el accessToken automáticamente
+   * Backend manages accessToken automatically
    */
   async getTradeLockerAccountBalance(accountId: string, accountNumber: number, idToken: string): Promise<BackendApiResponse<any>> {
-    console.warn('⚠️ getTradeLockerAccountBalance está deprecado. Usar getTradeLockerBalance() en su lugar.');
-    // Redirigir al método correcto
+    console.warn('⚠️ getTradeLockerAccountBalance is deprecated. Use getTradeLockerBalance() instead.');
+    // Redirect to the correct method
     return this.getTradeLockerBalance(accountId, accountNumber, idToken);
   }
 
@@ -1277,16 +1277,16 @@ export class BackendApiService extends BaseApiService {
    * Get account balance from TradeLocker
    * Endpoint correcto: GET /api/v1/tradelocker/balance/{accountId}?accNum={accNum}
    * 
-   * Parámetros:
-   * - accountId: ID de la cuenta de TradeLocker (accountID, no el ID de Firebase)
-   * - accNum: número de cuenta (query parameter, requerido)
-   * 
-   * El backend gestiona el accessToken automáticamente y guarda el balance en Firebase.
-   * 
-   * @param accountId - ID de la cuenta de TradeLocker (accountID)
-   * @param accNum - Número de cuenta
-   * @param idToken - Firebase ID token para autenticación
-   * @returns Promise con la respuesta del backend que incluye el balance
+   * Parameters:
+   * - accountId: TradeLocker account ID (accountID, not Firebase ID)
+   * - accNum: account number (query parameter, required)
+   *
+   * Backend manages accessToken automatically and saves the balance to Firebase.
+   *
+   * @param accountId - TradeLocker account ID (accountID)
+   * @param accNum - Account number
+   * @param idToken - Firebase ID token for authentication
+   * @returns Promise with backend response including the balance
    */
   async getTradeLockerBalance(accountId: string, accNum: number, idToken: string): Promise<BackendApiResponse<any>> {
     return firstValueFrom(
@@ -1367,7 +1367,7 @@ export class BackendApiService extends BaseApiService {
 
   /**
    * Get trading history from TradeLocker
-   * El backend gestiona el accessToken automáticamente
+   * Backend manages accessToken automatically
    * Backend route: @Get('accounts/:accountId/history') under /tradelocker controller
    * Query param: accNum (not path param)
    * 
@@ -1392,7 +1392,7 @@ export class BackendApiService extends BaseApiService {
 
   /**
    * Get instrument details from TradeLocker
-   * El backend gestiona el accessToken automáticamente, se pasa accountId en su lugar
+   * Backend manages accessToken automatically; accountId is passed instead
    */
   async getTradeLockerInstrumentDetails(accountId: string, tradableInstrumentId: string, routeId: string, accNum: number, idToken: string): Promise<BackendApiResponse<any>> {
     return firstValueFrom(
@@ -1411,7 +1411,7 @@ export class BackendApiService extends BaseApiService {
   /**
    * Get all instruments for an account from TradeLocker
    * Endpoint: GET /api/v1/tradelocker/instruments/:accountId?accNum={accNum}
-   * El backend gestiona el accessToken automáticamente
+   * Backend manages accessToken automatically
    */
   async getTradeLockerAllInstruments(accountId: string, accNum: number, idToken: string): Promise<BackendApiResponse<any>> {
     return firstValueFrom(
@@ -1630,6 +1630,9 @@ export class BackendApiService extends BaseApiService {
           'Authorization': `Bearer ${idToken}`
         }
       }).pipe(
+        tap((response) => {
+          console.log('[Plans] Response received in getAllPlans (after interceptor):', response);
+        }),
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting all plans:', error);
           return throwError(() => error);
@@ -1968,13 +1971,13 @@ export class BackendApiService extends BaseApiService {
    * Get overview users with pagination
    * Endpoint: GET /api/v1/admin/overview/users?page=...&limit=...&startAfter=...
    * 
-   * Obtiene usuarios con paginación cursor-based.
-   * El backend:
-   * - Ordena por subscription_date descendente (fallback: lastUpdated descendente)
-   * - Retorna todos los campos del usuario de Firebase
-   * - Incluye información de paginación (page, limit, total, hasMore, lastDocId)
-   * - Usa startAfter para paginación cursor-based
-   * - Requiere autenticación y permisos de administrador
+   * Gets users with cursor-based pagination.
+   * Backend:
+   * - Sorts by subscription_date descending (fallback: lastUpdated descending)
+   * - Returns all Firebase user fields
+   * - Includes pagination info (page, limit, total, hasMore, lastDocId)
+   * - Uses startAfter for cursor-based pagination
+   * - Requires authentication and admin permissions
    */
   async getOverviewUsers(page: number, limit: number, startAfter: string | undefined, idToken: string): Promise<BackendApiResponse<{ users: any[]; pagination: { page: number; limit: number; total: number; hasMore: boolean; lastDocId?: string } }>> {
     const params: any = { page: page.toString(), limit: limit.toString() };

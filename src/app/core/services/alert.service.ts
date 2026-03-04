@@ -68,7 +68,7 @@ export class AlertService {
     });
   }
 
-  // Métodos de conveniencia
+  // Convenience methods
   showError(message: string, title: string = 'Error'): void {
     this.showAlert({
       title,

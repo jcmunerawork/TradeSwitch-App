@@ -18,10 +18,10 @@ export interface StrategyCardData {
   updated_at: any;
   userId: string;
   configurationId: string;
-  /** Intervalos de actividad (backend); preferir sobre dateActive/dateInactive */
+  /** Activity intervals (from backend); prefer over dateActive/dateInactive */
   timeline?: TimelineInterval[];
-  /** @deprecated Usar timeline */
+  /** @deprecated Use timeline */
   dateActive?: string[];
-  /** @deprecated Usar timeline */
+  /** @deprecated Use timeline */
   dateInactive?: string[];
 }

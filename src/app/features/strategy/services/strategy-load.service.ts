@@ -12,7 +12,7 @@ const CACHE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutos
 export interface LoadStrategiesResult {
   userStrategies: ConfigurationOverview[];
   activeStrategy: ConfigurationOverview | null;
-  /** Estado del botón crear estrategia desde el backend: available | plan_reached | block */
+  /** Create strategy button state from backend: available | plan_reached | block */
   button_state: 'available' | 'plan_reached' | 'block';
 }
 

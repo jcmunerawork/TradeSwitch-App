@@ -147,7 +147,7 @@ export class ReportService {
             const historyTrades: historyTrade[] =
               details.d.ordersHistory.map(arrayToHistoryTrade);
             
-            // Pasar accountId y accNum a la función (el backend gestiona el accessToken)
+            // Pass accountId and accNum to the function (backend manages accessToken)
             const groupedTrades = await groupOrdersByPosition(historyTrades, this, accountId, accNum);
             
             // Actualizar contexto con los datos del historial

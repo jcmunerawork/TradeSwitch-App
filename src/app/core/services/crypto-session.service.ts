@@ -59,13 +59,13 @@ export class CryptoSessionService {
         })
       );
     } catch {
-      // ignorar fallos de storage
+      // ignore storage failures
     }
   }
 
   /**
-   * Obtiene la clave de sesión: usa la cacheada si sigue válida, si no llama al backend.
-   * El token se añade por el AuthInterceptor al hacer el POST.
+   * Gets the session key: uses the cached one if still valid, otherwise calls the backend.
+   * The auth token is added by AuthInterceptor when making the POST.
    */
   async getSessionKey(): Promise<{ keyId: string; key: string }> {
     const now = Date.now();
@@ -88,7 +88,7 @@ export class CryptoSessionService {
     return { keyId: this.keyId, key: this.key };
   }
 
-  /** Clave actual en memoria (para descifrar respuestas). Null si no hay o está expirada. */
+  /** Current key in memory (for decrypting responses). Null if none or expired. */
   getStoredKey(): { keyId: string; key: string } | null {
     const now = Date.now();
     if (
@@ -102,7 +102,7 @@ export class CryptoSessionService {
     return { keyId: this.keyId, key: this.key };
   }
 
-  /** Limpiar clave (p. ej. en logout o 401). */
+  /** Clears the key (e.g. on logout or 401). */
   clearKey(): void {
     this.keyId = null;
     this.key = null;

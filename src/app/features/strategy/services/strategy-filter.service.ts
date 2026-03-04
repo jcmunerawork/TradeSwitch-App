@@ -4,9 +4,9 @@ import { map } from 'rxjs/operators';
 import { ConfigurationOverview } from '../models/strategy.model';
 
 /**
- * Servicio que centraliza el estado de búsqueda y la lista filtrada de estrategias.
- * El componente padre actualiza la lista base con setStrategies() y el término de búsqueda
- * con setSearchTerm()/clearSearch(); la vista usa filteredStrategies$ (async pipe) y searchTerm$.
+ * Service that centralizes search state and the filtered strategy list.
+ * Parent component updates the base list with setStrategies() and search term with
+ * setSearchTerm()/clearSearch(); view uses filteredStrategies$ (async pipe) and searchTerm$.
  */
 @Injectable({
   providedIn: 'root',
@@ -15,10 +15,10 @@ export class StrategyFilterService {
   private readonly strategies$ = new BehaviorSubject<ConfigurationOverview[]>([]);
   private readonly searchTerm$ = new BehaviorSubject<string>('');
 
-  /** Término de búsqueda actual (para binding en filtros). */
+  /** Current search term (for binding in filters). */
   readonly searchTerm: Observable<string> = this.searchTerm$.asObservable();
 
-  /** Lista de estrategias filtrada por nombre según searchTerm. */
+  /** Strategy list filtered by name according to searchTerm. */
   readonly filteredStrategies$: Observable<ConfigurationOverview[]> = combineLatest([
     this.strategies$,
     this.searchTerm$,

@@ -9,15 +9,15 @@ export interface RunNewStrategyFlowParams {
   getTotalStrategiesCount: () => Promise<number>;
   showStrategyGuide: () => void;
   createGenericStrategy: () => Promise<void>;
-  /** Estado del botón desde el backend: available | plan_reached | block */
+  /** Button state from backend: available | plan_reached | block */
   button_state: 'available' | 'plan_reached' | 'block';
 }
 
 export type RunNewStrategyFlowResult = 'show_guide' | 'created' | 'redirect_accounts' | 'redirect_plan' | 'max_reached';
 
 /**
- * Flujo de "Add Strategy": validar cuentas, límites, plan y decidir si mostrar guía,
- * crear estrategia genérica o redirigir a account/plan.
+ * "Add Strategy" flow: validate accounts, limits, plan and decide whether to show guide,
+ * create generic strategy, or redirect to account/plan.
  */
 @Injectable({
   providedIn: 'root',

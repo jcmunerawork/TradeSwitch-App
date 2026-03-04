@@ -200,16 +200,16 @@ export interface ConfigurationOverview {
   updated_at: any;
   days_active: number;
   configurationId: string;
-  /** Intervalos de actividad (backend); end_date null = activa hasta ahora */
+  /** Activity intervals (from backend); end_date null = active until now */
   timeline?: TimelineInterval[];
-  /** Historial de actualizaciones con reglas activas por fecha */
+  /** History of updates with active rules by date */
   updated_at_history?: UpdatedAtHistoryEntry[];
   /**
-   * @deprecated Usar timeline. Fechas cuando se activó la estrategia (legacy).
+   * @deprecated Use timeline. Dates when the strategy was enabled (legacy).
    */
   dateActive?: string[];
   /**
-   * @deprecated Usar timeline. Fechas cuando se desactivó la estrategia (legacy).
+   * @deprecated Use timeline. Dates when the strategy was disabled (legacy).
    */
   dateInactive?: string[];
 }

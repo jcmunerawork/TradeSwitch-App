@@ -38,7 +38,7 @@ export class GlobalStrategyUpdaterService {
 
   /**
    * Actualiza los días activos de la estrategia activa del usuario
-   * @param userId - ID del usuario
+   * @param userId - User ID
    */
   async updateAllStrategies(userId: string): Promise<void> {
     if (!this.isBrowser) {
@@ -55,7 +55,7 @@ export class GlobalStrategyUpdaterService {
   /**
    * Actualiza una estrategia específica
    * @param strategyId - ID de la estrategia
-   * @param userId - ID del usuario
+   * @param userId - User ID
    */
   async updateSingleStrategy(strategyId: string, userId: string): Promise<void> {
     try {

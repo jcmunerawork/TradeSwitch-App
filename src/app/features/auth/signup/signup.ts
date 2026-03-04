@@ -466,7 +466,7 @@ export class SignupComponent implements OnInit {
     this.showPlanSelection = false;
   }
 
-  // Método para cerrar el pop-up de error de Stripe
+  // Close Stripe error pop-up
   closeStripeError(): void {
     this.showStripeError = false;
     this.stripeErrorMessage = '';

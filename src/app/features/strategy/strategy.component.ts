@@ -137,9 +137,9 @@ export class Strategy implements OnInit, OnDestroy {
   
   // Sync status text for UI display
   syncStatusText: string = '';
-  /** Lista filtrada por búsqueda (desde StrategyFilterService). */
+  /** List filtered by search (from StrategyFilterService). */
   get filteredStrategies$() { return this.strategyFilterService.filteredStrategies$; }
-  /** Término de búsqueda (desde StrategyFilterService). */
+  /** Search term (from StrategyFilterService). */
   get searchTerm$() { return this.strategyFilterService.searchTerm; }
 
   // Estado para controlar qué dropdown de reglas está abierto

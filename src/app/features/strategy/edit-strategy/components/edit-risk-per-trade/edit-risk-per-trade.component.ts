@@ -478,7 +478,7 @@ export class EditRiskPerTradeComponent implements OnInit {
   }
 
   onBlur() {
-    // Método legacy - mantener para compatibilidad
+    // Legacy method - kept for compatibility
     this.onPriceBlur();
   }
 
@@ -535,7 +535,7 @@ export class EditRiskPerTradeComponent implements OnInit {
     this.saveConfiguration();
   }
 
-  // Método legacy para cargar un balance actual (se mantiene por compatibilidad, ahora usamos loadActualBalancesForAccounts)
+  // Legacy method to load current balance (kept for compatibility; we now use loadActualBalancesForAccounts)
   async loadActualBalance() {
     try {
       // Obtener las cuentas del usuario desde el contexto
@@ -979,17 +979,17 @@ export class EditRiskPerTradeComponent implements OnInit {
     this.errorMessage = '';
   }
 
-  // Método público para verificar si la regla es válida
+  // Public method to check if the rule is valid
   public isRuleValid(): boolean {
     return this.isValid;
   }
 
-  // Método público para obtener el mensaje de error
+  // Public method to get the error message
   public getErrorMessage(): string {
     return this.errorMessage;
   }
 
-  // Método para guardar la configuración con la nueva estructura
+  // Save configuration with the new structure
   private saveConfiguration() {
     if (!this.selectedSizeType || !this.selectedCalculationType) {
       return; // No guardar si faltan selecciones básicas

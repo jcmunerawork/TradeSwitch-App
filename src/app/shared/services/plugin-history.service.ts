@@ -144,7 +144,7 @@ export class PluginHistoryService {
     /**
      * MÉTODO NUEVO: Listener en tiempo real para plugin history
      * FLUJO DINÁMICO:
-     * - Retorna un Observable que emite cambios periódicamente (polling cada 5 segundos)
+     * - Returns an Observable that emits changes periodically (polling every 5 seconds)
      * - Filtra por userId específico
      * - El componente se suscribe y recibe actualizaciones automáticas
      * - Maneja errores y limpieza de recursos
@@ -163,7 +163,7 @@ export class PluginHistoryService {
             return this.realtimeObservables.get(userId)!;
         }
 
-        // Crear un nuevo Observable y compartirlo entre múltiples suscriptores
+        // Create a new Observable and share it among multiple subscribers
         const observable = interval(5000).pipe(
             startWith(0), // Emitir inmediatamente al suscribirse
             switchMap(() => {
@@ -186,7 +186,7 @@ export class PluginHistoryService {
             share() // Compartir el Observable entre múltiples suscriptores (evita múltiples intervalos)
         );
 
-        // Guardar el Observable en el cache para reutilizarlo
+        // Store the Observable in cache for reuse
         this.realtimeObservables.set(userId, observable);
         return observable;
     }

@@ -391,7 +391,7 @@ export class AppContextService {
     // Limpiar datos legacy de localStorage al iniciar
     this.accountsCacheService.cleanupLegacyLocalStorage();
     
-    // COMENTADO: effect() no está disponible en servicios sin contexto de inyección
+    // COMMENTED: effect() is not available in services without injection context
     // La sincronización se hace manualmente en los métodos setter de cada signal
     // Sincronizar signals con el estado principal
     // effect(() => {
@@ -1001,7 +1001,7 @@ export class AppContextService {
       this.setLoading('tradeLocker', true);
       this.setError('tradeLocker', null);
 
-      // El backend gestiona el accessToken automáticamente, no es necesario obtenerlo
+      // Backend manages accessToken automatically, no need to fetch it
       // Obtener balance data
       const balanceData = await this.tradeLockerApi.getAccountBalance(
         account.accountID,

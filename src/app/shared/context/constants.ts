@@ -11,7 +11,7 @@ export const CACHE_CONFIG = {
   MAX_TRADE_LOCKER_ACCOUNTS: 50,
   MAX_PLUGIN_HISTORY: 1000,
   
-  // Intervalos de actualización
+  // Update intervals
   AUTO_REFRESH_INTERVAL: 60 * 1000, // 1 minuto
   STALE_DATA_THRESHOLD: 2 * 60 * 1000, // 2 minutos
 } as const;

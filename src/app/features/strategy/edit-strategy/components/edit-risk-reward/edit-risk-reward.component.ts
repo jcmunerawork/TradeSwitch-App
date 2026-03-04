@@ -65,7 +65,7 @@ export class EditRiskRewardComponent implements OnInit {
     this.updateConfig(newConfig);
   }
 
-  // Métodos para spinner (solo para el segundo número)
+  // Spinner methods (for the second number only)
   incrementSecondValue() {
     if (this.config.isActive) {
       const numberArray = this.config.riskRewardRatio

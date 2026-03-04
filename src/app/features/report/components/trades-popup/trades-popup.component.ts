@@ -143,14 +143,14 @@ export class TradesPopupComponent {
   }
 
   /**
-   * Obtener instrumentos desde localStorage cache
-   * Los instrumentos son iguales para todas las cuentas, así que se usa key genérica
-   * @param accountId - Parámetro mantenido por compatibilidad, pero no se usa
-   * @returns array de instrumentos o null si no existe
+   * Get instruments from localStorage cache.
+   * Instruments are the same for all accounts, so a generic key is used.
+   * @param accountId - Kept for compatibility, not used
+   * @returns Array of instruments or null if not found
    */
   private getInstrumentsFromCache(accountId: string): any[] | null {
     try {
-      // Key genérica sin accountId ya que los instrumentos son iguales para todas las cuentas
+      // Generic key without accountId since instruments are the same for all accounts
       const key = 'tradeswitch_instruments';
       const cached = localStorage.getItem(key);
       if (cached) {
@@ -160,7 +160,7 @@ export class TradesPopupComponent {
         }
       }
     } catch (error) {
-      console.warn('Error obteniendo instrumentos desde cache:', error);
+      console.warn('Error getting instruments from cache:', error);
     }
     
     return null;

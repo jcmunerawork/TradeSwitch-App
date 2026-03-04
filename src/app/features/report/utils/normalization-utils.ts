@@ -87,12 +87,12 @@ export function arrayToHistoryTrade(arr: any[]): historyTrade {
  *
  * @param orders - Array of historyTrade objects to group
  * @param reportService - ReportService instance for fetching instrument details
- * @param accountId - Account ID (el backend gestiona el accessToken automáticamente)
+ * @param accountId - Account ID (backend manages accessToken automatically)
  * @param accNum - Account number
  * @returns Promise that resolves to an array of GroupedTradeFinal objects
  */
 export async function groupOrdersByPosition(orders: historyTrade[], reportService: any, accountId: string, accNum: number): Promise<GroupedTradeFinal[]> {
-  // Filtrar solo trades que no estén cancelados y que tengan status 'Filled' (case insensitive)
+  // Filter only trades that are not cancelled and have status 'Filled' (case insensitive)
   const validOrders = orders.filter(order => {
     const hasValidStatus = order.status && (
       order.status.toLowerCase() === 'filled' || 
@@ -218,7 +218,7 @@ export async function groupOrdersByPosition(orders: historyTrade[], reportServic
  *
  * @param orders - Array of historyTrade objects
  * @param reportService - ReportService instance for API calls
- * @param accountId - Account ID (el backend gestiona el accessToken automáticamente)
+ * @param accountId - Account ID (backend manages accessToken automatically)
  * @param accNum - Account number
  * @returns Promise that resolves to a Map with instrument keys and their details
  * @private

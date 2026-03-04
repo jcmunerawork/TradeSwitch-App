@@ -112,7 +112,7 @@ export class TradeLockerApiService {
 
   /**
    * Get JWT token from TradeLocker
-   * COMENTADO: Este método se mantiene como backup, pero ahora se usa getJWTTokenStaging() para validación
+   * COMMENTED: This method is kept as backup, but getJWTTokenStaging() is now used for validation
    */
   // getJWTToken(credentials: TradeLockerCredentials): Observable<TradeLockerTokenResponse> {
   //   const tokenUrl = `${this.baseUrl}/auth/jwt/token`;
@@ -254,7 +254,7 @@ export class TradeLockerApiService {
   /**
    * Get account balance from TradeLocker via backend API.
    * Endpoint: GET /api/v1/tradelocker/balance/:accountId?accNum=1
-   * El backend gestiona el accessToken automáticamente.
+   * Backend manages accessToken automatically.
    * 
    * If TradeLocker fails, the backend may return cached data from Firebase
    * with a warning that will be shown to the user via toast.
@@ -292,7 +292,7 @@ export class TradeLockerApiService {
    * If TradeLocker fails, the backend may return cached data from Firebase
    * with a warning that will be shown to the user via toast.
    * 
-   * NOTA: El backend gestiona el accessToken automáticamente, no es necesario enviarlo.
+   * NOTE: Backend manages accessToken automatically; no need to send it.
    */
   getTradingHistory(accountId: string, accNum: number): Observable<any> {
     return new Observable(observer => {
@@ -470,7 +470,7 @@ export class TradeLockerApiService {
    * Now uses backend API but maintains same interface
    * 
    * If TradeLocker fails, the backend may return cached data with a warning.
-   * NOTA: El backend gestiona el accessToken automáticamente, se pasa accountId en su lugar.
+   * NOTE: Backend manages accessToken automatically; accountId is passed instead.
    */
   getInstrumentDetails(accountId: string, tradableInstrumentId: string, routeId: string, accNum: number): Observable<any> {
     return new Observable(observer => {
@@ -496,7 +496,7 @@ export class TradeLockerApiService {
    * Now uses backend API but maintains same interface
    * 
    * If TradeLocker fails, the backend may return cached data with a warning.
-   * NOTA: El backend gestiona el accessToken automáticamente, no es necesario enviarlo.
+   * NOTE: Backend manages accessToken automatically; no need to send it.
    */
   getAllInstruments(accountId: string, accNum: number): Observable<any> {
     return new Observable(observer => {

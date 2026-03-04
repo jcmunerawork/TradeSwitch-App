@@ -50,7 +50,7 @@ export class EditMaxDailyTradesComponent implements OnInit {
     this.updateConfig(newConfig);
   }
 
-  // Métodos para spinner (solo incrementar/decrementar)
+  // Spinner methods (increment/decrement only)
   incrementValue() {
     if (this.config.isActive) {
       const newConfig: MaxDailyTradesConfig = {
@@ -117,7 +117,7 @@ export class EditMaxDailyTradesComponent implements OnInit {
     return this.isValid;
   }
 
-  // Método público para obtener el mensaje de error
+  // Public method to get the error message
   public getErrorMessage(): string {
     return this.errorMessage;
   }
