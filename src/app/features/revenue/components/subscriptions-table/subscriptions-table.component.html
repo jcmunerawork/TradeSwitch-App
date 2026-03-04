@@ -54,13 +54,13 @@
               <p>{{ row.user || 'N/A' }}</p>
             </td>
             <td class="smallText">
-              <p>{{ row.startDate }}</p>
+              <p>{{ row.startDate | backendDate }}</p>
             </td>
             <td class="smallText">
-              <p>{{ row.actualPeriodStart }}</p>
+              <p>{{ row.actualPeriodStart | backendDate }}</p>
             </td>
             <td class="smallText">
-              <p>{{ row.actualPeriodEnd }}</p>
+              <p>{{ row.actualPeriodEnd | backendDate }}</p>
             </td>
           </tr>
           }

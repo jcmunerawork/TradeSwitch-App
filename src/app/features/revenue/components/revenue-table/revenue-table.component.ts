@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RevenueFilter, RevenueTableRow } from '../../models/revenue';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
+import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
 
 /**
  * Component for displaying revenue data in a table format.
@@ -29,7 +30,7 @@ import { NumberFormatterService } from '../../../../shared/utils/number-formatte
 @Component({
   selector: 'app-revenue-table',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BackendDatePipe],
   templateUrl: './revenue-table.component.html',
   styleUrls: ['./revenue-table.component.scss'],
 })

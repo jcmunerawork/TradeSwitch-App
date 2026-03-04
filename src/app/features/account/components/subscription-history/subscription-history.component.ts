@@ -10,6 +10,7 @@ import { PlanService } from '../../../../shared/services/planService';
 import { Subscription } from '../../../../shared/services/subscription-service';
 import { Plan } from '../../../../shared/services/planService';
 import { UserStatus } from '../../../overview/models/overview';
+import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
 
 /**
  * Component to display user subscription history.
@@ -41,7 +42,7 @@ import { UserStatus } from '../../../overview/models/overview';
  */
 @Component({
   selector: 'app-subscription-history',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BackendDatePipe],
   templateUrl: './subscription-history.component.html',
   styleUrl: './subscription-history.component.scss',
   standalone: true,

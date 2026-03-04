@@ -7,15 +7,7 @@ import {
   HttpClientTestingModule,
   HttpTestingController,
 } from '@angular/common/http/testing';
-import {
-  HttpRequest,
-  HttpHandler,
-  HttpResponse,
-  HttpEvent,
-  HTTP_INTERCEPTORS,
-  HttpClient,
-} from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HTTP_INTERCEPTORS, HttpClient } from '@angular/common/http';
 import { ConfigService } from '../services/config.service';
 import { CryptoSessionService } from '../services/crypto-session.service';
 import { CryptoInterceptor } from './crypto.interceptor';
@@ -127,17 +119,17 @@ describe('CryptoInterceptor', () => {
           },
           error: (err) => done.fail(err),
         });
-
-        const req = httpMock.expectOne(url);
-        expect(req.request.method).toBe('POST');
-        const sentBody = req.request.body as EncryptedEnvelope;
-        expect(sentBody.keyId).toBe(keyId);
-        expect(sentBody.iv).toBeDefined();
-        expect(sentBody.ciphertext).toBeDefined();
-        expect(sentBody.tag).toBeDefined();
-        expect(isEncryptedEnvelope(sentBody)).toBe(true);
-
-        req.flush(encryptedResponse);
+        setTimeout(() => {
+          const req = httpMock.expectOne(url);
+          expect(req.request.method).toBe('POST');
+          const sentBody = req.request.body as EncryptedEnvelope;
+          expect(sentBody.keyId).toBe(keyId);
+          expect(sentBody.iv).toBeDefined();
+          expect(sentBody.ciphertext).toBeDefined();
+          expect(sentBody.tag).toBeDefined();
+          expect(isEncryptedEnvelope(sentBody)).toBe(true);
+          req.flush(encryptedResponse);
+        }, 0);
       });
     });
 
@@ -154,32 +146,34 @@ describe('CryptoInterceptor', () => {
           expect(data).toEqual({ success: true, data: [] });
           done();
         },
-        error: done.fail,
+        error: (err) => done.fail(err),
       });
-
-      const req = httpMock.expectOne(url);
-      req.flush({ success: true, data: [] });
+      setTimeout(() => {
+        const req = httpMock.expectOne(url);
+        req.flush({ success: true, data: [] });
+      }, 0);
     });
   });
 
   describe('peticiones GET (sin body)', () => {
-    it('debería añadir X-Session-Key-Id y llamar a getSessionKey para respuesta cifrada', (done) => {
+    it('debería llamar getSessionKey, añadir X-Session-Key-Id y no cifrar body', (done) => {
       const keyId = 'get-key-id';
       cryptoSessionSpy.getSessionKey.and.returnValue(
         Promise.resolve({ keyId, key: btoa('x'.repeat(32)) })
       );
-      cryptoSessionSpy.getStoredKey.and.returnValue(null);
-
+      cryptoSessionSpy.getStoredKey.and.returnValue({ keyId, key: btoa('x'.repeat(32)) });
       const url = `${API_BASE}/v1/accounts`;
       http.get(url).subscribe({
         next: () => done(),
         error: done.fail,
       });
-      const req = httpMock.expectOne(url);
-      expect(req.request.body).toBeNull();
-      expect(cryptoSessionSpy.getSessionKey).toHaveBeenCalled();
-      expect(req.request.headers.get('X-Session-Key-Id')).toBe(keyId);
-      req.flush([]);
+      setTimeout(() => {
+        const req = httpMock.expectOne(url);
+        expect(req.request.body).toBeNull();
+        expect(cryptoSessionSpy.getSessionKey).toHaveBeenCalled();
+        expect(req.request.headers.get('X-Session-Key-Id')).toBe(keyId);
+        req.flush([]);
+      }, 0);
     });
   });
 
@@ -203,8 +197,10 @@ describe('CryptoInterceptor', () => {
           },
           error: (err) => done.fail(err),
         });
-        const req = httpMock.expectOne(url);
-        req.flush(envelope);
+        setTimeout(() => {
+          const req = httpMock.expectOne(url);
+          req.flush(envelope);
+        }, 0);
       });
     });
 
@@ -214,12 +210,7 @@ describe('CryptoInterceptor', () => {
       );
       cryptoSessionSpy.getStoredKey.and.returnValue(null);
 
-      const envelope = {
-        keyId: 'k',
-        iv: 'a',
-        ciphertext: 'b',
-        tag: 'c',
-      };
+      const envelope = { keyId: 'k', iv: 'a', ciphertext: 'b', tag: 'c' };
       const url = `${API_BASE}/v1/items`;
 
       http.post(url, { foo: 1 }).subscribe({
@@ -227,11 +218,12 @@ describe('CryptoInterceptor', () => {
           expect(data).toEqual(envelope);
           done();
         },
-        error: done.fail,
+        error: (err) => done.fail(err),
       });
-
-      const req = httpMock.expectOne(url);
-      req.flush(envelope);
+      setTimeout(() => {
+        const req = httpMock.expectOne(url);
+        req.flush(envelope);
+      }, 0);
     });
   });
 
@@ -240,15 +232,14 @@ describe('CryptoInterceptor', () => {
       cryptoSessionSpy.getSessionKey.and.returnValue(
         Promise.reject(new Error('No session key'))
       );
-      const url = `${API_BASE}/v1/users`;
-      http.post(url, { a: 1 }).subscribe({
+      http.post(`${API_BASE}/v1/users`, { a: 1 }).subscribe({
         next: () => done.fail('expected error'),
-        error: (err) => {
+        error: (err: Error) => {
           expect(err.message).toContain('No session key');
           done();
         },
       });
-      httpMock.expectOne(url);
+      // No se envía ninguna petición HTTP porque el interceptor falla antes
     });
   });
 });

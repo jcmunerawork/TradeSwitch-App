@@ -6,6 +6,7 @@ import { GroupedTradeFinal } from '../../models/report.model';
 import { ConfigurationOverview } from '../../../strategy/models/strategy.model';
 import { ReportService } from '../../service/report.service';
 import { AppContextService } from '../../../../shared/context';
+import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
 
 /**
  * Interface representing a trade detail for display in the popup.
@@ -46,7 +47,7 @@ export interface TradeDetail {
 @Component({
   selector: 'app-trades-popup',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, BackendDatePipe],
   templateUrl: './trades-popup.component.html',
   styleUrls: ['./trades-popup.component.scss']
 })
@@ -68,7 +69,8 @@ export class TradesPopupComponent {
 
   constructor(
     private reportService: ReportService,
-    private appContext: AppContextService
+    private appContext: AppContextService,
+    private backendDatePipe: BackendDatePipe
   ) {}
 
   ngOnChanges() {
@@ -80,7 +82,7 @@ export class TradesPopupComponent {
   async loadTradesData() {
     if (!this.selectedDay) return;
 
-    this.selectedDate = this.formatDate(this.selectedDay.date);
+    this.selectedDate = this.backendDatePipe.transform(this.selectedDay.date, 'date');
     this.netPnl = this.selectedDay.pnlTotal;
     
     // Obtener cache de instrumentos una sola vez para todos los trades del día
@@ -127,8 +129,8 @@ export class TradesPopupComponent {
       }
       
       return {
-        positionOpened: this.formatDateTime(openedDate),
-        positionClosed: this.formatDateTime(closedDate),
+        positionOpened: this.backendDatePipe.transform(openedDate, 'datetime'),
+        positionClosed: this.backendDatePipe.transform(closedDate, 'datetime'),
         ticker: instrumentName,
         side: this.determineSide(trade),
         netPnl: trade.pnl ?? 0,

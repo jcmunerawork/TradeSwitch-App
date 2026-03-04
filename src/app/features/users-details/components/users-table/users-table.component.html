@@ -135,7 +135,7 @@
             </td>
             <td class="smallText">
               <p>
-                {{ getUserDate(user.subscription_date) | date : "dd/MM/yyyy" }}
+                {{ user.subscription_date | backendDate }}
               </p>
             </td>
             <td>

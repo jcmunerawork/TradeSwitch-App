@@ -11,6 +11,7 @@
     "build:vercel": "npm run build",
     "watch": "npm run setup-env && ng build --watch --configuration development",
     "test": "ng test",
+    "test:headless": "node scripts/run-tests-headless.js",
     "serve:ssr:Trade-Manager": "node dist/Trade-Manager/server/server.mjs",
     "setup-env": "node scripts/setup-env.js",
     "commit": "cz",

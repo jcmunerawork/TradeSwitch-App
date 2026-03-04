@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SubscriptionTableRow } from '../../models/revenue';
+import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
 
 /**
  * Component for displaying subscriptions data in a table format.
@@ -24,7 +25,7 @@ import { SubscriptionTableRow } from '../../models/revenue';
 @Component({
   selector: 'app-subscriptions-table',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BackendDatePipe],
   templateUrl: './subscriptions-table.component.html',
   styleUrls: ['./subscriptions-table.component.scss'],
 })

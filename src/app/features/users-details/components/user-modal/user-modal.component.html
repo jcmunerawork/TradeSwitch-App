@@ -29,7 +29,7 @@
       </div>
       <div class="user-item">
         <p class="user-item-label">Birthday</p>
-        <p>{{ getFormattedBirthday() }}</p>
+        <p>{{ (user.birthday | backendDate) || '—' }}</p>
       </div>
     </div>
   </div>
@@ -67,11 +67,11 @@
       </div>
       <div class="user-item">
         <p class="user-item-label">Last active</p>
-        <p>{{ today | date : "MMMM d, yyyy" }}</p>
+        <p>{{ today | backendDate }}</p>
       </div>
       <div class="user-item">
         <p class="user-item-label">Sus. From</p>
-        <p>{{ getUserDate(user.subscription_date) | date : "M/d/yy" }}</p>
+        <p>{{ user.subscription_date | backendDate }}</p>
       </div>
     </div>
   </div>

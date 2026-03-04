@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { OrderTableRow } from '../../models/revenue';
+import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
 
 /**
  * Component for displaying orders data in a table format.
@@ -24,7 +25,7 @@ import { OrderTableRow } from '../../models/revenue';
 @Component({
   selector: 'app-orders-table',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BackendDatePipe],
   templateUrl: './orders-table.component.html',
   styleUrls: ['./orders-table.component.scss'],
 })

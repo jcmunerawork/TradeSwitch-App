@@ -22,7 +22,7 @@
         </div>
         <div class="info-item">
           <span class="info-label">Renewal date</span>
-          <span class="info-value">{{ renewalDate }}</span>
+          <span class="info-value">{{ renewalDateValue ? (renewalDateValue | backendDate) : renewalDate }}</span>
         </div>
         <div class="info-item">
           <span class="info-label">Remaining until renewal</span>

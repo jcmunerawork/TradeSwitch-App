@@ -37,6 +37,7 @@ import { StrategyPageInitService } from './services/strategy-page-init.service';
 
 import { AlertService } from '../../core/services';
 import { ToastNotificationService } from '../../shared/services/toast-notification.service';
+import { BackendDatePipe } from '../../shared/pipes/backend-date.pipe';
 
 
 /**
@@ -94,6 +95,7 @@ import { ToastNotificationService } from '../../shared/services/toast-notificati
     LoadingSpinnerComponent,
     PlanBannerComponent,
     ConfirmPopupComponent,
+    BackendDatePipe,
   ],
   templateUrl: './strategy.component.html',
   styleUrl: './strategy.component.scss',
@@ -192,7 +194,8 @@ export class Strategy implements OnInit, OnDestroy {
     private newStrategyFlowService: StrategyNewStrategyFlowService,
     private pageInitService: StrategyPageInitService,
     private alertService: AlertService,
-    private toastService: ToastNotificationService
+    private toastService: ToastNotificationService,
+    private backendDatePipe: BackendDatePipe
   ) { }
 
   async ngOnInit(): Promise<void> {
@@ -776,7 +779,7 @@ export class Strategy implements OnInit, OnDestroy {
   }
 
   formatDate(date: Date): string {
-    return this.strategyCardsDataService.formatDate(date);
+    return this.backendDatePipe.transform(date, 'date');
   }
 
   getStrategyId(strategy: ConfigurationOverview): string {

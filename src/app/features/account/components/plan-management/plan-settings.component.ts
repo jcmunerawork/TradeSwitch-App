@@ -21,6 +21,7 @@ import { StripeLoaderPopupComponent } from '../../../../shared/pop-ups/stripe-lo
 import { ConfigService } from '../../../../core/services/config.service';
 import { BackendApiService } from '../../../../core/services/backend-api.service';
 import { ToastNotificationService } from '../../../../shared/services/toast-notification.service';
+import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
 
 /**
  * Component for managing user subscription plans.
@@ -53,7 +54,7 @@ import { ToastNotificationService } from '../../../../shared/services/toast-noti
  */
 @Component({
   selector: 'app-plan-settings',
-  imports: [CommonModule, LoadingSpinnerComponent, StripeLoaderPopupComponent /*SubscriptionProcessingComponent OrderSummaryComponent*/],
+  imports: [CommonModule, LoadingSpinnerComponent, StripeLoaderPopupComponent, BackendDatePipe /*SubscriptionProcessingComponent OrderSummaryComponent*/],
   templateUrl: './plan-settings.component.html',
   styleUrl: './plan-settings.component.scss',
   standalone: true,
@@ -68,8 +69,10 @@ export class PlanSettingsComponent implements OnInit {
   /** Current user plan obtained from the service */
   userPlan: Plan | undefined = undefined;
   
-  /** Plan renewal date formatted as string */
+  /** Plan renewal date formatted as string (legacy) or use renewalDateValue with pipe */
   renewalDate: string = '';
+  /** Plan renewal date as Date for backendDate pipe (null when N/A) */
+  renewalDateValue: Date | null = null;
   
   /** Remaining days until next renewal */
   remainingDays: number = 0;
@@ -160,6 +163,7 @@ export class PlanSettingsComponent implements OnInit {
               this.calculateRenewalDate(new Date(userPlanData.expiresAt));
             } else {
               this.renewalDate = 'N/A';
+      this.renewalDateValue = null;
               this.remainingDays = 0;
             }
           }
@@ -240,6 +244,7 @@ export class PlanSettingsComponent implements OnInit {
         // Si no hay suscripción activa o es plan Free, mostrar N/A
         if (this.isFreePlan) {
           this.renewalDate = 'N/A';
+      this.renewalDateValue = null;
           this.remainingDays = 0;
         } else {
           // Obtener la suscripción para la fecha de renovación (periodEnd)
@@ -250,11 +255,13 @@ export class PlanSettingsComponent implements OnInit {
               this.calculateRenewalDate(subscription.periodEnd);
             } else {
               this.renewalDate = 'N/A';
+      this.renewalDateValue = null;
               this.remainingDays = 0;
             }
           } catch (error) {
             console.error('Error getting subscription for renewal date:', error);
             this.renewalDate = 'N/A';
+      this.renewalDateValue = null;
             this.remainingDays = 0;
           }
         }
@@ -404,6 +411,7 @@ export class PlanSettingsComponent implements OnInit {
     }
     this.isFreePlan = true;
     this.renewalDate = 'N/A';
+      this.renewalDateValue = null;
     this.remainingDays = 0;
   }
 
@@ -428,12 +436,14 @@ export class PlanSettingsComponent implements OnInit {
     // Si es plan Free, no calcular nada
     if (this.isFreePlan) {
       this.renewalDate = 'N/A';
+      this.renewalDateValue = null;
       this.remainingDays = 0;
       return;
     }
     
     if (!periodEnd) {
       this.renewalDate = 'N/A';
+      this.renewalDateValue = null;
       this.remainingDays = 0;
       return;
     }
@@ -475,16 +485,13 @@ export class PlanSettingsComponent implements OnInit {
     if (isNaN(renewalDate.getTime())) {
       console.error('Invalid renewal date:', periodEnd);
       this.renewalDate = 'N/A';
+      this.renewalDateValue = null;
       this.remainingDays = 0;
       return;
     }
     
-    // Formatear fecha de renovación
-    this.renewalDate = renewalDate.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    this.renewalDateValue = renewalDate;
+    this.renewalDate = ''; // Se muestra con pipe en template
     
     // Calcular días restantes desde hoy hasta la fecha de renovación
     const today = new Date();

@@ -124,7 +124,7 @@
               </span>
             </td>
             <td class="smallText">
-              <p>{{ formatDate(payment.created_at) }}</p>
+              <p>{{ payment.created_at | backendDate:'datetime' }}</p>
             </td>
             <td class="smallText">
               <div class="d-flex items-center gap-8">

@@ -1,5 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { provideStore } from '@ngrx/store';
+import { appReducers } from '../../../store/app.reducer';
 import { SignupComponent } from './signup';
 
 describe('Signup', () => {
@@ -8,9 +11,9 @@ describe('Signup', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SignupComponent]
-    })
-    .compileComponents();
+      imports: [HttpClientTestingModule, SignupComponent],
+      providers: [provideRouter([]), provideStore(appReducers)],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(SignupComponent);
     component = fixture.componentInstance;

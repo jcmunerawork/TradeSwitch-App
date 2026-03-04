@@ -12,6 +12,7 @@ import type { SessionKeyResponse } from '../models/encryption.model';
 const SESSION_KEY_STORAGE_KEY = 'ts_crypto_key';
 const API_BASE = 'http://localhost:3000/api';
 const SESSION_KEY_URL = `${API_BASE}/v1/crypto/session-key`;
+const FAKE_TOKEN = 'fake-firebase-id-token';
 
 describe('CryptoSessionService', () => {
   let service: CryptoSessionService;
@@ -19,7 +20,7 @@ describe('CryptoSessionService', () => {
   let configSpy: jasmine.SpyObj<Pick<ConfigService, 'apiUrl'>>;
 
   beforeEach(() => {
-    sessionStorage.removeItem(SESSION_KEY_STORAGE_KEY);
+    localStorage.removeItem(SESSION_KEY_STORAGE_KEY);
     configSpy = jasmine.createSpyObj('ConfigService', [], {
       apiUrl: API_BASE,
     });
@@ -42,17 +43,18 @@ describe('CryptoSessionService', () => {
   });
 
   describe('getSessionKey', () => {
-    it('debería llamar al backend y devolver keyId y key', async () => {
+    it('debería llamar al backend con Authorization Bearer y devolver keyId y key', async () => {
       const response: SessionKeyResponse = {
         keyId: 'key-123',
         key: btoa(String.fromCharCode(...new Array(32).fill(0))),
         expiresIn: 3600,
       };
 
-      const promise = service.getSessionKey();
+      const promise = service.getSessionKey(FAKE_TOKEN);
       const req = httpMock.expectOne(SESSION_KEY_URL);
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({});
+      expect(req.request.headers.get('Authorization')).toBe(`Bearer ${FAKE_TOKEN}`);
       req.flush(response);
 
       const result = await promise;
@@ -67,18 +69,18 @@ describe('CryptoSessionService', () => {
         expiresIn: 3600,
       };
 
-      const r1 = service.getSessionKey();
+      const r1 = service.getSessionKey(FAKE_TOKEN);
       httpMock.expectOne(SESSION_KEY_URL).flush(response);
       await r1;
 
-      const r2 = service.getSessionKey();
+      const r2 = service.getSessionKey(FAKE_TOKEN);
       httpMock.expectNone(SESSION_KEY_URL);
       const result = await r2;
       expect(result.keyId).toBe('cached');
     });
 
     it('debería fallar cuando el backend devuelve error', async () => {
-      const promise = service.getSessionKey();
+      const promise = service.getSessionKey(FAKE_TOKEN);
       const req = httpMock.expectOne(SESSION_KEY_URL);
       req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
 
@@ -97,7 +99,7 @@ describe('CryptoSessionService', () => {
         key: btoa('k'.repeat(32)),
         expiresIn: 3600,
       };
-      const promise = service.getSessionKey();
+      const promise = service.getSessionKey(FAKE_TOKEN);
       httpMock.expectOne(SESSION_KEY_URL).flush(response);
       await promise;
 
@@ -115,7 +117,7 @@ describe('CryptoSessionService', () => {
         key: btoa('c'.repeat(32)),
         expiresIn: 3600,
       };
-      const promise = service.getSessionKey();
+      const promise = service.getSessionKey(FAKE_TOKEN);
       httpMock.expectOne(SESSION_KEY_URL).flush(response);
       await promise;
       expect(service.getStoredKey()).not.toBeNull();
@@ -130,7 +132,7 @@ describe('CryptoSessionService', () => {
         key: btoa('1'.repeat(32)),
         expiresIn: 3600,
       };
-      const p1 = service.getSessionKey();
+      const p1 = service.getSessionKey(FAKE_TOKEN);
       httpMock.expectOne(SESSION_KEY_URL).flush(response);
       await p1;
       service.clearKey();
@@ -140,7 +142,7 @@ describe('CryptoSessionService', () => {
         key: btoa('2'.repeat(32)),
         expiresIn: 3600,
       };
-      const p2 = service.getSessionKey();
+      const p2 = service.getSessionKey(FAKE_TOKEN);
       const req = httpMock.expectOne(SESSION_KEY_URL);
       req.flush(response2);
       const result = await p2;

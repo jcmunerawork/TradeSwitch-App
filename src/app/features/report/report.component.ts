@@ -612,7 +612,7 @@ export class ReportComponent implements OnInit {
       
       if (actualYear === requestYear) {
         this.userService.updateUser(this.user.id, {
-          strategy_followed: percentage,
+          strategy_followed: Number(percentage),
           lastUpdated: new Date().getTime()
         }).catch(error => {
           console.error('Error updating user strategy_followed:', error);

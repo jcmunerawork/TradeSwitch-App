@@ -6,7 +6,10 @@ import { ConfigService } from './config.service';
 import type { SessionKeyResponse } from '../models/encryption.model';
 
 const SESSION_KEY_STORAGE_KEY = 'ts_crypto_key';
-const KEY_EXPIRY_BUFFER_MS = 60 * 1000; // renovar 1 min antes de expirar
+/** Renovar cuando queden menos de 10 minutos (backend TTL = 1 hora). */
+const RENEW_BEFORE_MS = 10 * 60 * 1000;
+/** Margen para considerar clave válida en memoria (mismo que renovación). */
+const KEY_EXPIRY_BUFFER_MS = RENEW_BEFORE_MS;
 
 @Injectable({ providedIn: 'root' })
 export class CryptoSessionService {
@@ -18,10 +21,11 @@ export class CryptoSessionService {
   private keyId: string | null = null;
   private key: string | null = null;
   private expiresAt: number | null = null;
+  private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     if (this.isBrowser) {
-      this.loadFromSessionStorage();
+      this.loadFromLocalStorage();
     }
   }
 
@@ -30,27 +34,28 @@ export class CryptoSessionService {
     return `${base}/v1/crypto/session-key`;
   }
 
-  private loadFromSessionStorage(): void {
+  private loadFromLocalStorage(): void {
     try {
-      const raw = sessionStorage.getItem(SESSION_KEY_STORAGE_KEY);
+      const raw = localStorage.getItem(SESSION_KEY_STORAGE_KEY);
       if (!raw) return;
       const data = JSON.parse(raw) as { keyId: string; key: string; expiresAt: number };
       if (data.expiresAt > Date.now() + KEY_EXPIRY_BUFFER_MS) {
         this.keyId = data.keyId;
         this.key = data.key;
         this.expiresAt = data.expiresAt;
+        this.scheduleRefreshTimer(Math.max(0, Math.floor((data.expiresAt - Date.now()) / 1000)));
       } else {
-        sessionStorage.removeItem(SESSION_KEY_STORAGE_KEY);
+        localStorage.removeItem(SESSION_KEY_STORAGE_KEY);
       }
     } catch {
-      sessionStorage.removeItem(SESSION_KEY_STORAGE_KEY);
+      localStorage.removeItem(SESSION_KEY_STORAGE_KEY);
     }
   }
 
-  private saveToSessionStorage(): void {
+  private saveToLocalStorage(): void {
     if (!this.isBrowser || !this.keyId || !this.key || !this.expiresAt) return;
     try {
-      sessionStorage.setItem(
+      localStorage.setItem(
         SESSION_KEY_STORAGE_KEY,
         JSON.stringify({
           keyId: this.keyId,
@@ -63,11 +68,35 @@ export class CryptoSessionService {
     }
   }
 
+  private clearRefreshTimer(): void {
+    if (this.refreshTimerId != null) {
+      clearTimeout(this.refreshTimerId);
+      this.refreshTimerId = null;
+    }
+  }
+
   /**
-   * Gets the session key: uses the cached one if still valid, otherwise calls the backend.
-   * The auth token is added by AuthInterceptor when making the POST.
+   * Programa la limpieza de la clave cuando falte poco para expirar,
+   * para que la siguiente petición pida una nueva (con token fresco).
+   * Backend TTL = 3600 s; renovamos cuando queden < 10 min.
    */
-  async getSessionKey(): Promise<{ keyId: string; key: string }> {
+  private scheduleRefreshTimer(expiresInSeconds: number): void {
+    this.clearRefreshTimer();
+    const renewInMs = Math.max(0, (expiresInSeconds * 1000) - RENEW_BEFORE_MS);
+    if (renewInMs <= 0) return;
+    this.refreshTimerId = setTimeout(() => {
+      this.refreshTimerId = null;
+      this.clearKey();
+    }, renewInMs);
+  }
+
+  /**
+   * Obtiene la clave de sesión: usa la cacheada si sigue válida (y con margen),
+   * si no llama al backend con el token de Firebase indicado.
+   * El front debe pasar siempre un Firebase idToken actual (p. ej. getIdToken(true))
+   * para evitar 401 en el handshake.
+   */
+  async getSessionKey(firebaseIdToken: string): Promise<{ keyId: string; key: string }> {
     const now = Date.now();
     if (
       this.keyId &&
@@ -79,16 +108,20 @@ export class CryptoSessionService {
     }
 
     const res = await firstValueFrom(
-      this.http.post<SessionKeyResponse>(this.sessionKeyUrl, {})
+      this.http.post<SessionKeyResponse>(this.sessionKeyUrl, {}, {
+        headers: { Authorization: `Bearer ${firebaseIdToken}` },
+      })
     );
+    this.clearRefreshTimer();
     this.keyId = res.keyId;
     this.key = res.key;
     this.expiresAt = now + res.expiresIn * 1000;
-    this.saveToSessionStorage();
+    this.saveToLocalStorage();
+    this.scheduleRefreshTimer(res.expiresIn);
     return { keyId: this.keyId, key: this.key };
   }
 
-  /** Current key in memory (for decrypting responses). Null if none or expired. */
+  /** Clave actual en memoria (para descifrar). Null si no hay o está expirada. */
   getStoredKey(): { keyId: string; key: string } | null {
     const now = Date.now();
     if (
@@ -102,14 +135,15 @@ export class CryptoSessionService {
     return { keyId: this.keyId, key: this.key };
   }
 
-  /** Clears the key (e.g. on logout or 401). */
+  /** Limpia la clave (logout, 401, o al forzar renovación). */
   clearKey(): void {
+    this.clearRefreshTimer();
     this.keyId = null;
     this.key = null;
     this.expiresAt = null;
     if (this.isBrowser) {
       try {
-        sessionStorage.removeItem(SESSION_KEY_STORAGE_KEY);
+        localStorage.removeItem(SESSION_KEY_STORAGE_KEY);
       } catch {}
     }
   }

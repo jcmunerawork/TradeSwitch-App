@@ -11,7 +11,7 @@
       <div class="active-filters-container" *ngIf="selectedStartDate || selectedEndDate">
         <div class="filter-chip">
           <span class="filter-label">
-            {{ selectedStartDate | date:'short' }} - {{ selectedEndDate | date:'short' }}
+            {{ selectedStartDate | backendDate }} - {{ selectedEndDate | backendDate }}
           </span>
           <button class="remove-filter-btn" (click)="clearDateFilter()">
             <span class="material-symbols-outlined" style="font-size: 18px;">close</span>

@@ -689,11 +689,71 @@ export class BackendApiService extends BaseApiService {
   }
 
   /**
+   * Normalizes the payload for PUT /users/:userId so the backend receives correct types.
+   * - strategy_followed: number (backend rejects string)
+   * - birthday: ISO date string YYYY-MM-DD or valid date
+   * - status: string (enum value)
+   * - lastUpdated: number (timestamp)
+   */
+  private normalizeUpdateUserPayload(userData: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    const validStatuses = new Set(['admin', 'created', 'purchased', 'pending', 'active', 'processing', 'cancelled', 'expired', 'banned']);
+    const numericKeys = new Set(['strategy_followed', 'lastUpdated', 'trading_accounts', 'strategies', 'subscription_date', 'number_trades', 'netPnl', 'profit', 'total_spend', 'best_trade']);
+
+    for (const [key, value] of Object.entries(userData)) {
+      if (value === undefined) continue;
+      if (key === 'id') continue; // never send id in body
+
+      if (numericKeys.has(key)) {
+        const n = value === null || value === '' ? undefined : Number(value);
+        if (n !== undefined && !Number.isNaN(n)) out[key] = n;
+        continue;
+      }
+      if (key === 'birthday') {
+        if (value === null || value === '') continue;
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+            out[key] = trimmed;
+            continue;
+          }
+          const date = new Date(value);
+          if (!Number.isNaN(date.getTime())) out[key] = value.includes('T') ? value : date.toISOString().slice(0, 10);
+          continue;
+        }
+        if (value instanceof Date) {
+          out[key] = value.toISOString().slice(0, 10);
+          continue;
+        }
+        if (typeof value === 'number') {
+          const date = value < 10000000000 ? new Date(value * 1000) : new Date(value);
+          if (!Number.isNaN(date.getTime())) out[key] = date.toISOString().slice(0, 10);
+          continue;
+        }
+        continue;
+      }
+      if (key === 'status') {
+        const s = typeof value === 'string' ? value : String(value);
+        if (s && validStatuses.has(s.toLowerCase())) out[key] = s;
+        continue;
+      }
+      if (key === 'email' && typeof value === 'string' && value.trim()) {
+        out[key] = value.trim();
+        continue;
+      }
+      // firstName, lastName, phoneNumber, etc.: pass through
+      out[key] = value;
+    }
+    return out;
+  }
+
+  /**
    * Update user
    */
   async updateUser(userId: string, userData: any, idToken: string): Promise<BackendApiResponse<{ user: any }>> {
+    const payload = this.normalizeUpdateUserPayload(userData && typeof userData === 'object' ? userData : {});
     return firstValueFrom(
-      this.put<BackendApiResponse<{ user: any }>>(`/users/${userId}`, userData, {
+      this.put<BackendApiResponse<{ user: any }>>(`/users/${userId}`, payload, {
         headers: {
           'Authorization': `Bearer ${idToken}`
         }

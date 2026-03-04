@@ -106,6 +106,9 @@
             "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "tsconfig.spec.json",
             "inlineStyleLanguage": "scss",
+            "stylePreprocessorOptions": {
+              "includePaths": ["src/assets/styles"]
+            },
             "assets": [
               {
                 "glob": "**/*",

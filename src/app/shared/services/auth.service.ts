@@ -109,7 +109,12 @@ export class AuthService {
    */
   private async loadBalancesAndAccountsWhenAuthenticated(userId: string): Promise<void> {
     try {
-      await this.cryptoSession.getSessionKey().catch(() => {});
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (user) {
+        const token = await user.getIdToken(true);
+        await this.cryptoSession.getSessionKey(token).catch(() => {});
+      }
       const accounts = await this.accountsOperationsService.getUserAccounts(userId);
       if (accounts && accounts.length > 0) {
         await this.loadAccountBalancesOnLogin(userId, accounts);
@@ -657,7 +662,8 @@ export class AuthService {
           // Cargar datos del usuario y actualizar contexto
           try {
             const userData = await this.getUserData(currentUser.uid);
-            await this.cryptoSession.getSessionKey().catch(() => {});
+            const idToken = await currentUser.getIdToken(true);
+            await this.cryptoSession.getSessionKey(idToken).catch(() => {});
             return true;
           } catch (error) {
             // Error loading user data after auto-login, continue
@@ -691,7 +697,7 @@ export class AuthService {
             // Cargar datos del usuario
             try {
               const userData = await this.getUserData(currentUser.uid);
-              await this.cryptoSession.getSessionKey().catch(() => {});
+              await this.cryptoSession.getSessionKey(newToken).catch(() => {});
               return true;
             } catch (error) {
               // Error loading user data after auto-login, continue

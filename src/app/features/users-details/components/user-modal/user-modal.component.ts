@@ -3,6 +3,7 @@ import { User } from '../../../overview/models/overview';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Timestamp } from 'firebase/firestore';
+import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
 import { CountryOption } from '../../../../shared/services/countryService';
 
 /**
@@ -40,7 +41,7 @@ import { CountryOption } from '../../../../shared/services/countryService';
   selector: 'app-user-modal',
   templateUrl: './user-modal.component.html',
   styleUrls: ['./user-modal.component.scss'],
-  imports: [FormsModule, CommonModule],
+  imports: [FormsModule, CommonModule, BackendDatePipe],
   standalone: true,
 })
 export class UserModalComponent {
@@ -305,55 +306,5 @@ export class UserModalComponent {
 
   onlyNameInitials(user: User) {
     return user.firstName.charAt(0) + user.lastName.charAt(0);
-  }
-  getUserDate(date: number): Date {
-    return new Date(date);
-  }
-
-  /**
-   * Format birthday date for display
-   * Handles Date, Timestamp, and string formats
-   */
-  getFormattedBirthday(): string {
-    if (!this.user?.birthday) {
-      return 'Not provided';
-    }
-
-    try {
-      let date: Date;
-
-      // Handle Firestore Timestamp
-      if (this.user.birthday && typeof this.user.birthday === 'object' && 'toDate' in this.user.birthday) {
-        date = (this.user.birthday as any).toDate();
-      }
-      // Handle Date object
-      else if (this.user.birthday instanceof Date) {
-        date = this.user.birthday;
-      }
-      // Handle string or number (timestamp)
-      else {
-        date = new Date(this.user.birthday);
-      }
-
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        return 'Invalid date';
-      }
-
-      // Format: "2 de junio de 2001" (day de month de year)
-      const months = [
-        'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-      ];
-
-      const day = date.getDate();
-      const month = months[date.getMonth()];
-      const year = date.getFullYear();
-
-      return `${day} de ${month} de ${year}`;
-    } catch (error) {
-      console.error('Error formatting birthday:', error);
-      return 'Invalid date';
-    }
   }
 }

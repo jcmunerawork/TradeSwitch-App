@@ -11,6 +11,7 @@ import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 import { AppContextService } from '../../../../shared/context';
+import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
 
 /**
  * Component for displaying trading accounts in a table format.
@@ -39,7 +40,7 @@ import { AppContextService } from '../../../../shared/context';
 @Component({
   selector: 'app-accounts-table',
   standalone: true,
-  imports: [CommonModule, FormsModule, ShowConfirmationComponent],
+  imports: [CommonModule, FormsModule, ShowConfirmationComponent, BackendDatePipe],
   templateUrl: './accounts-table.component.html',
   styleUrls: ['./accounts-table.component.scss'],
 })

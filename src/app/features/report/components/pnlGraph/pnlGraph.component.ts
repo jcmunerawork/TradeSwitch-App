@@ -16,6 +16,7 @@ import { NgApexchartsModule } from 'ng-apexcharts';
 import { getMonthlyPnL } from '../../utils/normalization-utils';
 import { FormsModule } from '@angular/forms';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
+import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
 
 /**
  * Component for displaying PnL (Profit and Loss) chart.
@@ -46,7 +47,7 @@ import { NumberFormatterService } from '../../../../shared/utils/number-formatte
   templateUrl: './pnlGraph.component.html',
   styleUrls: ['./pnlGraph.component.scss'],
   standalone: true,
-  imports: [CommonModule, NgApexchartsModule, FormsModule],
+  imports: [CommonModule, NgApexchartsModule, FormsModule, BackendDatePipe],
 })
 export class PnlGraphComponent implements OnInit, OnChanges {
   @Input() values!: GroupedTradeFinal[];

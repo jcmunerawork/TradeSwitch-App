@@ -8,7 +8,8 @@ import {
   HttpErrorResponse,
 } from '@angular/common/http';
 import { Observable, from, of, throwError } from 'rxjs';
-import { switchMap, map, catchError } from 'rxjs/operators';
+import { switchMap, map, catchError, tap } from 'rxjs/operators';
+import { getAuth } from 'firebase/auth';
 import { ConfigService } from '../services/config.service';
 import { CryptoSessionService } from '../services/crypto-session.service';
 import {
@@ -57,12 +58,49 @@ export class CryptoInterceptor implements HttpInterceptor {
     }
 
     const isRetry = req.headers.has(CRYPTO_RETRY_HEADER);
-    return from(this.cryptoSession.getSessionKey()).pipe(
+    return from(this.getFreshFirebaseIdToken()).pipe(
+      switchMap((token) => from(this.cryptoSession.getSessionKey(token))),
       switchMap(({ keyId, key }) => this.buildRequestWithKey(req, keyId, key, isRetry)),
+      tap((newReq) => {
+        if (newReq.url.includes('reports/history')) {
+          this.logReportHistoryRequest(newReq);
+        }
+      }),
       switchMap((newReq) => next.handle(newReq)),
       switchMap((event) => this.decryptResponseIfNeeded(event)),
       catchError((err) => this.handleCryptoError(err, req, next, isRetry))
     );
+  }
+
+  /** Obtiene un Firebase idToken actualizado (force refresh) para el handshake de session-key. */
+  private getFreshFirebaseIdToken(): Promise<string> {
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) return Promise.resolve('');
+      return user.getIdToken(true);
+    } catch {
+      return Promise.resolve('');
+    }
+  }
+
+  /**
+   * Log de depuración: imprime cómo se envía la petición a reports/history
+   * para comprobar si va cifrada (body EncryptedEnvelope) y con X-Session-Key-Id.
+   */
+  private logReportHistoryRequest(req: HttpRequest<unknown>): void {
+    const headers: Record<string, string> = {};
+    req.headers.keys().forEach((key) => {
+      const value = req.headers.get(key);
+      if (value != null) headers[key] = value;
+    });
+    console.log('[CryptoInterceptor] 📤 Petición a reports/history enviada al back:', {
+      method: req.method,
+      url: req.url,
+      headers,
+      body: req.body,
+      bodyEsCifrado: req.body != null && typeof req.body === 'object' && this.isEncryptedEnvelopeBody(req.body),
+    });
   }
 
   /**
@@ -117,7 +155,8 @@ export class CryptoInterceptor implements HttpInterceptor {
       return throwError(() => error);
     }
     this.cryptoSession.clearKey();
-    return from(this.cryptoSession.getSessionKey()).pipe(
+    return from(this.getFreshFirebaseIdToken()).pipe(
+      switchMap((token) => from(this.cryptoSession.getSessionKey(token))),
       switchMap(({ keyId }) => {
         const retryReq = req.clone({
           headers: req.headers.set(CRYPTO_RETRY_HEADER, '1').set('X-Session-Key-Id', keyId),
@@ -148,7 +187,11 @@ export class CryptoInterceptor implements HttpInterceptor {
     }
     const res = event as HttpResponse<unknown>;
     const body = res.body;
+    const isReportsHistory = res.url?.includes('reports/history') ?? false;
     if (!isEncryptedEnvelope(body)) {
+      if (isReportsHistory) {
+        console.log('[CryptoInterceptor] 📥 Respuesta de reports/history (sin cifrar):', res.url, { bodyType: body != null ? typeof body : 'null' });
+      }
       return of(event);
     }
     const stored = this.cryptoSession.getStoredKey();
@@ -156,7 +199,12 @@ export class CryptoInterceptor implements HttpInterceptor {
       return of(event);
     }
     return from(decryptResponseBody(body, stored.key)).pipe(
-      map((decrypted) => res.clone({ body: decrypted }))
+      map((decrypted) => {
+        if (isReportsHistory) {
+          console.log('[CryptoInterceptor] 📥 Respuesta de reports/history (cifrada → descifrada):', res.url, { decrypted });
+        }
+        return res.clone({ body: decrypted });
+      })
     );
   }
 }

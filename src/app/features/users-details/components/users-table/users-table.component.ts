@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 
 import { FormsModule } from '@angular/forms';
 import { User } from '../../../overview/models/overview';
+import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
 import { EventEmitter } from '@angular/core';
 import { Timestamp } from 'firebase/firestore';
 import { CreateUserRolePopupComponent } from '../create-user-role-popup/create-user-role-popup.component';
@@ -39,7 +40,7 @@ import { CreateUserRolePopupComponent } from '../create-user-role-popup/create-u
 @Component({
   selector: 'app-users-table',
   standalone: true,
-  imports: [CommonModule, FormsModule, CreateUserRolePopupComponent],
+  imports: [CommonModule, FormsModule, CreateUserRolePopupComponent, BackendDatePipe],
   templateUrl: './users-table.component.html',
   styleUrls: ['./users-table.component.scss'],
 })
@@ -181,10 +182,6 @@ export class UsersTableComponent {
 
   toggleSort() {
     this.sortAsc = !this.sortAsc;
-  }
-
-  getUserDate(date: number): Date {
-    return new Date(date);
   }
 
   emitUser(user: User) {
