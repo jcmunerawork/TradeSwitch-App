@@ -41,6 +41,7 @@ import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
   selector: 'app-accounts-table',
   standalone: true,
   imports: [CommonModule, FormsModule, ShowConfirmationComponent, BackendDatePipe],
+  providers: [BackendDatePipe],
   templateUrl: './accounts-table.component.html',
   styleUrls: ['./accounts-table.component.scss'],
 })

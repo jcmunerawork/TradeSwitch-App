@@ -90,7 +90,8 @@ export async function decryptResponseBody(
   );
 
   const json = new TextDecoder().decode(decrypted);
-  return JSON.parse(json);
+  const parsed = JSON.parse(json);
+  return parsed;
 }
 
 /**

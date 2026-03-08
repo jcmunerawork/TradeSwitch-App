@@ -89,9 +89,13 @@ export class AuthService {
       onAuthStateChanged(getAuth(), async (user) => {
         this.authStateSubject.next(user !== null);
         if (user?.uid) {
+          await this.ensureSessionKeyFirst();
+          this.startSessionKeyRefreshInterval();
           await this.startUserPlanListener(user.uid);
           await this.loadBalancesAndAccountsWhenAuthenticated(user.uid);
         } else {
+          this.clearSessionKeyRefreshInterval();
+          this.cryptoSession.clearKey();
           this.stopUserPlanListener();
           this.appContext.setUserPlan(null);
         }
@@ -102,19 +106,44 @@ export class AuthService {
   }
 
   private subscriptionUnsubscribe: (() => void) | null = null;
+  /** Intervalo para renovar la clave de sesión de cifrado cada hora. */
+  private sessionKeyRefreshIntervalId: ReturnType<typeof setInterval> | null = null;
+
+  /** Obtiene la clave de sesión de cifrado (POST /api/v1/crypto/session-key). Debe ser lo primero al cargar la página. */
+  private async ensureSessionKeyFirst(): Promise<void> {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      const token = await user.getIdToken(true);
+      await this.cryptoSession.getSessionKey(token);
+    } catch (e) {
+      console.warn('AuthService: no se pudo obtener session key:', e);
+    }
+  }
+
+  /** Programa la renovación de la clave de sesión cada hora. */
+  private startSessionKeyRefreshInterval(): void {
+    this.clearSessionKeyRefreshInterval();
+    const ONE_HOUR_MS = 60 * 60 * 1000;
+    this.sessionKeyRefreshIntervalId = setInterval(() => {
+      this.ensureSessionKeyFirst();
+    }, ONE_HOUR_MS);
+  }
+
+  private clearSessionKeyRefreshInterval(): void {
+    if (this.sessionKeyRefreshIntervalId != null) {
+      clearInterval(this.sessionKeyRefreshIntervalId);
+      this.sessionKeyRefreshIntervalId = null;
+    }
+  }
 
   /**
    * Cargar balances por REST cuando el usuario está autenticado (solo API REST de TradeLocker).
-   * Tras login (o al cargar con sesión), obtiene la clave de sesión para cifrado (GET/POST con backend).
+   * La clave de sesión ya se obtuvo en ensureSessionKeyFirst() antes de llegar aquí.
    */
   private async loadBalancesAndAccountsWhenAuthenticated(userId: string): Promise<void> {
     try {
-      const auth = getAuth();
-      const user = auth.currentUser;
-      if (user) {
-        const token = await user.getIdToken(true);
-        await this.cryptoSession.getSessionKey(token).catch(() => {});
-      }
       const accounts = await this.accountsOperationsService.getUserAccounts(userId);
       if (accounts && accounts.length > 0) {
         await this.loadAccountBalancesOnLogin(userId, accounts);
@@ -174,21 +203,20 @@ export class AuthService {
         );
 
         if (batchResponse.success && batchResponse.data) {
-          // Procesar resultados del batch
-          batchResponse.data.balances.forEach((result) => {
-            if (result.success && result.balance !== undefined) {
-              // Encontrar la cuenta correspondiente
-              const account = validAccounts.find(
-                acc => acc.accountID === result.accountId
-              );
-
-              if (account) {
-                // Actualizar balance en el contexto
-                // El backend ya guardó el balance en Firebase, solo actualizamos el contexto
-                this.appContext.updateAccountBalance(account.accountID!, result.balance);
+          const data = batchResponse.data as any;
+          const balances = data?.balances ?? data?.data?.balances ?? [];
+          if (Array.isArray(balances)) {
+            balances.forEach((result: any) => {
+              if (result?.success && result.balance !== undefined) {
+                const account = validAccounts.find(
+                  acc => acc.accountID === result.accountId
+                );
+                if (account) {
+                  this.appContext.updateAccountBalance(account.accountID!, result.balance);
+                }
               }
-            }
-          });
+            });
+          }
         }
       } catch (error) {
         console.error('❌ AuthService: Error cargando balances en batch:', error);
@@ -463,6 +491,7 @@ export class AuthService {
    */
   async logout() {
     try {
+      this.clearSessionKeyRefreshInterval();
       this.cryptoSession.clearKey();
 
       // 1. Limpiar cookie de sesión específica
@@ -822,14 +851,15 @@ export class AuthService {
       }
       const idToken = await currentUser.getIdToken();
 
-      // Call backend to get user data
+      // Call backend to get user data (GET /auth/me)
       const response = await this.backendApi.getCurrentUser(idToken);
 
       if (!response.success || !response.data) {
         throw new Error(response.error?.message || 'Failed to get user data');
       }
 
-      const userData = response.data.user as User;
+      const data = response.data as any;
+      const userData = (data?.user ?? data?.data?.user) as User;
 
       // Los conteos ya vienen del backend en la respuesta, no necesitamos actualizarlos
       // Guardar en caché
@@ -997,8 +1027,8 @@ export class AuthService {
     return this.accountsOperationsService.checkAccountExists(broker, server, accountID, currentUserId, excludeAccountId);
   }
   async updateAccount(accountId: string, accountData: AccountData): Promise<string> { return this.accountsOperationsService.updateAccount(accountId, accountData); }
-  async deleteAccount(accountId: string): Promise<void> {
-    const userId = await this.accountsOperationsService.deleteAccount(accountId);
+  async deleteAccount(accountId: string, currentUserId?: string): Promise<void> {
+    const userId = await this.accountsOperationsService.deleteAccount(accountId, currentUserId);
 
     // Actualizar conteos del usuario después de eliminar la cuenta
     // Nota: updateUserCounts() ya invalida el caché automáticamente a través de updateUser()

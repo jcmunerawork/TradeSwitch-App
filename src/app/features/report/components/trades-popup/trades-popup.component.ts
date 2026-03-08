@@ -48,6 +48,7 @@ export interface TradeDetail {
   selector: 'app-trades-popup',
   standalone: true,
   imports: [CommonModule, BackendDatePipe],
+  providers: [BackendDatePipe],
   templateUrl: './trades-popup.component.html',
   styleUrls: ['./trades-popup.component.scss']
 })

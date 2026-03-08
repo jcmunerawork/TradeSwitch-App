@@ -42,6 +42,7 @@ import { CountryOption } from '../../../../shared/services/countryService';
   templateUrl: './user-modal.component.html',
   styleUrls: ['./user-modal.component.scss'],
   imports: [FormsModule, CommonModule, BackendDatePipe],
+  providers: [BackendDatePipe],
   standalone: true,
 })
 export class UserModalComponent {

@@ -110,7 +110,6 @@ export class PlanService {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.getAllPlans(idToken);
-      
       if (response.success && response.data?.plans) {
         return response.data.plans as Plan[];
       }

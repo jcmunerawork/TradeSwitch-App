@@ -55,6 +55,7 @@ import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
 @Component({
   selector: 'app-plan-settings',
   imports: [CommonModule, LoadingSpinnerComponent, StripeLoaderPopupComponent, BackendDatePipe /*SubscriptionProcessingComponent OrderSummaryComponent*/],
+  providers: [BackendDatePipe],
   templateUrl: './plan-settings.component.html',
   styleUrl: './plan-settings.component.scss',
   standalone: true,

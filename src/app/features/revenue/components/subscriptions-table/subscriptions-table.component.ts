@@ -26,6 +26,7 @@ import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
   selector: 'app-subscriptions-table',
   standalone: true,
   imports: [CommonModule, FormsModule, BackendDatePipe],
+  providers: [BackendDatePipe],
   templateUrl: './subscriptions-table.component.html',
   styleUrls: ['./subscriptions-table.component.scss'],
 })

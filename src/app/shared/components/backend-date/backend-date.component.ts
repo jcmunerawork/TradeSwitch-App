@@ -11,6 +11,7 @@ import { BackendDatePipe } from '../../pipes/backend-date.pipe';
   selector: 'app-backend-date',
   standalone: true,
   imports: [CommonModule, BackendDatePipe],
+  providers: [BackendDatePipe],
   template: `{{ value | backendDate:format }}`,
 })
 export class BackendDateComponent {

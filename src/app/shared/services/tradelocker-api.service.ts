@@ -299,15 +299,13 @@ export class TradeLockerApiService {
       this.getIdToken().then(idToken => {
         this.backendApi.getTradingHistory(accountId, idToken, accNum).then(response => {
           if (response.success && response.data) {
-            // Extract source, warning and syncMetadata from backend response
+            const data = (response.data as any)?.data ?? response.data;
             const source = response.source || 'tradelocker';
             const warning = response.warning || null;
-            const syncMetadata = response.data.syncMetadata || null;
-            
-            // El backend devuelve { positions: {...}, metrics: {...}, syncMetadata: {...} }
-            // Necesitamos convertir positions a formato de trades para mantener compatibilidad
-            if (response.data.positions) {
-              const positions = Object.values(response.data.positions || {}) as any[];
+            const syncMetadata = data?.syncMetadata || null;
+
+            if (data?.positions) {
+              const positions = Object.values(data.positions || {}) as any[];
               const trades = positions.map(pos => ({
                 ...pos,
                 pnl: pos.pnl ?? 0,
@@ -317,20 +315,13 @@ export class TradeLockerApiService {
                 instrument: pos.instrument || pos.tradableInstrumentId || '',
                 closedDate: pos.closedDate?.toString() || pos.lastModified?.toString() || undefined
               }));
-              
-              observer.next({ trades, metrics: response.data.metrics, source, warning, syncMetadata });
-            } 
-            // Formato legacy: { trades: [...] }
-            else if (response.data.trades && Array.isArray(response.data.trades)) {
-              observer.next({ trades: response.data.trades, metrics: response.data.metrics, source, warning, syncMetadata });
-            } 
-            // FORMATO ANTIGUO: { d: { ordersHistory: [...] } }
-            else if (response.data.d && response.data.d.ordersHistory) {
-              observer.next({ ...response.data, source, warning, syncMetadata });
-            } 
-            // Si no hay estructura reconocida, devolver vacío
-            else {
-              console.warn(`⚠️ Formato de respuesta no reconocido para account ${accountId}:`, response.data);
+              observer.next({ trades, metrics: data.metrics, source, warning, syncMetadata });
+            } else if (data?.trades && Array.isArray(data.trades)) {
+              observer.next({ trades: data.trades, metrics: data.metrics, source, warning, syncMetadata });
+            } else if (data?.d?.ordersHistory) {
+              observer.next({ ...data, source, warning, syncMetadata });
+            } else {
+              console.warn(`⚠️ Formato de respuesta no reconocido para account ${accountId}:`, data);
               observer.next({ trades: [], metrics: null, source, warning, syncMetadata });
             }
             observer.complete();

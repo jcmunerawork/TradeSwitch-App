@@ -48,6 +48,7 @@ import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
   styleUrls: ['./pnlGraph.component.scss'],
   standalone: true,
   imports: [CommonModule, NgApexchartsModule, FormsModule, BackendDatePipe],
+  providers: [BackendDatePipe],
 })
 export class PnlGraphComponent implements OnInit, OnChanges {
   @Input() values!: GroupedTradeFinal[];

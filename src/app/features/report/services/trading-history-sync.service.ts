@@ -77,10 +77,10 @@ export class TradingHistorySyncService {
       const response = await this.backendApi.getTradingHistory(accountId, idToken);
 
       if (response.success && response.data) {
-        const data = response.data as TradingHistoryDocument;
+        const data = ((response.data as any)?.data ?? response.data) as TradingHistoryDocument;
         this.logger.debug('Trading history loaded from backend', 'TradingHistorySyncService', {
           accountId,
-          positionsCount: Object.keys(data.positions || {}).length
+          positionsCount: Object.keys(data?.positions || {}).length
         });
         return data;
       } else {

@@ -342,12 +342,14 @@ export class TradingAccountsComponent implements OnDestroy {
   deleteAccount(account: AccountData) {
     this.loading = true;
     this.userSvc
-      .deleteAccount(account.id)
+      .deleteAccount(account.id, account.userId)
       .then(async () => {
-        // Reload everything after deletion
+        // Quitar de la UI inmediatamente (AppContext + usersData local)
+        this.appContext.removeAccount(account.id);
+        this.usersData = this.usersData.filter(a => a.id !== account.id);
+        // Recargar desde backend para sincronizar caché y contexto
         this.loadConfig();
-        await this.checkPlanLimitations(); // Check plan limitations after deleting account
-        this.usersData = [...this.usersData];
+        await this.checkPlanLimitations();
       })
       .catch((err) => {
         this.loading = false;

@@ -5,7 +5,7 @@
  * Extends BaseApiService for common HTTP operations.
  */
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable, firstValueFrom, throwError, of } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -13,6 +13,8 @@ import { BaseApiService } from './api.service';
 import { getAuth } from 'firebase/auth';
 
 import { ApiDataSource, ApiWarning, ApiError, ApiRetryInfo } from '../models/api-response.model';
+import { CryptoSessionService } from './crypto-session.service';
+import { decryptResponseBody, isEncryptedEnvelope } from '../utils/encryption';
 
 /**
  * API Response interface with fallback and retry support
@@ -77,6 +79,19 @@ export interface LoginResponse {
 })
 export class BackendApiService extends BaseApiService {
   protected apiUrl = '/v1';
+  private cryptoSession = inject(CryptoSessionService);
+
+  /**
+   * Headers con Authorization y X-Session-Key-Id para que el backend cifre la respuesta.
+   * Usar en todas las peticiones autenticadas excepto auth/login y auth/signup.
+   */
+  private async getAuthHeaders(idToken: string): Promise<Record<string, string>> {
+    const { keyId } = await this.cryptoSession.getSessionKey(idToken);
+    return {
+      'Authorization': `Bearer ${idToken}`,
+      'X-Session-Key-Id': keyId,
+    };
+  }
 
   /**
    * Sign up a new user
@@ -161,16 +176,28 @@ export class BackendApiService extends BaseApiService {
   }
 
   /**
-   * Get current user
+   * Get current user (GET /auth/me).
+   * Si la respuesta llega con data cifrada (envelope), se descifra aquí como fallback.
+   * El backend puede devolver el payload cifrado como { user, tokenInfo, uid } o anidado en .data; normalizamos a data = { user, tokenInfo?, uid? }.
    */
   async getCurrentUser(idToken: string): Promise<BackendApiResponse<{ user: any }>> {
-    return firstValueFrom(
-      this.get<BackendApiResponse<{ user: any }>>('/auth/me', undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+    const response = await firstValueFrom(
+      this.get<BackendApiResponse<{ user: any } | Record<string, unknown>>>('/auth/me', undefined, {
+        headers: await this.getAuthHeaders(idToken)
       })
     );
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as Record<string, unknown>;
+        const data = decrypted && typeof decrypted === 'object' && 'data' in decrypted && (decrypted as any).data != null
+          ? (decrypted as any).data
+          : decrypted;
+        return { ...response, data } as BackendApiResponse<{ user: any }>;
+      }
+    }
+    return response as BackendApiResponse<{ user: any }>;
   }
 
   /**
@@ -219,9 +246,7 @@ export class BackendApiService extends BaseApiService {
   async refreshToken(idToken: string): Promise<BackendApiResponse<{ user: any; uid: string }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ user: any; uid: string }>>('/auth/refresh', {}, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -256,9 +281,7 @@ export class BackendApiService extends BaseApiService {
         `/users/${userId}/send-password-reset`,
         email ? { email } : {},
         {
-          headers: {
-            'Authorization': `Bearer ${idToken}`
-          }
+          headers: await this.getAuthHeaders(idToken)
         }
       ).pipe(
         catchError((error: HttpErrorResponse) => {
@@ -301,9 +324,7 @@ export class BackendApiService extends BaseApiService {
           confirmPassword
         },
         {
-          headers: {
-            'Authorization': `Bearer ${idToken}`
-          }
+          headers: await this.getAuthHeaders(idToken)
         }
       ).pipe(
         catchError((error: HttpErrorResponse) => {
@@ -325,9 +346,7 @@ export class BackendApiService extends BaseApiService {
       this.post<BackendApiResponse<{ url: string; sessionId: string }>>('/payments/create-checkout-session', {
         priceId
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -352,9 +371,7 @@ export class BackendApiService extends BaseApiService {
   async createPortalSession(idToken: string): Promise<BackendApiResponse<{ url: string }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ url: string }>>('/payments/create-portal-session', {}, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error creating portal session:', error);
@@ -377,9 +394,7 @@ export class BackendApiService extends BaseApiService {
   async createAccount(account: any, idToken: string): Promise<BackendApiResponse<{ account: any }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ account: any }>>('/accounts', account, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -397,26 +412,36 @@ export class BackendApiService extends BaseApiService {
    * - Returns null if the user has no subscription
    */
   async getUserPlan(userId: string, idToken: string): Promise<BackendApiResponse<{ plan: any | null }>> {
+    const headers = await this.getAuthHeaders(idToken);
     return firstValueFrom(
-      this.get<BackendApiResponse<{ plan: any | null }>>(`/users/${userId}/plan`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
-      })
+      this.get<BackendApiResponse<{ plan: any | null }>>(`/users/${userId}/plan`, undefined, { headers })
     );
   }
 
   /**
-   * Get user accounts
+   * Get user accounts (GET /accounts/user/:userId).
+   * Si la respuesta llega cifrada, se descifra y se normaliza data (data.data ?? data).
    */
   async getUserAccounts(userId: string, idToken: string): Promise<BackendApiResponse<{ accounts: any[] }>> {
-    return firstValueFrom(
-      this.get<BackendApiResponse<{ accounts: any[] }>>(`/accounts/user/${userId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
-      })
+    const response = await firstValueFrom(
+      this.get<BackendApiResponse<{ accounts: any[] } | Record<string, unknown>>>(
+        `/accounts/user/${userId}`,
+        undefined,
+        { headers: await this.getAuthHeaders(idToken) }
+      )
     );
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as Record<string, unknown>;
+        const data = decrypted && typeof decrypted === 'object' && 'data' in decrypted && (decrypted as any).data != null
+          ? (decrypted as any).data
+          : decrypted;
+        return { ...response, data } as BackendApiResponse<{ accounts: any[] }>;
+      }
+    }
+    return response as BackendApiResponse<{ accounts: any[] }>;
   }
 
   /**
@@ -425,9 +450,7 @@ export class BackendApiService extends BaseApiService {
   async getAllAccounts(idToken: string): Promise<BackendApiResponse<{ accounts: any[] }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ accounts: any[] }>>('/accounts', undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -438,9 +461,7 @@ export class BackendApiService extends BaseApiService {
   async getAccountById(accountId: string, idToken: string): Promise<BackendApiResponse<{ account: any }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ account: any }>>(`/accounts/${accountId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -453,9 +474,7 @@ export class BackendApiService extends BaseApiService {
     try {
       const response = await firstValueFrom(
         this.put<BackendApiResponse<{ account: any }>>(`/accounts/${accountId}`, accountData, {
-          headers: {
-            'Authorization': `Bearer ${idToken}`
-          }
+          headers: await this.getAuthHeaders(idToken)
         }).pipe(
           catchError((error: HttpErrorResponse) => {
             // 🔍 LOG DE DEPURACIÓN: Ver la estructura completa del error HTTP
@@ -499,9 +518,7 @@ export class BackendApiService extends BaseApiService {
   async deleteAccount(accountId: string, idToken: string): Promise<BackendApiResponse<{ userId: string }>> {
     return firstValueFrom(
       this.delete<BackendApiResponse<{ userId: string }>>(`/accounts/${accountId}`, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -515,9 +532,7 @@ export class BackendApiService extends BaseApiService {
         emailTradingAccount,
         currentUserId
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -531,9 +546,7 @@ export class BackendApiService extends BaseApiService {
         accountID,
         currentUserId
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -554,9 +567,7 @@ export class BackendApiService extends BaseApiService {
 
     return firstValueFrom(
       this.get<BackendApiResponse<{ exists: boolean }>>('/accounts/check-exists', params, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -571,9 +582,7 @@ export class BackendApiService extends BaseApiService {
         accountID,
         currentUserId
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -584,9 +593,7 @@ export class BackendApiService extends BaseApiService {
   async getAccountCount(userId: string, idToken: string): Promise<BackendApiResponse<{ count: number }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ count: number }>>(`/accounts/count/${userId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -624,9 +631,7 @@ export class BackendApiService extends BaseApiService {
           activePositions: number;
         };
       }>>(`/accounts/${accountId}/metrics`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -641,9 +646,7 @@ export class BackendApiService extends BaseApiService {
   async getUserById(userId: string, idToken: string): Promise<BackendApiResponse<{ user: any }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ user: any }>>(`/users/${userId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -661,9 +664,7 @@ export class BackendApiService extends BaseApiService {
   async getUserByEmail(email: string, idToken: string): Promise<BackendApiResponse<{ user: any | null }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ user: any | null }>>('/users/email', { email }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting user by email:', error);
@@ -681,9 +682,7 @@ export class BackendApiService extends BaseApiService {
   async createUser(user: any, idToken: string): Promise<BackendApiResponse<{ user: any }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ user: any }>>('/users', user, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -754,9 +753,7 @@ export class BackendApiService extends BaseApiService {
     const payload = this.normalizeUpdateUserPayload(userData && typeof userData === 'object' ? userData : {});
     return firstValueFrom(
       this.put<BackendApiResponse<{ user: any }>>(`/users/${userId}`, payload, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -800,9 +797,7 @@ export class BackendApiService extends BaseApiService {
           subscriptions: number;
         };
       }>>(`/users/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -820,9 +815,7 @@ export class BackendApiService extends BaseApiService {
         strategy_followed: number;
         strategyName?: string;
       }>>(`/users/${userId}/strategy-followed`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -841,9 +834,7 @@ export class BackendApiService extends BaseApiService {
         includeUserMetrics: options?.includeUserMetrics ?? true,
         includeStrategyFollowed: options?.includeStrategyFollowed ?? true
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -862,9 +853,7 @@ export class BackendApiService extends BaseApiService {
   async getAllUsers(idToken: string): Promise<BackendApiResponse<{ users: any[] }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ users: any[] }>>('/users', undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting all users:', error);
@@ -896,24 +885,31 @@ export class BackendApiService extends BaseApiService {
         ...(configurationId && { configurationId }),
         ...(shouldBeActive !== undefined && { shouldBeActive })
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
 
   /**
-   * Get configuration overview
+   * Get configuration overview (GET /strategies/overview/:overviewId).
+   * Si la respuesta llega cifrada, se descifra y se normaliza data.
    */
   async getConfigurationOverview(overviewId: string, idToken: string): Promise<BackendApiResponse<{ overview: any }>> {
-    return firstValueFrom(
-      this.get<BackendApiResponse<{ overview: any }>>(`/strategies/overview/${overviewId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+    const response = await firstValueFrom(
+      this.get<BackendApiResponse<{ overview: any }> | Record<string, unknown>>(`/strategies/overview/${overviewId}`, undefined, {
+        headers: await this.getAuthHeaders(idToken)
       })
     );
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as Record<string, unknown>;
+        const data = decrypted && typeof decrypted === 'object' && 'data' in decrypted && (decrypted as any).data != null ? (decrypted as any).data : decrypted;
+        return { ...response, data } as BackendApiResponse<{ overview: any }>;
+      }
+    }
+    return response as BackendApiResponse<{ overview: any }>;
   }
 
   /**
@@ -922,9 +918,7 @@ export class BackendApiService extends BaseApiService {
   async updateConfigurationOverview(overviewId: string, updates: any, idToken: string): Promise<BackendApiResponse<{ overview: any }>> {
     return firstValueFrom(
       this.put<BackendApiResponse<{ overview: any }>>(`/strategies/overview/${overviewId}`, updates, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -935,9 +929,7 @@ export class BackendApiService extends BaseApiService {
   async deleteConfigurationOverview(overviewId: string, idToken: string): Promise<BackendApiResponse<void>> {
     return firstValueFrom(
       this.delete<BackendApiResponse<void>>(`/strategies/overview/${overviewId}`, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -951,9 +943,7 @@ export class BackendApiService extends BaseApiService {
       this.post<BackendApiResponse<{ configurationId: string }>>('/strategies/configuration', {
         configuration
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -968,37 +958,53 @@ export class BackendApiService extends BaseApiService {
         configurationOverviewId,
         configuration
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
 
   /**
-   * Get configuration by userId
+   * Get configuration by userId (GET /strategies/configuration/user/:userId).
+   * Si la respuesta llega cifrada, se descifra y se normaliza data.
    */
   async getConfiguration(userId: string, idToken: string): Promise<BackendApiResponse<{ configuration: any }>> {
-    return firstValueFrom(
-      this.get<BackendApiResponse<{ configuration: any }>>(`/strategies/configuration/user/${userId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+    const response = await firstValueFrom(
+      this.get<BackendApiResponse<{ configuration: any }> | Record<string, unknown>>(`/strategies/configuration/user/${userId}`, undefined, {
+        headers: await this.getAuthHeaders(idToken)
       })
     );
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as Record<string, unknown>;
+        const data = decrypted && typeof decrypted === 'object' && 'data' in decrypted && (decrypted as any).data != null ? (decrypted as any).data : decrypted;
+        return { ...response, data } as BackendApiResponse<{ configuration: any }>;
+      }
+    }
+    return response as BackendApiResponse<{ configuration: any }>;
   }
 
   /**
-   * Get configuration by ID
+   * Get configuration by ID (GET /strategies/configuration/:configurationId).
+   * Si la respuesta llega cifrada, se descifra y se normaliza data.
    */
   async getConfigurationById(configurationId: string, idToken: string): Promise<BackendApiResponse<{ configuration: any }>> {
-    return firstValueFrom(
-      this.get<BackendApiResponse<{ configuration: any }>>(`/strategies/configuration/${configurationId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+    const response = await firstValueFrom(
+      this.get<BackendApiResponse<{ configuration: any }> | Record<string, unknown>>(`/strategies/configuration/${configurationId}`, undefined, {
+        headers: await this.getAuthHeaders(idToken)
       })
     );
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as Record<string, unknown>;
+        const data = decrypted && typeof decrypted === 'object' && 'data' in decrypted && (decrypted as any).data != null ? (decrypted as any).data : decrypted;
+        return { ...response, data } as BackendApiResponse<{ configuration: any }>;
+      }
+    }
+    return response as BackendApiResponse<{ configuration: any }>;
   }
 
   /**
@@ -1007,9 +1013,7 @@ export class BackendApiService extends BaseApiService {
   async updateConfiguration(userId: string, configuration: any, idToken: string): Promise<BackendApiResponse<void>> {
     return firstValueFrom(
       this.put<BackendApiResponse<void>>(`/strategies/configuration/user/${userId}`, configuration, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1020,9 +1024,7 @@ export class BackendApiService extends BaseApiService {
   async updateConfigurationById(configurationId: string, configuration: any, idToken: string): Promise<BackendApiResponse<void>> {
     return firstValueFrom(
       this.put<BackendApiResponse<void>>(`/strategies/configuration/${configurationId}`, configuration, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1030,34 +1032,54 @@ export class BackendApiService extends BaseApiService {
   /**
    * Get user strategies (full) and button state for create strategy.
    * Response: { strategies: Array<{ overview?, configuration? }>, button_state: 'available' | 'plan_reached' | 'block' }
+   * Si la respuesta llega cifrada, se descifra y se normaliza data.
    */
   async getUserStrategyViews(userId: string, idToken: string): Promise<BackendApiResponse<{
     strategies: any[];
     button_state: 'available' | 'plan_reached' | 'block';
   }>> {
-    return firstValueFrom(
+    const response = await firstValueFrom(
       this.get<BackendApiResponse<{
         strategies: any[];
         button_state: 'available' | 'plan_reached' | 'block';
-      }>>(`/strategies/user/${userId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+      } | Record<string, unknown>>>(`/strategies/user/${userId}`, undefined, {
+        headers: await this.getAuthHeaders(idToken)
       })
     );
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as Record<string, unknown>;
+        const data = decrypted && typeof decrypted === 'object' && 'data' in decrypted && (decrypted as any).data != null
+          ? (decrypted as any).data
+          : decrypted;
+        return { ...response, data } as BackendApiResponse<{ strategies: any[]; button_state: 'available' | 'plan_reached' | 'block' }>;
+      }
+    }
+    return response as BackendApiResponse<{ strategies: any[]; button_state: 'available' | 'plan_reached' | 'block' }>;
   }
 
   /**
-   * Get active configuration
+   * Get active configuration (GET /strategies/active/:userId).
+   * Si la respuesta llega cifrada, se descifra y se normaliza data.
    */
   async getActiveConfiguration(userId: string, idToken: string): Promise<BackendApiResponse<{ overview: any }>> {
-    return firstValueFrom(
-      this.get<BackendApiResponse<{ overview: any }>>(`/strategies/active/${userId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+    const response = await firstValueFrom(
+      this.get<BackendApiResponse<{ overview: any }> | Record<string, unknown>>(`/strategies/active/${userId}`, undefined, {
+        headers: await this.getAuthHeaders(idToken)
       })
     );
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as Record<string, unknown>;
+        const data = decrypted && typeof decrypted === 'object' && 'data' in decrypted && (decrypted as any).data != null ? (decrypted as any).data : decrypted;
+        return { ...response, data } as BackendApiResponse<{ overview: any }>;
+      }
+    }
+    return response as BackendApiResponse<{ overview: any }>;
   }
 
   /**
@@ -1070,9 +1092,7 @@ export class BackendApiService extends BaseApiService {
         userId,
         strategyId
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1085,9 +1105,7 @@ export class BackendApiService extends BaseApiService {
       this.post<BackendApiResponse<void>>(`/strategies/${strategyId}/activate`, {
         userId
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1098,9 +1116,7 @@ export class BackendApiService extends BaseApiService {
   async markStrategyAsDeleted(strategyId: string, idToken: string): Promise<BackendApiResponse<void>> {
     return firstValueFrom(
       this.put<BackendApiResponse<void>>(`/strategies/${strategyId}/delete`, {}, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1111,9 +1127,7 @@ export class BackendApiService extends BaseApiService {
   async getStrategiesCount(userId: string, idToken: string): Promise<BackendApiResponse<{ count: number }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ count: number }>>(`/strategies/count/${userId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1128,9 +1142,7 @@ export class BackendApiService extends BaseApiService {
   async createLinkToken(token: any, idToken: string): Promise<BackendApiResponse<void>> {
     return firstValueFrom(
       this.post<BackendApiResponse<void>>('/tokens', token, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1141,9 +1153,7 @@ export class BackendApiService extends BaseApiService {
   async deleteLinkToken(tokenId: string, idToken: string): Promise<BackendApiResponse<void>> {
     return firstValueFrom(
       this.delete<BackendApiResponse<void>>(`/tokens/${tokenId}`, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1156,9 +1166,7 @@ export class BackendApiService extends BaseApiService {
   async revokeAllUserSessions(userId: string, idToken: string): Promise<BackendApiResponse<{ message: string; tokensDeleted?: number }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ message: string; tokensDeleted?: number }>>(`/users/${userId}/revoke-all-sessions`, {}, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error revoking all user sessions:', error);
@@ -1188,13 +1196,9 @@ export class BackendApiService extends BaseApiService {
    * The endpoint always returns 200, never 404.
    */
   async getUserLatestSubscription(userId: string, idToken: string): Promise<BackendApiResponse<{ subscription: any }>> {
-    // Nota: userId se mantiene en la firma por compatibilidad, pero el endpoint lo obtiene del token
+    const headers = await this.getAuthHeaders(idToken);
     return firstValueFrom(
-      this.get<BackendApiResponse<{ subscription: any }>>(`/profile/subscription`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
-      }).pipe(
+      this.get<BackendApiResponse<{ subscription: any }>>(`/profile/subscription`, undefined, { headers }).pipe(
         catchError((error: HttpErrorResponse) => {
           // Endpoint should never return 404, but we handle it just in case
           if (error.status === 404) {
@@ -1218,9 +1222,7 @@ export class BackendApiService extends BaseApiService {
   async getSubscriptionById(userId: string, subscriptionId: string, idToken: string): Promise<BackendApiResponse<{ subscription: any }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ subscription: any }>>(`/subscriptions/user/${userId}/${subscriptionId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1231,9 +1233,7 @@ export class BackendApiService extends BaseApiService {
   async createSubscription(userId: string, subscriptionData: any, idToken: string): Promise<BackendApiResponse<{ subscriptionId: string }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ subscriptionId: string }>>(`/subscriptions/user/${userId}`, subscriptionData, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1244,9 +1244,7 @@ export class BackendApiService extends BaseApiService {
   async updateSubscription(userId: string, subscriptionId: string, updateData: any, idToken: string): Promise<BackendApiResponse<void>> {
     return firstValueFrom(
       this.put<BackendApiResponse<void>>(`/subscriptions/user/${userId}/${subscriptionId}`, updateData, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1257,9 +1255,7 @@ export class BackendApiService extends BaseApiService {
   async deleteSubscription(userId: string, subscriptionId: string, idToken: string): Promise<BackendApiResponse<void>> {
     return firstValueFrom(
       this.delete<BackendApiResponse<void>>(`/subscriptions/user/${userId}/${subscriptionId}`, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1270,9 +1266,7 @@ export class BackendApiService extends BaseApiService {
   async getSubscriptionsByStatus(userId: string, status: string, idToken: string): Promise<BackendApiResponse<{ subscriptions: any[] }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ subscriptions: any[] }>>(`/subscriptions/user/${userId}/status/${status}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1283,9 +1277,7 @@ export class BackendApiService extends BaseApiService {
   async getTotalSubscriptionsCount(userId: string, idToken: string): Promise<BackendApiResponse<{ count: number }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ count: number }>>(`/subscriptions/user/${userId}/count`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1300,9 +1292,7 @@ export class BackendApiService extends BaseApiService {
   async getTradeLockerJWTToken(credentials: { email: string; password: string; server: string }, idToken: string): Promise<BackendApiResponse<{ data: any[] }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ data: any[] }>>('/tradelocker/auth/token', credentials, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1313,9 +1303,7 @@ export class BackendApiService extends BaseApiService {
   async validateTradeLockerAccount(credentials: { email: string; password: string; server: string }, idToken: string): Promise<BackendApiResponse<{ isValid: boolean }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ isValid: boolean }>>('/tradelocker/validate', credentials, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1353,9 +1341,7 @@ export class BackendApiService extends BaseApiService {
       this.get<BackendApiResponse<any>>(`/tradelocker/balance/${accountId}`, {
         accNum: accNum.toString()
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1394,27 +1380,16 @@ export class BackendApiService extends BaseApiService {
       failed: number;
     };
   }>> {
-    return firstValueFrom(
-      this.post<BackendApiResponse<{
-        balances: Array<{
-          accountId: string;
-          accNum: number;
-          balance?: number;
-          success: boolean;
-          error?: string;
-        }>;
-        summary: {
-          total: number;
-          successful: number;
-          failed: number;
-        };
-      }>>(
+    type BatchPayload = {
+      balances: Array<{ accountId: string; accNum: number; balance?: number; success: boolean; error?: string }>;
+      summary: { total: number; successful: number; failed: number };
+    };
+    const response = await firstValueFrom(
+      this.post<BackendApiResponse<BatchPayload> | Record<string, unknown>>(
         '/tradelocker/balances/batch',
         { accounts },
         {
-          headers: {
-            'Authorization': `Bearer ${idToken}`
-          }
+          headers: await this.getAuthHeaders(idToken)
         }
       ).pipe(
         catchError((error: HttpErrorResponse) => {
@@ -1423,6 +1398,19 @@ export class BackendApiService extends BaseApiService {
         })
       )
     );
+
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as Record<string, unknown>;
+        const data = decrypted && typeof decrypted === 'object' && 'data' in decrypted && decrypted['data'] != null
+          ? decrypted['data']
+          : decrypted;
+        return { ...response, data } as BackendApiResponse<BatchPayload>;
+      }
+    }
+    return response as BackendApiResponse<BatchPayload>;
   }
 
   /**
@@ -1441,9 +1429,7 @@ export class BackendApiService extends BaseApiService {
       this.get<BackendApiResponse<any>>(`/tradelocker/accounts/${accountId}/history`, {
         accNum: accNum.toString()
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
 
@@ -1461,9 +1447,7 @@ export class BackendApiService extends BaseApiService {
         routeId,
         accNum: accNum.toString()
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1478,9 +1462,7 @@ export class BackendApiService extends BaseApiService {
       this.get<BackendApiResponse<any>>(`/tradelocker/instruments/${accountId}`, {
         accNum: accNum.toString()
       }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       })
     );
   }
@@ -1489,13 +1471,10 @@ export class BackendApiService extends BaseApiService {
    * Refresh TradeLocker token
    */
   async refreshTradeLockerToken(accessToken: string, idToken: string): Promise<BackendApiResponse<any>> {
+    const headers = await this.getAuthHeaders(idToken);
+    headers['X-Access-Token'] = accessToken;
     return firstValueFrom(
-      this.post<BackendApiResponse<any>>('/tradelocker/auth/refresh', {}, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-          'X-Access-Token': accessToken
-        }
-      })
+      this.post<BackendApiResponse<any>>('/tradelocker/auth/refresh', {}, { headers })
     );
   }
 
@@ -1514,16 +1493,15 @@ export class BackendApiService extends BaseApiService {
    * - Returns positions and metrics
    * - Syncs to Firebase in background
    * 
-   * When accNum is not provided, returns data from Firebase only
+   * When accNum is not provided, returns data from Firebase only.
+   * Si la respuesta llega cifrada, se descifra y se normaliza data (data.data ?? data).
    */
   async getTradingHistory(accountId: string, idToken: string, accNum?: number): Promise<BackendApiResponse<any>> {
     const params = accNum !== undefined ? { accNum: accNum.toString() } : undefined;
 
-    return firstValueFrom(
-      this.get<BackendApiResponse<any>>(`/reports/history/${accountId}`, params, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+    const response = await firstValueFrom(
+      this.get<BackendApiResponse<any> | Record<string, unknown>>(`/reports/history/${accountId}`, params, {
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting trading history:', error);
@@ -1531,6 +1509,19 @@ export class BackendApiService extends BaseApiService {
         })
       )
     );
+
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as Record<string, unknown>;
+        const data = decrypted && typeof decrypted === 'object' && 'data' in decrypted && (decrypted as any).data != null
+          ? (decrypted as any).data
+          : decrypted;
+        return { ...response, data } as BackendApiResponse<any>;
+      }
+    }
+    return response as BackendApiResponse<any>;
   }
 
   /**
@@ -1562,11 +1553,9 @@ export class BackendApiService extends BaseApiService {
    */
   async getTradingHistoryMetrics(accountId: string, idToken: string): Promise<BackendApiResponse<any>> {
     console.warn('⚠️ Deprecated: getTradingHistoryMetrics is deprecated. Use getTradingHistory(accountId, idToken, accNum) instead.');
-    return firstValueFrom(
-      this.get<BackendApiResponse<any>>(`/reports/history/${accountId}/metrics`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+    const response = await firstValueFrom(
+      this.get<BackendApiResponse<any> | Record<string, unknown>>(`/reports/history/${accountId}/metrics`, undefined, {
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting trading history metrics:', error);
@@ -1574,6 +1563,16 @@ export class BackendApiService extends BaseApiService {
         })
       )
     );
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as Record<string, unknown>;
+        const data = decrypted && typeof decrypted === 'object' && 'data' in decrypted && (decrypted as any).data != null ? (decrypted as any).data : decrypted;
+        return { ...response, data } as BackendApiResponse<any>;
+      }
+    }
+    return response as BackendApiResponse<any>;
   }
 
   /**
@@ -1583,13 +1582,12 @@ export class BackendApiService extends BaseApiService {
   /**
    * Get all monthly reports for the current user
    * Endpoint: GET /api/v1/reports/monthly
+   * Si la respuesta llega cifrada, se descifra y se normaliza data.
    */
   async getMonthlyReports(idToken: string): Promise<BackendApiResponse<{ reports: any[] }>> {
-    return firstValueFrom(
-      this.get<BackendApiResponse<{ reports: any[] }>>('/reports/monthly', undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+    const response = await firstValueFrom(
+      this.get<BackendApiResponse<{ reports: any[] }> | Record<string, unknown>>('/reports/monthly', undefined, {
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting monthly reports:', error);
@@ -1597,18 +1595,27 @@ export class BackendApiService extends BaseApiService {
         })
       )
     );
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as Record<string, unknown>;
+        const data = decrypted && typeof decrypted === 'object' && 'data' in decrypted && (decrypted as any).data != null ? (decrypted as any).data : decrypted;
+        return { ...response, data } as BackendApiResponse<{ reports: any[] }>;
+      }
+    }
+    return response as BackendApiResponse<{ reports: any[] }>;
   }
 
   /**
    * Get monthly report by ID
    * Endpoint: GET /api/v1/reports/monthly/:reportId
+   * Si la respuesta llega cifrada, se descifra y se normaliza data.
    */
   async getMonthlyReport(reportId: string, idToken: string): Promise<BackendApiResponse<{ report: any }>> {
-    return firstValueFrom(
-      this.get<BackendApiResponse<{ report: any }>>(`/reports/monthly/${reportId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+    const response = await firstValueFrom(
+      this.get<BackendApiResponse<{ report: any }> | Record<string, unknown>>(`/reports/monthly/${reportId}`, undefined, {
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting monthly report:', error);
@@ -1616,18 +1623,27 @@ export class BackendApiService extends BaseApiService {
         })
       )
     );
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as Record<string, unknown>;
+        const data = decrypted && typeof decrypted === 'object' && 'data' in decrypted && (decrypted as any).data != null ? (decrypted as any).data : decrypted;
+        return { ...response, data } as BackendApiResponse<{ report: any }>;
+      }
+    }
+    return response as BackendApiResponse<{ report: any }>;
   }
 
   /**
    * Get monthly report by user, month and year
    * Endpoint: GET /api/v1/reports/monthly/user/:userId/month/:month/year/:year
+   * Si la respuesta llega cifrada, se descifra y se normaliza data.
    */
   async getMonthlyReportByUserMonthYear(userId: string, month: number, year: number, idToken: string): Promise<BackendApiResponse<{ report: any }>> {
-    return firstValueFrom(
-      this.get<BackendApiResponse<{ report: any }>>(`/reports/monthly/user/${userId}/month/${month}/year/${year}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+    const response = await firstValueFrom(
+      this.get<BackendApiResponse<{ report: any }> | Record<string, unknown>>(`/reports/monthly/user/${userId}/month/${month}/year/${year}`, undefined, {
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting monthly report by period:', error);
@@ -1635,6 +1651,16 @@ export class BackendApiService extends BaseApiService {
         })
       )
     );
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as Record<string, unknown>;
+        const data = decrypted && typeof decrypted === 'object' && 'data' in decrypted && (decrypted as any).data != null ? (decrypted as any).data : decrypted;
+        return { ...response, data } as BackendApiResponse<{ report: any }>;
+      }
+    }
+    return response as BackendApiResponse<{ report: any }>;
   }
 
   /**
@@ -1644,9 +1670,7 @@ export class BackendApiService extends BaseApiService {
   async createOrUpdateMonthlyReport(monthlyReport: any, idToken: string): Promise<BackendApiResponse<{ report: any }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ report: any }>>('/reports/monthly', monthlyReport, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error creating/updating monthly report:', error);
@@ -1663,9 +1687,7 @@ export class BackendApiService extends BaseApiService {
   async deleteMonthlyReport(reportId: string, idToken: string): Promise<BackendApiResponse<void>> {
     return firstValueFrom(
       this.delete<BackendApiResponse<void>>(`/reports/monthly/${reportId}`, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error deleting monthly report:', error);
@@ -1684,21 +1706,26 @@ export class BackendApiService extends BaseApiService {
    * Endpoint: GET /api/v1/plans
    */
   async getAllPlans(idToken: string): Promise<BackendApiResponse<{ plans: any[] }>> {
-    return firstValueFrom(
-      this.get<BackendApiResponse<{ plans: any[] }>>('/plans', undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
-      }).pipe(
-        tap((response) => {
-          console.log('[Plans] Response received in getAllPlans (after interceptor):', response);
-        }),
+    const headers = await this.getAuthHeaders(idToken);
+    const response = await firstValueFrom(
+      this.get<BackendApiResponse<{ plans: any[] } | Record<string, unknown>>>('/plans', undefined, { headers }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting all plans:', error);
           return throwError(() => error);
         })
       )
     );
+    // Fallback: si la respuesta llegó cifrada (el interceptor no la descifró), descifrar aquí
+    const rawData = response?.data;
+    if (rawData && typeof rawData === 'object' && isEncryptedEnvelope(rawData)) {
+      const stored = this.cryptoSession.getStoredKey();
+      if (stored) {
+        const decrypted = await decryptResponseBody(rawData, stored.key) as BackendApiResponse<{ plans: any[] }>;
+        // El backend cifra la respuesta completa { success, data: { plans }, source, message }; usar ese objeto como respuesta, no meterlo dentro de .data
+        return decrypted;
+      }
+    }
+    return response as BackendApiResponse<{ plans: any[] }>;
   }
 
   /**
@@ -1706,12 +1733,9 @@ export class BackendApiService extends BaseApiService {
    * Endpoint: GET /api/v1/plans/:planId
    */
   async getPlanById(planId: string, idToken: string): Promise<BackendApiResponse<{ plan: any }>> {
+    const headers = await this.getAuthHeaders(idToken);
     return firstValueFrom(
-      this.get<BackendApiResponse<{ plan: any }>>(`/plans/${planId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
-      }).pipe(
+      this.get<BackendApiResponse<{ plan: any }>>(`/plans/${planId}`, undefined, { headers }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting plan by ID:', error);
           return throwError(() => error);
@@ -1725,12 +1749,9 @@ export class BackendApiService extends BaseApiService {
    * Endpoint: GET /api/v1/plans/search?name=...
    */
   async searchPlansByName(name: string, idToken: string): Promise<BackendApiResponse<{ plans: any[] }>> {
+    const headers = await this.getAuthHeaders(idToken);
     return firstValueFrom(
-      this.get<BackendApiResponse<{ plans: any[] }>>('/plans/search', { name }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
-      }).pipe(
+      this.get<BackendApiResponse<{ plans: any[] }>>('/plans/search', { name }, { headers }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error searching plans by name:', error);
           return throwError(() => error);
@@ -1746,9 +1767,7 @@ export class BackendApiService extends BaseApiService {
   async createPlan(plan: any, idToken: string): Promise<BackendApiResponse<{ plan: any }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ plan: any }>>('/plans', plan, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error creating plan:', error);
@@ -1765,9 +1784,7 @@ export class BackendApiService extends BaseApiService {
   async updatePlan(planId: string, plan: Partial<any>, idToken: string): Promise<BackendApiResponse<{ plan: any }>> {
     return firstValueFrom(
       this.put<BackendApiResponse<{ plan: any }>>(`/plans/${planId}`, plan, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error updating plan:', error);
@@ -1784,9 +1801,7 @@ export class BackendApiService extends BaseApiService {
   async deletePlan(planId: string, idToken: string): Promise<BackendApiResponse<void>> {
     return firstValueFrom(
       this.delete<BackendApiResponse<void>>(`/plans/${planId}`, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error deleting plan:', error);
@@ -1807,9 +1822,7 @@ export class BackendApiService extends BaseApiService {
   async createBanReason(userId: string, reason: string, idToken: string): Promise<BackendApiResponse<{ banReason: any }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ banReason: any }>>(`/users/${userId}/ban-reasons`, { reason }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error creating ban reason:', error);
@@ -1826,9 +1839,7 @@ export class BackendApiService extends BaseApiService {
   async updateBanReason(userId: string, reasonId: string, data: Partial<any>, idToken: string): Promise<BackendApiResponse<{ banReason: any }>> {
     return firstValueFrom(
       this.put<BackendApiResponse<{ banReason: any }>>(`/users/${userId}/ban-reasons/${reasonId}`, data, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error updating ban reason:', error);
@@ -1845,9 +1856,7 @@ export class BackendApiService extends BaseApiService {
   async getLatestBanReason(userId: string, idToken: string): Promise<BackendApiResponse<{ banReason: any | null }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ banReason: any | null }>>(`/users/${userId}/ban-reasons/latest`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting latest ban reason:', error);
@@ -1868,9 +1877,7 @@ export class BackendApiService extends BaseApiService {
   async updateStrategyDaysActive(strategyId: string, idToken: string): Promise<BackendApiResponse<{ strategyId: string; daysActive: number; updatedAt: string }>> {
     return firstValueFrom(
       this.put<BackendApiResponse<{ strategyId: string; daysActive: number; updatedAt: string }>>(`/strategies/${strategyId}/days-active`, {}, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error updating strategy days active:', error);
@@ -1887,9 +1894,7 @@ export class BackendApiService extends BaseApiService {
   async updateAllUserStrategiesDaysActive(userId: string, idToken: string): Promise<BackendApiResponse<{ updated: number; strategies: Array<{ strategyId: string; daysActive: number }> }>> {
     return firstValueFrom(
       this.put<BackendApiResponse<{ updated: number; strategies: Array<{ strategyId: string; daysActive: number }> }>>(`/strategies/user/${userId}/days-active`, {}, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error updating all user strategies days active:', error);
@@ -1906,9 +1911,7 @@ export class BackendApiService extends BaseApiService {
   async updateActiveStrategyDaysActive(userId: string, idToken: string): Promise<BackendApiResponse<{ strategyId: string; daysActive: number; updatedAt: string }>> {
     return firstValueFrom(
       this.put<BackendApiResponse<{ strategyId: string; daysActive: number; updatedAt: string }>>(`/strategies/user/${userId}/active/days-active`, {}, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error updating active strategy days active:', error);
@@ -1929,9 +1932,7 @@ export class BackendApiService extends BaseApiService {
   async getPluginHistory(userId: string, idToken: string): Promise<BackendApiResponse<{ pluginHistory: any | null }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ pluginHistory: any | null }>>(`/plugin-history/${userId}`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting plugin history:', error);
@@ -1948,9 +1949,7 @@ export class BackendApiService extends BaseApiService {
   async getPluginStatus(userId: string, idToken: string): Promise<BackendApiResponse<{ isActive: boolean; lastActiveDate?: string; lastInactiveDate?: string }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ isActive: boolean; lastActiveDate?: string; lastInactiveDate?: string }>>(`/plugin-history/${userId}/status`, undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting plugin status:', error);
@@ -1967,9 +1966,7 @@ export class BackendApiService extends BaseApiService {
   async activatePlugin(userId: string, idToken: string): Promise<BackendApiResponse<{ pluginHistory: any }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ pluginHistory: any }>>(`/plugin-history/${userId}/activate`, {}, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error activating plugin:', error);
@@ -1986,9 +1983,7 @@ export class BackendApiService extends BaseApiService {
   async deactivatePlugin(userId: string, idToken: string): Promise<BackendApiResponse<{ pluginHistory: any }>> {
     return firstValueFrom(
       this.post<BackendApiResponse<{ pluginHistory: any }>>(`/plugin-history/${userId}/deactivate`, {}, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error deactivating plugin:', error);
@@ -2015,9 +2010,7 @@ export class BackendApiService extends BaseApiService {
   async getOverviewSubscriptions(idToken: string): Promise<BackendApiResponse<{ subscriptions: any[] }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ subscriptions: any[] }>>('/admin/overview/subscriptions', undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting overview subscriptions:', error);
@@ -2047,9 +2040,7 @@ export class BackendApiService extends BaseApiService {
 
     return firstValueFrom(
       this.get<BackendApiResponse<{ users: any[]; pagination: { page: number; limit: number; total: number; hasMore: boolean; lastDocId?: string } }>>('/admin/overview/users', params, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting overview users:', error);
@@ -2066,9 +2057,7 @@ export class BackendApiService extends BaseApiService {
   async getOverviewAccounts(idToken: string): Promise<BackendApiResponse<{ accounts: any[] }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ accounts: any[] }>>('/admin/overview/accounts', undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting overview accounts:', error);
@@ -2085,9 +2074,7 @@ export class BackendApiService extends BaseApiService {
   async getOverviewMonthlyReports(idToken: string): Promise<BackendApiResponse<{ monthlyReports: any[] }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ monthlyReports: any[] }>>('/admin/overview/monthly-reports', undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting overview monthly reports:', error);
@@ -2104,9 +2091,7 @@ export class BackendApiService extends BaseApiService {
   async getOverviewStrategies(idToken: string): Promise<BackendApiResponse<{ strategies: any[] }>> {
     return firstValueFrom(
       this.get<BackendApiResponse<{ strategies: any[] }>>('/admin/overview/strategies', undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting overview strategies:', error);
@@ -2192,9 +2177,7 @@ export class BackendApiService extends BaseApiService {
           actualPeriodEnd: string; // Formato: "Feb 15, 2025"
         }>;
       }>>('/admin-dashboard/revenue', undefined, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers: await this.getAuthHeaders(idToken)
       }).pipe(
         catchError((error: HttpErrorResponse) => {
           console.error('❌ BackendApiService: Error getting revenue data:', error);

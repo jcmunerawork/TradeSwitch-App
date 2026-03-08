@@ -31,6 +31,7 @@ import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
   selector: 'app-revenue-table',
   standalone: true,
   imports: [CommonModule, FormsModule, BackendDatePipe],
+  providers: [BackendDatePipe],
   templateUrl: './revenue-table.component.html',
   styleUrls: ['./revenue-table.component.scss'],
 })

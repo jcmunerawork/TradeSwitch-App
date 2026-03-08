@@ -16,3 +16,9 @@ export interface SessionKeyResponse {
   key: string;
   expiresIn: number;
 }
+
+/** Backend may wrap the session key in { success, data }. */
+export interface SessionKeyApiResponse {
+  success?: boolean;
+  data?: SessionKeyResponse;
+}

@@ -97,6 +97,7 @@ import { BackendDatePipe } from '../../shared/pipes/backend-date.pipe';
     ConfirmPopupComponent,
     BackendDatePipe,
   ],
+  providers: [BackendDatePipe],
   templateUrl: './strategy.component.html',
   styleUrl: './strategy.component.scss',
   standalone: true,

@@ -3,11 +3,13 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from './config.service';
-import type { SessionKeyResponse } from '../models/encryption.model';
+import type { SessionKeyResponse, SessionKeyApiResponse } from '../models/encryption.model';
 
 const SESSION_KEY_STORAGE_KEY = 'ts_crypto_key';
-/** Renovar cuando queden menos de 10 minutos (backend TTL = 1 hora). */
-const RENEW_BEFORE_MS = 10 * 60 * 1000;
+/** Renovar la session key cada 50 min (backend TTL = 1 hora; así evitamos 400 por expirado). */
+const REFRESH_INTERVAL_MS = 50 * 60 * 1000;
+/** Tiempo antes de expiración para forzar renovación: 60 min - 50 min = 10 min. */
+const RENEW_BEFORE_MS = 60 * 60 * 1000 - REFRESH_INTERVAL_MS;
 /** Margen para considerar clave válida en memoria (mismo que renovación). */
 const KEY_EXPIRY_BUFFER_MS = RENEW_BEFORE_MS;
 
@@ -34,11 +36,18 @@ export class CryptoSessionService {
     return `${base}/v1/crypto/session-key`;
   }
 
+  /** Objeto completo guardado en localStorage (keyId, key, expiresIn, expiresAt). */
   private loadFromLocalStorage(): void {
     try {
       const raw = localStorage.getItem(SESSION_KEY_STORAGE_KEY);
       if (!raw) return;
-      const data = JSON.parse(raw) as { keyId: string; key: string; expiresAt: number };
+      const data = JSON.parse(raw) as {
+        keyId: string;
+        key: string;
+        expiresAt: number;
+        expiresIn?: number;
+      };
+      if (!data.keyId || !data.key || !data.expiresAt) return;
       if (data.expiresAt > Date.now() + KEY_EXPIRY_BUFFER_MS) {
         this.keyId = data.keyId;
         this.key = data.key;
@@ -52,15 +61,22 @@ export class CryptoSessionService {
     }
   }
 
-  private saveToLocalStorage(): void {
-    if (!this.isBrowser || !this.keyId || !this.key || !this.expiresAt) return;
+  /** Guarda el objeto completo de session key en localStorage. */
+  private saveToLocalStorage(payload: {
+    keyId: string;
+    key: string;
+    expiresIn: number;
+    expiresAt: number;
+  }): void {
+    if (!this.isBrowser) return;
     try {
       localStorage.setItem(
         SESSION_KEY_STORAGE_KEY,
         JSON.stringify({
-          keyId: this.keyId,
-          key: this.key,
-          expiresAt: this.expiresAt,
+          keyId: payload.keyId,
+          key: payload.key,
+          expiresIn: payload.expiresIn,
+          expiresAt: payload.expiresAt,
         })
       );
     } catch {
@@ -76,9 +92,8 @@ export class CryptoSessionService {
   }
 
   /**
-   * Programa la limpieza de la clave cuando falte poco para expirar,
-   * para que la siguiente petición pida una nueva (con token fresco).
-   * Backend TTL = 3600 s; renovamos cuando queden < 10 min.
+   * Programa la renovación: a los 50 min se limpia la clave para que la siguiente
+   * petición pida una nueva (evita 400 por token expirado). Backend TTL = 1 h.
    */
   private scheduleRefreshTimer(expiresInSeconds: number): void {
     this.clearRefreshTimer();
@@ -108,16 +123,29 @@ export class CryptoSessionService {
     }
 
     const res = await firstValueFrom(
-      this.http.post<SessionKeyResponse>(this.sessionKeyUrl, {}, {
+      this.http.post<SessionKeyApiResponse | SessionKeyResponse>(this.sessionKeyUrl, {}, {
         headers: { Authorization: `Bearer ${firebaseIdToken}` },
       })
     );
     this.clearRefreshTimer();
-    this.keyId = res.keyId;
-    this.key = res.key;
-    this.expiresAt = now + res.expiresIn * 1000;
-    this.saveToLocalStorage();
-    this.scheduleRefreshTimer(res.expiresIn);
+    // Backend puede devolver { success, data: { keyId, key, expiresIn } } o plano
+    const data: SessionKeyResponse =
+      res && typeof (res as SessionKeyApiResponse).data === 'object'
+        ? (res as SessionKeyApiResponse).data!
+        : (res as SessionKeyResponse);
+    if (!data?.keyId || !data?.key || typeof data.expiresIn !== 'number') {
+      throw new Error('Invalid session key response: missing keyId, key or expiresIn');
+    }
+    this.keyId = data.keyId;
+    this.key = data.key;
+    this.expiresAt = now + data.expiresIn * 1000;
+    this.saveToLocalStorage({
+      keyId: data.keyId,
+      key: data.key,
+      expiresIn: data.expiresIn,
+      expiresAt: this.expiresAt,
+    });
+    this.scheduleRefreshTimer(data.expiresIn);
     return { keyId: this.keyId, key: this.key };
   }
 

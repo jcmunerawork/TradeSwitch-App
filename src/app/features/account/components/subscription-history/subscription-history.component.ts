@@ -43,6 +43,7 @@ import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
 @Component({
   selector: 'app-subscription-history',
   imports: [CommonModule, FormsModule, BackendDatePipe],
+  providers: [BackendDatePipe],
   templateUrl: './subscription-history.component.html',
   styleUrl: './subscription-history.component.scss',
   standalone: true,

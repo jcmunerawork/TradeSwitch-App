@@ -462,6 +462,9 @@ export class AppContextService {
       userPlan: null,
       pluginHistory: []
     });
+
+    // Limpiar también el caché de cuentas (memoria + localStorage)
+    this.accountsCacheService.clearCache();
   }
 
   // ===== MÉTODOS DE CUENTAS =====
@@ -495,6 +498,7 @@ export class AppContextService {
     const currentAccounts = this.userAccounts();
     const filteredAccounts = currentAccounts.filter(account => account.id !== accountId);
     this.userAccounts.set(filteredAccounts);
+    this.updateState({ userAccounts: filteredAccounts });
   }
 
   // ===== MÉTODOS DE ESTRATEGIAS =====

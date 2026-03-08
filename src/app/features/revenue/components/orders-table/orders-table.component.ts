@@ -26,6 +26,7 @@ import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
   selector: 'app-orders-table',
   standalone: true,
   imports: [CommonModule, FormsModule, BackendDatePipe],
+  providers: [BackendDatePipe],
   templateUrl: './orders-table.component.html',
   styleUrls: ['./orders-table.component.scss'],
 })

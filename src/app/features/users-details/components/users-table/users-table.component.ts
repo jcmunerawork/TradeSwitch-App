@@ -41,6 +41,7 @@ import { CreateUserRolePopupComponent } from '../create-user-role-popup/create-u
   selector: 'app-users-table',
   standalone: true,
   imports: [CommonModule, FormsModule, CreateUserRolePopupComponent, BackendDatePipe],
+  providers: [BackendDatePipe],
   templateUrl: './users-table.component.html',
   styleUrls: ['./users-table.component.scss'],
 })

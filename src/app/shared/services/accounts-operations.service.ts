@@ -242,8 +242,10 @@ export class AccountsOperationsService {
         this.accountsCache.setAccounts(userId, []);
         return null;
       }
-      
-      const accounts = response.data.accounts.length > 0 ? response.data.accounts : [];
+
+      const data = response.data as any;
+      const accountsList = data?.accounts ?? data?.data?.accounts;
+      const accounts = Array.isArray(accountsList) && accountsList.length > 0 ? accountsList : [];
       this.accountsCache.setAccounts(userId, accounts);
       
       return accounts.length > 0 ? accounts : null;
@@ -451,26 +453,32 @@ export class AccountsOperationsService {
    * Now uses backend API but maintains same interface
    * Returns userId for cache invalidation (same as before)
    * Invalidates cache and refetches accounts after deletion
+   * @param accountId - ID de la cuenta a eliminar
+   * @param currentUserId - userId del dueño (opcional, para invalidar caché si el backend no devuelve userId)
    */
-  async deleteAccount(accountId: string): Promise<string | null> {
+  async deleteAccount(accountId: string, currentUserId?: string): Promise<string | null> {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.deleteAccount(accountId, idToken);
       
-      if (!response.success || !response.data) {
+      if (!response.success) {
         throw new Error(response.error?.message || 'Failed to delete account');
       }
       
-      // Invalidar caché y recargar cuentas después de eliminar cuenta
-      const userId = response.data.userId || null;
-      if (userId) {
-        this.accountsCache.clearUserCache(userId);
-        // Recargar cuentas del backend y guardar en caché
-        await this.refreshUserAccounts(userId);
+      // userId: del response (puede venir cifrado como data.userId o data.data.userId) o del parámetro
+      const data = response.data as Record<string, unknown> | undefined;
+      const nestedData = data?.['data'] as Record<string, unknown> | undefined;
+      const userId = (data?.['userId'] ?? nestedData?.['userId'] ?? currentUserId) as string | null;
+      
+      // SIEMPRE invalidar caché y refrescar si tenemos userId (del response o pasado como parámetro)
+      const userIdToUse = userId || currentUserId;
+      if (userIdToUse) {
+        this.accountsCache.clearUserCache(userIdToUse);
+        this.pendingRequests.delete(userIdToUse);
+        await this.refreshUserAccounts(userIdToUse);
       }
       
-      // Return userId (same as before for compatibility)
-      return userId;
+      return userIdToUse || null;
     } catch (error) {
       console.error('Error deleting account:', error);
       throw error;

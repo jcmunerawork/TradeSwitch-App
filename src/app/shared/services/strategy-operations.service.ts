@@ -126,7 +126,8 @@ export class StrategyOperationsService {
       // Invalidar caché de conteo después de crear estrategia
       this.invalidateStrategiesCountCache(userId);
 
-      return response.data.overviewId;
+      const data = response.data as any;
+      return data?.overviewId ?? data?.data?.overviewId;
     } catch (error) {
       console.error('Error creating configuration overview:', error);
       throw error;
@@ -154,7 +155,9 @@ export class StrategyOperationsService {
           return null;
         }
 
-        return response.data.overview as ConfigurationOverview;
+        const data = response.data as any;
+        const overview = data?.overview ?? data?.data?.overview;
+        return overview as ConfigurationOverview ?? null;
       });
     } catch (error: any) {
       // If it's a 429 error after all retries, log it specifically
@@ -250,7 +253,9 @@ export class StrategyOperationsService {
         return null;
       }
 
-      return response.data.configuration as StrategyState;
+      const data = response.data as any;
+      const configuration = data?.configuration ?? data?.data?.configuration;
+      return configuration as StrategyState ?? null;
     } catch (error) {
       console.error('Error getting configuration:', error);
       return null;
@@ -291,7 +296,8 @@ export class StrategyOperationsService {
       // No invalidar caché aquí porque aún no se ha creado el overview
       // El caché se invalidará cuando se cree el overview completo
 
-      return response.data.configurationId;
+      const data = response.data as any;
+      return data?.configurationId ?? data?.data?.configurationId;
     } catch (error) {
       console.error('Error creating configuration:', error);
       throw error;
@@ -320,7 +326,8 @@ export class StrategyOperationsService {
       // Invalidar caché de conteo después de crear estrategia
       this.invalidateStrategiesCountCache(userId);
 
-      return response.data.overviewId;
+      const data = response.data as any;
+      return data?.overviewId ?? data?.data?.overviewId;
     } catch (error) {
       console.error('Error creating configuration overview:', error);
       throw error;
@@ -362,7 +369,9 @@ export class StrategyOperationsService {
         return null;
       }
 
-      return response.data.configuration as StrategyState;
+      const data = response.data as any;
+      const configuration = data?.configuration ?? data?.data?.configuration;
+      return configuration as StrategyState ?? null;
     } catch (error: any) {
       console.error('Error getting configuration by ID:', error);
       if (error?.status === 404) {
@@ -411,14 +420,15 @@ export class StrategyOperationsService {
         return { strategies: [], button_state: 'available' };
       }
 
-      const rawStrategies = response.data.strategies || [];
-      const button_state = response.data.button_state ?? 'available';
+      const data = response.data as any;
+      const rawStrategies = data?.strategies ?? data?.data?.strategies ?? [];
+      const button_state = data?.button_state ?? data?.data?.button_state ?? 'available';
 
       const strategies = rawStrategies.map((s: any) => {
-        const overview = s.overview ?? s;
-        const configuration = s.configuration ?? {};
-        const strategyId = overview.id ?? overview._id ?? overview.overviewId ?? overview.overview_id;
-        if (strategyId) {
+        const overview = s?.overview ?? s?.data?.overview ?? s;
+        const configuration = s?.configuration ?? s?.data?.configuration ?? {};
+        const strategyId = overview?.id ?? overview?._id ?? overview?.overviewId ?? overview?.overview_id;
+        if (strategyId && overview) {
           overview.id = strategyId;
         }
         return {
@@ -455,7 +465,9 @@ export class StrategyOperationsService {
         return null;
       }
 
-      return response.data.overview as ConfigurationOverview;
+      const data = response.data as any;
+      const overview = data?.overview ?? data?.data?.overview;
+      return overview as ConfigurationOverview ?? null;
     } catch (error) {
       console.error('Error getting active configuration:', error);
       return null;
