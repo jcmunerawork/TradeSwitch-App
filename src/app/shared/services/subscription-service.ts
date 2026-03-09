@@ -125,7 +125,7 @@ export class SubscriptionService {
     userId: string,
     handler: (subscription: Subscription | null) => void
   ): () => void {
-    const POLL_INTERVAL_MS = 60 * 1000; // 1 minuto
+    const POLL_INTERVAL_MS = 3 * 60 * 1000; // 3 minutos
 
     const poll = async () => {
       try {

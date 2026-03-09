@@ -100,18 +100,36 @@ export class PlanService {
 
   /**
    * LEER: Obtener todos los planes
+   * Cachea los resultados en localStorage para evitar múltiples peticiones.
+   * @param forceRefresh Fuerza a pedir los datos a Firebase ignorando el caché
    * @returns Promise con array de todos los planes
    */
-  async getAllPlans(): Promise<Plan[]> {
+  async getAllPlans(forceRefresh: boolean = false): Promise<Plan[]> {
     if (!this.isBrowser) {
       return [];
     }
 
+    const CACHE_KEY = 'trade_switch_plans';
+
     try {
+      if (!forceRefresh) {
+        const cachedPlans = localStorage.getItem(CACHE_KEY);
+        if (cachedPlans) {
+          try {
+            return JSON.parse(cachedPlans) as Plan[];
+          } catch (e) {
+            console.error('❌ Error al parsear planes cacheados:', e);
+            // Ignorar caché si hay error al parsear
+          }
+        }
+      }
+
       const idToken = await this.getIdToken();
       const response = await this.backendApi.getAllPlans(idToken);
       if (response.success && response.data?.plans) {
-        return response.data.plans as Plan[];
+        const plans = response.data.plans as Plan[];
+        localStorage.setItem(CACHE_KEY, JSON.stringify(plans));
+        return plans;
       }
       return [];
     } catch (error) {
@@ -131,11 +149,23 @@ export class PlanService {
     }
 
     try {
+      // Buscar el plan en el listado cacheado (o forzar su carga inicial)
+      const allPlans = await this.getAllPlans();
+      const cachedPlan = allPlans.find(p => p.id === id);
+
+      if (cachedPlan) {
+        return cachedPlan;
+      }
+
+      // Si aún no está en caché (ej. se creó un plan recientemente), hacer petición API
       const idToken = await this.getIdToken();
       const response = await this.backendApi.getPlanById(id, idToken);
       
       if (response.success && response.data?.plan) {
-        return response.data.plan as Plan;
+        const plan = response.data.plan as Plan;
+        // Refrescar caché en background con el nuevo listado de planes
+        this.getAllPlans(true).catch(e => console.error('Error refrescando caché de planes:', e));
+        return plan;
       }
       return undefined;
     } catch (error) {
@@ -202,12 +232,25 @@ export class PlanService {
     }
 
     try {
+      // Buscar el plan en el listado cacheado
+      const allPlans = await this.getAllPlans();
+      const cachedPlan = allPlans.find(plan => plan.name === name);
+
+      if (cachedPlan) {
+        return cachedPlan;
+      }
+
+      // Si no se encuentra, hacer fallback a la API
       const idToken = await this.getIdToken();
       const response = await this.backendApi.searchPlansByName(name, idToken);
       
       if (response.success && response.data?.plans) {
         // Buscar plan con nombre exacto
         const matchingPlan = response.data.plans.find(plan => plan.name === name);
+        if (matchingPlan) {
+          // Refrescar caché en background
+          this.getAllPlans(true).catch(e => console.error('Error refrescando caché de planes:', e));
+        }
         return matchingPlan as Plan | undefined;
       }
       return undefined;
