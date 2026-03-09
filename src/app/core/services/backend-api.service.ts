@@ -1534,14 +1534,16 @@ export class BackendApiService extends BaseApiService {
    * @deprecated This method is no longer used
    */
   async syncTradingHistory(accountId: string, idToken: string, forceSync?: boolean): Promise<BackendApiResponse<any>> {
-    console.warn('⚠️ syncTradingHistory called but endpoint has been removed');
-    return Promise.resolve({
-      success: false,
-      error: {
-        message: 'Sync endpoint has been removed'
-      },
-      data: null
-    } as BackendApiResponse<any>);
+    const body: Record<string, any> = {};
+    if (forceSync !== undefined) {
+      body['forceSync'] = forceSync;
+    }
+    
+    return firstValueFrom(
+      this.post<BackendApiResponse<any>>(`/reports/history/${accountId}/sync`, body, {
+        headers: await this.getAuthHeaders(idToken)
+      })
+    );
   }
 
   /**
