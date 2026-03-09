@@ -12,31 +12,39 @@ import { switchMap, map, catchError } from 'rxjs/operators';
 import { getAuth } from 'firebase/auth';
 import { ConfigService } from '../services/config.service';
 import { CryptoSessionService } from '../services/crypto-session.service';
+import { PublicCryptoService } from '../services/public-crypto.service';
 import type { EncryptedEnvelope } from '../models/encryption.model';
 import {
   encryptRequestBody,
   decryptResponseBody,
   isEncryptedEnvelope,
+  generateTempAesKey,
+  encryptKeyWithRsa,
 } from '../utils/encryption';
 
 /**
- * Paths that must NOT go through encryption flow:
- * - crypto/session-key: endpoint that returns the session key (needs Firebase token in Auth header only).
- * - payments/webhook: external webhook, no auth.
- * - auth/login, auth/signup: no Firebase token yet; user gets token only after these succeed.
- * - auth/forgot-password: unauthenticated.
- * For any other request we require: Firebase token (after login/register) → session key → then the actual request with X-Session-Key-Id and encrypted body.
+ * Paths that must NEVER go through any encryption:
  */
-const EXCLUDED_PATH_PATTERNS = [
+const FULL_EXCLUDED_PATH_PATTERNS = [
   'crypto/session-key',
   'payments/webhook',
+  'crypto/public-key', // El endpoint de la llave pública va en claro
+];
+
+/**
+ * Paths that use Hybrid RSA+AES Encryption (pre-login):
+ */
+const PUBLIC_AUTH_PATHS = [
   'auth/login',
   'auth/signup',
+  'auth/register', // Añadido por si acaso
   'auth/forgot-password',
 ];
 
 /** Header to mark retry and avoid retrying again. */
 const CRYPTO_RETRY_HEADER = 'X-Crypto-Retry';
+/** Header for the temporary AES key (encrypted with RSA). */
+const TEMP_KEY_HEADER = 'X-Temp-Key';
 
 /** Backend message when the session key is invalid or expired. */
 const SESSION_KEY_INVALID_MESSAGE = 'Invalid or expired session key';
@@ -83,18 +91,8 @@ function getApiPath(apiUrl: string): string {
 export class CryptoInterceptor implements HttpInterceptor {
   private config = inject(ConfigService);
   private cryptoSession = inject(CryptoSessionService);
+  private publicCrypto = inject(PublicCryptoService);
 
-  /**
-   * Flow for ALL API requests (GET, POST, PATCH, PUT, DELETE) except excluded paths:
-   * 1. Obtain session key: POST /api/v1/crypto/session-key with Authorization: Bearer <firebase-id-token>.
-   *    keyId and key are stored (in CryptoSessionService).
-   * 2. Every request (including GET) always sends:
-   *    - X-Session-Key-Id: <keyId> (so the backend can encrypt the response).
-   *    - Authorization: Bearer <firebase-id-token> (added by the caller).
-   * 3. For POST/PUT/PATCH with body: the body is also encrypted as EncryptedEnvelope.
-   * 4. If the response is an EncryptedEnvelope (keyId, iv, ciphertext, tag), it is decrypted with the stored key.
-   * Without X-Session-Key-Id the backend returns plain JSON; with a valid keyId it returns encrypted data.
-   */
   intercept(
     req: HttpRequest<unknown>,
     next: HttpHandler
@@ -103,7 +101,7 @@ export class CryptoInterceptor implements HttpInterceptor {
     const baseUrl = this.config.apiUrl.replace(/\/$/, '');
     const reqPath = getRequestPath(url);
     const apiPath = getApiPath(baseUrl);
-    // Cualquier petición a nuestra API v1: por baseUrl, por path /api/ o /v1/, o por patrón fijo de backend
+    
     const looksLikeOurApi =
       url.startsWith(baseUrl) ||
       reqPath === apiPath ||
@@ -113,13 +111,73 @@ export class CryptoInterceptor implements HttpInterceptor {
       (url.includes('localhost:3000') && url.includes('/api/')) ||
       /^\/api\/v1\//.test(reqPath) ||
       /^\/v1\//.test(reqPath);
-    const isExcluded = EXCLUDED_PATH_PATTERNS.some((p) => url.includes(p));
-    const urlMatchesApi = looksLikeOurApi && !isExcluded;
 
-    if (!urlMatchesApi) {
+    const isFullExcluded = FULL_EXCLUDED_PATH_PATTERNS.some((p) => url.includes(p));
+    if (!looksLikeOurApi || isFullExcluded) {
       return next.handle(req);
     }
 
+    const isPublicAuth = PUBLIC_AUTH_PATHS.some((p) => url.includes(p));
+    
+    if (isPublicAuth) {
+      // console.log('🔐 Crypto: Detectada ruta Auth Pública:', url);
+      return this.handlePublicAuthEncryption(req, next);
+    }
+
+    return this.handleSessionEncryption(req, next);
+  }
+
+  /**
+   * Flow for Unauthenticated Auth Routes (Login/Register):
+   * 1. Get Server RSA Public Key.
+   * 2. Generate temporary AES Key.
+   * 3. Encrypt AES Key with RSA Public Key -> Header X-Temp-Key.
+   * 4. Encrypt Body with AES Key.
+   * 5. Decrypt response with the same temporary AES Key.
+   */
+  private handlePublicAuthEncryption(
+    req: HttpRequest<unknown>,
+    next: HttpHandler
+  ): Observable<HttpEvent<unknown>> {
+    return from(this.publicCrypto.getPublicKey()).pipe(
+      switchMap((rsaPublicKey) => {
+        if (!rsaPublicKey) {
+          console.warn('⚠️ Crypto: No se pudo obtener la clave pública RSA. El request irá en claro.');
+          return next.handle(req);
+        }
+        return from(generateTempAesKey()).pipe(
+          switchMap(({ key, base64 }) => {
+            return from(encryptKeyWithRsa(base64, rsaPublicKey)).pipe(
+              switchMap((encryptedAesKey) => {
+                // console.log('🔐 Crypto: Cifrando request Auth con clave temporal...');
+                return this.buildRequestWithKey(req, 'temp', key, false).pipe(
+                  map((newReq) => newReq.clone({ setHeaders: { [TEMP_KEY_HEADER]: encryptedAesKey } })),
+                  switchMap((newReq) => next.handle(newReq)),
+                  switchMap((event) => this.decryptResponseIfNeeded(event, key))
+                );
+              }),
+              catchError(err => {
+                console.error('❌ Crypto: Error en el cifrado RSA/AES de Auth:', err);
+                return next.handle(req);
+              })
+            );
+          })
+        );
+      })
+    );
+  }
+
+  /**
+   * Flow for Authenticated API requests:
+   * 1. Obtain session key (Firebase token needed).
+   * 2. Header X-Session-Key-Id.
+   * 3. Encrypt body.
+   * 4. Decrypt response.
+   */
+  private handleSessionEncryption(
+    req: HttpRequest<unknown>,
+    next: HttpHandler
+  ): Observable<HttpEvent<unknown>> {
     const isRetry = req.headers.has(CRYPTO_RETRY_HEADER);
     return from(this.getTokenForRequest(req)).pipe(
       switchMap((token) => from(this.cryptoSession.getSessionKey(token))),
@@ -132,8 +190,7 @@ export class CryptoInterceptor implements HttpInterceptor {
 
   /**
    * Usa el token del header Authorization de la petición si existe, para evitar condición de carrera
-   * justo después del login (getFreshFirebaseIdToken puede no estar listo aún).
-   * Si la petición no trae token, obtiene uno fresco de Firebase.
+   * justo después del login.
    */
   private getTokenForRequest(req: HttpRequest<unknown>): Promise<string> {
     const authHeader = req.headers.get('Authorization');
@@ -144,7 +201,6 @@ export class CryptoInterceptor implements HttpInterceptor {
     return this.getFreshFirebaseIdToken();
   }
 
-  /** Gets a fresh Firebase idToken (force refresh) for the session-key handshake. */
   private getFreshFirebaseIdToken(): Promise<string> {
     try {
       const auth = getAuth();
@@ -157,16 +213,16 @@ export class CryptoInterceptor implements HttpInterceptor {
   }
 
   /**
-   * Builds the request with encryption según documentación:
-   * - GET (sin body): solo añade X-Session-Key-Id para que la respuesta venga cifrada.
-   * - POST / PUT / PATCH / DELETE (con body): body en claro → cifrar AES-256-GCM → enviar body = { keyId, iv, ciphertext, tag }.
-   * Nunca se envía body en claro en peticiones con body a la API.
+   * Builds the request with encryption:
+   * - GET (sin body): añade keyId para que la respuesta venga cifrada.
+   * - POST / etc (con body): cifra body as EncryptedEnvelope.
+   * @param overrideKey Clave opcional para usar en lugar de la de sesión (usado en public auth).
    */
   private buildRequestWithKey(
     req: HttpRequest<unknown>,
     keyId: string,
-    key: string,
-    isRetry: boolean
+    overrideKey?: string | CryptoKey,
+    isRetry?: boolean
   ): Observable<HttpRequest<unknown>> {
     const method = req.method.toUpperCase();
     const body = req.body;
@@ -179,11 +235,12 @@ export class CryptoInterceptor implements HttpInterceptor {
       return r.clone({ setHeaders, body: b });
     };
 
+    const keyToUse = overrideKey || this.cryptoSession.getStoredKey()?.key;
     if (hasBodyToEncrypt) {
-      if (!keyId || !key) {
-        return throwError(() => new Error('Crypto: session key or keyId missing; cannot encrypt request body'));
+      if (!keyToUse) {
+        return throwError(() => new Error('Crypto: encryption key missing; cannot encrypt request body'));
       }
-      return from(encryptRequestBody(body, key, keyId)).pipe(
+      return from(encryptRequestBody(body, keyToUse, keyId)).pipe(
         map((envelope) => addHeader(req, envelope))
       );
     }
@@ -232,12 +289,6 @@ export class CryptoInterceptor implements HttpInterceptor {
     );
   }
 
-  /**
-   * Detecta si el body es una respuesta cifrada del backend y desde dónde viene el envelope.
-   * Según el back: el body puede ser directamente el envelope { keyId, iv, ciphertext, tag }
-   * o (por compatibilidad) venir envuelto en { success, data: envelope }.
-   * @returns [envelope, envelopeWasInData] - si el envelope estaba en body.data, el backend cifró solo el contenido de data.
-   */
   private getEncryptedEnvelopeFromBody(body: unknown): [EncryptedEnvelope, boolean] | null {
     const bodyIsEnvelope = isEncryptedEnvelope(body);
     const data = body && typeof body === 'object' && 'data' in body ? (body as Record<string, unknown>)['data'] : undefined;
@@ -248,14 +299,11 @@ export class CryptoInterceptor implements HttpInterceptor {
   }
 
   /**
-   * Si la respuesta tiene body cifrado (envelope con keyId, iv, ciphertext, tag),
-   * descifra con la clave de sesión y reemplaza el body por el JSON en claro.
-   * Si el envelope estaba en body.data (ej. { success: true, data: EncryptedEnvelope }),
-   * el backend cifró solo el valor de "data"; hay que dejar body como { success, data: decrypted }
-   * para que los consumidores sigan recibiendo response.data.user, response.data.plans, etc.
+   * @param overrideKey Clave opcional para descifrar (usado en public auth).
    */
   private decryptResponseIfNeeded(
-    event: HttpEvent<unknown>
+    event: HttpEvent<unknown>,
+    overrideKey?: string | CryptoKey
   ): Observable<HttpEvent<unknown>> {
     const isHttpResponse = event instanceof HttpResponse;
 
@@ -264,12 +312,11 @@ export class CryptoInterceptor implements HttpInterceptor {
     }
     const res = event as HttpResponse<unknown>;
     let body = res.body;
-    // Si el body llega como string (p. ej. Content-Type no aplicó parse), intentar parsear para detectar envelope
     if (typeof body === 'string') {
       try {
         body = JSON.parse(body) as unknown;
       } catch {
-        // No es JSON; dejar body como está y no habrá envelope
+        // No es JSON
       }
     }
 
@@ -279,12 +326,12 @@ export class CryptoInterceptor implements HttpInterceptor {
     }
     const [envelope, envelopeWasInData] = envelopeResult;
 
-    const stored = this.cryptoSession.getStoredKey();
-    if (!stored) {
+    const keyToDecrypt = overrideKey || this.cryptoSession.getStoredKey()?.key;
+    if (!keyToDecrypt) {
       return of(event);
     }
 
-    return from(decryptResponseBody(envelope, stored.key)).pipe(
+    return from(decryptResponseBody(envelope, keyToDecrypt)).pipe(
       map((decrypted) => {
         const inner = decrypted && typeof decrypted === 'object' && 'data' in decrypted && (decrypted as Record<string, unknown>)['data'] != null
           ? (decrypted as Record<string, unknown>)['data']

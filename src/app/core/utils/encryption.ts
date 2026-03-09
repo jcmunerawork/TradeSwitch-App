@@ -1,11 +1,13 @@
 /**
  * AES-256-GCM encryption helpers using the Web Crypto API.
  * Used to encrypt/decrypt request and response bodies when talking to the backend.
+ * Also includes RSA-OAEP helpers for public-key encryption of temporary session keys.
  */
 
 import type { EncryptedEnvelope } from '../models/encryption.model';
 
-const ALGORITHM = 'AES-GCM';
+const AES_ALGORITHM = 'AES-GCM';
+const RSA_ALGORITHM = 'RSA-OAEP';
 const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
 
@@ -25,10 +27,67 @@ function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
 
 async function importAesKey(base64Key: string): Promise<CryptoKey> {
   const raw = base64ToArrayBuffer(base64Key);
-  return crypto.subtle.importKey('raw', raw, { name: ALGORITHM }, false, [
+  return crypto.subtle.importKey('raw', raw, { name: AES_ALGORITHM }, false, [
     'encrypt',
     'decrypt',
   ]);
+}
+
+/**
+ * Genera una clave AES-256-GCM aleatoria.
+ * @returns [CryptoKey, base64] - La clave como objeto para cifrar y su versión string para persistir/enviar.
+ */
+export async function generateTempAesKey(): Promise<{ key: CryptoKey; base64: string }> {
+  const key = await crypto.subtle.generateKey(
+    { name: AES_ALGORITHM, length: 256 },
+    true,
+    ['encrypt', 'decrypt']
+  );
+  const exported = await crypto.subtle.exportKey('raw', key);
+  return { key, base64: arrayBufferToBase64(exported) };
+}
+
+/**
+ * Importa una clave pública RSA desde una cadena PEM.
+ */
+async function importRsaPublicKey(pem: string): Promise<CryptoKey> {
+  // Limpiar el formato PEM para obtener solo el base64
+  const pemHeader = '-----BEGIN PUBLIC KEY-----';
+  const pemFooter = '-----END PUBLIC KEY-----';
+  const pemContents = pem
+    .replace(pemHeader, '')
+    .replace(pemFooter, '')
+    .replace(/\s/g, '');
+  const binaryDer = base64ToArrayBuffer(pemContents);
+
+  return crypto.subtle.importKey(
+    'spki',
+    binaryDer,
+    {
+      name: RSA_ALGORITHM,
+      hash: 'SHA-256',
+    },
+    false,
+    ['encrypt']
+  );
+}
+
+/**
+ * Cifra la clave AES (en base64) usando la clave pública RSA del servidor.
+ * Devuelve el resultado en base64 para enviarlo en el header X-Temp-Key.
+ */
+export async function encryptKeyWithRsa(
+  aesKeyBase64: string,
+  rsaPublicKeyPem: string
+): Promise<string> {
+  const publicKey = await importRsaPublicKey(rsaPublicKeyPem);
+  const data = new TextEncoder().encode(aesKeyBase64);
+  const encrypted = await crypto.subtle.encrypt(
+    { name: RSA_ALGORITHM },
+    publicKey,
+    data
+  );
+  return arrayBufferToBase64(encrypted);
 }
 
 /**
@@ -37,15 +96,18 @@ async function importAesKey(base64Key: string): Promise<CryptoKey> {
  */
 export async function encryptRequestBody(
   body: unknown,
-  sessionKeyBase64: string,
+  sessionKeyBase64OrKey: string | CryptoKey,
   keyId: string,
 ): Promise<EncryptedEnvelope> {
-  const key = await importAesKey(sessionKeyBase64);
+  const key = typeof sessionKeyBase64OrKey === 'string' 
+    ? await importAesKey(sessionKeyBase64OrKey)
+    : sessionKeyBase64OrKey;
+  
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
   const plaintext = new TextEncoder().encode(JSON.stringify(body));
 
   const ciphertextBuf = await crypto.subtle.encrypt(
-    { name: ALGORITHM, iv, tagLength: TAG_LENGTH * 8 },
+    { name: AES_ALGORITHM, iv, tagLength: TAG_LENGTH * 8 },
     key,
     plaintext,
   );
@@ -68,9 +130,12 @@ export async function encryptRequestBody(
  */
 export async function decryptResponseBody(
   envelope: EncryptedEnvelope,
-  sessionKeyBase64: string,
+  sessionKeyBase64OrKey: string | CryptoKey,
 ): Promise<unknown> {
-  const key = await importAesKey(sessionKeyBase64);
+  const key = typeof sessionKeyBase64OrKey === 'string'
+    ? await importAesKey(sessionKeyBase64OrKey)
+    : sessionKeyBase64OrKey;
+    
   const iv = base64ToArrayBuffer(envelope.iv);
   const ciphertext = base64ToArrayBuffer(envelope.ciphertext);
   const tag = envelope.tag ? base64ToArrayBuffer(envelope.tag) : null;
@@ -84,7 +149,7 @@ export async function decryptResponseBody(
   combined.set(new Uint8Array(tag), ciphertext.byteLength);
 
   const decrypted = await crypto.subtle.decrypt(
-    { name: ALGORITHM, iv, tagLength: TAG_LENGTH * 8 },
+    { name: AES_ALGORITHM, iv, tagLength: TAG_LENGTH * 8 },
     key,
     combined,
   );
