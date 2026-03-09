@@ -143,11 +143,31 @@ export class StrategyDaysUpdaterService {
   }
 
   /**
-   * Gets active days of a strategy without updating in Firebase
+   * Calculates active days since creation date or last active timeline interval
    * @param createdAt - Firebase timestamp or creation date
    * @returns Number of active days
    */
   getDaysActive(createdAt: any): number {
     return this.calculateDaysActive(createdAt);
+  }
+
+  /**
+   * Gets active days based on the timeline. 
+   * Uses the start_date of the last interval that doesn't have an end_date.
+   * @param timeline - Activity intervals
+   * @param createdAtFallback - Fallback date if timeline is not available
+   */
+  getDaysActiveFromTimeline(timeline: any[] | undefined | null, createdAtFallback: any): number {
+    if (timeline && Array.isArray(timeline) && timeline.length > 0) {
+      // Look for the last object in timeline that has no end_date
+      const lastActiveInterval = [...timeline].reverse().find(interval => !interval.end_date);
+      
+      if (lastActiveInterval && lastActiveInterval.start_date) {
+        return this.calculateDaysActive(lastActiveInterval.start_date);
+      }
+    }
+    
+    // Fallback to original created_at logic
+    return this.calculateDaysActive(createdAtFallback);
   }
 }

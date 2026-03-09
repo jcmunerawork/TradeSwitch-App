@@ -216,39 +216,48 @@ export class TimezoneService {
    */
   convertTradeDateToUTC(tradeDate: any): Date {
     try {
+      if (tradeDate === null || tradeDate === undefined || (typeof tradeDate === 'number' && isNaN(tradeDate))) {
+        return new Date();
+      }
+
       let utcDate: Date;
       
+      // Si es un Date
+      if (tradeDate instanceof Date) {
+        utcDate = tradeDate;
+      }
       // Si es un timestamp numérico (milisegundos)
-      if (typeof tradeDate === 'number') {
+      else if (typeof tradeDate === 'number') {
         utcDate = new Date(tradeDate);
-        // Verificar si es válido
-        if (isNaN(utcDate.getTime())) {
-          throw new Error('Timestamp inválido');
-        }
       }
       // Si es un string
       else if (typeof tradeDate === 'string') {
-        // Si contiene 'Z' o '+00:00', ya está en UTC
-        if (tradeDate.includes('Z') || tradeDate.includes('+00:00')) {
-          utcDate = new Date(tradeDate);
-        }
-        // Si es un timestamp en string
-        else {
-          const numericValue = parseInt(tradeDate);
+        const trimmed = tradeDate.trim();
+        // Si contiene 'Z', '+', o '-' (pero no es solo un offset al final), probablemente sea un ISO string
+        // O si tiene guiones (YYYY-MM-DD)
+        const isISO = trimmed.includes('Z') || trimmed.includes('T') || trimmed.includes('-') || trimmed.includes(':');
+        
+        if (isISO) {
+          utcDate = new Date(trimmed);
+        } else {
+          // Intentar como número si es puramente digital
+          const numericValue = Number(trimmed);
           if (!isNaN(numericValue)) {
             utcDate = new Date(numericValue);
           } else {
-            utcDate = new Date(tradeDate);
+            utcDate = new Date(trimmed);
           }
         }
-      }
-      // Si ya es un Date
-      else if (tradeDate instanceof Date) {
-        utcDate = tradeDate;
       }
       // Fallback
       else {
         utcDate = new Date(tradeDate);
+      }
+      
+      // Verificar si la fecha resultante es válida
+      if (isNaN(utcDate.getTime())) {
+        console.warn('Fecha de trade inválida recibida:', tradeDate);
+        return new Date();
       }
       
       // FORZAR UTC: Crear una nueva fecha usando UTC para asegurar que esté en UTC

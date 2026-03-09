@@ -101,16 +101,21 @@ export class CalendarComponent {
    * Convertir Timestamp de Firestore o ISO 8601 string a Date
    */
   private convertFirestoreTimestamp(timestamp: any): Date {
+    if (timestamp === null || timestamp === undefined) {
+      return new Date();
+    }
     // Si es string ISO 8601 (formato prioritario)
     if (typeof timestamp === 'string') {
-      return new Date(timestamp);
+      const date = new Date(timestamp);
+      return isNaN(date.getTime()) ? new Date() : date;
     }
     // Fallback: Firestore Timestamp (legacy)
     if (timestamp && typeof timestamp === 'object' && 'seconds' in timestamp) {
       return new Date(timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000);
     }
-    // Fallback final
-    return new Date(timestamp);
+    // Fallback final: intentar conversión directa
+    const finalDate = new Date(timestamp);
+    return isNaN(finalDate.getTime()) ? new Date() : finalDate;
   }
 
   /**
@@ -508,13 +513,12 @@ export class CalendarComponent {
     const uniqueTrades = validTrades.filter((trade, index, self) => 
       index === self.findIndex(t => t.positionId === trade.positionId)
     );
-
     // Agrupar trades únicos por día usando la fecha de apertura (createdDate)
     uniqueTrades.forEach((trade) => {
       // IMPORTANTE: Usar createdDate (fecha de apertura) para agrupar trades por día
-      // El trade debe aparecer en el calendario el día que se abrió, no el día que se cerró
+      // El trade debe aparecer en le calendario el día que se abrió, no el día que se cerró
       const tradeDate = this.convertToUTCWithTimezone(
-        Number(trade.createdDate) || Number(trade.lastModified) // Fallback a lastModified si no hay createdDate
+        trade.createdDate || trade.lastModified // Usar el string directamente, TimezoneService lo manejará
       );
       
       // Usar la zona horaria local del dispositivo
@@ -568,7 +572,7 @@ export class CalendarComponent {
           // Usar createdDate (fecha de apertura) para verificar si se siguió la estrategia
           // La estrategia se verifica en el momento que se abrió la posición
           const tradeDate = this.convertToUTCWithTimezone(
-            Number(trade.createdDate) || Number(trade.lastModified) // Fallback a lastModified si no hay createdDate
+            trade.createdDate || trade.lastModified // Usar el string directamente
           );
           const tradeStrategyInfo = this.getTradeStrategyInfo(tradeDate);
           
@@ -675,7 +679,7 @@ export class CalendarComponent {
   private getEarliestTradeDate(): Date {
     if (!this.processedTradesForCalendar.length) return new Date();
     const dates = this.processedTradesForCalendar.map(trade => 
-      new Date(Number(trade.createdDate) || Number(trade.lastModified))
+      this.convertToUTCWithTimezone(trade.createdDate || trade.lastModified)
     );
     return new Date(Math.min(...dates.map(d => d.getTime())));
   }
@@ -683,7 +687,7 @@ export class CalendarComponent {
   private getLatestTradeDate(): Date {
     if (!this.processedTradesForCalendar.length) return new Date();
     const dates = this.processedTradesForCalendar.map(trade => 
-      new Date(Number(trade.createdDate) || Number(trade.lastModified))
+      this.convertToUTCWithTimezone(trade.createdDate || trade.lastModified)
     );
     return new Date(Math.max(...dates.map(d => d.getTime())));
   }

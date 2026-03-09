@@ -7,6 +7,7 @@ import { ConfigurationOverview } from '../../../strategy/models/strategy.model';
 import { ReportService } from '../../service/report.service';
 import { AppContextService } from '../../../../shared/context';
 import { BackendDatePipe } from '../../../../shared/pipes/backend-date.pipe';
+import { TimezoneService } from '../../../../shared/services/timezone.service';
 
 /**
  * Interface representing a trade detail for display in the popup.
@@ -71,7 +72,8 @@ export class TradesPopupComponent {
   constructor(
     private reportService: ReportService,
     private appContext: AppContextService,
-    private backendDatePipe: BackendDatePipe
+    private backendDatePipe: BackendDatePipe,
+    private timezoneService: TimezoneService
   ) {}
 
   ngOnChanges() {
@@ -100,13 +102,9 @@ export class TradesPopupComponent {
     
     // Convertir trades del día a formato de detalle (sin ordenar, aparecen como llegan)
     this.trades = this.selectedDay.trades.map((trade) => {
-      const openedDate = trade.createdDate 
-        ? new Date(Number(trade.createdDate))
-        : new Date(Number(trade.lastModified));
+      const openedDate = this.timezoneService.convertTradeDateToUTC(trade.createdDate || trade.lastModified);
       
-      const closedDate = (trade as any).closedDate 
-        ? new Date(Number((trade as any).closedDate))
-        : new Date(Number(trade.lastModified));
+      const closedDate = this.timezoneService.convertTradeDateToUTC((trade as any).closedDate || trade.lastModified);
       
       // Obtener nombre del instrumento desde la cache
       let instrumentName = trade.instrument ?? 'N/A';
@@ -205,15 +203,15 @@ export class TradesPopupComponent {
     if (!this.selectedDay?.followedStrategy) return '';
     if (!this.strategies?.length) return '-';
 
-    const tradeDate = new Date(Number(trade.lastModified));
+    const tradeDate = this.timezoneService.convertTradeDateToUTC(trade.createdDate || trade.lastModified);
     const now = new Date();
     now.setHours(23, 59, 59, 999);
 
     for (const strategy of this.strategies) {
       if (strategy.timeline?.length) {
         for (const interval of strategy.timeline) {
-          const start = new Date(interval.start_date);
-          const end = interval.end_date ? new Date(interval.end_date) : now;
+          const start = this.timezoneService.convertTradeDateToUTC(interval.start_date);
+          const end = interval.end_date ? this.timezoneService.convertTradeDateToUTC(interval.end_date) : now;
           if (tradeDate >= start && tradeDate <= end) {
             return strategy.name;
           }
@@ -224,9 +222,9 @@ export class TradesPopupComponent {
       if (strategy.dateActive?.length) {
         const inactiveLen = strategy.dateInactive?.length ?? 0;
         for (let i = 0; i < strategy.dateActive.length; i++) {
-          const start = new Date(strategy.dateActive[i]);
+          const start = this.timezoneService.convertTradeDateToUTC(strategy.dateActive[i]);
           const end = strategy.dateInactive?.[i] != null
-            ? new Date(strategy.dateInactive[i])
+            ? this.timezoneService.convertTradeDateToUTC(strategy.dateInactive[i])
             : (strategy.dateActive.length > inactiveLen ? now : null);
           if (end != null && tradeDate >= start && tradeDate <= end) {
             return strategy.name;

@@ -4,6 +4,7 @@ import { StrategyState } from '../models/strategy.model';
 import { SettingsService } from '../service/strategy.service';
 import { StrategyCacheService } from './strategy-cache.service';
 import { StrategyCardData } from '../../../shared/components';
+import { StrategyDaysUpdaterService } from '../../../shared/services/strategy-days-updater.service';
 
 /**
  * Servicio que construye StrategyCardData a partir de ConfigurationOverview y configuración:
@@ -15,7 +16,8 @@ import { StrategyCardData } from '../../../shared/components';
 export class StrategyCardsDataService {
   constructor(
     private strategySvc: SettingsService,
-    private strategyCacheService: StrategyCacheService
+    private strategyCacheService: StrategyCacheService,
+    private strategyDaysUpdater: StrategyDaysUpdaterService
   ) {}
 
   formatDate(date: Date): string {
@@ -81,7 +83,16 @@ export class StrategyCardsDataService {
     config: StrategyState | null,
     isFavorite = false
   ): StrategyCardData {
-    const lastModified = this.formatDate(this.parseDate(overview.updated_at));
+    // Use updated_at_history for lastModified if available
+    let lastModifiedDate = overview.updated_at;
+    if (overview.updated_at_history && overview.updated_at_history.length > 0) {
+      lastModifiedDate = overview.updated_at_history[overview.updated_at_history.length - 1].date;
+    }
+    const lastModified = this.formatDate(this.parseDate(lastModifiedDate));
+    
+    // Use timeline for days_active if available
+    const days_active = this.strategyDaysUpdater.getDaysActiveFromTimeline(overview.timeline, overview.created_at);
+    
     const rules = config ? this.countActiveRules(config) : 0;
     return {
       id: strategyId,
@@ -89,7 +100,7 @@ export class StrategyCardsDataService {
       status: overview.status,
       lastModified,
       rules,
-      days_active: overview.days_active ?? 0,
+      days_active,
       winRate: 0,
       isFavorite,
       created_at: overview.created_at,
