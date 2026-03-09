@@ -197,8 +197,7 @@ export class AccountsOperationsService {
 
   /**
    * Obtener cuentas de un usuario
-   * Now uses localStorage cache to avoid backend requests
-   * Only fetches from backend if cache is empty
+   * Fetches from backend and updates in-memory cache
    */
   async getUserAccounts(userId: string): Promise<AccountData[] | null> {
     // Verificar si hay una petición pendiente para este usuario
@@ -206,18 +205,14 @@ export class AccountsOperationsService {
     if (pendingRequest) {
       return pendingRequest;
     }
-
-    // Primero intentar obtener del caché (localStorage)
-    const cachedAccounts = this.accountsCache.getAccounts(userId);
-    if (cachedAccounts !== null) {
-      // Return cached data (may be empty array or with data)
-      return cachedAccounts;
-    }
-
-    // Si no hay datos en caché, hacer petición al backend
+ 
+    // SE ELIMINÓ EL USO DE CACHÉ PERSISTENTE (localStorage)
+    // Siempre solicitamos datos frescos del backend para evitar datos obsoletos.
+    // El caché solo se usa en memoria durante la sesión a través de AccountsCacheService.
+ 
     const request = this.fetchUserAccountsFromBackend(userId);
     this.pendingRequests.set(userId, request);
-
+ 
     try {
       const result = await request;
       return result;
@@ -229,7 +224,6 @@ export class AccountsOperationsService {
 
   /**
    * Realizar la petición HTTP para obtener las cuentas desde el backend
-   * Guarda los resultados en el caché de localStorage
    * 
    * If the backend returns data from a fallback source, a warning toast will be shown.
    */

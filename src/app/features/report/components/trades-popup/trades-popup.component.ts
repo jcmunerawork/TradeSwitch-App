@@ -93,7 +93,9 @@ export class TradesPopupComponent {
     if (accounts && accounts.length > 0) {
       const currentAccount = accounts[0];
       const accountId = currentAccount.accountID;
-      instrumentsCache = this.getInstrumentsFromCache(accountId);
+      if (accountId) {
+        instrumentsCache = this.appContext.getInstrumentsForAccount(accountId);
+      }
     }
     
     // Convertir trades del día a formato de detalle (sin ordenar, aparecen como llegan)
@@ -146,28 +148,9 @@ export class TradesPopupComponent {
   }
 
   /**
-   * Get instruments from localStorage cache.
-   * Instruments are the same for all accounts, so a generic key is used.
-   * @param accountId - Kept for compatibility, not used
-   * @returns Array of instruments or null if not found
+   * El método getInstrumentsFromCache fue eliminado para asegurar datos frescos.
+   * Los instrumentos ahora se recuperan del AppContextService.
    */
-  private getInstrumentsFromCache(accountId: string): any[] | null {
-    try {
-      // Generic key without accountId since instruments are the same for all accounts
-      const key = 'tradeswitch_instruments';
-      const cached = localStorage.getItem(key);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed.instruments && Array.isArray(parsed.instruments)) {
-          return parsed.instruments;
-        }
-      }
-    } catch (error) {
-      console.warn('Error getting instruments from cache:', error);
-    }
-    
-    return null;
-  }
 
   formatDate(date: Date): string {
     const options: Intl.DateTimeFormatOptions = { 

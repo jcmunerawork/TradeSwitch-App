@@ -88,14 +88,14 @@ export class TradeLockerApiService {
   // Clave: `${email}:${server}`, Valor: { token: string, expiresAt: number }
   private tokenCache = new Map<string, { token: string; expiresAt: number }>();
   private readonly TOKEN_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-  
+
   // Map para evitar múltiples llamadas simultáneas con las mismas credenciales
   // Clave: `${email}:${server}`, Valor: Observable<string>
   private pendingRequests = new Map<string, Observable<string>>();
 
   constructor(
     private backendApi: BackendApiService
-  ) {}
+  ) { }
 
 
   /**
@@ -145,29 +145,29 @@ export class TradeLockerApiService {
     return new Observable(observer => {
       this.getIdToken().then(idToken => {
         this.backendApi.getTradeLockerJWTToken(credentials, idToken).then(response => {
-          
+
           if (!response.success) {
             const errorMessage = response.error?.message || 'Failed to get JWT token';
             console.error('❌ TradeLockerApiService: Backend returned error:', errorMessage, response.error);
             observer.error(new Error(errorMessage));
             return;
           }
-          
+
           if (!response.data) {
             console.error('❌ TradeLockerApiService: No data in backend response:', response);
             observer.error(new Error('No data in backend response'));
             return;
           }
-          
+
           // El backend puede devolver:
           // 1. Un objeto directo con { accessToken, refreshToken, expireDate } (nuevo formato)
           // 2. Un objeto con { data: [...] } (formato antiguo)
           // 3. Un array directo (formato antiguo)
-          
+
           // Usar 'any' para manejar los diferentes formatos de respuesta
           const data: any = response.data;
           let tokenData: any[];
-          
+
           // Si data tiene accessToken directamente, es el nuevo formato
           if (data && typeof data === 'object' && 'accessToken' in data && !Array.isArray(data)) {
             // Nuevo formato: convertir objeto a array para mantener compatibilidad
@@ -189,13 +189,13 @@ export class TradeLockerApiService {
             observer.error(new Error(`Invalid response format. Expected object with accessToken or array, but got: ${typeof data}`));
             return;
           }
-          
+
           if (!Array.isArray(tokenData) || tokenData.length === 0) {
             console.error('❌ TradeLockerApiService: Token data is not a valid array:', tokenData);
             observer.error(new Error(`Invalid response format. Expected array but got: ${typeof tokenData}`));
             return;
           }
-          
+
           observer.next({ data: tokenData } as AccountTokenResponse);
           observer.complete();
         }).catch(error => {
@@ -239,11 +239,13 @@ export class TradeLockerApiService {
     try {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.validateTradeLockerAccount(credentials, idToken);
-      
+
+      console.log('Response validating account in TradeLocker:', response);
+
       if (!response.success || !response.data) {
         return false;
       }
-      
+
       return response.data.isValid;
     } catch (error) {
       console.error('Error validating account in TradeLocker:', error);
@@ -369,56 +371,56 @@ export class TradeLockerApiService {
   getUserKey(email: string, password: string, server: string): Observable<string> {
     // Crear una clave única para estas credenciales (email + server)
     const cacheKey = `${email}:${server}`;
-    
+
     // 1. Verificar si hay un token válido en caché
     const cached = this.tokenCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       return of(cached.token);
     }
-    
+
     // 2. Verificar si ya hay una petición en curso para estas credenciales
     const pendingRequest = this.pendingRequests.get(cacheKey);
     if (pendingRequest) {
       return pendingRequest;
     }
-    
+
     // 3. Limpiar tokens expirados del caché antes de hacer nueva petición
     this.cleanExpiredTokens();
-    
+
     // 4. Crear nueva petición
     const credentials: TradeLockerCredentials = { email, password, server };
     const request$ = this.getJWTTokenStaging(credentials).pipe(
       map(response => {
         // La respuesta es AccountTokenResponse con estructura { data: AccountTokenData[] }
-        
+
         if (!response) {
           console.error('❌ TradeLockerApiService: No response received');
           throw new Error('No response received from backend');
         }
-        
+
         if (!response.data) {
           console.error('❌ TradeLockerApiService: No data in response:', response);
           throw new Error('No data found in response');
         }
-        
+
         if (!Array.isArray(response.data) || response.data.length === 0) {
           console.error('❌ TradeLockerApiService: Empty or invalid data array:', response.data);
           throw new Error(`No accounts found in response. Expected array but got: ${JSON.stringify(response.data)}`);
         }
-        
+
         const firstAccount = response.data[0];
-        
+
         if (!firstAccount.accessToken) {
           console.error('❌ TradeLockerApiService: No accessToken in first account:', firstAccount);
           throw new Error(`No access token found in response. Account data: ${JSON.stringify(firstAccount)}`);
         }
-        
+
         const token = firstAccount.accessToken;
-        
+
         // Guardar en caché con TTL de 5 minutos
         const expiresAt = Date.now() + this.TOKEN_CACHE_TTL;
         this.tokenCache.set(cacheKey, { token, expiresAt });
-        
+
         return token;
       }),
       catchError(error => {
@@ -434,10 +436,10 @@ export class TradeLockerApiService {
         this.pendingRequests.delete(cacheKey);
       })
     );
-    
+
     // Guardar la petición pendiente para reutilizarla si se llama de nuevo
     this.pendingRequests.set(cacheKey, request$);
-    
+
     return request$;
   }
 

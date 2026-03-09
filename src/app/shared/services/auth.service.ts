@@ -250,19 +250,8 @@ export class AuthService {
     }
 
     try {
-      // 1. Verificar si ya están en localStorage (key genérica)
-      const firstAccount = accounts[0];
-      const cachedInstruments = this.getInstrumentsFromLocalStorage(firstAccount.accountID!);
-      
-      if (cachedInstruments && cachedInstruments.length > 0) {
-        // Guardar en el contexto para todas las cuentas
-        accounts.forEach(account => {
-          this.appContext.setInstrumentsForAccount(account.accountID!, cachedInstruments);
-        });
-        return;
-      }
-
       // 2. Si no están en cache, cargarlos desde el backend UNA SOLA VEZ
+      const firstAccount = accounts[0];
       const instrumentsResponse = await this.backendApi.getTradeLockerAllInstruments(
         firstAccount.accountID!,
         firstAccount.accountNumber!,
@@ -284,9 +273,6 @@ export class AuthService {
           accounts.forEach(account => {
             this.appContext.setInstrumentsForAccount(account.accountID!, instruments);
           });
-          
-          // Guardar en localStorage con key genérica (sin accountId)
-          this.saveInstrumentsToLocalStorage(firstAccount.accountID!, instruments);
         }
       }
     } catch (error) {
@@ -953,21 +939,15 @@ export class AuthService {
 
       if (account.accountID && account.accountNumber !== undefined) {
         try {
-          const cachedInstruments = this.getInstrumentsFromLocalStorage(account.accountID);
-          if (cachedInstruments && cachedInstruments.length > 0) {
-            this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
-            this.appContext.setLoading('accounts', false);
-            return message;
-          }
+          // Se eliminó la recuperación desde caché persistente
 
           // Si no hay cache, cargar desde el backend
           const auth = await import('firebase/auth');
           const { getAuth } = auth;
           const authInstance = getAuth();
-          const user = authInstance.currentUser;
 
-          if (user) {
-            const idToken = await user.getIdToken();
+          if (authInstance.currentUser) {
+            const idToken = await authInstance.currentUser.getIdToken();
             const instrumentsResponse = await this.backendApi.getTradeLockerAllInstruments(
               account.accountID,
               account.accountNumber,
@@ -987,7 +967,6 @@ export class AuthService {
 
               if (instruments.length > 0) {
                 this.appContext.setInstrumentsForAccount(account.accountID, instruments);
-                this.saveInstrumentsToLocalStorage(account.accountID, instruments);
               }
             }
           }
@@ -1085,45 +1064,6 @@ export class AuthService {
   }
 
   /**
-   * Save instruments to localStorage
-   * Instruments are the same for all accounts, so they are stored with a generic key
-   */
-  private saveInstrumentsToLocalStorage(accountId: string, instruments: any[]): void {
-    if (!this.isBrowser) return;
-
-    try {
-      // Generic key without accountId since instruments are the same for all accounts
-      const key = 'tradeswitch_instruments';
-      localStorage.setItem(key, JSON.stringify({
-        instruments,
-        timestamp: Date.now()
-      }));
-    } catch (error) {
-    }
-  }
-
-  /**
-   * Get instruments from localStorage
-   * Instruments are the same for all accounts, so they are read with a generic key
-   * @param accountId - Kept for compatibility, not used
-   */
-  private getInstrumentsFromLocalStorage(accountId: string): any[] | null {
-    if (!this.isBrowser) return null;
-
-    try {
-      // Generic key without accountId since instruments are the same for all accounts
-      const key = 'tradeswitch_instruments';
-      const cached = localStorage.getItem(key);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed.instruments && Array.isArray(parsed.instruments)) {
-          return parsed.instruments;
-        }
-      }
-    } catch (error) {
-    }
-
-    return null;
   }
 
   /**

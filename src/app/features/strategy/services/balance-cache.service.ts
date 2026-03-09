@@ -11,11 +11,11 @@ interface BalanceData {
  * Service for caching account balance data.
  *
  * This service provides caching for account balances with a 5-minute expiration.
- * It uses both in-memory cache and localStorage for persistence across page reloads.
+ * It uses in-memory cache to maintain data during the session.
  * Includes an Observable for real-time balance updates.
  *
  * Features:
- * - In-memory and localStorage caching
+ * - In-memory caching
  * - 5-minute cache expiration
  * - Observable for balance changes
  * - Automatic cache cleanup

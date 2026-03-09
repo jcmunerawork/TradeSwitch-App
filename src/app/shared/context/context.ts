@@ -125,7 +125,7 @@ export interface AppContextState {
  * - Account management (CRUD operations)
  * - Strategy management (CRUD operations, activation)
  * - Plan management (user plan, global plans, limits)
- * - Trading history per account (with localStorage persistence)
+ * - Trading history per account
  * - API caching (TradeLocker data, general API cache)
  * - Report data management
  * - Overview data management (for admins)
@@ -133,11 +133,10 @@ export interface AppContextState {
  * - Error states per component
  * - Computed signals for derived data
  *
- * State Management:
  * - Signals: For reactive UI updates (Angular signals)
  * - Observables: For RxJS-based subscriptions
  * - BehaviorSubject: Internal state management
- * - localStorage: Persistence for trading history
+ * - In-memory cache: Managed by specialized services
  *
  * Caching:
  * - TradeLocker data: 5-minute TTL
@@ -147,7 +146,6 @@ export interface AppContextState {
  * Relations:
  * - TradeLockerApiService: Fetches trading data
  * - All feature modules: Consume and update context data
- * - localStorage: Persists trading history
  *
  * @service
  * @injectable
@@ -388,8 +386,6 @@ export class AppContextService {
   );
 
   constructor(private tradeLockerApi: TradeLockerApiService) {
-    // Limpiar datos legacy de localStorage al iniciar
-    this.accountsCacheService.cleanupLegacyLocalStorage();
     
     // COMMENTED: effect() is not available in services without injection context
     // La sincronización se hace manualmente en los métodos setter de cada signal
@@ -463,7 +459,7 @@ export class AppContextService {
       pluginHistory: []
     });
 
-    // Limpiar también el caché de cuentas (memoria + localStorage)
+    // Limpiar también el caché de cuentas en memoria
     this.accountsCacheService.clearCache();
   }
 
@@ -474,7 +470,7 @@ export class AppContextService {
     // Sincronizar con el estado principal
     this.updateState({ userAccounts: accounts });
     
-    // Actualizar también el cache de localStorage
+    // Actualizar también el cache en memoria
     const currentUser = this.currentUser();
     if (currentUser?.id) {
       this.accountsCacheService.setAccounts(currentUser.id, accounts);
@@ -820,7 +816,7 @@ export class AppContextService {
     });
     this.userAccounts.set(updatedAccounts);
     
-    // Actualizar también el cache de localStorage
+    // Actualizar también el cache en memoria
     const currentUser = this.currentUser();
     if (currentUser?.id) {
       this.accountsCacheService.setAccounts(currentUser.id, updatedAccounts);
@@ -913,7 +909,7 @@ export class AppContextService {
         };
         this.setUserAccounts(updatedAccounts);
         
-        // Actualizar también el cache de localStorage
+        // Actualizar también el cache en memoria
         const currentUser = this.currentUser();
         if (currentUser?.id) {
           this.accountsCacheService.setAccounts(currentUser.id, updatedAccounts);
@@ -1031,8 +1027,6 @@ export class AppContextService {
 
       this.setTradingHistoryForAccount(account.id, accountData);
 
-      // Los datos ya se guardan en Firebase a través del backend
-      // No es necesario guardar en localStorage
 
       this.setLoading('tradeLocker', false);
     } catch (error) {
@@ -1128,6 +1122,5 @@ export class AppContextService {
     this.updateState({
       tradingHistoryByAccount: newTradingHistory
     });
-    // Los datos ya están en Firebase, no es necesario limpiar localStorage
   }
 }

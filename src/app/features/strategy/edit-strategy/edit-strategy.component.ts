@@ -603,7 +603,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           error: (err) => {
             console.error('Error fetching user key:', err);
             this.store.dispatch(setUserKey({ userKey: '' }));
-          },
+          }
         });
     } else {
       this.store.dispatch(setUserKey({ userKey: '' }));
@@ -611,42 +611,8 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Guardar instruments en localStorage
-   * Los instrumentos son iguales para todas las cuentas, así que se guardan con key genérica
+   * Métodos de localStorage para instrumentos eliminados para asegurar datos frescos.
    */
-  private saveInstrumentsToLocalStorage(accountId: string, instruments: any[]): void {
-    try {
-      // Key genérica sin accountId ya que los instrumentos son iguales para todas las cuentas
-      const key = 'tradeswitch_instruments';
-      localStorage.setItem(key, JSON.stringify({
-        instruments,
-        timestamp: Date.now()
-      }));
-    } catch (error) {
-    }
-  }
-
-  /**
-   * Obtener instruments desde localStorage
-   * Los instrumentos son iguales para todas las cuentas, así que se leen con key genérica
-   * @param accountId - Kept for compatibility, not used
-   */
-  private getInstrumentsFromLocalStorage(accountId: string): any[] | null {
-    try {
-      // Key genérica sin accountId ya que los instrumentos son iguales para todas las cuentas
-      const key = 'tradeswitch_instruments';
-      const cached = localStorage.getItem(key);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed.instruments && Array.isArray(parsed.instruments)) {
-          return parsed.instruments;
-        }
-      }
-    } catch (error) {
-    }
-
-    return null;
-  }
 
   /**
    * Cargar instruments UNA SOLA VEZ si no están en el contexto o localStorage
@@ -669,17 +635,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // 2. Verificar localStorage (key genérica)
-    cachedInstruments = this.getInstrumentsFromLocalStorage(firstAccount.accountID);
-    if (cachedInstruments && cachedInstruments.length > 0) {
-      // Guardar en el contexto para todas las cuentas
-      this.accountsData.forEach(account => {
-        if (account.accountID) {
-          this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
-        }
-      });
-      return;
-    }
+    // 2. Se eliminó la verificación de localStorage
 
     // 3. If not loaded, load from backend ONCE
     // Backend manages accessToken automatically, userKey not required
@@ -696,8 +652,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
             this.appContext.setInstrumentsForAccount(account.accountID, instruments);
           }
         });
-        // Guardar en localStorage con key genérica (sin accountId)
-        this.saveInstrumentsToLocalStorage(firstAccount.accountID, instruments);
       }
     } catch (error) {
       console.error(`❌ EditStrategy: Error cargando instruments:`, error);
@@ -709,14 +663,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     // 1. Primero intentar obtener instrumentos del contexto
     let cachedInstruments = this.appContext.getInstrumentsForAccount(account.accountID);
 
-    // 2. Si no están en el contexto, verificar localStorage
-    if (!cachedInstruments || cachedInstruments.length === 0) {
-      cachedInstruments = this.getInstrumentsFromLocalStorage(account.accountID);
-      if (cachedInstruments && cachedInstruments.length > 0) {
-        // Guardar en el contexto también
-        this.appContext.setInstrumentsForAccount(account.accountID, cachedInstruments);
-      }
-    }
+    // 2. Se eliminó la verificación de localStorage
 
     if (cachedInstruments && cachedInstruments.length > 0) {
       // Extraer solo los nombres de los instrumentos
@@ -724,15 +671,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         instrument.name || instrument.localizedName || ''
       ).filter((name: string) => name);
 
-      // Guardar instrumentos en localStorage para uso en reglas de estrategia (formato antiguo para compatibilidad)
-      try {
-        const instrumentNames = cachedInstruments
-          .map((instrument: any) => instrument.name || instrument.localizedName)
-          .filter((name: string) => name && name.trim() !== '');
-        localStorage.setItem('tradeswitch_available_instruments', JSON.stringify(instrumentNames));
-      } catch (error) {
-        console.error('   ❌ [LOCALSTORAGE] Error guardando instrumentos en localStorage:', error);
-      }
       return;
     }
 
@@ -749,18 +687,6 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         // Guardar en el contexto para futuras referencias
         if (instruments.length > 0) {
           this.appContext.setInstrumentsForAccount(account.accountID, instruments);
-          // Guardar en localStorage con la nueva clave
-          this.saveInstrumentsToLocalStorage(account.accountID, instruments);
-
-          // Guardar instrumentos en localStorage para uso en reglas de estrategia (formato antiguo para compatibilidad)
-          try {
-            const instrumentNames = instruments
-              .map((instrument: Instrument) => instrument.name || instrument.localizedName)
-              .filter((name: string) => name && name.trim() !== '');
-            localStorage.setItem('tradeswitch_available_instruments', JSON.stringify(instrumentNames));
-          } catch (error) {
-            console.error('   ❌ [LOCALSTORAGE] Error guardando instrumentos en localStorage:', error);
-          }
         }
       },
       error: (err) => {
