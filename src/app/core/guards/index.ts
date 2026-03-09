@@ -3,4 +3,5 @@
  */
 export * from './auth.guard';
 export * from './redirect.guard';
+export * from './unauth.guard';
 export * from './plan-limitations.guard';

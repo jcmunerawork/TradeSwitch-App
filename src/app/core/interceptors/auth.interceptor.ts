@@ -28,48 +28,35 @@ export class AuthInterceptor implements HttpInterceptor {
       return this.handleRequest(req, next);
     }
 
-    // Obtener token de Firebase Auth o localStorage
+    // Obtener token únicamente desde Firebase Auth, pero primero esperar a que
+    // el estado inicial de Firebase se haya resuelto para evitar colisiones al iniciar la app.
     const auth = getAuth();
-    const currentUser = auth.currentUser;
     
-    if (currentUser) {
-      // Obtener token de forma asíncrona
-      return from(currentUser.getIdToken()).pipe(
-        switchMap(idToken => {
-          const authReq = req.clone({
-            setHeaders: {
-              Authorization: `Bearer ${idToken}`
-            }
-          });
-          return this.handleRequest(authReq, next);
-        }),
-        catchError(() => {
-          // Si falla obtener el token, intentar con localStorage
-          return this.handleRequestWithStoredToken(req, next);
-        })
-      );
-    } else {
-      // Intentar con token almacenado
-      return this.handleRequestWithStoredToken(req, next);
-    }
-  }
-
-  private handleRequestWithStoredToken(req: HttpRequest<any>, next: HttpHandler): Observable<any> {
-    if (!this.isBrowser) {
-      return this.handleRequest(req, next);
-    }
-
-    const storedToken = localStorage.getItem('idToken');
-    if (storedToken) {
-      const authReq = req.clone({
-        setHeaders: {
-          Authorization: `Bearer ${storedToken}`
+    return from(auth.authStateReady()).pipe(
+      switchMap(() => {
+        const currentUser = auth.currentUser;
+        
+        if (!currentUser) {
+          return this.handleRequest(req, next);
         }
-      });
-      return this.handleRequest(authReq, next);
-    }
 
-    return this.handleRequest(req, next);
+        // Obtener token de forma asíncrona desde Firebase
+        return from(currentUser.getIdToken()).pipe(
+          switchMap(idToken => {
+            const authReq = req.clone({
+              setHeaders: {
+                Authorization: `Bearer ${idToken}`
+              }
+            });
+            return this.handleRequest(authReq, next);
+          }),
+          catchError(() => {
+            // Si falla obtener el token, continuar sin Authorization
+            return this.handleRequest(req, next);
+          })
+        );
+      })
+    );
   }
 
   private handleRequest(req: HttpRequest<any>, next: HttpHandler): Observable<any> {

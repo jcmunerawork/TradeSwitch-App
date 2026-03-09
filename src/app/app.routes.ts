@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, redirectGuard } from './core/guards';
+import { authGuard, redirectGuard, unauthGuard } from './core/guards';
 
 export const routes: Routes = [
   {
@@ -31,16 +31,19 @@ export const routes: Routes = [
   },
   {
     path: 'signup',
+    canActivate: [unauthGuard],
     loadComponent: () =>
       import('./features/auth/signup/signup').then((m) => m.SignupComponent),
   },
   {
     path: 'admin-signup',
+    canActivate: [unauthGuard],
     loadComponent: () =>
       import('./features/auth/signup/signup').then((m) => m.SignupComponent),
   },
   {
     path: 'login',
+    canActivate: [unauthGuard],
     loadComponent: () =>
       import('./features/auth/login/login').then((m) => m.Login),
   },

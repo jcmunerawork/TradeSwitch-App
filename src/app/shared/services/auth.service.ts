@@ -9,7 +9,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
 } from 'firebase/auth';
-import { BehaviorSubject, filter, Observable, Subscription as RxSubscription } from 'rxjs';
+import { BehaviorSubject, filter, Observable, Subscription as RxSubscription, firstValueFrom } from 'rxjs';
 import { AppContextService } from '../context';
 import { PlanService, Plan } from './planService';
 import { SubscriptionService, Subscription } from './subscription-service';
@@ -754,6 +754,38 @@ export class AuthService {
   // Observabilidad de sesión
   isAuthenticated(): Observable<boolean> {
     return this.authStateSubject.asObservable().pipe(filter((state): state is boolean => state !== null));
+  }
+
+  /**
+   * Garantiza que haya login en Firebase y que la clave de cripto-sesión esté lista.
+   * Ideal para proteger la inicialización de componentes o primera carga de datos,
+   * garantizando que no se disparen peticiones sin el token y clave de cifrado.
+   */
+  async waitUntilApiReady(): Promise<boolean> {
+    if (!this.isBrowser) return false;
+    
+    // 1. Esperar a que Firebase resuelva su estado
+    const authIsReady = await firstValueFrom(
+      this.authStateSubject.pipe(filter((state) => state !== null))
+    );
+    if (!authIsReady) return false;
+
+    // 2. Verificar que haya usuario para obtener el token
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) return false;
+
+    // 3. Garantizar que se tenga o se obtenga la clave de cifrado
+    try {
+      if (!this.cryptoSession.getStoredKey()) {
+        const idToken = await currentUser.getIdToken();
+        await this.cryptoSession.getSessionKey(idToken);
+      }
+      return true;
+    } catch (error) {
+      console.error('❌ AuthService: Error obteniendo session key en waitUntilApiReady:', error);
+      return false;
+    }
   }
 
   getCurrentUser(): any {

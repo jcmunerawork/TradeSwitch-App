@@ -670,10 +670,18 @@ export class CalendarComponent {
   canNavigateRight(): boolean {
     if (!this.processedTradesForCalendar.length) return false;
     
+    // Allow navigating forward up to the actual current month
+    const currentDate = new Date();
+    const isBeforeCurrentMonth = 
+      this.selectedMonth.getFullYear() < currentDate.getFullYear() ||
+      (this.selectedMonth.getFullYear() === currentDate.getFullYear() && 
+       this.selectedMonth.getMonth() < currentDate.getMonth());
+       
     const latestTradeDate = this.getLatestTradeDate();
     const lastDayOfSelectedMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() + 1, 0);
+    const hasTradesAhead = latestTradeDate > lastDayOfSelectedMonth;
     
-    return latestTradeDate > lastDayOfSelectedMonth;
+    return isBeforeCurrentMonth || hasTradesAhead;
   }
 
   private getEarliestTradeDate(): Date {

@@ -205,10 +205,12 @@ export class CryptoInterceptor implements HttpInterceptor {
     try {
       const auth = getAuth();
       const user = auth.currentUser;
-      if (!user) return Promise.resolve('');
+      if (!user) {
+        return Promise.reject(new Error('Crypto: No Firebase user active. Cannot proceed with session encryption.'));
+      }
       return user.getIdToken(true);
-    } catch {
-      return Promise.resolve('');
+    } catch (error) {
+      return Promise.reject(error);
     }
   }
 

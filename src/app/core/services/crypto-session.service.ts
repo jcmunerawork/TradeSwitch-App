@@ -24,6 +24,7 @@ export class CryptoSessionService {
   private key: string | null = null;
   private expiresAt: number | null = null;
   private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
+  private pendingSessionKeyReq: Promise<{ keyId: string; key: string }> | null = null;
 
   constructor() {
     if (this.isBrowser) {
@@ -122,31 +123,43 @@ export class CryptoSessionService {
       return { keyId: this.keyId, key: this.key };
     }
 
-    const res = await firstValueFrom(
-      this.http.post<SessionKeyApiResponse | SessionKeyResponse>(this.sessionKeyUrl, {}, {
-        headers: { Authorization: `Bearer ${firebaseIdToken}` },
-      })
-    );
-    this.clearRefreshTimer();
-    // Backend puede devolver { success, data: { keyId, key, expiresIn } } o plano
-    const data: SessionKeyResponse =
-      res && typeof (res as SessionKeyApiResponse).data === 'object'
-        ? (res as SessionKeyApiResponse).data!
-        : (res as SessionKeyResponse);
-    if (!data?.keyId || !data?.key || typeof data.expiresIn !== 'number') {
-      throw new Error('Invalid session key response: missing keyId, key or expiresIn');
+    if (this.pendingSessionKeyReq) {
+      return this.pendingSessionKeyReq;
     }
-    this.keyId = data.keyId;
-    this.key = data.key;
-    this.expiresAt = now + data.expiresIn * 1000;
-    this.saveToLocalStorage({
-      keyId: data.keyId,
-      key: data.key,
-      expiresIn: data.expiresIn,
-      expiresAt: this.expiresAt,
-    });
-    this.scheduleRefreshTimer(data.expiresIn);
-    return { keyId: this.keyId, key: this.key };
+
+    this.pendingSessionKeyReq = (async () => {
+      try {
+        const res = await firstValueFrom(
+          this.http.post<SessionKeyApiResponse | SessionKeyResponse>(this.sessionKeyUrl, {}, {
+            headers: { Authorization: `Bearer ${firebaseIdToken}` },
+          })
+        );
+        this.clearRefreshTimer();
+        // Backend puede devolver { success, data: { keyId, key, expiresIn } } o plano
+        const data: SessionKeyResponse =
+          res && typeof (res as SessionKeyApiResponse).data === 'object'
+            ? (res as SessionKeyApiResponse).data!
+            : (res as SessionKeyResponse);
+        if (!data?.keyId || !data?.key || typeof data.expiresIn !== 'number') {
+          throw new Error('Invalid session key response: missing keyId, key or expiresIn');
+        }
+        this.keyId = data.keyId;
+        this.key = data.key;
+        this.expiresAt = Date.now() + data.expiresIn * 1000;
+        this.saveToLocalStorage({
+          keyId: data.keyId,
+          key: data.key,
+          expiresIn: data.expiresIn,
+          expiresAt: this.expiresAt,
+        });
+        this.scheduleRefreshTimer(data.expiresIn);
+        return { keyId: this.keyId, key: this.key };
+      } finally {
+        this.pendingSessionKeyReq = null;
+      }
+    })();
+
+    return this.pendingSessionKeyReq;
   }
 
   /** Clave actual en memoria (para descifrar). Null si no hay o está expirada. */
