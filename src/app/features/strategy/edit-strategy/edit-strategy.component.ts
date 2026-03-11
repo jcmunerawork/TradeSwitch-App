@@ -143,8 +143,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
     try {
       // FLUJO SIMPLIFICADO: Cargar todo antes de mostrar la UI
       await this.initializeEverything();
-    } catch (error) {
-      console.error('Error during initialization:', error);
+    } catch (error) {// 
     } finally {
       this.initialLoading = false;
     }
@@ -243,19 +242,12 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       // Cargar estrategia directamente desde backend
       const strategyData = await this.strategySvc.getStrategyView(this.strategyId);
 
-      if (!strategyData || !strategyData.configuration) {
-        console.error('Strategy data not found or missing configuration');
+      if (!strategyData || !strategyData.configuration) {// 
         this.initializeAsNewStrategy();
         return;
       }
 
-      // Debug: verificar que se trae la estrategia con su id
-      console.log('[EditStrategy] Strategy loaded from backend', {
-        strategyId: this.strategyId,
-        overview: strategyData.overview,
-        hasConfiguration: !!strategyData.configuration,
-        configurationId: strategyData.overview?.configurationId
-      });
+      // Debug: verificar que se trae la estrategia con su id// 
 
       // Actualizar mini card
       this.currentStrategyName = strategyData.overview.name;
@@ -268,8 +260,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       // Cargar balance y inicializar con configuración
       this.loadBalanceAndInitializeWithConfig(strategyData.configuration);
 
-    } catch (error) {
-      console.error('Error loading strategy from backend:', error);
+    } catch (error) {// 
       this.initializeAsNewStrategy();
     } finally {
       this.initialLoading = false;
@@ -372,8 +363,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           this.appContext.updateAccountBalance(account.accountID, balance);
         }
       },
-      error: (err) => {
-        console.error('Error fetching balance data in background:', err);
+      error: (err) => {// 
       },
     });
   }
@@ -544,8 +534,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
         // After loading accounts, try to fetch user key
         await this.fetchUserKeyAsync();
-      } catch (error) {
-        console.error('Error loading accounts:', error);
+      } catch (error) {// 
         this.accountsData = [];
       }
     }
@@ -579,8 +568,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         this.store.dispatch(setUserKey({ userKey: key || '' }));
         // After getting userKey, load instruments
         this.loadInstruments(key || '', firstAccount);
-      } catch (err) {
-        console.error('Error fetching user key:', err);
+      } catch (err) {// 
         this.store.dispatch(setUserKey({ userKey: '' }));
       }
     } else {
@@ -600,8 +588,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
             // After getting userKey, load instruments
             this.loadInstruments(key, firstAccount);
           },
-          error: (err) => {
-            console.error('Error fetching user key:', err);
+          error: (err) => {// 
             this.store.dispatch(setUserKey({ userKey: '' }));
           }
         });
@@ -653,8 +640,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           }
         });
       }
-    } catch (error) {
-      console.error(`❌ EditStrategy: Error cargando instruments:`, error);
+    } catch (error) {// 
       // No lanzar error, los instrumentos se pueden cargar después cuando se necesiten
     }
   }
@@ -689,8 +675,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           this.appContext.setInstrumentsForAccount(account.accountID, instruments);
         }
       },
-      error: (err) => {
-        console.error('   ❌ [API] Error loading instruments:', err);
+      error: (err) => {// 
         this.availableInstruments = [];
       }
     });
@@ -706,8 +691,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         next: (balance) => {
           this.initializeWithConfigAndBalance(initialStrategyState, balance);
         },
-        error: (err) => {
-          console.error('Error fetching balance data', err);
+        error: (err) => {// 
           this.initializeWithConfigAndBalance(initialStrategyState, 0);
         },
       });
@@ -733,8 +717,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           }
           resolve();
         },
-        error: (err) => {
-          console.error('Error fetching user data', err);
+        error: (err) => {// 
           resolve();
         },
       });
@@ -753,8 +736,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
         } else {
         }
       },
-      error: (err) => {
-        console.error('Error fetching user data', err);
+      error: (err) => {// 
       },
     });
   }
@@ -874,8 +856,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
             this.router.navigate(['/strategy']);
           })
-          .catch((err) => {
-            console.error('Update Error:', err);
+          .catch((err) => {// 
             this.toastService.showBackendError(err, 'Error updating strategy');
           })
           .finally(() => {
@@ -892,8 +873,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
 
             this.router.navigate(['/strategy']);
           })
-          .catch((err) => {
-            console.error('Create Error:', err);
+          .catch((err) => {// 
             this.toastService.showBackendError(err, 'Error creating strategy');
           })
           .finally(() => {
@@ -1027,8 +1007,7 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
       }
 
       this.isEditingName = false;
-    } catch (error) {
-      console.error('Error updating strategy name:', error);
+    } catch (error) {// 
       this.toastService.showBackendError(error, 'Error updating strategy name');
       this.cancelEditName();
     }
@@ -1109,14 +1088,12 @@ export class EditStrategyComponent implements OnInit, OnDestroy {
           }
 
         },
-        error: (error) => {
-          console.error('Error in plugin history subscription:', error);
+        error: (error) => {// 
           this.isPluginActive = false;
         }
       });
 
-    } catch (error) {
-      console.error('Error setting up plugin history listener:', error);
+    } catch (error) {// 
       this.isPluginActive = false;
     }
   }

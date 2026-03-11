@@ -112,19 +112,14 @@ export class LoggerService {
     const logMessage = `[${LogLevel[level]}] ${context ? `[${context}]` : ''} ${message}`;
 
     switch (level) {
-      case LogLevel.DEBUG:
-        console.debug(logMessage, data || '');
+      case LogLevel.DEBUG:// 
         break;
-      case LogLevel.INFO:
-        console.info(logMessage, data || '');
+      case LogLevel.INFO:// 
         break;
-      case LogLevel.WARN:
-        console.warn(logMessage, data || '');
+      case LogLevel.WARN:// 
         break;
-      case LogLevel.ERROR:
-        console.error(logMessage, data || '');
-        if (data?.stack) {
-          console.error('Stack:', data.stack);
+      case LogLevel.ERROR:// 
+        if (data?.stack) {// 
         }
         break;
     }

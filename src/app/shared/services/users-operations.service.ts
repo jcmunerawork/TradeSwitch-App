@@ -67,8 +67,7 @@ export class UsersOperationsService {
       }
       
       return response.data.user as User;
-    } catch (error) {
-      console.error('Error getting user data:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -85,8 +84,7 @@ export class UsersOperationsService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to create user');
       }
-    } catch (error) {
-      console.error('Error creating user:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -105,8 +103,7 @@ export class UsersOperationsService {
       }
       
       return response.data.user as User;
-    } catch (error) {
-      console.error('Error obteniendo usuario por ID:', error);
+    } catch (error) {// 
       return null;
     }
   }
@@ -120,8 +117,7 @@ export class UsersOperationsService {
    * - Si no existe: { success: true, data: { user: null } }
    */
   async getUserByEmail(email: string): Promise<User | null> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return null;
     }
 
@@ -130,8 +126,7 @@ export class UsersOperationsService {
       
       const response = await this.backendApi.getUserByEmail(email, idToken);
       
-      if (!response.success) {
-        console.warn('⚠️ UsersOperationsService: Response not successful');
+      if (!response.success) {// 
         return null;
       }
       
@@ -142,13 +137,7 @@ export class UsersOperationsService {
       
       const user = response.data.user as User;
       return user;
-    } catch (error: any) {
-      console.error('❌ UsersOperationsService: Error searching user by email:', error);
-      console.error('❌ UsersOperationsService: Error details:', {
-        status: error?.status,
-        message: error?.message,
-        error: error?.error
-      });
+    } catch (error: any) {// // 
       
       // Si es un 404, el usuario no existe (esto es válido)
       if (error?.status === 404) {
@@ -176,8 +165,7 @@ export class UsersOperationsService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update user');
       }
-    } catch (error) {
-      console.error('Error actualizando usuario:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -196,8 +184,7 @@ export class UsersOperationsService {
       }
       
       return response.data.users || [];
-    } catch (error) {
-      console.error('Error getting all users:', error);
+    } catch (error) {// 
       return [];
     }
   }
@@ -214,8 +201,7 @@ export class UsersOperationsService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to delete user');
       }
-    } catch (error) {
-      console.error('Error eliminando usuario:', error);
+    } catch (error) {// 
       throw error;
     }
   }

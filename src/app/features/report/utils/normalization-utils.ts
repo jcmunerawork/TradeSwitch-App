@@ -259,8 +259,7 @@ async function fetchInstrumentDetails(
       ).toPromise();
 
       // Validar que instrumentDetails existe y tiene la estructura esperada
-      if (!instrumentDetails) {
-        console.warn(`⚠️ No instrument details returned for ${key}, using defaults`);
+      if (!instrumentDetails) {// 
         instrumentDetailsMap.set(key, { lotSize: 1, name: instrument.tradableInstrumentId });
         continue;
       }
@@ -274,8 +273,7 @@ async function fetchInstrumentDetails(
       // Pequeña pausa entre peticiones para evitar rate limiting
       await new Promise(resolve => setTimeout(resolve, 100));
       
-    } catch (error) {
-      console.error(`❌ Error querying instrument ${key}:`, error);
+    } catch (error) {// 
       instrumentDetailsMap.set(key, { lotSize: 1, name: instrument.tradableInstrumentId }); // Default values si falla la consulta
     }
   }

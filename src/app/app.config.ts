@@ -29,8 +29,7 @@ import { withInMemoryScrolling } from '@angular/router';
 export function initializeApp(authService: AuthService) {
   return () => {
     // Verificar token de sesión y hacer login automático si es válido
-    return authService.checkSessionTokenAndAutoLogin().catch((error) => {
-      console.warn('Error during app initialization:', error);
+    return authService.checkSessionTokenAndAutoLogin().catch((error) => {// 
       // No lanzar error para que la app pueda continuar
       return Promise.resolve();
     });

@@ -178,8 +178,7 @@ export class Login {
   }
 
   // Manejar errores de login
-  private handleLoginError(error: any): void {
-    console.error('Login error:', error);
+  private handleLoginError(error: any): void {// 
     
     // Extraer mensaje de error del formato del backend
     const errorMessage = this.extractErrorMessage(error);

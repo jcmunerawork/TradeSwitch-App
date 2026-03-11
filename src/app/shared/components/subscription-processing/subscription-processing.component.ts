@@ -110,8 +110,7 @@ export class SubscriptionProcessingComponent implements OnInit, OnDestroy {
           this.paymentError.emit();
           this.clearInterval();
         }
-      } catch (error) {
-        console.error('Error verifying subscription status:', error);
+      } catch (error) {// 
         this.processingStatus = 'error';
         this.errorMessage = 'Connection error';
         this.paymentError.emit();

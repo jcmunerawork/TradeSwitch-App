@@ -256,8 +256,7 @@ export class Overview {
         } else {
           this.loadingStates.users = true;
           this.loadingStates.cards = true;
-          this.checkAllLoaded();
-          console.warn('No config');
+          this.checkAllLoaded();// 
         }
       })
       .catch((err) => {
@@ -287,17 +286,14 @@ export class Overview {
           this.subscriptionsData = data;
           this.loadingStates.subscriptions = true;
           this.checkAllLoaded();
-        } else {
-          console.warn('No config');
+        } else {// 
           this.loadingStates.subscriptions = true;
           this.checkAllLoaded();
         }
       })
       .catch((err) => {
         this.loadingStates.subscriptions = true;
-        this.checkAllLoaded();
-
-        console.error('Error to get the config', err);
+        this.checkAllLoaded();// 
       });
   }
 
@@ -405,8 +401,7 @@ export class Overview {
               planUserCountMap[subscription.planId]++;
             }
           }
-        } catch (error) {
-          console.error(`Error obteniendo subscription para usuario ${user.id}:`, error);
+        } catch (error) {// 
           this.toastService.showBackendError(error, 'Error loading user subscription');
         }
       }
@@ -431,8 +426,7 @@ export class Overview {
       this.paidSubscriptions = paidUsersCount;
       this.loadingStates.revenue = true;
       this.checkAllLoaded();
-    } catch (error) {
-      console.error('Error calculando revenue:', error);
+    } catch (error) {// 
       this.toastService.showError('Error calculating revenue');
       this.calculatedRevenue = 0;
       this.loadingStates.revenue = true;

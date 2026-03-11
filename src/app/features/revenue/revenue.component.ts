@@ -90,8 +90,7 @@ export class RevenueComponent implements OnInit {
   }
 
   async fetchRevenueData() {
-    if (!this.user?.id) {
-      console.error('No user ID available');
+    if (!this.user?.id) {// 
       return;
     }
 
@@ -120,13 +119,7 @@ export class RevenueComponent implements OnInit {
       this.subscriptionsTableData = data.subscriptions;
       this.refundsTableData = data.refundsTable;
 
-    } catch (error: any) {
-      console.error('❌ RevenueComponent: Error fetching revenue data:', error);
-      console.error('❌ RevenueComponent: Error details:', {
-        status: error?.status,
-        message: error?.message,
-        error: error?.error
-      });
+    } catch (error: any) {// // 
       this.toastService.showBackendError(error, 'Error loading revenue data');
     } finally {
       this.loading = false;

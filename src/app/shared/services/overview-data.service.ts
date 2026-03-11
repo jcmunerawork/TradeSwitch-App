@@ -67,8 +67,7 @@ export class OverviewDataService {
    * Obtiene todas las suscripciones desde el backend
    */
   async getOverviewSubscriptionData() {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return null;
     }
 
@@ -95,8 +94,7 @@ export class OverviewDataService {
         docs: [],
         empty: true
       };
-    } catch (error) {
-      console.error('Error getting overview subscription data:', error);
+    } catch (error) {// 
       return null;
     }
   }
@@ -107,8 +105,7 @@ export class OverviewDataService {
    * El backend ordena por subscription_date desc (fallback: lastUpdated desc)
    */
   async getUsersData() {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return null;
     }
 
@@ -136,8 +133,7 @@ export class OverviewDataService {
         docs: [],
         empty: true
       };
-    } catch (error) {
-      console.error('Error getting users data:', error);
+    } catch (error) {// 
       return null;
     }
   }
@@ -148,8 +144,7 @@ export class OverviewDataService {
    * Ordena por subscription_date desc (fallback: lastUpdated desc)
    */
   async getUsersPage(pageSize: number, startAfterDocId?: string) {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return { docs: [], lastDocId: undefined };
     }
 
@@ -175,8 +170,7 @@ export class OverviewDataService {
         };
       }
       return { docs: [], lastDocId: undefined, hasMore: false, total: 0 };
-    } catch (error) {
-      console.error('Error getting users page:', error);
+    } catch (error) {// 
       return { docs: [], lastDocId: undefined, hasMore: false, total: 0 };
     }
   }
@@ -185,8 +179,7 @@ export class OverviewDataService {
    * Get monthly reports data
    */
   async getMonthlyReportsData() {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return null;
     }
 
@@ -206,8 +199,7 @@ export class OverviewDataService {
         };
       }
       return null;
-    } catch (error) {
-      console.error('Error getting monthly reports data:', error);
+    } catch (error) {// 
       return null;
     }
   }
@@ -216,8 +208,7 @@ export class OverviewDataService {
    * Get configuration overview data
    */
   async getConfigurationOverviewData() {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return null;
     }
 
@@ -237,8 +228,7 @@ export class OverviewDataService {
         };
       }
       return null;
-    } catch (error) {
-      console.error('Error getting configuration overview data:', error);
+    } catch (error) {// 
       return null;
     }
   }
@@ -247,8 +237,7 @@ export class OverviewDataService {
    * Get accounts data
    */
   async getAccountsData() {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return null;
     }
 
@@ -268,8 +257,7 @@ export class OverviewDataService {
         };
       }
       return null;
-    } catch (error) {
-      console.error('Error getting accounts data:', error);
+    } catch (error) {// 
       return null;
     }
   }

@@ -80,8 +80,7 @@ export class PluginHistoryService {
     }
 
     async getPluginUsageHistory(userId: string): Promise<PluginHistory[]> {
-        if (!this.isBrowser) {
-            console.warn('Not available in SSR');
+        if (!this.isBrowser) {// 
             return [];
         }
 
@@ -93,8 +92,7 @@ export class PluginHistoryService {
                 return [response.data.pluginHistory] as PluginHistory[];
             }
             return [];
-        } catch (error) {
-            console.error('Error getting plugin usage history:', error);
+        } catch (error) {// 
             return [];
         }
     }
@@ -153,8 +151,7 @@ export class PluginHistoryService {
      * Nota: Como no hay WebSockets, usamos polling para simular tiempo real
      */
     getPluginHistoryRealtime(userId: string): Observable<PluginHistory[]> {
-        if (!this.isBrowser) {
-            console.warn('Not available in SSR');
+        if (!this.isBrowser) {// 
             return from([]);
         }
 
@@ -177,8 +174,7 @@ export class PluginHistoryService {
                         }
                         return of([]);
                     }),
-                    catchError(error => {
-                        console.error('Error in plugin history polling:', error);
+                    catchError(error => {// 
                         return of([]);
                     })
                 );

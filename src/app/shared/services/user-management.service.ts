@@ -63,8 +63,7 @@ export class UserManagementService {
    * El backend retorna todos los usuarios con timestamps convertidos a milisegundos
    */
   async getAllUsers(): Promise<User[]> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return [];
     }
 
@@ -79,24 +78,15 @@ export class UserManagementService {
         // Validar que los usuarios tengan los campos requeridos
         const validUsers = users.filter(user => {
           const isValid = user.id && user.email && user.firstName && user.lastName;
-          if (!isValid) {
-            console.warn('⚠️ UserManagementService: Invalid user found:', user);
+          if (!isValid) {// 
           }
           return isValid;
         });
         
         return validUsers;
-      }
-      
-      console.warn('⚠️ UserManagementService: No users in response or response not successful');
+      }// 
       return [];
-    } catch (error: any) {
-      console.error('❌ UserManagementService: Error getting all users:', error);
-      console.error('❌ UserManagementService: Error details:', {
-        status: error?.status,
-        message: error?.message,
-        error: error?.error
-      });
+    } catch (error: any) {// // 
       throw error;
     }
   }
@@ -105,8 +95,7 @@ export class UserManagementService {
    * Get user by ID from backend
    */
   async getUserById(userId: string): Promise<User | null> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return null;
     }
 
@@ -119,8 +108,7 @@ export class UserManagementService {
       }
       
       return null;
-    } catch (error) {
-      console.error('Error getting user by ID:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -129,8 +117,7 @@ export class UserManagementService {
    * Update user data via backend
    */
   async updateUser(userId: string, userData: Partial<User>): Promise<void> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return;
     }
 
@@ -145,8 +132,7 @@ export class UserManagementService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Error updating user');
       }
-    } catch (error) {
-      console.error('Error updating user:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -155,8 +141,7 @@ export class UserManagementService {
    * Delete user via backend
    */
   async deleteUser(userId: string): Promise<void> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return;
     }
 
@@ -167,8 +152,7 @@ export class UserManagementService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Error deleting user');
       }
-    } catch (error) {
-      console.error('Error deleting user:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -177,8 +161,7 @@ export class UserManagementService {
    * Send password reset email to user via backend (admin only)
    */
   async sendPasswordResetToUser(userId: string, email?: string): Promise<void> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return;
     }
 
@@ -189,8 +172,7 @@ export class UserManagementService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Error sending password reset email');
       }
-    } catch (error) {
-      console.error('Error sending password reset email:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -200,8 +182,7 @@ export class UserManagementService {
    * Revokes all refresh tokens and deletes all link tokens for a user
    */
   async revokeAllUserSessions(userId: string): Promise<{ message: string; tokensDeleted?: number }> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       throw new Error('Not available in SSR');
     }
 
@@ -215,8 +196,7 @@ export class UserManagementService {
       }
       
       throw new Error(response.error?.message || 'Error revoking user sessions');
-    } catch (error) {
-      console.error('❌ UserManagementService: Error revoking all user sessions:', error);
+    } catch (error) {// 
       throw error;
     }
   }

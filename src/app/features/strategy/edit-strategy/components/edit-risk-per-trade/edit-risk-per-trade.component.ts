@@ -269,8 +269,7 @@ export class EditRiskPerTradeComponent implements OnInit {
       if (this.userAccounts.length > 0 && firebaseUser) {
         await this.updateAccountBalancesFromBackend();
       }
-    } catch (error) {
-      console.error('Error loading user accounts:', error);
+    } catch (error) {// 
       this.userAccounts = [];
     }
   }
@@ -313,14 +312,12 @@ export class EditRiskPerTradeComponent implements OnInit {
             };
             await this.authService.updateAccount(account.id, updatedAccount);
           }
-        } catch (error) {
-          console.error(`❌ EditRiskPerTradeComponent: Error actualizando balance para cuenta ${account.accountID}:`, error);
+        } catch (error) {// 
         }
       });
 
       await Promise.all(balancePromises);
-    } catch (error) {
-      console.error('❌ EditRiskPerTradeComponent: Error en updateAccountBalancesFromBackend:', error);
+    } catch (error) {// 
     }
   }
 
@@ -354,17 +351,14 @@ export class EditRiskPerTradeComponent implements OnInit {
           if (data?.balance) {
             balances[acc.accountID] = data.balance;
           } else {
-            balances[acc.accountID] = 0;
-            console.warn(`⚠️ EditRiskPerTradeComponent: No se pudo obtener el balance para cuenta ${acc.accountID}`);
+            balances[acc.accountID] = 0;// 
           }
-        } catch (error) {
-          console.error(`❌ EditRiskPerTradeComponent: Error cargando balance para cuenta ${acc.accountID}:`, error);
+        } catch (error) {// 
           balances[acc.accountID] = 0;
         }
       }
       this.accountActualBalances = balances;
-    } catch (error) {
-      console.error('❌ EditRiskPerTradeComponent: Error en loadActualBalancesForAccounts:', error);
+    } catch (error) {// 
       this.accountActualBalances = {};
     }
   }
@@ -574,11 +568,9 @@ export class EditRiskPerTradeComponent implements OnInit {
         // Actualizar el contexto con los datos obtenidos
         this.appContext.updateReportBalance(balanceData);
       } else {
-        this.actualBalance = 0;
-        console.warn('⚠️ EditRiskPerTradeComponent: No se pudo obtener el balance');
+        this.actualBalance = 0;// 
       }
-    } catch (error) {
-      console.error('❌ EditRiskPerTradeComponent: Error loading actual balance:', error);
+    } catch (error) {// 
       this.actualBalance = 0;
     }
   }

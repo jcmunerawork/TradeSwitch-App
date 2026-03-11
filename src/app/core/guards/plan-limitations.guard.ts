@@ -201,8 +201,7 @@ export class PlanLimitationsGuard implements CanActivate {
         });
 
         return limitations;
-        } catch (error) {
-          console.error('❌ PlanLimitationsGuard: Error checking user limitations:', error);
+        } catch (error) {// 
           
           // En caso de error, intentar usar el contexto como fallback
           const ctxPlan = this.appContext.userPlan();
@@ -442,8 +441,7 @@ export class PlanLimitationsGuard implements CanActivate {
 
       return { canAccess: true };
 
-    } catch (error) {
-      console.error('Error checking feature access:', error);
+    } catch (error) {// 
       return {
         canAccess: false,
         modalData: {

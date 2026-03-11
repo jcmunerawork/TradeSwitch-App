@@ -30,8 +30,7 @@ export class PublicCryptoService {
           const data = res?.data || res;
           return data?.publicKey || data?.public_key;
         }),
-        catchError(err => {
-          console.error('❌ PublicCryptoService: Error al obtener clave pública:', err);
+        catchError(err => {// 
           return of(null);
         })
       )

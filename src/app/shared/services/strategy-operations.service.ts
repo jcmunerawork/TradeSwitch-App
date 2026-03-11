@@ -128,8 +128,7 @@ export class StrategyOperationsService {
 
       const data = response.data as any;
       return data?.overviewId ?? data?.data?.overviewId;
-    } catch (error) {
-      console.error('Error creating configuration overview:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -141,8 +140,7 @@ export class StrategyOperationsService {
    */
   async getConfigurationOverview(overviewId: string): Promise<ConfigurationOverview | null> {
     // Validar que el ID no esté vacío antes de hacer la petición
-    if (!overviewId || overviewId.trim() === '') {
-      console.error('getConfigurationOverview called with empty overviewId');
+    if (!overviewId || overviewId.trim() === '') {// 
       return null;
     }
 
@@ -161,10 +159,8 @@ export class StrategyOperationsService {
       });
     } catch (error: any) {
       // If it's a 429 error after all retries, log it specifically
-      if (error?.status === 429) {
-        console.error('❌ Rate limit exceeded (429) after retries for overview:', overviewId);
-      } else {
-        console.error('Error getting configuration overview:', error);
+      if (error?.status === 429) {// 
+      } else {// 
       }
       return null;
     }
@@ -187,8 +183,7 @@ export class StrategyOperationsService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update configuration overview');
       }
-    } catch (error) {
-      console.error('Error updating configuration overview:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -214,8 +209,7 @@ export class StrategyOperationsService {
       if (userId) {
         this.invalidateStrategiesCountCache(userId);
       }
-    } catch (error) {
-      console.error('Error deleting configuration overview:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -234,8 +228,7 @@ export class StrategyOperationsService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to create configuration');
       }
-    } catch (error) {
-      console.error('Error creating configuration:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -256,8 +249,7 @@ export class StrategyOperationsService {
       const data = response.data as any;
       const configuration = data?.configuration ?? data?.data?.configuration;
       return configuration as StrategyState ?? null;
-    } catch (error) {
-      console.error('Error getting configuration:', error);
+    } catch (error) {// 
       return null;
     }
   }
@@ -274,8 +266,7 @@ export class StrategyOperationsService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update configuration');
       }
-    } catch (error) {
-      console.error('Error updating configuration:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -298,8 +289,7 @@ export class StrategyOperationsService {
 
       const data = response.data as any;
       return data?.configurationId ?? data?.data?.configurationId;
-    } catch (error) {
-      console.error('Error creating configuration:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -328,8 +318,7 @@ export class StrategyOperationsService {
 
       const data = response.data as any;
       return data?.overviewId ?? data?.data?.overviewId;
-    } catch (error) {
-      console.error('Error creating configuration overview:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -346,8 +335,7 @@ export class StrategyOperationsService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update configuration by ID');
       }
-    } catch (error) {
-      console.error('Error updating configuration by ID:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -364,19 +352,15 @@ export class StrategyOperationsService {
       const idToken = await this.getIdToken();
       const response = await this.backendApi.getConfigurationById(configurationId, idToken);
 
-      if (!response.success || !response.data) {
-        console.error('Backend response error:', response);
+      if (!response.success || !response.data) {// 
         return null;
       }
 
       const data = response.data as any;
       const configuration = data?.configuration ?? data?.data?.configuration;
       return configuration as StrategyState ?? null;
-    } catch (error: any) {
-      console.error('Error getting configuration by ID:', error);
-      if (error?.status === 404) {
-        console.error(`❌ Endpoint no encontrado: GET /api/v1/strategies/configuration/${configurationId}`);
-        console.error('El backend necesita implementar este endpoint para obtener la configuración por configurationId');
+    } catch (error: any) {// 
+      if (error?.status === 404) {// // 
       }
       return null;
     }
@@ -391,15 +375,13 @@ export class StrategyOperationsService {
       // 1. Primero obtener el overview para obtener el configurationId
       const overview = await this.getConfigurationOverview(overviewId);
 
-      if (!overview || !overview.configurationId) {
-        console.error('Overview not found or missing configurationId');
+      if (!overview || !overview.configurationId) {// 
         return null;
       }
 
       // 2. Obtener la configuración usando el configurationId
       return await this.getConfigurationById(overview.configurationId);
-    } catch (error) {
-      console.error('Error getting configuration by overview ID:', error);
+    } catch (error) {// 
       return null;
     }
   }
@@ -438,8 +420,7 @@ export class StrategyOperationsService {
       }).filter((s: any) => s.overview?.id);
 
       return { strategies, button_state };
-    } catch (error) {
-      console.error('❌ Error getting user strategies:', error);
+    } catch (error) {// 
       return { strategies: [], button_state: 'available' };
     }
   }
@@ -468,8 +449,7 @@ export class StrategyOperationsService {
       const data = response.data as any;
       const overview = data?.overview ?? data?.data?.overview;
       return overview as ConfigurationOverview ?? null;
-    } catch (error) {
-      console.error('Error getting active configuration:', error);
+    } catch (error) {// 
       return null;
     }
   }
@@ -486,8 +466,7 @@ export class StrategyOperationsService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to activate strategy');
       }
-    } catch (error) {
-      console.error('Error activating strategy:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -504,8 +483,7 @@ export class StrategyOperationsService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to activate strategy transactionally');
       }
-    } catch (error) {
-      console.error('Error activating strategy transactionally:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -553,8 +531,7 @@ export class StrategyOperationsService {
       if (userId) {
         this.invalidateStrategiesCountCache(userId);
       }
-    } catch (error) {
-      console.error('Error marking strategy as deleted:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -601,20 +578,10 @@ export class StrategyOperationsService {
         });
 
         return count;
-      } catch (error) {
-        console.error('❌ getAllLengthConfigurationsOverview: Error getting strategies count:', error);
-        if (error instanceof Error) {
-          console.error('❌ Error details:', {
-            message: error.message,
-            stack: error.stack
-          });
+      } catch (error) {// 
+        if (error instanceof Error) {// 
         }
-        if (error && typeof error === 'object' && 'status' in error) {
-          console.error('❌ HTTP Error details:', {
-            status: (error as any).status,
-            statusText: (error as any).statusText,
-            error: (error as any).error
-          });
+        if (error && typeof error === 'object' && 'status' in error) {// 
         }
         return 0;
       } finally {

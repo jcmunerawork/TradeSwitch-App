@@ -22,8 +22,7 @@ export class StrategyCountService {
     }
     try {
       return await this.strategySvc.getAllLengthConfigurationsOverview(userId);
-    } catch (error) {
-      console.error('❌ getTotalStrategiesCount: Error from backend, using local count:', error);
+    } catch (error) {// 
       return this.countLocal(userStrategies, activeStrategy);
     }
   }

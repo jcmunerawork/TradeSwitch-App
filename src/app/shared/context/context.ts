@@ -981,8 +981,7 @@ export class AppContextService {
       // Cargar trading history de la primera cuenta
       const firstAccount = accounts[0];
       await this.loadTradingHistoryForAccount(firstAccount);
-    } catch (error) {
-      console.error('Error loading trading history after login:', error);
+    } catch (error) {// 
     }
   }
 
@@ -1029,8 +1028,7 @@ export class AppContextService {
 
 
       this.setLoading('tradeLocker', false);
-    } catch (error) {
-      console.error('Error loading trading history for account:', error);
+    } catch (error) {// 
       this.setLoading('tradeLocker', false);
       this.setError('tradeLocker', 'Error al cargar trading history');
     }

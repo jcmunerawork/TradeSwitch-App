@@ -168,8 +168,7 @@ export class TradingAccountsComponent implements OnDestroy {
 
     // Suscribirse a los errores
     this.appContext.errors$.subscribe(errors => {
-      if (errors.accounts) {
-        console.error('Error en cuentas:', errors.accounts);
+      if (errors.accounts) {// 
       }
     });
 
@@ -213,8 +212,7 @@ export class TradingAccountsComponent implements OnDestroy {
       this.loading = false;
       await this.checkAccountLimitations();
     } catch (err) {
-      this.loading = false;
-      console.error('Error to get the config', err);
+      this.loading = false;// 
       this.syncStatusText = 'Error loading accounts';
       this.toastService.showError('Failed to load trading accounts');
     }
@@ -352,8 +350,7 @@ export class TradingAccountsComponent implements OnDestroy {
         await this.checkPlanLimitations();
       })
       .catch((err) => {
-        this.loading = false;
-        console.error('Error deleting account', err);
+        this.loading = false;// 
         this.toastService.showBackendError(err, 'Error deleting account');
       });
   }
@@ -476,8 +473,7 @@ export class TradingAccountsComponent implements OnDestroy {
       
       // Show banner based on limitations
       await this.checkPlanLimitations();
-    } catch (error) {
-      console.error('Error checking account limitations:', error);
+    } catch (error) {// 
       this.toastService.showBackendError(error, 'Error checking account limitations');
       this.isAddAccountDisabled = false; // Default to active
     }
@@ -541,8 +537,7 @@ export class TradingAccountsComponent implements OnDestroy {
       } else {
         this.showPlanBanner = false;
       }
-    } catch (error) {
-      console.error('❌ TradingAccountsComponent.checkPlanLimitations: Error checking plan limitations:', error);
+    } catch (error) {// 
       this.toastService.showBackendError(error, 'Error checking plan limitations');
       this.showPlanBanner = false;
       this.isAddAccountDisabled = true; // Por seguridad, deshabilitar en caso de error

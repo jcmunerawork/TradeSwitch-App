@@ -223,8 +223,7 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
         if (date && !isNaN(date.getTime())) {
           return date;
         }
-      } catch (e) {
-        console.warn('Error converting Timestamp to Date:', e);
+      } catch (e) {// 
       }
       return new Date();
     }
@@ -246,8 +245,7 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
           if (date && !isNaN(date.getTime())) {
             return date;
           }
-        } catch (e) {
-          console.warn('Error converting Firestore seconds to Date:', e);
+        } catch (e) {// 
         }
       }
       return new Date();
@@ -266,8 +264,7 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
         if (date && !isNaN(date.getTime()) && date.toString() !== 'Invalid Date') {
           return date;
         }
-      } catch (e) {
-        console.warn('Error parsing date string:', createdAt, e);
+      } catch (e) {// 
       }
       return new Date();
     }
@@ -281,8 +278,7 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
         if (date && !isNaN(date.getTime())) {
           return date;
         }
-      } catch (e) {
-        console.warn('Error converting number to Date:', timestamp, e);
+      } catch (e) {// 
       }
       return new Date();
     }
@@ -293,8 +289,7 @@ export class AccountsTableComponent implements OnInit, OnDestroy, OnChanges {
       if (date && !isNaN(date.getTime()) && date.toString() !== 'Invalid Date') {
         return date;
       }
-    } catch (e) {
-      console.warn('Error in fallback date conversion:', e);
+    } catch (e) {// 
     }
 
     // Si todo falla, devolver fecha actual

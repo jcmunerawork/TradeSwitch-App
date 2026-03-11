@@ -79,8 +79,7 @@ export class EditAssetsAllowedComponent implements OnInit {
   onSearchFocus() {
     if (this.config.isActive) {
       this.dropdownOpen = true;
-    } else {
-      console.warn('⚠️ EditAssetsAllowedComponent: No se puede abrir dropdown porque la regla no está activa');
+    } else {// 
     }
   }
 
@@ -123,8 +122,7 @@ export class EditAssetsAllowedComponent implements OnInit {
    * Se usa como respaldo si no se pasan instrumentos como @Input
    */
   private loadInstrumentsFromLocalStorage(): void {
-    if (!this.isBrowser) {
-      console.warn('⚠️ EditAssetsAllowedComponent: No es navegador, no se pueden cargar instrumentos desde localStorage');
+    if (!this.isBrowser) {// 
       return;
     }
 
@@ -135,14 +133,11 @@ export class EditAssetsAllowedComponent implements OnInit {
         const instruments = JSON.parse(storedInstruments);
         if (Array.isArray(instruments) && instruments.length > 0) {
           this.availableSymbolsOptions = instruments;
-        } else {
-          console.warn('⚠️ EditAssetsAllowedComponent: Los instrumentos en localStorage no son un array válido o están vacíos', instruments);
+        } else {// 
         }
-      } else {
-        console.warn('⚠️ EditAssetsAllowedComponent: No se encontraron instrumentos en localStorage');
+      } else {// 
       }
-    } catch (error) {
-      console.error('❌ EditAssetsAllowedComponent: Error cargando instrumentos desde localStorage:', error);
+    } catch (error) {// 
     }
   }
 

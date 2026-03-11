@@ -150,8 +150,7 @@ export class Sidebar implements OnDestroy {
         this.store.dispatch(setUserData({ user: null }));
         this.router.navigate(['/login']);
       })
-      .catch((error) => {
-        console.error('❌ Sidebar: Error durante logout:', error);
+      .catch((error) => {// 
         // Aún así, limpiar el store y navegar
         this.store.dispatch(setUserData({ user: null }));
         this.router.navigate(['/login']);

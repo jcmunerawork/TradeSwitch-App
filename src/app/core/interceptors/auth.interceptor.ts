@@ -97,19 +97,16 @@ export class AuthInterceptor implements HttpInterceptor {
           document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=.${window.location.hostname}`;
         }
       }
-    } catch (e) {
-      console.warn('⚠️ AuthInterceptor: Error limpiando almacenamiento:', e);
+    } catch (e) {// 
     }
 
     // Cerrar sesión en Firebase Auth
     const auth = getAuth();
-    auth.signOut().catch(err => {
-      console.error('❌ AuthInterceptor: Error cerrando sesión en Firebase:', err);
+    auth.signOut().catch(err => {// 
     });
 
     // Redirigir al login
-    this.router.navigate(['/login']).catch(err => {
-      console.error('❌ AuthInterceptor: Error redirigiendo al login:', err);
+    this.router.navigate(['/login']).catch(err => {// 
     });
   }
 }

@@ -96,8 +96,7 @@ export class AssetsAllowedComponent implements OnInit {
   onSearchFocus() {
     if (this.config.isActive) {
       this.dropdownOpen = true;
-    } else {
-      console.warn('⚠️ AssetsAllowedComponent: No se puede abrir dropdown porque la regla no está activa');
+    } else {// 
     }
   }
 
@@ -136,8 +135,7 @@ export class AssetsAllowedComponent implements OnInit {
    * Estos instrumentos se guardan cuando se hace login o se edita una strategy
    */
   private loadInstrumentsFromLocalStorage(): void {
-    if (!this.isBrowser) {
-      console.warn('⚠️ AssetsAllowedComponent: No es navegador, no se pueden cargar instrumentos desde localStorage');
+    if (!this.isBrowser) {// 
       return;
     }
 
@@ -148,14 +146,11 @@ export class AssetsAllowedComponent implements OnInit {
         const instruments = JSON.parse(storedInstruments);
         if (Array.isArray(instruments) && instruments.length > 0) {
           this.availableSymbolsOptions = instruments;
-        } else {
-          console.warn('⚠️ AssetsAllowedComponent: Los instrumentos en localStorage no son un array válido o están vacíos', instruments);
+        } else {// 
         }
-      } else {
-        console.warn('⚠️ AssetsAllowedComponent: No se encontraron instrumentos en localStorage');
+      } else {// 
       }
-    } catch (error) {
-      console.error('❌ AssetsAllowedComponent: Error cargando instrumentos desde localStorage:', error);
+    } catch (error) {// 
     }
   }
 

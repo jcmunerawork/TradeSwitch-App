@@ -75,8 +75,7 @@ export class StrategyActionsService {
     if (!strategy && activeStrategy?.id === strategyId) {
       strategy = activeStrategy;
     }
-    if (!strategy) {
-      console.error('Strategy not found');
+    if (!strategy) {// 
       return 'not_found';
     }
 
@@ -86,14 +85,12 @@ export class StrategyActionsService {
     const newName = this.strategySvc.generateUniqueStrategyName(strategy.name, allStrategies);
 
     const strategyToCopyId = strategy.id;
-    if (!strategyToCopyId) {
-      console.error('Strategy to copy missing ID');
+    if (!strategyToCopyId) {// 
       return 'not_found';
     }
 
     const strategyData = await this.strategySvc.getStrategyView(strategyToCopyId);
-    if (!strategyData?.configuration) {
-      console.error('Strategy configuration not found');
+    if (!strategyData?.configuration) {// 
       return 'not_found';
     }
 

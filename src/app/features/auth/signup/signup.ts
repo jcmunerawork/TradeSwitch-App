@@ -139,8 +139,7 @@ export class SignupComponent implements OnInit {
             return;
           }
         } catch (error) {
-          // Si falla la verificación, continuar (el backend también validará)
-          console.warn('Could not verify email existence, continuing with registration');
+          // Si falla la verificación, continuar (el backend también validará)// 
         }
         
         // Llamar al backend - EL BACKEND HACE TODO:
@@ -397,8 +396,7 @@ export class SignupComponent implements OnInit {
       } catch (error) {
         // Marcar que hay error pero no mostrar pop-up aún
         hasError = true;
-        errorMessage = 'Error redirecting to payment. Please try again.';
-        console.error('Error during checkout session creation:', error);
+        errorMessage = 'Error redirecting to payment. Please try again.';// 
       }
       
       // Esperar mínimo 2 segundos antes de mostrar error o ocultar loader
@@ -414,8 +412,7 @@ export class SignupComponent implements OnInit {
         }
       }, 2000);
       
-    } catch (error: any) {
-      console.error('❌ Error in plan selection:', error);
+    } catch (error: any) {// 
       this.showStripeLoader = false;
       this.showStripeError = true;
       this.stripeErrorMessage = 'Error processing your plan selection. Please try again.';
@@ -430,9 +427,7 @@ export class SignupComponent implements OnInit {
       
       if (!selectedPlan || !selectedPlan.planPriceId) {
         throw new Error('Plan price ID not found');
-      }
-
-      console.log(selectedPlan);
+      }// 
 
       // Obtener el token de Firebase
       const bearerTokenFirebase = await this.authService.getBearerTokenFirebase(this.currentUserId);
@@ -456,8 +451,7 @@ export class SignupComponent implements OnInit {
       // Redirigir a la página de checkout de Stripe
       window.location.href = checkoutUrl;
       
-    } catch (error) {
-      console.error('❌ Error creating checkout session:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -473,8 +467,7 @@ export class SignupComponent implements OnInit {
     this.showPlanSelection = true; // Volver a mostrar la selección de planes
   }
 
-  private handleRegistrationError(error: any): void {
-    console.error('Registration error:', error);
+  private handleRegistrationError(error: any): void {// 
     
     // Extraer mensaje de error del formato del backend
     const errorMessage = this.extractErrorMessage(error);

@@ -147,14 +147,12 @@ export class TradeLockerApiService {
         this.backendApi.getTradeLockerJWTToken(credentials, idToken).then(response => {
 
           if (!response.success) {
-            const errorMessage = response.error?.message || 'Failed to get JWT token';
-            console.error('❌ TradeLockerApiService: Backend returned error:', errorMessage, response.error);
+            const errorMessage = response.error?.message || 'Failed to get JWT token';// 
             observer.error(new Error(errorMessage));
             return;
           }
 
-          if (!response.data) {
-            console.error('❌ TradeLockerApiService: No data in backend response:', response);
+          if (!response.data) {// 
             observer.error(new Error('No data in backend response'));
             return;
           }
@@ -184,26 +182,22 @@ export class TradeLockerApiService {
             // Formato antiguo: { data: [...] }
             tokenData = data.data;
           } else {
-            // Intentar como array vacío o error
-            console.error('❌ TradeLockerApiService: Token data format not recognized:', data);
+            // Intentar como array vacío o error// 
             observer.error(new Error(`Invalid response format. Expected object with accessToken or array, but got: ${typeof data}`));
             return;
           }
 
-          if (!Array.isArray(tokenData) || tokenData.length === 0) {
-            console.error('❌ TradeLockerApiService: Token data is not a valid array:', tokenData);
+          if (!Array.isArray(tokenData) || tokenData.length === 0) {// 
             observer.error(new Error(`Invalid response format. Expected array but got: ${typeof tokenData}`));
             return;
           }
 
           observer.next({ data: tokenData } as AccountTokenResponse);
           observer.complete();
-        }).catch(error => {
-          console.error('❌ TradeLockerApiService: Error calling backend API:', error);
+        }).catch(error => {// 
           observer.error(error);
         });
-      }).catch(error => {
-        console.error('❌ TradeLockerApiService: Error getting ID token:', error);
+      }).catch(error => {// 
         observer.error(error);
       });
     });
@@ -238,17 +232,14 @@ export class TradeLockerApiService {
   async validateAccount(credentials: TradeLockerCredentials): Promise<boolean> {
     try {
       const idToken = await this.getIdToken();
-      const response = await this.backendApi.validateTradeLockerAccount(credentials, idToken);
-
-      console.log('Response validating account in TradeLocker:', response);
+      const response = await this.backendApi.validateTradeLockerAccount(credentials, idToken);// 
 
       if (!response.success || !response.data) {
         return false;
       }
 
       return response.data.isValid;
-    } catch (error) {
-      console.error('Error validating account in TradeLocker:', error);
+    } catch (error) {// 
       return false;
     }
   }
@@ -322,14 +313,12 @@ export class TradeLockerApiService {
               observer.next({ trades: data.trades, metrics: data.metrics, source, warning, syncMetadata });
             } else if (data?.d?.ordersHistory) {
               observer.next({ ...data, source, warning, syncMetadata });
-            } else {
-              console.warn(`⚠️ Formato de respuesta no reconocido para account ${accountId}:`, data);
+            } else {// 
               observer.next({ trades: [], metrics: null, source, warning, syncMetadata });
             }
             observer.complete();
           } else {
-            const errorMessage = response.error?.message || 'Failed to get trading history';
-            console.warn(`⚠️ Trading history not found for account ${accountId}:`, errorMessage);
+            const errorMessage = response.error?.message || 'Failed to get trading history';// 
             if (response.error?.message?.includes('404') || response.error?.message?.includes('Not Found')) {
               observer.next({ trades: [], metrics: null, source: 'tradelocker', warning: null, syncMetadata: null });
               observer.complete();
@@ -338,12 +327,10 @@ export class TradeLockerApiService {
             }
           }
         }).catch(error => {
-          if (error?.status === 404 || error?.statusText === 'Not Found') {
-            console.warn(`⚠️ Trading history endpoint returned 404 for account ${accountId}. Account may not have history or may not exist.`);
+          if (error?.status === 404 || error?.statusText === 'Not Found') {// 
             observer.next({ trades: [], metrics: null, source: 'tradelocker', warning: null, syncMetadata: null });
             observer.complete();
-          } else {
-            console.error(`❌ Error getting trading history for account ${accountId}:`, error);
+          } else {// 
             observer.error(error);
           }
         });
@@ -393,25 +380,21 @@ export class TradeLockerApiService {
       map(response => {
         // La respuesta es AccountTokenResponse con estructura { data: AccountTokenData[] }
 
-        if (!response) {
-          console.error('❌ TradeLockerApiService: No response received');
+        if (!response) {// 
           throw new Error('No response received from backend');
         }
 
-        if (!response.data) {
-          console.error('❌ TradeLockerApiService: No data in response:', response);
+        if (!response.data) {// 
           throw new Error('No data found in response');
         }
 
-        if (!Array.isArray(response.data) || response.data.length === 0) {
-          console.error('❌ TradeLockerApiService: Empty or invalid data array:', response.data);
+        if (!Array.isArray(response.data) || response.data.length === 0) {// 
           throw new Error(`No accounts found in response. Expected array but got: ${JSON.stringify(response.data)}`);
         }
 
         const firstAccount = response.data[0];
 
-        if (!firstAccount.accessToken) {
-          console.error('❌ TradeLockerApiService: No accessToken in first account:', firstAccount);
+        if (!firstAccount.accessToken) {// 
           throw new Error(`No access token found in response. Account data: ${JSON.stringify(firstAccount)}`);
         }
 
@@ -423,8 +406,7 @@ export class TradeLockerApiService {
 
         return token;
       }),
-      catchError(error => {
-        console.error('❌ TradeLockerApiService: Error in getUserKey:', error);
+      catchError(error => {// 
         // Limpiar la petición pendiente en caso de error
         this.pendingRequests.delete(cacheKey);
         return throwError(() => error);

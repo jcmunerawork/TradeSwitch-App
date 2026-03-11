@@ -102,8 +102,7 @@ export class TradeSwitchTableComponent implements OnInit, OnDestroy {
         this.userAccountsMap = accountsMap;
       }
       this.accountsLoaded = true;
-    } catch (error) {
-      console.error('Error loading accounts:', error);
+    } catch (error) {// 
       this.accountsLoaded = true;
     }
   }

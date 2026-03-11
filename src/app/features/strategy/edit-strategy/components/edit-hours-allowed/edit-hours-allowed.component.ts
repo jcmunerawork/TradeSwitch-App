@@ -131,8 +131,7 @@ export class EditHoursAllowedComponent implements OnInit {
     if (this.isValidTimezone(newTz)) {
       const newConfig = { ...this.config, timezone: newTz };
       this.updateConfig(newConfig);
-    } else {
-      console.warn('Invalid timezone selected:', newTz);
+    } else {// 
     }
   }
 

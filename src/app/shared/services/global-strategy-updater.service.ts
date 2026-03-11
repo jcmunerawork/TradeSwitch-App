@@ -47,8 +47,7 @@ export class GlobalStrategyUpdaterService {
 
     try {
       await this.strategyDaysUpdater.updateActiveStrategyDaysActive(userId);
-    } catch (error) {
-      console.error('GlobalStrategyUpdaterService: Error al actualizar estrategia activa:', error);
+    } catch (error) {// 
     }
   }
 
@@ -60,8 +59,7 @@ export class GlobalStrategyUpdaterService {
   async updateSingleStrategy(strategyId: string, userId: string): Promise<void> {
     try {
       await this.strategyDaysUpdater.updateStrategyDaysActive(strategyId, userId);
-    } catch (error) {
-      console.error('GlobalStrategyUpdaterService: Error al actualizar estrategia:', error);
+    } catch (error) {// 
     }
   }
 }

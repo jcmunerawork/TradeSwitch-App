@@ -14,8 +14,7 @@ export class TimezoneService {
   getUserTimezone(): string {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone;
-    } catch (error) {
-      console.warn('No se pudo detectar la zona horaria del usuario, usando UTC');
+    } catch (error) {// 
       return 'UTC';
     }
   }
@@ -56,8 +55,7 @@ export class TimezoneService {
       const utcMoment = momentInUserTz.utc();
       
       return utcMoment.toDate();
-    } catch (error) {
-      console.error('Error convirtiendo fecha a UTC:', error);
+    } catch (error) {// 
       // Fallback: usar la fecha original
       return new Date(localDate);
     }
@@ -80,8 +78,7 @@ export class TimezoneService {
       const localMoment = utcMoment.tz(timezone);
       
       return localMoment.toDate();
-    } catch (error) {
-      console.error('Error convirtiendo fecha desde UTC:', error);
+    } catch (error) {// 
       // Fallback: usar la fecha original
       return new Date(utcDate);
     }
@@ -112,8 +109,7 @@ export class TimezoneService {
         // Rango normal (ej: 09:00 - 17:00)
         return currentTime >= startTime && currentTime <= endTime;
       }
-    } catch (error) {
-      console.error('Error verificando rango de tiempo:', error);
+    } catch (error) {// 
       return false;
     }
   }
@@ -152,8 +148,7 @@ export class TimezoneService {
     
     try {
       return moment.tz(date, timezone).format(format);
-    } catch (error) {
-      console.error('Error formateando fecha:', error);
+    } catch (error) {// 
       return new Date(date).toString();
     }
   }
@@ -179,8 +174,7 @@ export class TimezoneService {
       if (moment1.isBefore(moment2)) return -1;
       if (moment1.isAfter(moment2)) return 1;
       return 0;
-    } catch (error) {
-      console.error('Error comparando fechas:', error);
+    } catch (error) {// 
       return 0;
     }
   }
@@ -202,8 +196,7 @@ export class TimezoneService {
     try {
       const momentDate = moment.tz(date, tz);
       return momentDate.day() === dayOfWeek;
-    } catch (error) {
-      console.error('Error verificando día de la semana:', error);
+    } catch (error) {// 
       return false;
     }
   }
@@ -255,8 +248,7 @@ export class TimezoneService {
       }
       
       // Verificar si la fecha resultante es válida
-      if (isNaN(utcDate.getTime())) {
-        console.warn('Fecha de trade inválida recibida:', tradeDate);
+      if (isNaN(utcDate.getTime())) {// 
         return new Date();
       }
       
@@ -272,8 +264,7 @@ export class TimezoneService {
       );
       
       return new Date(utcTimestamp);
-    } catch (error) {
-      console.error('Error convirtiendo fecha de trade a UTC:', error);
+    } catch (error) {// 
       return new Date();
     }
   }

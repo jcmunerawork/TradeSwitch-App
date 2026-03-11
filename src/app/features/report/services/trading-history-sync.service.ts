@@ -77,8 +77,7 @@ export class TradingHistorySyncService implements OnDestroy {
   private startPeriodicSync(userId: string): void {
     if (this.syncIntervalRef) return;
 
-    const SYNC_INTERVAL_MS = 30000;
-    console.log('🔄 [TradingHistorySync] Activando sincronización periódica (30s) para usuario:', userId);
+    const SYNC_INTERVAL_MS = 30000;// 
     this.logger.debug('Starting periodic sync polling every 30s', 'TradingHistorySyncService', { userId });
 
     this.syncIntervalRef = setInterval(async () => {
@@ -89,17 +88,13 @@ export class TradingHistorySyncService implements OnDestroy {
 
         if (!querySnapshot.empty) {
           const latestDoc = querySnapshot.docs[0];
-          const accountId = latestDoc.id;
-          
-          console.log('📡 [TradingHistorySync] Ejecutando sync periódico para cuenta:', accountId);
+          const accountId = latestDoc.id;// 
           this.logger.debug('Initiating background sync for latest account', 'TradingHistorySyncService', { accountId });
           const idToken = await this.getIdToken();
           const response = await this.backendApi.syncTradingHistory(accountId, idToken);
           
-          if (response.success) {
-            console.log('✅ [TradingHistorySync] Sync completado con éxito para:', accountId);
-          } else {
-            console.log('⚠️ [TradingHistorySync] Sync respondió con fallo:', response.error?.message || 'Error desconocido');
+          if (response.success) {// 
+          } else {// 
           }
         }
       } catch (err) {
@@ -111,8 +106,7 @@ export class TradingHistorySyncService implements OnDestroy {
   private stopPeriodicSync(): void {
     if (this.syncIntervalRef) {
       clearInterval(this.syncIntervalRef);
-      this.syncIntervalRef = null;
-      console.log('⏹️ [TradingHistorySync] Sincronización periódica detenida');
+      this.syncIntervalRef = null;// 
       this.logger.debug('Stopped periodic sync polling', 'TradingHistorySyncService');
     }
   }

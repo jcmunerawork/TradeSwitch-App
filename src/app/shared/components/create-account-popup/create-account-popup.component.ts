@@ -233,8 +233,7 @@ export class CreateAccountPopupComponent implements OnChanges {
       // Hide loading popup before showing success modal
       this.isCreatingAccount = false;
       
-    } catch (error: unknown) {
-      console.error('Error processing trading account:', error);
+    } catch (error: unknown) {// 
       this.isCreatingAccount = false;
       this.backendErrorMessage = this.toastService.extractErrorMessage(error as any) || `Failed to ${this.editMode ? 'update' : 'create'} trading account. Please try again.`;
       this.toastService.showBackendError(error as any, this.backendErrorMessage);
@@ -411,8 +410,7 @@ export class CreateAccountPopupComponent implements OnChanges {
         password: this.newAccount.brokerPassword,
         server: this.newAccount.server
       });
-    } catch (error) {
-      console.error('Error validating account in TradeLocker:', error);
+    } catch (error) {// 
       return false;
     }
   }

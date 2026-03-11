@@ -208,8 +208,7 @@ export class Strategy implements OnInit, OnDestroy {
 
       // Suscribirse a eventos de navegación para recargar cuando se vuelve de editar
       this.setupNavigationListener();
-    } catch (error) {
-      console.error('Error during initialization:', error);
+    } catch (error) {// 
     } finally {
       this.initialLoading = false;
     }
@@ -240,8 +239,7 @@ export class Strategy implements OnInit, OnDestroy {
     // 1. Obtener usuario
     await this.initializeUserData();
 
-    if (!this.user?.id) {
-      console.error('No user ID available');
+    if (!this.user?.id) {// 
       return;
     }
 
@@ -308,8 +306,7 @@ export class Strategy implements OnInit, OnDestroy {
       
       const responseTime = Date.now() - startTime;
       this.syncStatusText = `Synced from Firebase in ${this.toastService.formatResponseTime(responseTime)}`;
-    } catch (error) {
-      console.error('Error loading strategies:', error);
+    } catch (error) {// 
       this.syncStatusText = 'Error loading strategies';
       this.toastService.showError('Failed to load strategies');
     }
@@ -321,8 +318,7 @@ export class Strategy implements OnInit, OnDestroy {
   private async initializeReportData(): Promise<void> {
     try {
       this.getActualBalance();
-    } catch (error) {
-      console.error('Error loading report data:', error);
+    } catch (error) {// 
     }
   }
 
@@ -358,8 +354,7 @@ export class Strategy implements OnInit, OnDestroy {
           next: (key: string) => {
             this.store.dispatch(setUserKey({ userKey: key }));
           },
-          error: (err) => {
-            console.error('Error fetching user key:', err);
+          error: (err) => {// 
             this.store.dispatch(setUserKey({ userKey: '' }));
           },
         });
@@ -379,8 +374,7 @@ export class Strategy implements OnInit, OnDestroy {
     try {
       this.config = this.strategyConfigService.loadConfig(balance, this.activeStrategy);
       await this.checkPlanLimitations();
-    } catch (error) {
-      console.error('Error loading config:', error);
+    } catch (error) {// 
       this.config = initialStrategyState;
     } finally {
       this.loading = false;
@@ -540,8 +534,7 @@ export class Strategy implements OnInit, OnDestroy {
     try {
       // El servicio ya se encarga de guardar en cache
       await this.strategySvc.getStrategyView(strategyId);
-    } catch (error) {
-      console.error(`Error loading strategy configuration for ${strategyId}:`, error);
+    } catch (error) {// 
     }
   }
 
@@ -672,8 +665,7 @@ export class Strategy implements OnInit, OnDestroy {
       // 5. Redirigir directamente a edit-strategy con la nueva estrategia
       this.router.navigate(['/edit-strategy'], { queryParams: { strategyId: strategyId } });
 
-    } catch (error) {
-      console.error('Error creating generic strategy:', error);
+    } catch (error) {// 
       this.toastService.showBackendError(error, 'Error creating strategy');
     }
   }
@@ -688,8 +680,7 @@ export class Strategy implements OnInit, OnDestroy {
       await this.invalidateCacheAndReload();
       const balance = this.config?.riskPerTrade?.balance || 0;
       this.loadConfig(balance);
-    } catch (error) {
-      console.error('Error activating strategy:', error);
+    } catch (error) {// 
       this.toastService.showBackendError(error, 'Error activating strategy');
     } finally {
       this.isProcessingStrategy = false;
@@ -699,12 +690,7 @@ export class Strategy implements OnInit, OnDestroy {
   // Eliminar estrategia
   deleteStrategy(strategyId: string) {
     // Validar que el ID no esté vacío
-    if (!strategyId || strategyId.trim() === '') {
-      console.error('❌ deleteStrategy called with empty strategyId', {
-        strategyId,
-        strategyCard: this.strategyCard,
-        activeStrategy: this.activeStrategy
-      });
+    if (!strategyId || strategyId.trim() === '') {// 
       this.toastService.showError('Cannot delete strategy: Invalid strategy ID');
       return;
     }
@@ -716,8 +702,7 @@ export class Strategy implements OnInit, OnDestroy {
 
   // Confirmar eliminación de estrategia (marcar como deleted)
   confirmDeleteStrategy = async () => {
-    if (!this.strategyToDeleteId || this.strategyToDeleteId.trim() === '') {
-      console.error('❌ No strategy ID to delete', { strategyToDeleteId: this.strategyToDeleteId });
+    if (!this.strategyToDeleteId || this.strategyToDeleteId.trim() === '') {// 
       this.toastService.showError('No strategy selected for deletion');
       this.showDeleteConfirmPopup = false;
       return;

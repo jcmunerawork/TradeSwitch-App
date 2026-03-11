@@ -239,8 +239,7 @@ export class SettingsService {
       // Actualizar en el contexto de la aplicación (solo esta strategy)
       this.appContext.updateStrategy(overviewId, updatedOverview);
 
-    } catch (error) {
-      console.error('❌ Error updating strategy in cache, falling back to full reload:', error);
+    } catch (error) {// 
       // Si falla la actualización individual, hacer recarga completa como fallback
       await this.reloadAllStrategiesToCache(userId);
     }
@@ -312,8 +311,7 @@ export class SettingsService {
       // Guardar todo el mapa actualizado
       this.strategyCacheService.setAllStrategies(strategiesCache);
 
-    } catch (error) {
-      console.error('❌ Error updating strategy activation in cache, falling back to full reload:', error);
+    } catch (error) {// 
       // Si falla, hacer recarga completa como fallback
       await this.reloadAllStrategiesToCache(userId);
     }
@@ -360,8 +358,7 @@ export class SettingsService {
       // Remover del contexto
       this.appContext.removeStrategy(strategyId);
 
-    } catch (error) {
-      console.error('❌ Error removing strategy from cache, falling back to full reload:', error);
+    } catch (error) {// 
       // Si falla, hacer recarga completa como fallback
       if (userId) {
         await this.reloadAllStrategiesToCache(userId);
@@ -413,8 +410,7 @@ export class SettingsService {
 
       this.strategyCacheService.setAllStrategies(strategiesCache);
       this.appContext.setUserStrategies(strategies.map(s => s.overview));
-    } catch (error) {
-      console.error('❌ Error reloading strategies to cache:', error);
+    } catch (error) {// 
     }
   }
 

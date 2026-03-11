@@ -128,8 +128,7 @@ export class PhoneInputComponent implements ControlValueAccessor, OnInit, OnDest
           this.selectedCountry = colombia;
         }
       },
-      error: (error) => {
-        console.error('Error loading countries:', error);
+      error: (error) => {// 
         this.loading = false;
         // Mantener el país por defecto en caso de error
       }

@@ -86,8 +86,7 @@ export class MobileHeaderComponent implements OnDestroy {
         this.store.dispatch(setUserData({ user: null }));
         this.router.navigate(['/login']);
       })
-      .catch((error) => {
-        console.error('❌ MobileHeader: Error durante logout:', error);
+      .catch((error) => {// 
         // Aún así, limpiar el store y navegar
         this.store.dispatch(setUserData({ user: null }));
         this.router.navigate(['/login']);

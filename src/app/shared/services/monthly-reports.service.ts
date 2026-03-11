@@ -65,16 +65,14 @@ export class MonthlyReportsService {
    * Update monthly report (creates or updates via backend)
    */
   async updateMonthlyReport(monthlyReport: MonthlyReport): Promise<void> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return;
     }
 
     try {
       const idToken = await this.getIdToken();
       await this.backendApi.createOrUpdateMonthlyReport(monthlyReport, idToken);
-    } catch (error) {
-      console.error('Error updating monthly report:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -83,8 +81,7 @@ export class MonthlyReportsService {
    * Get monthly report by ID
    */
   async getMonthlyReport(reportId: string): Promise<MonthlyReport | null> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return null;
     }
 
@@ -96,8 +93,7 @@ export class MonthlyReportsService {
         return response.data.report as MonthlyReport;
       }
       return null;
-    } catch (error) {
-      console.error('Error getting monthly report:', error);
+    } catch (error) {// 
       return null;
     }
   }
@@ -106,8 +102,7 @@ export class MonthlyReportsService {
    * Get all monthly reports for the current user
    */
   async getAllMonthlyReports(): Promise<MonthlyReport[]> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return [];
     }
 
@@ -119,8 +114,7 @@ export class MonthlyReportsService {
         return response.data.reports as MonthlyReport[];
       }
       return [];
-    } catch (error) {
-      console.error('Error getting all monthly reports:', error);
+    } catch (error) {// 
       return [];
     }
   }
@@ -129,8 +123,7 @@ export class MonthlyReportsService {
    * Get monthly report by user, month and year
    */
   async getMonthlyReportByUserMonthYear(userId: string, month: number, year: number): Promise<MonthlyReport | null> {
-    if (!this.isBrowser) {
-      console.warn('Not available in SSR');
+    if (!this.isBrowser) {// 
       return null;
     }
 
@@ -142,8 +135,7 @@ export class MonthlyReportsService {
         return response.data.report as MonthlyReport;
       }
       return null;
-    } catch (error) {
-      console.error('Error getting monthly report by user, month and year:', error);
+    } catch (error) {// 
       return null;
     }
   }

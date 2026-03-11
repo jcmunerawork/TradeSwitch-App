@@ -83,8 +83,7 @@ export class StrategyCacheService {
     try {
       localStorage.removeItem(this.STORAGE_KEY);
       localStorage.removeItem(this.STORAGE_TIMESTAMP_KEY);
-    } catch (error) {
-      console.warn('Error clearing localStorage cache:', error);
+    } catch (error) {// 
     }
   }
 
@@ -115,14 +114,12 @@ export class StrategyCacheService {
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(cacheArray));
       localStorage.setItem(this.STORAGE_TIMESTAMP_KEY, Date.now().toString());
-    } catch (error) {
-      console.warn('Error saving strategies to localStorage:', error);
+    } catch (error) {// 
       // Si hay error (por ejemplo, quota exceeded), limpiar cache antiguo
       try {
         localStorage.removeItem(this.STORAGE_KEY);
         localStorage.removeItem(this.STORAGE_TIMESTAMP_KEY);
-      } catch (clearError) {
-        console.error('Error clearing localStorage:', clearError);
+      } catch (clearError) {// 
       }
     }
   }
@@ -144,8 +141,7 @@ export class StrategyCacheService {
           cacheArray.map(item => [item.id, { overview: item.overview, configuration: item.configuration }])
         );
       }
-    } catch (error) {
-      console.warn('Error loading strategies from localStorage:', error);
+    } catch (error) {// 
       this.strategiesCache.clear();
     }
   }

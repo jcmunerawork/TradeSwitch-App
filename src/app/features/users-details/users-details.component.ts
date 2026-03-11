@@ -99,8 +99,7 @@ export class UsersDetails {
 
     // Suscribirse a los errores
     this.appContext.errors$.subscribe(errors => {
-      if (errors.user) {
-        console.error('Error en gestión de usuarios:', errors.user);
+      if (errors.user) {// 
       }
     });
   }
@@ -121,8 +120,7 @@ export class UsersDetails {
         this.appContext.currentUser$.pipe(take(1))
       );
       
-      if (!currentUser || !currentUser.isAdmin) {
-        console.warn('⚠️ UsersDetails: Current user is not admin, cannot load users');
+      if (!currentUser || !currentUser.isAdmin) {// 
         this.loading = false;
         this.usersData = [];
         return;
@@ -135,17 +133,10 @@ export class UsersDetails {
       
       this.loading = false;
     } catch (error: any) {
-      this.loading = false;
-      console.error('❌ UsersDetails: Error getting users data:', error);
-      console.error('❌ UsersDetails: Error details:', {
-        status: error?.status,
-        message: error?.message,
-        error: error?.error
-      });
+      this.loading = false;// // 
       
       // Si es error 403, el usuario no tiene permisos (no es admin)
-      if (error?.status === 403) {
-        console.warn('⚠️ UsersDetails: Access forbidden - user is not admin');
+      if (error?.status === 403) {// 
         this.usersData = [];
         // No mostrar error al usuario si no es admin (es esperado)
         return;
@@ -174,8 +165,7 @@ export class UsersDetails {
         if (refreshed) this.selectedUser = refreshed;
         this.alertService.showSuccess('User banned successfully', 'Ban User');
       })
-      .catch((err: any) => {
-        console.error('Error banning user', err);
+      .catch((err: any) => {// 
         this.alertService.showError('Error banning user', 'Ban User');
         this.toastService.showBackendError(err, 'Error banning user');
       })
@@ -200,8 +190,7 @@ export class UsersDetails {
         if (refreshed) this.selectedUser = refreshed;
         this.alertService.showSuccess('User unbanned successfully', 'Unban User');
       })
-      .catch((err: any) => {
-        console.error('Error unbanning user', err);
+      .catch((err: any) => {// 
         this.alertService.showError('Error unbanning user', 'Unban User');
         this.toastService.showBackendError(err, 'Error unbanning user');
       })
@@ -222,8 +211,7 @@ export class UsersDetails {
     try {
       await this.userManagementService.sendPasswordResetToUser(userId, email);
       this.alertService.showSuccess('Reset link sent', 'Password reset');
-    } catch (err: any) {
-      console.error('Error sending reset link', err);
+    } catch (err: any) {// 
       this.alertService.showError('Error sending reset link', 'Password reset');
       this.toastService.showBackendError(err, 'Error sending reset link');
     } finally {
@@ -240,8 +228,7 @@ export class UsersDetails {
         ? `All sessions revoked. ${result.tokensDeleted} token(s) deleted.`
         : result.message || 'All sessions revoked successfully';
       this.alertService.showSuccess(message, 'Logout everywhere');
-    } catch (err: any) {
-      console.error('Error revoking all sessions', err);
+    } catch (err: any) {// 
       this.alertService.showError('Error revoking sessions', 'Logout everywhere');
       this.toastService.showBackendError(err, 'Error revoking sessions');
     } finally {

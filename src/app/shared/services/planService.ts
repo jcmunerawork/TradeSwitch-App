@@ -92,8 +92,7 @@ export class PlanService {
         return response.data.plan.id;
       }
       throw new Error(response.error?.message || 'Failed to create plan');
-    } catch (error) {
-      console.error('❌ Error al crear plan:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -117,8 +116,7 @@ export class PlanService {
         if (cachedPlans) {
           try {
             return JSON.parse(cachedPlans) as Plan[];
-          } catch (e) {
-            console.error('❌ Error al parsear planes cacheados:', e);
+          } catch (e) {// 
             // Ignorar caché si hay error al parsear
           }
         }
@@ -132,8 +130,7 @@ export class PlanService {
         return plans;
       }
       return [];
-    } catch (error) {
-      console.error('❌ Error al obtener planes:', error);
+    } catch (error) {// 
       return [];
     }
   }
@@ -168,8 +165,7 @@ export class PlanService {
         return plan;
       }
       return undefined;
-    } catch (error) {
-      console.error('❌ Error al obtener el plan por ID:', error);
+    } catch (error) {// 
       return undefined;
     }
   }
@@ -192,8 +188,7 @@ export class PlanService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update plan');
       }
-    } catch (error) {
-      console.error('❌ Error al actualizar plan:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -215,8 +210,7 @@ export class PlanService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to delete plan');
       }
-    } catch (error) {
-      console.error('❌ Error al eliminar plan:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -254,8 +248,7 @@ export class PlanService {
         return matchingPlan as Plan | undefined;
       }
       return undefined;
-    } catch (error) {
-      console.error('❌ Error al obtener plan por nombre:', error);
+    } catch (error) {// 
       return undefined;
     }
   }
@@ -278,8 +271,7 @@ export class PlanService {
         return response.data.plans as Plan[];
       }
       return [];
-    } catch (error) {
-      console.error('❌ Error en searchPlansByName:', error);
+    } catch (error) {// 
       return [];
     }
   }

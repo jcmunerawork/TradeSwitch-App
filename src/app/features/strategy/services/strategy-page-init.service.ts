@@ -26,8 +26,7 @@ export class StrategyPageInitService {
     if (!userId) return [];
     try {
       return await this.authService.getUserAccounts(userId) ?? [];
-    } catch (error) {
-      console.error('Error loading accounts:', error);
+    } catch (error) {// 
       return [];
     }
   }

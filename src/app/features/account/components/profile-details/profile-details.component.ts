@@ -107,8 +107,7 @@ export class ProfileDetailsComponent implements OnInit {
           this.populateForm();
         }
       },
-      error: (err) => {
-        console.error('Error fetching user data from context', err);
+      error: (err) => {// 
       },
     });
   }
@@ -205,15 +204,12 @@ export class ProfileDetailsComponent implements OnInit {
         // If number is less than a certain threshold, assume it's in seconds, otherwise milliseconds
         date = birthday < 10000000000 ? new Date(birthday * 1000) : new Date(birthday);
       }
-      else {
-        console.warn('⚠️ ProfileDetails - Unknown birthday format:', typeof birthday, birthday);
-        console.warn('⚠️ ProfileDetails - Birthday structure:', JSON.stringify(birthday));
+      else {// // 
         return '';
       }
 
       // Check if date is valid
-      if (isNaN(date.getTime())) {
-        console.error('❌ ProfileDetails - Invalid date after conversion:', date);
+      if (isNaN(date.getTime())) {// 
         return '';
       }
 
@@ -223,8 +219,7 @@ export class ProfileDetailsComponent implements OnInit {
       const day = String(date.getDate()).padStart(2, '0');
 
       return `${year}-${month}-${day}`;
-    } catch (error) {
-      console.error('❌ ProfileDetails - Error formatting birthday for input:', error, birthday);
+    } catch (error) {// 
       return '';
     }
   }
@@ -304,8 +299,7 @@ export class ProfileDetailsComponent implements OnInit {
 
         // Show success message
         this.toastService.showSuccess('Profile updated successfully');
-      } catch (error: any) {
-        console.error('❌ Error updating profile:', error);
+      } catch (error: any) {// 
         this.toastService.showBackendError(error, 'Error updating profile');
       } finally {
         this.isLoading = false;
@@ -383,8 +377,7 @@ export class ProfileDetailsComponent implements OnInit {
 
         window.location.reload();
         
-      } catch (error: any) {
-        console.error('❌ Error changing password:', error);
+      } catch (error: any) {// 
         
         // Extract error message from backend
         const errorMessage = error?.error?.error?.message || error?.message || 'Error changing password. Please try again';
@@ -453,8 +446,7 @@ export class ProfileDetailsComponent implements OnInit {
         type: '[User] Clear User'
       });
       
-    } catch (error) {
-      console.error('❌ ProfileDetailsComponent: Error during logout:', error);
+    } catch (error) {// 
       // Continuar con el logout incluso si hay un error
       // Asegurarse de limpiar el store
       this.store.dispatch({
@@ -622,8 +614,7 @@ export class ProfileDetailsComponent implements OnInit {
 
       window.location.reload();
 
-    } catch (error: any) {
-      console.error('❌ Error deleting account:', error);
+    } catch (error: any) {// 
     } finally {
       this.isDeletingAccount = false;
     }

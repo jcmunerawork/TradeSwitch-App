@@ -106,8 +106,7 @@ export class StrategyPlanLimitationsService {
       const limitations = await this.planLimitationsGuard.checkUserLimitations(userId);
       const totalStrategies = await getTotalStrategiesCount();
       this.applyState(limitations, totalStrategies, accountsLength);
-    } catch (error) {
-      console.error('❌ checkPlanLimitations: Error checking plan limitations:', error);
+    } catch (error) {// 
       this.state = {
         showPlanBanner: false,
         planBannerMessage: '',

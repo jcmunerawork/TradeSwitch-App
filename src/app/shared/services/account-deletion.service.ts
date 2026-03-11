@@ -71,19 +71,12 @@ export class AccountDeletionService {
       
       const response = await this.backendApi.deleteUser(userId, idToken);
       
-      if (!response.success) {
-        console.error('❌ AccountDeletionService: Error deleting user data:', response.error);
+      if (!response.success) {// 
         return false;
       }
       
       return true;
-    } catch (error: any) {
-      console.error('❌ AccountDeletionService: Error deleting user data:', error);
-      console.error('❌ AccountDeletionService: Error details:', {
-        status: error?.status,
-        message: error?.message,
-        error: error?.error
-      });
+    } catch (error: any) {// // 
       return false;
     }
   }

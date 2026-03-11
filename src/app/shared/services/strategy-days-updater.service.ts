@@ -60,8 +60,7 @@ export class StrategyDaysUpdaterService {
    * @param userId - User ID
    */
   async updateActiveStrategyDaysActive(userId: string): Promise<void> {
-    if (!this.isBrowser) {
-      console.warn('StrategyDaysUpdaterService: Cannot execute on server');
+    if (!this.isBrowser) {// 
       return;
     }
 
@@ -72,8 +71,7 @@ export class StrategyDaysUpdaterService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update active strategy days active');
       }
-    } catch (error) {
-      console.error('StrategyDaysUpdaterService: Error updating active strategy days:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -84,8 +82,7 @@ export class StrategyDaysUpdaterService {
    * @param userId - User ID (for security verification)
    */
   async updateStrategyDaysActive(strategyId: string, userId: string): Promise<void> {
-    if (!this.isBrowser) {
-      console.warn('StrategyDaysUpdaterService: Cannot execute on server');
+    if (!this.isBrowser) {// 
       return;
     }
 
@@ -96,8 +93,7 @@ export class StrategyDaysUpdaterService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update strategy days active');
       }
-    } catch (error) {
-      console.error('StrategyDaysUpdaterService: Error updating strategy active days:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -123,8 +119,7 @@ export class StrategyDaysUpdaterService {
     } else if (typeof createdAt === 'string') {
       // It's a date string
       createdDate = new Date(createdAt);
-    } else {
-      console.warn('StrategyDaysUpdaterService: Unrecognized date format:', createdAt);
+    } else {// 
       return 0;
     }
 

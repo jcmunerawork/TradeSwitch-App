@@ -66,21 +66,21 @@ export class PlanSettingsComponent implements OnInit {
 
   /** Array of available plan cards to display in the interface */
   plansData: PlanCard[] = [];
-  
+
   /** Current user plan obtained from the service */
   userPlan: Plan | undefined = undefined;
-  
+
   /** Plan renewal date formatted as string (legacy) or use renewalDateValue with pipe */
   renewalDate: string = '';
   /** Plan renewal date as Date for backendDate pipe (null when N/A) */
   renewalDateValue: Date | null = null;
-  
+
   /** Remaining days until next renewal */
   remainingDays: number = 0;
-  
+
   /** Flag to determine if user has free plan (shows N/A for renewal) */
   isFreePlan: boolean = false;
-  
+
   // Estado de carga inicial
   initialLoading: boolean = true;
 
@@ -94,7 +94,7 @@ export class PlanSettingsComponent implements OnInit {
 
   // Estados para cancelar plan
   showCancelPlanProcessing = false;
-  
+
   // Estados para validación de downgrade
   showDowngradeValidation = false;
   downgradeValidationData: {
@@ -126,7 +126,7 @@ export class PlanSettingsComponent implements OnInit {
     private store: Store,
     private strategySvc: SettingsService,
     private reportSvc: ReportService
-  ) {}
+  ) { }
 
   /**
    * Initializes the component on load.
@@ -142,7 +142,7 @@ export class PlanSettingsComponent implements OnInit {
    */
   async ngOnInit(): Promise<void> {
     this.initialLoading = true;
-    
+
     try {
       // Suscribirse a cambios en los planes globales
       this.appContext.subscribeToGlobalPlansChanges().subscribe(plans => {
@@ -150,7 +150,7 @@ export class PlanSettingsComponent implements OnInit {
           this.buildPlansData();
         }
       });
-      
+
       // Suscribirse a cambios en el plan del usuario desde el contexto
       this.appContext.userPlan$.subscribe(userPlanData => {
         if (userPlanData) {
@@ -164,21 +164,21 @@ export class PlanSettingsComponent implements OnInit {
               this.calculateRenewalDate(new Date(userPlanData.expiresAt));
             } else {
               this.renewalDate = 'N/A';
-      this.renewalDateValue = null;
+              this.renewalDateValue = null;
               this.remainingDays = 0;
             }
           }
         }
       });
-      
+
       // También intentar construir inmediatamente por si ya están cargados
       this.buildPlansData();
-      
+
       // Si no hay planes, intentar cargarlos manualmente
       if (this.appContext.globalPlans().length === 0) {
         await this.loadPlansManually();
       }
-      
+
       await this.loadUserPlan();
     } finally {
       this.initialLoading = false;
@@ -209,21 +209,20 @@ export class PlanSettingsComponent implements OnInit {
     try {
       // Obtener el usuario actual
       this.getUserData();
-      if (!this.user) {
-        console.error('❌ User not found');
+      if (!this.user) {// 
         return;
       }
-      
+
       // Usar el mismo método que PlanLimitationsGuard para obtener el plan
       const idToken = await this.authService.getBearerTokenFirebase(this.user.id);
       const response = await this.backendApi.getUserPlan(this.user.id, idToken);
-      
+
       if (response.success && response.data?.plan) {
         const plan = response.data.plan;
-        
+
         // Buscar el plan completo en el contexto global para obtener todos los detalles
         const fullPlan = this.appContext.getPlanByName(plan.name);
-        
+
         if (fullPlan) {
           this.userPlan = fullPlan;
         } else {
@@ -238,14 +237,14 @@ export class PlanSettingsComponent implements OnInit {
             updatedAt: new Date()
           };
         }
-        
+
         this.isFreePlan = plan.name.toLowerCase() === 'free';
-        
+
         // Para obtener la fecha de renovación, obtener la suscripción que contiene periodEnd
         // Si no hay suscripción activa o es plan Free, mostrar N/A
         if (this.isFreePlan) {
           this.renewalDate = 'N/A';
-      this.renewalDateValue = null;
+          this.renewalDateValue = null;
           this.remainingDays = 0;
         } else {
           // Obtener la suscripción para la fecha de renovación (periodEnd)
@@ -256,23 +255,21 @@ export class PlanSettingsComponent implements OnInit {
               this.calculateRenewalDate(subscription.periodEnd);
             } else {
               this.renewalDate = 'N/A';
-      this.renewalDateValue = null;
+              this.renewalDateValue = null;
               this.remainingDays = 0;
             }
-          } catch (error) {
-            console.error('Error getting subscription for renewal date:', error);
+          } catch (error) {// 
             this.renewalDate = 'N/A';
-      this.renewalDateValue = null;
+            this.renewalDateValue = null;
             this.remainingDays = 0;
           }
         }
-        
+
       } else {
         // Si no hay plan, usar plan gratuito por defecto
         this.setDefaultFreePlan();
       }
-    } catch (error) {
-      console.error('Error loading user plan:', error);
+    } catch (error) {// 
       this.setDefaultFreePlan();
     }
   }
@@ -301,11 +298,11 @@ export class PlanSettingsComponent implements OnInit {
   private buildPlansData(): void {
     // Usar planes del contexto global
     const orderedPlans = this.appContext.orderedPlans();
-    
+
     if (orderedPlans.length === 0) {
       return;
     }
-    
+
     // Construir plansData desde los planes ordenados del contexto
     this.plansData = orderedPlans.map((plan, index) => ({
       name: plan.name,
@@ -346,8 +343,7 @@ export class PlanSettingsComponent implements OnInit {
       const plans = await this.planService.getAllPlans();
       this.appContext.setGlobalPlans(plans);
       this.buildPlansData();
-    } catch (error) {
-      console.error('❌ Error cargando planes manualmente:', error);
+    } catch (error) {// 
     }
   }
 
@@ -368,8 +364,7 @@ export class PlanSettingsComponent implements OnInit {
       next: (user) => {
         this.user = user.user;
       },
-      error: (err) => {
-        console.error('Error fetching user data', err);
+      error: (err) => {// 
       },
     });
   }
@@ -395,7 +390,7 @@ export class PlanSettingsComponent implements OnInit {
   private setDefaultFreePlan(): void {
     // Buscar el plan Free en los planes del contexto global
     const freePlan = this.appContext.getPlanByName('Free');
-    
+
     if (freePlan) {
       this.userPlan = freePlan;
     } else {
@@ -412,7 +407,7 @@ export class PlanSettingsComponent implements OnInit {
     }
     this.isFreePlan = true;
     this.renewalDate = 'N/A';
-      this.renewalDateValue = null;
+    this.renewalDateValue = null;
     this.remainingDays = 0;
   }
 
@@ -441,16 +436,16 @@ export class PlanSettingsComponent implements OnInit {
       this.remainingDays = 0;
       return;
     }
-    
+
     if (!periodEnd) {
       this.renewalDate = 'N/A';
       this.renewalDateValue = null;
       this.remainingDays = 0;
       return;
     }
-    
+
     let renewalDate: Date;
-    
+
     // periodEnd puede venir en diferentes formatos:
     // 1. Firebase Timestamp (tiene método toDate())
     // 2. Date object
@@ -481,27 +476,26 @@ export class PlanSettingsComponent implements OnInit {
       // Fallback: intentar convertir directamente
       renewalDate = new Date(periodEnd);
     }
-    
+
     // Validar que la fecha sea válida
-    if (isNaN(renewalDate.getTime())) {
-      console.error('Invalid renewal date:', periodEnd);
+    if (isNaN(renewalDate.getTime())) {// 
       this.renewalDate = 'N/A';
       this.renewalDateValue = null;
       this.remainingDays = 0;
       return;
     }
-    
+
     this.renewalDateValue = renewalDate;
     this.renewalDate = ''; // Se muestra con pipe en template
-    
+
     // Calcular días restantes desde hoy hasta la fecha de renovación
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset horas para comparación precisa
     renewalDate.setHours(0, 0, 0, 0);
-    
+
     const timeDiff = renewalDate.getTime() - today.getTime();
     this.remainingDays = Math.ceil(timeDiff / (1000 * 3600 * 24));
-    
+
     // Si ya pasó la fecha de renovación, mostrar 0 días
     if (this.remainingDays < 0) {
       this.remainingDays = 0;
@@ -610,12 +604,12 @@ export class PlanSettingsComponent implements OnInit {
     // Verificar si el plan de la card es el plan actual del usuario
     const currentPlanName = this.userPlan?.name.toLowerCase();
     const cardPlanName = planName.toLowerCase();
-    
+
     // Si el plan de la card coincide con el plan actual del usuario
     if (currentPlanName === cardPlanName) {
       return 'Current plan';
     }
-    
+
     // Para todos los demás casos
     return 'Change plan';
   }
@@ -632,12 +626,12 @@ export class PlanSettingsComponent implements OnInit {
    */
   isButtonDisabled(planName: string): boolean {
     const isCurrentPlanFree = this.userPlan?.name.toLowerCase() === 'free';
-    
+
     // Solo deshabilitar el botón FREE cuando el usuario tiene plan FREE
     if (this.userPlan?.name.toLowerCase() === planName.toLowerCase()) {
       return true;
     }
-    
+
     return false;
   }
 
@@ -669,16 +663,14 @@ export class PlanSettingsComponent implements OnInit {
       // Verificar si es el plan actual
       if (this.isCurrentPlan(plan.name)) {
         return; // No hacer nada si es el plan actual
-      }
-
-      console.log('plan', plan);
+      }// 
 
       // Validar si es un downgrade y si el usuario tiene recursos que exceden el plan de destino
       const isDowngrade = this.isDowngrade(plan.name);
-      
+
       if (isDowngrade) {
         const validationResult = await this.validateDowngrade(plan.name);
-        
+
         if (!validationResult.canDowngrade) {
           this.showDowngradeValidationModal(validationResult);
           return;
@@ -688,20 +680,20 @@ export class PlanSettingsComponent implements OnInit {
       // Verificar si el plan actual es FREE
       const isCurrentPlanFree = this.userPlan?.name.toLowerCase() === 'free';
       const isTargetPlanFree = plan.name.toLowerCase() === 'free';
-      
+
       // Si el plan actual es FREE y el plan de destino también es FREE, no hacer nada
       if (isCurrentPlanFree && isTargetPlanFree) {
         return; // No hacer nada si ambos son Free
       }
-      
+
       // Si llegamos aquí, significa que puede hacer el cambio de plan
       // Mostrar pop-up de carga solo para planes de pago
       this.showRedirectLoading = true;
-      
+
       // Variable para controlar si hay error
       let hasError = false;
       let errorMessage = '';
-      
+
       try {
         if (isCurrentPlanFree) {
           // Si el plan actual es FREE y hace click en otro plan → crear checkout session
@@ -713,10 +705,9 @@ export class PlanSettingsComponent implements OnInit {
       } catch (error) {
         // Marcar que hay error pero no mostrar pop-up aún
         hasError = true;
-        errorMessage = 'Error redirecting to payment. Please try again.';
-        console.error('Error during plan change:', error);
+        errorMessage = 'Error redirecting to payment. Please try again.';// 
       }
-      
+
       // Esperar mínimo 2 segundos antes de mostrar error o ocultar loader
       setTimeout(() => {
         if (hasError) {
@@ -724,7 +715,7 @@ export class PlanSettingsComponent implements OnInit {
           this.showRedirectLoading = false;
           this.showRedirectError = true;
           this.redirectErrorMessage = errorMessage;
-          
+
           // Limpiar intervalo si existe
           if (this.windowCheckInterval) {
             clearInterval(this.windowCheckInterval);
@@ -733,10 +724,8 @@ export class PlanSettingsComponent implements OnInit {
         }
         // Si no hay error, el loader se ocultará automáticamente cuando se cierre la ventana
       }, 2000);
-    } catch (error) {
-      console.error('Error processing plan change:', error);
-      // Eliminar el alert y manejar el error de forma más elegante
-      console.error('Error processing your request. Please try again.');
+    } catch (error) {// 
+      // Eliminar el alert y manejar el error de forma más elegante// 
     }
   }
 
@@ -765,7 +754,7 @@ export class PlanSettingsComponent implements OnInit {
     try {
       // Obtener el plan completo del contexto para obtener el priceId
       const selectedPlan = this.appContext.getPlanByName(planName);
-      
+
       if (!selectedPlan || !selectedPlan.planPriceId) {
         throw new Error('Plan price ID not found');
       }
@@ -791,17 +780,16 @@ export class PlanSettingsComponent implements OnInit {
       }
 
       const responseData = await response.json();
-      const checkoutUrl = responseData.body?.url || responseData.url;
-      
+      const checkoutUrl = responseData.data?.url || responseData.body?.url || responseData.url;
+
       if (!checkoutUrl) {
         throw new Error('Checkout URL not found in response');
       }
 
       // Redirigir a la página de checkout
       window.location.href = checkoutUrl;
-      
-    } catch (error) {
-      console.error('Error creating checkout session:', error);
+
+    } catch (error) {// 
       // No ocultar el loader aquí, dejar que el timeout de 2 segundos lo maneje
       throw error;
     }
@@ -841,14 +829,14 @@ export class PlanSettingsComponent implements OnInit {
       }
 
       const portalSessionUrl = response.data.url;
-      
+
       if (!portalSessionUrl) {
         throw new Error('Portal session URL not found in response');
       }
 
       // Open portal in new window
       const newWindow = window.open(portalSessionUrl, '_blank');
-      
+
       // Verify if window opened correctly
       if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
         throw new Error('Failed to open Stripe portal. Please check your pop-up blocker.');
@@ -871,8 +859,7 @@ export class PlanSettingsComponent implements OnInit {
         this.showRedirectLoading = false;
       }, 8000);
 
-    } catch (error: any) {
-      console.error('Error opening Stripe portal:', error);
+    } catch (error: any) {// 
       // Show backend error in toast
       this.toastService.showBackendError(error, 'Error opening Stripe portal');
       // Don't hide loader here, let the 2 second timeout handle it
@@ -916,26 +903,24 @@ export class PlanSettingsComponent implements OnInit {
     try {
       // Obtener la suscripción actual del usuario
       const subscriptions = await this.subscriptionService.getUserLatestSubscription(this.user.id);
-      
+
       if (subscriptions) {
         // Obtener la suscripción más reciente
         const latestSubscription = subscriptions;
-        
+
         // Actualizar la suscripción con status CANCELLED y planId vacío
         await this.subscriptionService.updateSubscription(this.user.id, latestSubscription.id!, {
           status: UserStatus.CANCELLED,
           planId: ''
         });
-        
+
         // Recargar los datos del usuario
         await this.loadUserPlan();
-        
-      } else {
-        console.error('No active subscription found to cancel.');
+
+      } else {// 
       }
-      
-    } catch (error) {
-      console.error('Error cancelling plan. Please try again.');
+
+    } catch (error) {// 
     } finally {
       this.showCancelPlanProcessing = false;
     }
@@ -978,14 +963,13 @@ export class PlanSettingsComponent implements OnInit {
       }
 
       const portalSessionUrl = response.data.url;
-      
+
       if (!portalSessionUrl) {
         throw new Error('Portal session URL not found in response');
       }
 
       window.open(portalSessionUrl, '_blank');
-    } catch (error: any) {
-      console.error('Error opening Stripe portal:', error);
+    } catch (error: any) {// 
       // Show backend error in toast
       this.toastService.showBackendError(error, 'Error opening Stripe portal');
     }
@@ -1007,10 +991,10 @@ export class PlanSettingsComponent implements OnInit {
    */
   private isDowngrade(targetPlanName: string): boolean {
     if (!this.userPlan) return false;
-    
+
     const currentPlanLevel = this.getPlanLevel(this.userPlan.name);
     const targetPlanLevel = this.getPlanLevel(targetPlanName);
-    
+
     return targetPlanLevel < currentPlanLevel;
   }
 
@@ -1077,20 +1061,20 @@ export class PlanSettingsComponent implements OnInit {
     // Obtener límites del plan de destino usando la lógica existente
     const targetMaxAccountsStr = this.getTradingAccounts(targetPlanName);
     const targetMaxStrategiesStr = this.getStrategies(targetPlanName);
-    
+
     const targetMaxAccounts = parseInt(targetMaxAccountsStr);
     const targetMaxStrategies = parseInt(targetMaxStrategiesStr);
-    
+
     // Cargar datos actuales del usuario directamente desde Firebase
     const userData = await this.authService.getUserDataForValidation(this.user.id);
     const currentAccounts = userData.accounts.length;
     const currentStrategies = userData.strategies.length;
-    
+
     const accountsToDelete = Math.max(0, currentAccounts - targetMaxAccounts);
     const strategiesToDelete = Math.max(0, currentStrategies - targetMaxStrategies);
-    
+
     const canDowngrade = accountsToDelete === 0 && strategiesToDelete === 0;
-    
+
     return {
       canDowngrade,
       targetPlan: targetPlanName,
@@ -1143,7 +1127,7 @@ export class PlanSettingsComponent implements OnInit {
   goToManageResources(): void {
     this.showDowngradeValidation = false;
     this.downgradeValidationData = null;
-    
+
     // Navegar a las páginas de gestión de recursos
     // TODO: Implementar navegación a las páginas de gestión de recursos
   }
@@ -1162,13 +1146,13 @@ export class PlanSettingsComponent implements OnInit {
   closeRedirectError(): void {
     this.showRedirectError = false;
     this.redirectErrorMessage = '';
-    
+
     // Limpiar intervalo si existe
     if (this.windowCheckInterval) {
       clearInterval(this.windowCheckInterval);
       this.windowCheckInterval = null;
     }
-    
+
     // Ocultar loading si está visible
     this.showRedirectLoading = false;
   }

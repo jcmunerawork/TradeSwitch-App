@@ -145,8 +145,7 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
 
       // Actualizar en Firebase
       await this.daysUpdaterService.updateStrategyDaysActive(this.strategy.id, this.strategy.userId);
-    } catch (error) {
-      console.error('Error updating days active:', error);
+    } catch (error) {// 
     }
   }
 
@@ -185,8 +184,7 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
           newName: newName
         });
       } catch (error) {
-        // No actualizamos el nombre local si falla en Firebase
-        console.error('Error updating the name of the strategy:', error);
+        // No actualizamos el nombre local si falla en Firebase// 
       } finally {
         this.isSavingName = false;
       }
@@ -228,12 +226,7 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
   onDelete() {
     this.showOptionsMenu = false;
     // Debug: Verificar que el ID existe antes de emitir
-    if (!this.strategy.id || this.strategy.id.trim() === '') {
-      console.error('❌ StrategyCard: Cannot delete - strategy.id is empty', {
-        strategy: this.strategy,
-        hasId: !!this.strategy.id,
-        idValue: this.strategy.id
-      });
+    if (!this.strategy.id || this.strategy.id.trim() === '') {// 
       return;
     }
     this.delete.emit(this.strategy.id);
@@ -290,8 +283,7 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update strategy name');
       }
-    } catch (error) {
-      console.error('Error updating the name:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -327,8 +319,7 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
 
         this.strategy.rules = activeRulesCount;
       }
-    } catch (error) {
-      console.error('Error calculating active rules:', error);
+    } catch (error) {// 
     }
   }
 
@@ -367,8 +358,7 @@ export class StrategyCardComponent implements OnInit, OnDestroy {
       if (response.success && response.data?.configuration) {
         this.configurationCache = response.data.configuration;
       }
-    } catch (error) {
-      console.error('Error loading configuration for rules:', error);
+    } catch (error) {// 
     }
   }
 

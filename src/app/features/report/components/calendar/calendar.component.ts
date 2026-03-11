@@ -14,8 +14,14 @@ import {
 import { ReportService } from '../../service/report.service';
 import { NumberFormatterService } from '../../../../shared/utils/number-formatter.service';
 import { TradesPopupComponent } from '../trades-popup/trades-popup.component';
-import { ConfigurationOverview, getStrategyRangesFromTimeline } from '../../../strategy/models/strategy.model';
-import { PluginHistoryService, PluginHistory } from '../../../../shared/services/plugin-history.service';
+import {
+  ConfigurationOverview,
+  getStrategyRangesFromTimeline,
+} from '../../../strategy/models/strategy.model';
+import {
+  PluginHistoryService,
+  PluginHistory,
+} from '../../../../shared/services/plugin-history.service';
 import { AppContextService } from '../../../../shared/context';
 import { TradeLockerApiService } from '../../../../shared/services/tradelocker-api.service';
 import { TimezoneService } from '../../../../shared/services/timezone.service';
@@ -43,7 +49,7 @@ export class CalendarComponent {
   // Popup properties
   showTradesPopup = false;
   selectedDay: CalendarDay | null = null;
-  
+
   // Plugin history properties
   pluginHistory: PluginHistory | null = null;
 
@@ -52,17 +58,20 @@ export class CalendarComponent {
     private pluginHistoryService: PluginHistoryService,
     private appContext: AppContextService,
     private tradeLockerApiService: TradeLockerApiService,
-    private timezoneService: TimezoneService
+    private timezoneService: TimezoneService,
   ) {}
   private numberFormatter = new NumberFormatterService();
 
   ngOnChanges(changes: SimpleChanges) {
     this.currentDate = new Date();
-    this.selectedMonth = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth());
+    this.selectedMonth = new Date(
+      this.currentDate.getFullYear(),
+      this.currentDate.getMonth(),
+    );
 
     // Copia mutable para no modificar el input (NgRx read-only)
     this.processedTradesForCalendar = this.groupedTrades?.length
-      ? this.groupedTrades.map(t => ({ ...t }))
+      ? this.groupedTrades.map((t) => ({ ...t }))
       : [];
 
     this.loadUserIdAndInitialize();
@@ -85,15 +94,15 @@ export class CalendarComponent {
     try {
       // Obtener el usuario actual desde el contexto
       const currentUser = this.appContext.currentUser();
-      
+
       if (currentUser && currentUser.id) {
         this.userId = currentUser.id;
-        
+
         // Cargar plugin history con el userId obtenido
         await this.loadPluginHistory();
       }
     } catch (error) {
-      console.error('Error obteniendo userId desde contexto:', error);
+// 
     }
   }
 
@@ -111,7 +120,9 @@ export class CalendarComponent {
     }
     // Fallback: Firestore Timestamp (legacy)
     if (timestamp && typeof timestamp === 'object' && 'seconds' in timestamp) {
-      return new Date(timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000);
+      return new Date(
+        timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000,
+      );
     }
     // Fallback final: intentar conversión directa
     const finalDate = new Date(timestamp);
@@ -127,7 +138,7 @@ export class CalendarComponent {
       // Usar el método específico para fechas de trades
       return this.timezoneService.convertTradeDateToUTC(date);
     } catch (error) {
-      console.error('Error convirtiendo fecha a UTC:', error);
+// 
       // Fallback: conversión básica
       return new Date(date);
     }
@@ -143,37 +154,44 @@ export class CalendarComponent {
     }
 
     const firstTrade = this.processedTradesForCalendar[0];
-    const needsProcessing = !firstTrade.instrument ||
-                           firstTrade.instrument === firstTrade.tradableInstrumentId ||
-                           firstTrade.instrument === '' ||
-                           firstTrade.instrument === 'Cargando...';
+    const needsProcessing =
+      !firstTrade.instrument ||
+      firstTrade.instrument === firstTrade.tradableInstrumentId ||
+      firstTrade.instrument === '' ||
+      firstTrade.instrument === 'Cargando...';
 
     if (!needsProcessing) {
       return;
     }
 
     try {
-      const uniqueInstruments = new Map<string, { tradableInstrumentId: string, routeId: string }>();
+      const uniqueInstruments = new Map<
+        string,
+        { tradableInstrumentId: string; routeId: string }
+      >();
 
-      this.processedTradesForCalendar.forEach(trade => {
+      this.processedTradesForCalendar.forEach((trade) => {
         if (trade.tradableInstrumentId && trade.routeId) {
           const key = `${trade.tradableInstrumentId}-${trade.routeId}`;
           if (!uniqueInstruments.has(key)) {
             uniqueInstruments.set(key, {
               tradableInstrumentId: trade.tradableInstrumentId,
-              routeId: trade.routeId
+              routeId: trade.routeId,
             });
           }
         }
       });
 
-      this.processedTradesForCalendar.forEach(trade => {
+      this.processedTradesForCalendar.forEach((trade) => {
         if (trade.tradableInstrumentId && trade.routeId) {
           trade.instrument = 'Cargando...';
         }
       });
 
-      const instrumentDetailsMap = new Map<string, { lotSize: number, name: string }>();
+      const instrumentDetailsMap = new Map<
+        string,
+        { lotSize: number; name: string }
+      >();
 
       for (const [key, instrument] of uniqueInstruments) {
         try {
@@ -184,34 +202,36 @@ export class CalendarComponent {
           const currentAccount = accounts[0];
           const accountId = currentAccount.accountID;
 
-          const instrumentDetails = await this.reportSvc.getInstrumentDetails(
-            accountId,
-            instrument.tradableInstrumentId,
-            instrument.routeId,
-            1
-          ).toPromise();
+          const instrumentDetails = await this.reportSvc
+            .getInstrumentDetails(
+              accountId,
+              instrument.tradableInstrumentId,
+              instrument.routeId,
+              1,
+            )
+            .toPromise();
 
           if (instrumentDetails) {
             instrumentDetailsMap.set(key, {
               lotSize: instrumentDetails.lotSize || 1,
-              name: instrumentDetails.name || instrument.tradableInstrumentId
+              name: instrumentDetails.name || instrument.tradableInstrumentId,
             });
           } else {
             instrumentDetailsMap.set(key, {
               lotSize: 1,
-              name: instrument.tradableInstrumentId
+              name: instrument.tradableInstrumentId,
             });
           }
         } catch (error) {
-          console.warn(`Error obteniendo detalles del instrumento ${key}:`, error);
+// 
           instrumentDetailsMap.set(key, {
             lotSize: 1,
-            name: instrument.tradableInstrumentId
+            name: instrument.tradableInstrumentId,
           });
         }
       }
 
-      this.processedTradesForCalendar.forEach(trade => {
+      this.processedTradesForCalendar.forEach((trade) => {
         if (trade.tradableInstrumentId && trade.routeId) {
           const key = `${trade.tradableInstrumentId}-${trade.routeId}`;
           const instrumentDetails = instrumentDetailsMap.get(key);
@@ -225,8 +245,8 @@ export class CalendarComponent {
 
       this.generateCalendar(this.selectedMonth);
     } catch (error) {
-      console.error('Error procesando trades para calendario:', error);
-      this.processedTradesForCalendar.forEach(trade => {
+// 
+      this.processedTradesForCalendar.forEach((trade) => {
         if (trade.tradableInstrumentId && trade.routeId) {
           trade.instrument = trade.tradableInstrumentId;
         }
@@ -245,15 +265,17 @@ export class CalendarComponent {
       if (!accounts || accounts.length === 0) {
         return null;
       }
-      
+
       const currentAccount = accounts[0]; // Tomar la primera cuenta
 
       // Usar el TradeLockerApiService para obtener el token
-      const userKey = await this.tradeLockerApiService.getUserKey(
-        currentAccount.emailTradingAccount,
-        currentAccount.brokerPassword,
-        currentAccount.server
-      ).toPromise();
+      const userKey = await this.tradeLockerApiService
+        .getUserKey(
+          currentAccount.emailTradingAccount,
+          currentAccount.brokerPassword,
+          currentAccount.server,
+        )
+        .toPromise();
 
       if (userKey) {
         return userKey;
@@ -261,7 +283,7 @@ export class CalendarComponent {
 
       return null;
     } catch (error) {
-      console.error('Error obteniendo token del usuario:', error);
+// 
       return null;
     }
   }
@@ -271,256 +293,43 @@ export class CalendarComponent {
    */
   async loadPluginHistory() {
     try {
-      const pluginHistoryArray = await this.pluginHistoryService.getPluginUsageHistory(this.userId);
+      const pluginHistoryArray =
+        await this.pluginHistoryService.getPluginUsageHistory(this.userId);
       if (pluginHistoryArray.length > 0) {
         this.pluginHistory = pluginHistoryArray[0];
       } else {
         this.pluginHistory = null;
       }
     } catch (error) {
-      console.error('Error loading plugin history:', error);
+// 
       this.pluginHistory = null;
     }
-  }
-
-  /**
-   * Determinar qué estrategia se siguió en una fecha específica
-   * NUEVA LÓGICA: Asociar trades con estrategias basándose en fechas exactas
-   * @param tradeDate - Fecha y hora exacta del trade a validar
-   * @returns nombre de la estrategia seguida o null si no se siguió ninguna
-   */
-  getStrategyFollowedOnDate(tradeDate: Date): string | null {
-    // PASO 1: Verificar si el plugin estaba activo en la fecha/hora exacta del trade
-    const pluginActiveRange = this.getPluginActiveRange(tradeDate);
-    if (!pluginActiveRange) {
-      return null; // Plugin no estaba activo
-    }
-
-    // PASO 2: Buscar estrategias que incluyan la fecha/hora exacta del trade
-    const activeStrategy = this.getActiveStrategyAtTime(tradeDate);
-    if (!activeStrategy) {
-      return null; // No había estrategia activa en ese momento
-    }
-
-    return activeStrategy;
-  }
-
-  /**
-   * PASO 1: Determinar si el plugin estaba activo en la fecha/hora exacta del trade
-   * MEJORA: Usar conversión UTC para comparaciones precisas
-   * @param tradeDate - Fecha y hora exacta del trade
-   * @returns rango activo del plugin o null si no estaba activo
-   */
-  private getPluginActiveRange(tradeDate: Date): { start: Date, end: Date } | null {
-    if (!this.pluginHistory || !this.pluginHistory.dateActive || !this.pluginHistory.dateInactive) {
-      return null;
-    }
-
-    const dateActive = this.pluginHistory.dateActive;
-    const dateInactive = this.pluginHistory.dateInactive;
-    const now = new Date();
-
-    // MEJORA: Convertir fecha del trade a UTC para comparación precisa
-    const tradeDateUTC = this.convertToUTCWithTimezone(tradeDate);
-
-
-    // Crear rangos de actividad del plugin
-    const activeRanges: { start: Date, end: Date }[] = [];
-
-    // Si dateActive tiene más elementos que dateInactive, está activo hasta ahora
-    if (dateActive.length > dateInactive.length) {
-      // Crear rangos para todos los pares completos
-      for (let i = 0; i < dateInactive.length; i++) {
-        activeRanges.push({
-          start: this.convertToUTCWithTimezone(dateActive[i]),
-          end: this.convertToUTCWithTimezone(dateInactive[i])
-        });
-      }
-      // El último rango activo va desde la última fecha de active hasta ahora
-      activeRanges.push({
-        start: this.convertToUTCWithTimezone(dateActive[dateActive.length - 1]),
-        end: this.convertToUTCWithTimezone(now)
-      });
-    } else {
-      // Si tienen la misma cantidad, crear rangos de fechas
-      for (let i = 0; i < dateActive.length; i++) {
-        activeRanges.push({
-          start: this.convertToUTCWithTimezone(dateActive[i]),
-          end: this.convertToUTCWithTimezone(dateInactive[i])
-        });
-      }
-    }
-
-    // Verificar si el plugin estaba activo en la fecha/hora exacta del trade
-    for (const range of activeRanges) {
-      if (tradeDateUTC >= range.start && tradeDateUTC <= range.end) {
-        return range; // Plugin estaba activo en este rango
-      }
-    }
-
-    return null; // Plugin no estaba activo
-  }
-
-  /**
-   * PASO 2: Buscar la estrategia activa en la fecha/hora exacta del trade
-   * MEJORA: Usar conversión UTC para comparaciones precisas
-   * @param tradeDate - Fecha y hora exacta del trade
-   * @returns nombre de la estrategia activa o null si no había ninguna
-   */
-  private getActiveStrategyAtTime(tradeDate: Date): string | null {
-    if (!this.strategies || this.strategies.length === 0) {
-      return null;
-    }
-
-    // MEJORA: Convertir fecha del trade a UTC para comparación precisa
-    const tradeDateUTC = this.convertToUTCWithTimezone(tradeDate);
-
-
-    // Buscar estrategias activas en la fecha/hora exacta del trade
-    for (const strategy of this.strategies) {
-      // IMPORTANTE: NO filtrar estrategias eliminadas aquí
-      // Las estrategias eliminadas (soft delete) SÍ deben considerarse
-      // porque en el momento del trade existían y podrían haber sido seguidas
-      
-      if (this.isStrategyActiveAtTime(strategy, tradeDateUTC)) {
-        return strategy.name || 'Unknown Strategy';
-      }
-    }
-
-    return null; // No había estrategia activa en ese momento
-  }
-
-  /**
-   * Verificar si una estrategia específica estaba activa en la fecha/hora exacta
-   * MEJORA: Usar conversión UTC para comparaciones precisas
-   * @param strategy - Estrategia a verificar
-   * @param tradeDate - Fecha y hora exacta del trade (ya en UTC)
-   * @returns true si la estrategia estaba activa, false si no
-   */
-  private isStrategyActiveAtTime(strategy: ConfigurationOverview, tradeDate: Date): boolean {
-    const strategyRanges = this.getStrategyRangesForOverview(strategy, tradeDate);
-    for (const range of strategyRanges) {
-      if (tradeDate >= range.start && tradeDate <= range.end) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /** Rangos de actividad: usa timeline (backend) con fallback a dateActive/dateInactive (legacy). */
-  private getStrategyRangesForOverview(strategy: ConfigurationOverview, tradeDate: Date): { start: Date; end: Date }[] {
-    if (strategy.timeline && strategy.timeline.length > 0) {
-      return getStrategyRangesFromTimeline(strategy.timeline, tradeDate);
-    }
-    if (!strategy.dateActive?.length || !strategy.dateInactive) {
-      return [];
-    }
-    const strategyActive = strategy.dateActive;
-    const strategyInactive = strategy.dateInactive;
-    const now = new Date();
-    const ranges: { start: Date; end: Date }[] = [];
-    if (strategyActive.length > strategyInactive.length) {
-      for (let i = 0; i < strategyInactive.length; i++) {
-        ranges.push({
-          start: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyActive[i])),
-          end: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyInactive[i]))
-        });
-      }
-      ranges.push({
-        start: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyActive[strategyActive.length - 1])),
-        end: this.convertToUTCWithTimezone(now)
-      });
-    } else {
-      for (let i = 0; i < strategyActive.length; i++) {
-        ranges.push({
-          start: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyActive[i])),
-          end: this.convertToUTCWithTimezone(this.convertFirestoreTimestamp(strategyInactive[i]))
-        });
-      }
-    }
-    return ranges;
-  }
-
-  /**
-   * Determinar si se siguió la estrategia basándose en los rangos de fechas del plugin
-   * @param tradeDate - Fecha del trade a validar
-   * @returns true si se siguió la estrategia, false si no
-   */
-  didFollowStrategy(tradeDate: Date): boolean {
-    return this.getStrategyFollowedOnDate(tradeDate) !== null;
-  }
-
-  /**
-   * Obtener información detallada sobre la estrategia seguida en un trade específico
-   * @param tradeDate - Fecha y hora exacta del trade
-   * @returns objeto con información detallada sobre la estrategia seguida
-   */
-  getTradeStrategyInfo(tradeDate: Date): {
-    followedStrategy: boolean;
-    strategyName: string | null;
-    pluginActive: boolean;
-    pluginActiveRange: { start: Date, end: Date } | null;
-    strategyActiveRange: { start: Date, end: Date } | null;
-  } {
-    const pluginActiveRange = this.getPluginActiveRange(tradeDate);
-    const strategyName = this.getActiveStrategyAtTime(tradeDate);
-    
-    // Obtener el rango activo de la estrategia si existe
-    let strategyActiveRange: { start: Date, end: Date } | null = null;
-    if (strategyName && this.strategies) {
-      const strategy = this.strategies.find(s => s.name === strategyName);
-      if (strategy && (strategy.timeline?.length || (strategy.dateActive && strategy.dateInactive))) {
-        strategyActiveRange = this.getStrategyActiveRange(strategy, tradeDate);
-      }
-    }
-
-    return {
-      followedStrategy: strategyName !== null,
-      strategyName,
-      pluginActive: pluginActiveRange !== null,
-      pluginActiveRange,
-      strategyActiveRange
-    };
-  }
-
-  /**
-   * Obtener el rango activo de una estrategia específica en una fecha
-   * @param strategy - Estrategia a verificar
-   * @param tradeDate - Fecha del trade
-   * @returns rango activo de la estrategia o null si no estaba activa
-   */
-  private getStrategyActiveRange(strategy: ConfigurationOverview, tradeDate: Date): { start: Date, end: Date } | null {
-    const strategyRanges = this.getStrategyRangesForOverview(strategy, tradeDate);
-    for (const range of strategyRanges) {
-      if (tradeDate >= range.start && tradeDate <= range.end) {
-        return range;
-      }
-    }
-    return null;
   }
 
   generateCalendar(targetMonth: Date) {
     const tradesByDay: { [date: string]: GroupedTradeFinal[] } = {};
 
-    const validTrades = this.processedTradesForCalendar.filter(trade => 
-      trade.positionId && 
-      trade.positionId !== 'null' && 
-      trade.positionId !== '' &&
-      trade.positionId !== null
+    const validTrades = this.processedTradesForCalendar.filter(
+      (trade) =>
+        trade.positionId &&
+        trade.positionId !== 'null' &&
+        trade.positionId !== '' &&
+        trade.positionId !== null,
     );
-    
+
     // Deduplicar por positionId
-    const uniqueTrades = validTrades.filter((trade, index, self) => 
-      index === self.findIndex(t => t.positionId === trade.positionId)
+    const uniqueTrades = validTrades.filter(
+      (trade, index, self) =>
+        index === self.findIndex((t) => t.positionId === trade.positionId),
     );
     // Agrupar trades únicos por día usando la fecha de apertura (createdDate)
     uniqueTrades.forEach((trade) => {
       // IMPORTANTE: Usar createdDate (fecha de apertura) para agrupar trades por día
       // El trade debe aparecer en le calendario el día que se abrió, no el día que se cerró
       const tradeDate = this.convertToUTCWithTimezone(
-        trade.createdDate || trade.lastModified // Usar el string directamente, TimezoneService lo manejará
+        trade.createdDate || trade.lastModified, // Usar el string directamente, TimezoneService lo manejará
       );
-      
+
       // Usar la zona horaria local del dispositivo
       const key = `${tradeDate.getFullYear()}-${tradeDate.getMonth()}-${tradeDate.getDate()}`;
 
@@ -529,7 +338,7 @@ export class CalendarComponent {
       const tradeMonth = tradeDate.getMonth();
       const targetYear = targetMonth.getFullYear();
       const targetMonthIndex = targetMonth.getMonth();
-      
+
       if (tradeYear === targetYear && tradeMonth === targetMonthIndex) {
         if (!tradesByDay[key]) tradesByDay[key] = [];
         tradesByDay[key].push(trade);
@@ -550,7 +359,7 @@ export class CalendarComponent {
 
     const days: CalendarDay[] = [];
     let currentDay = new Date(startDay);
-    
+
     while (currentDay <= endDay) {
       const key = `${currentDay.getFullYear()}-${currentDay.getMonth()}-${currentDay.getDate()}`;
       const trades = tradesByDay[key] || [];
@@ -559,26 +368,20 @@ export class CalendarComponent {
       const wins = trades.filter((t) => (t.pnl ?? 0) > 0).length;
       const losses = trades.filter((t) => (t.pnl ?? 0) < 0).length;
       const tradesCount = trades.length;
-      const tradeWinPercent = tradesCount > 0 ? Math.round((wins / tradesCount) * 1000) / 10 : 0;
-      
+      const tradeWinPercent =
+        tradesCount > 0 ? Math.round((wins / tradesCount) * 1000) / 10 : 0;
+
       // Determinar si se siguió la estrategia basándose en los rangos de fechas del plugin
       // Para cada día, verificar si ALGÚN trade siguió la estrategia
       let followedStrategy = false;
       let strategyName: string | null = null;
-      
+
       if (tradesCount > 0) {
-        // Verificar cada trade individualmente usando su fecha/hora exacta de apertura
+        // Usamos los campos strategyFollowed y strategyName provistos en el trade directamente
         for (const trade of trades) {
-          // Usar createdDate (fecha de apertura) para verificar si se siguió la estrategia
-          // La estrategia se verifica en el momento que se abrió la posición
-          const tradeDate = this.convertToUTCWithTimezone(
-            trade.createdDate || trade.lastModified // Usar el string directamente
-          );
-          const tradeStrategyInfo = this.getTradeStrategyInfo(tradeDate);
-          
-          if (tradeStrategyInfo.followedStrategy) {
+          if (trade.strategyFollowed) {
             followedStrategy = true;
-            strategyName = tradeStrategyInfo.strategyName;
+            strategyName = trade.strategyName || null;
             break; // Si al menos un trade siguió la estrategia, el día cuenta
           }
         }
@@ -592,7 +395,8 @@ export class CalendarComponent {
         followedStrategy: followedStrategy,
         tradeWinPercent: Math.round(tradeWinPercent),
         strategyName: strategyName,
-        isCurrentMonth: currentDay.getMonth() === month && currentDay.getFullYear() === year,
+        isCurrentMonth:
+          currentDay.getMonth() === month && currentDay.getFullYear() === year,
       });
 
       currentDay.setDate(currentDay.getDate() + 1);
@@ -603,7 +407,6 @@ export class CalendarComponent {
     for (let i = 0; i < days.length; i += 7) {
       this.calendar.push(days.slice(i, i + 7));
     }
-    
   }
 
   getDateNDaysAgo(daysAgo: number): Date {
@@ -615,7 +418,7 @@ export class CalendarComponent {
   filterDaysInRange(
     days: CalendarDay[],
     fromDate: Date,
-    toDate: Date
+    toDate: Date,
   ): CalendarDay[] {
     return days.filter((day) => day.date >= fromDate && day.date <= toDate);
   }
@@ -627,7 +430,7 @@ export class CalendarComponent {
 
   calculateStrategyFollowedPercentage(
     days: CalendarDay[],
-    periodDays: number
+    periodDays: number,
   ): number {
     if (days.length === 0) return 0;
 
@@ -645,7 +448,7 @@ export class CalendarComponent {
   getPercentageStrategyFollowedLast30Days() {
     const percentage = this.calculateStrategyFollowedPercentage(
       this.calendar.flat(),
-      30
+      30,
     );
     this.emitStrategyFollowedPercentage(percentage);
   }
@@ -660,76 +463,103 @@ export class CalendarComponent {
   // Navigation methods
   canNavigateLeft(): boolean {
     if (!this.processedTradesForCalendar.length) return false;
-    
+
     const earliestTradeDate = this.getEarliestTradeDate();
-    const firstDayOfSelectedMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth(), 1);
-    
+    const firstDayOfSelectedMonth = new Date(
+      this.selectedMonth.getFullYear(),
+      this.selectedMonth.getMonth(),
+      1,
+    );
+
     return earliestTradeDate < firstDayOfSelectedMonth;
   }
 
   canNavigateRight(): boolean {
     if (!this.processedTradesForCalendar.length) return false;
-    
+
     // Allow navigating forward up to the actual current month
     const currentDate = new Date();
-    const isBeforeCurrentMonth = 
+    const isBeforeCurrentMonth =
       this.selectedMonth.getFullYear() < currentDate.getFullYear() ||
-      (this.selectedMonth.getFullYear() === currentDate.getFullYear() && 
-       this.selectedMonth.getMonth() < currentDate.getMonth());
-       
+      (this.selectedMonth.getFullYear() === currentDate.getFullYear() &&
+        this.selectedMonth.getMonth() < currentDate.getMonth());
+
     const latestTradeDate = this.getLatestTradeDate();
-    const lastDayOfSelectedMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() + 1, 0);
+    const lastDayOfSelectedMonth = new Date(
+      this.selectedMonth.getFullYear(),
+      this.selectedMonth.getMonth() + 1,
+      0,
+    );
     const hasTradesAhead = latestTradeDate > lastDayOfSelectedMonth;
-    
+
     return isBeforeCurrentMonth || hasTradesAhead;
   }
 
   private getEarliestTradeDate(): Date {
     if (!this.processedTradesForCalendar.length) return new Date();
-    const dates = this.processedTradesForCalendar.map(trade => 
-      this.convertToUTCWithTimezone(trade.createdDate || trade.lastModified)
+    const dates = this.processedTradesForCalendar.map((trade) =>
+      this.convertToUTCWithTimezone(trade.createdDate || trade.lastModified),
     );
-    return new Date(Math.min(...dates.map(d => d.getTime())));
+    return new Date(Math.min(...dates.map((d) => d.getTime())));
   }
 
   private getLatestTradeDate(): Date {
     if (!this.processedTradesForCalendar.length) return new Date();
-    const dates = this.processedTradesForCalendar.map(trade => 
-      this.convertToUTCWithTimezone(trade.createdDate || trade.lastModified)
+    const dates = this.processedTradesForCalendar.map((trade) =>
+      this.convertToUTCWithTimezone(trade.createdDate || trade.lastModified),
     );
-    return new Date(Math.max(...dates.map(d => d.getTime())));
+    return new Date(Math.max(...dates.map((d) => d.getTime())));
   }
 
   navigateToPreviousMonth(): void {
     if (this.canNavigateLeft()) {
-      this.selectedMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() - 1);
+      this.selectedMonth = new Date(
+        this.selectedMonth.getFullYear(),
+        this.selectedMonth.getMonth() - 1,
+      );
       this.generateCalendar(this.selectedMonth);
     }
   }
 
   navigateToNextMonth(): void {
     if (this.canNavigateRight()) {
-      this.selectedMonth = new Date(this.selectedMonth.getFullYear(), this.selectedMonth.getMonth() + 1);
+      this.selectedMonth = new Date(
+        this.selectedMonth.getFullYear(),
+        this.selectedMonth.getMonth() + 1,
+      );
       this.generateCalendar(this.selectedMonth);
     }
   }
 
   navigateToCurrentMonth(): void {
-    this.selectedMonth = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth());
+    this.selectedMonth = new Date(
+      this.currentDate.getFullYear(),
+      this.currentDate.getMonth(),
+    );
     this.generateCalendar(this.selectedMonth);
   }
 
   // Export functionality
   exportData() {
     const csvData = this.generateCSVData();
-    this.downloadCSV(csvData, `trading-data-${this.currentMonthYear.replace(', ', '-').toLowerCase()}.csv`);
+    this.downloadCSV(
+      csvData,
+      `trading-data-${this.currentMonthYear.replace(', ', '-').toLowerCase()}.csv`,
+    );
   }
 
   generateCSVData(): string {
-    const headers = ['Date', 'PnL Total', 'Trades Count', 'Win Percentage', 'Strategy Followed', 'Strategy Name'];
+    const headers = [
+      'Date',
+      'PnL Total',
+      'Trades Count',
+      'Win Percentage',
+      'Strategy Followed',
+      'Strategy Name',
+    ];
     const rows = [headers.join(',')];
 
-    this.calendar.flat().forEach(day => {
+    this.calendar.flat().forEach((day) => {
       const date = day.date.toISOString().split('T')[0];
       const pnlTotal = day.pnlTotal.toFixed(2);
       const tradesCount = day.tradesCount;
@@ -737,7 +567,16 @@ export class CalendarComponent {
       const strategyFollowed = day.followedStrategy ? 'Yes' : 'No';
       const strategyName = day.strategyName || 'None';
 
-      rows.push([date, pnlTotal, tradesCount, winPercentage, strategyFollowed, strategyName].join(','));
+      rows.push(
+        [
+          date,
+          pnlTotal,
+          tradesCount,
+          winPercentage,
+          strategyFollowed,
+          strategyName,
+        ].join(','),
+      );
     });
 
     return rows.join('\n');
@@ -746,7 +585,7 @@ export class CalendarComponent {
   downloadCSV(csvData: string, filename: string) {
     const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    
+
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
@@ -764,7 +603,7 @@ export class CalendarComponent {
   }
 
   getWeekActiveDays(week: CalendarDay[]): number {
-    return week.filter(day => day.tradesCount > 0).length;
+    return week.filter((day) => day.tradesCount > 0).length;
   }
 
   // Popup methods
@@ -803,7 +642,7 @@ export class CalendarComponent {
     let strategyDays = 0;
     const strategiesUsed: { [strategyName: string]: number } = {};
 
-    days.forEach(day => {
+    days.forEach((day) => {
       if (day.followedStrategy && day.strategyName) {
         strategyDays++;
         if (strategiesUsed[day.strategyName]) {
@@ -814,13 +653,16 @@ export class CalendarComponent {
       }
     });
 
-    const strategyPercentage = totalDays > 0 ? Math.round((strategyDays / totalDays) * 100 * 10) / 10 : 0;
+    const strategyPercentage =
+      totalDays > 0
+        ? Math.round((strategyDays / totalDays) * 100 * 10) / 10
+        : 0;
 
     return {
       totalDays,
       strategyDays,
       strategiesUsed,
-      strategyPercentage
+      strategyPercentage,
     };
   }
 
@@ -837,8 +679,12 @@ export class CalendarComponent {
   } {
     const fromDate = this.getDateNDaysAgo(days - 1);
     const toDate = new Date();
-    const daysInRange = this.filterDaysInRange(this.calendar.flat(), fromDate, toDate);
-    
+    const daysInRange = this.filterDaysInRange(
+      this.calendar.flat(),
+      fromDate,
+      toDate,
+    );
+
     return this.getStrategySummary(daysInRange);
   }
 
@@ -863,23 +709,18 @@ export class CalendarComponent {
     let tradesWithPluginButNoStrategy = 0;
     const tradesByStrategy: { [strategyName: string]: number } = {};
 
-    days.forEach(day => {
+    days.forEach((day) => {
       if (day.trades && day.trades.length > 0) {
-        day.trades.forEach(trade => {
+        day.trades.forEach((trade) => {
           totalTrades++;
-          // Usar createdDate (fecha de apertura) para verificar estrategia
-          const tradeDate = this.convertToUTCWithTimezone(
-            Number(trade.createdDate) || Number(trade.lastModified) // Fallback a lastModified si no hay createdDate
-          );
-          const tradeStrategyInfo = this.getTradeStrategyInfo(tradeDate);
-          
-          if (!tradeStrategyInfo.pluginActive) {
-            tradesWithoutPlugin++;
-          } else if (tradeStrategyInfo.followedStrategy) {
+
+          if (trade.strategyFollowed) {
             tradesWithStrategy++;
-            const strategyName = tradeStrategyInfo.strategyName || 'Unknown';
-            tradesByStrategy[strategyName] = (tradesByStrategy[strategyName] || 0) + 1;
+            const strategyName = trade.strategyName || 'Unknown';
+            tradesByStrategy[strategyName] =
+              (tradesByStrategy[strategyName] || 0) + 1;
           } else {
+            // Asumimos the rest as tradesWithoutStrategy
             tradesWithPluginButNoStrategy++;
           }
         });
@@ -887,7 +728,10 @@ export class CalendarComponent {
     });
 
     tradesWithoutStrategy = tradesWithoutPlugin + tradesWithPluginButNoStrategy;
-    const strategyCompliance = totalTrades > 0 ? Math.round((tradesWithStrategy / totalTrades) * 100 * 10) / 10 : 0;
+    const strategyCompliance =
+      totalTrades > 0
+        ? Math.round((tradesWithStrategy / totalTrades) * 100 * 10) / 10
+        : 0;
 
     return {
       totalTrades,
@@ -896,7 +740,7 @@ export class CalendarComponent {
       strategyCompliance,
       tradesByStrategy,
       tradesWithoutPlugin,
-      tradesWithPluginButNoStrategy
+      tradesWithPluginButNoStrategy,
     };
   }
 
@@ -916,8 +760,12 @@ export class CalendarComponent {
   } {
     const fromDate = this.getDateNDaysAgo(days - 1);
     const toDate = new Date();
-    const daysInRange = this.filterDaysInRange(this.calendar.flat(), fromDate, toDate);
-    
+    const daysInRange = this.filterDaysInRange(
+      this.calendar.flat(),
+      fromDate,
+      toDate,
+    );
+
     return this.getDetailedTradeAnalysis(daysInRange);
   }
 
@@ -929,7 +777,7 @@ export class CalendarComponent {
     if (!this.pluginHistory) {
       return false;
     }
-    
+
     return this.pluginHistoryService.isPluginActiveByDates(this.pluginHistory);
   }
 
@@ -941,31 +789,43 @@ export class CalendarComponent {
     isActive: boolean;
     lastActiveDate: string | null;
     lastInactiveDate: string | null;
-    activeRanges: { start: string, end: string }[];
+    activeRanges: { start: string; end: string }[];
   } {
     if (!this.pluginHistory) {
       return {
         isActive: false,
         lastActiveDate: null,
         lastInactiveDate: null,
-        activeRanges: []
+        activeRanges: [],
       };
     }
 
-    const isActive = this.pluginHistoryService.isPluginActiveByDates(this.pluginHistory);
-    const lastActiveDate = this.pluginHistory.dateActive?.[this.pluginHistory.dateActive.length - 1] || null;
-    const lastInactiveDate = this.pluginHistory.dateInactive?.[this.pluginHistory.dateInactive.length - 1] || null;
-    
+    const isActive = this.pluginHistoryService.isPluginActiveByDates(
+      this.pluginHistory,
+    );
+    const lastActiveDate =
+      this.pluginHistory.dateActive?.[
+        this.pluginHistory.dateActive.length - 1
+      ] || null;
+    const lastInactiveDate =
+      this.pluginHistory.dateInactive?.[
+        this.pluginHistory.dateInactive.length - 1
+      ] || null;
+
     // Crear rangos activos para mostrar
-    const activeRanges: { start: string, end: string }[] = [];
+    const activeRanges: { start: string; end: string }[] = [];
     if (this.pluginHistory.dateActive && this.pluginHistory.dateInactive) {
       const dateActive = this.pluginHistory.dateActive;
       const dateInactive = this.pluginHistory.dateInactive;
-      
-      for (let i = 0; i < Math.min(dateActive.length, dateInactive.length); i++) {
+
+      for (
+        let i = 0;
+        i < Math.min(dateActive.length, dateInactive.length);
+        i++
+      ) {
         activeRanges.push({
           start: new Date(dateActive[i]).toISOString(),
-          end: new Date(dateInactive[i]).toISOString()
+          end: new Date(dateInactive[i]).toISOString(),
         });
       }
     }
@@ -974,8 +834,7 @@ export class CalendarComponent {
       isActive,
       lastActiveDate,
       lastInactiveDate,
-      activeRanges
+      activeRanges,
     };
   }
-
 }

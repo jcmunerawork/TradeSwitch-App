@@ -143,8 +143,7 @@ export class CreateUserRolePopupComponent implements OnChanges {
       try {
         const existingUser = await this.authService.getUserByEmail(email);
         
-        if (existingUser) {
-          console.warn('⚠️ CreateUserRolePopup: Email already registered');
+        if (existingUser) {// 
           this.alertService.showError(
             'This email is already registered. Please use a different email or try logging in.', 
             'Email Already Registered'
@@ -154,9 +153,7 @@ export class CreateUserRolePopupComponent implements OnChanges {
         
       } catch (error: any) {
         // Si falla la verificación (ej: error de red), continuar
-        // El backend también validará el email duplicado en /auth/signup
-        console.warn('⚠️ CreateUserRolePopup: Could not verify email existence, continuing with user creation:', error);
-        console.warn('⚠️ CreateUserRolePopup: Backend will validate email uniqueness during signup');
+        // El backend también validará el email duplicado en /auth/signup// // 
       }
 
       // Llamar al backend - EL BACKEND HACE TODO:
@@ -185,8 +182,7 @@ export class CreateUserRolePopupComponent implements OnChanges {
 
       this.showSuccess = true;
       this.created.emit();
-    } catch (e: any) {
-      console.error('❌ CreateUserRolePopup: Error creating user:', e);
+    } catch (e: any) {// 
       this.alertService.showError(
         e.message || 'An error occurred while creating the user. Please try again.',
         'Error Creating User'

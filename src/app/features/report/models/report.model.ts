@@ -102,6 +102,8 @@ export interface GroupedTradeFinal {
   instrument?: string; // instrument
   pnl?: number; // pnl
   isWon?: boolean; // isWon
+  strategyFollowed?: boolean; // strategyFollowed (from backend)
+  strategyName?: string; // strategyName (from backend)
 }
 
 /**

@@ -141,8 +141,7 @@ export class CryptoInterceptor implements HttpInterceptor {
   ): Observable<HttpEvent<unknown>> {
     return from(this.publicCrypto.getPublicKey()).pipe(
       switchMap((rsaPublicKey) => {
-        if (!rsaPublicKey) {
-          console.warn('⚠️ Crypto: No se pudo obtener la clave pública RSA. El request irá en claro.');
+        if (!rsaPublicKey) {// 
           return next.handle(req);
         }
         return from(generateTempAesKey()).pipe(
@@ -156,8 +155,7 @@ export class CryptoInterceptor implements HttpInterceptor {
                   switchMap((event) => this.decryptResponseIfNeeded(event, key))
                 );
               }),
-              catchError(err => {
-                console.error('❌ Crypto: Error en el cifrado RSA/AES de Auth:', err);
+              catchError(err => {// 
                 return next.handle(req);
               })
             );

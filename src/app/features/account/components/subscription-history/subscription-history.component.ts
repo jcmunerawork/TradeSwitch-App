@@ -105,8 +105,7 @@ export class SubscriptionHistoryComponent implements OnInit {
           this.loadPayments();
         }
       },
-      error: (err) => {
-        console.error('Error fetching user data', err);
+      error: (err) => {// 
       },
     });
   }
@@ -137,8 +136,7 @@ export class SubscriptionHistoryComponent implements OnInit {
       this.plans.forEach(plan => {
         this.plansMap[plan.id] = plan;
       });
-    } catch (error) {
-      console.error('Error loading plans:', error);
+    } catch (error) {// 
       this.toastService.showBackendError(error, 'Error loading plans');
     }
   }
@@ -166,8 +164,7 @@ export class SubscriptionHistoryComponent implements OnInit {
       this.subscriptions = latest ? [latest] : [];
       this.filteredSubscriptions = [...this.subscriptions];
       this.calculatePagination();
-    } catch (error) {
-      console.error('Error loading subscriptions:', error);
+    } catch (error) {// 
       this.toastService.showBackendError(error, 'Error loading subscriptions');
     } finally {
       this.isLoading = false;

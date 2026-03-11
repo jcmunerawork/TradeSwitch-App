@@ -76,8 +76,7 @@ export class ReasonsService {
         return response.data.banReason.id || '';
       }
       throw new Error(response.error?.message || 'Failed to create ban reason');
-    } catch (error) {
-      console.error('Error creating ban reason:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -94,8 +93,7 @@ export class ReasonsService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update ban reason');
       }
-    } catch (error) {
-      console.error('Error updating ban reason:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -113,8 +111,7 @@ export class ReasonsService {
         return response.data.banReason as BanReasonRecord;
       }
       return null;
-    } catch (error) {
-      console.error('Error getting latest ban reason:', error);
+    } catch (error) {// 
       return null;
     }
   }

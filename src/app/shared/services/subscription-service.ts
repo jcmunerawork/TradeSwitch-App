@@ -90,8 +90,7 @@ export class SubscriptionService {
       
       // El endpoint siempre retorna success: true
       // Si no hay suscripción, data.subscription será null
-      if (!response.success) {
-        console.warn('⚠️ SubscriptionService: Respuesta no exitosa del backend:', response);
+      if (!response.success) {// 
         return null;
       }
       
@@ -108,8 +107,7 @@ export class SubscriptionService {
         return null;
       }
       
-      // Cualquier otro error también se trata como "sin suscripción"
-      console.warn('⚠️ SubscriptionService: Error al obtener suscripción, tratando como usuario sin suscripción:', error?.message || error);
+      // Cualquier otro error también se trata como "sin suscripción"// 
       return null;
     }
   }
@@ -161,8 +159,7 @@ export class SubscriptionService {
       }
       
       return response.data.subscription as Subscription;
-    } catch (error) {
-      console.error('Error al obtener pago:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -181,8 +178,7 @@ export class SubscriptionService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update subscription');
       }
-    } catch (error) {
-      console.error('Error updating subscription:', error);
+    } catch (error) {// 
       throw error;
     }
   }

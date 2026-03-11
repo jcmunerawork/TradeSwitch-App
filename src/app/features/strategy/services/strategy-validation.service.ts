@@ -68,8 +68,7 @@ export class StrategyValidationService {
 
       return true;
     } catch (error: unknown) {
-      const err = error as { status?: number };
-      console.error('Error validating strategy:', error);
+      const err = error as { status?: number };// 
       if (err?.status === 404) {
         this.toastService.showError('Strategy not found. The strategy may have been deleted or does not exist.');
       } else {

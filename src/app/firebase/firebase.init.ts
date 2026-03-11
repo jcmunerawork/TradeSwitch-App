@@ -37,8 +37,7 @@ const getFirebaseConfig = () => {
       appId: process.env['FIREBASE_APP_ID'],
       measurementId: process.env['FIREBASE_MEASUREMENT_ID']
     };
-  } catch (error) {
-    console.error('Error loading Firebase config from environment:', error);
+  } catch (error) {// 
     throw new Error('Firebase configuration not found in environment variables');
   }
 };

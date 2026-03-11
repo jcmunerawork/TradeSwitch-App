@@ -67,8 +67,7 @@ export class TokensOperationsService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to create link token');
       }
-    } catch (error) {
-      console.error('Error creating link token:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -85,8 +84,7 @@ export class TokensOperationsService {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to delete link token');
       }
-    } catch (error) {
-      console.error('Error deleting link token:', error);
+    } catch (error) {// 
       throw error;
     }
   }

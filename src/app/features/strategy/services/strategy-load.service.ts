@@ -74,8 +74,7 @@ export class StrategyLoadService {
       this.appContext.setUserStrategies(strategies.map(s => s.overview));
 
       return { userStrategies, activeStrategy, button_state };
-    } catch (error: any) {
-      console.error('❌ Error loading strategies to cache:', error);
+    } catch (error: any) {// 
       if (error?.status === 429) {
         this.alertService.showWarning(
           'Too many requests. Please wait a moment and try again.',

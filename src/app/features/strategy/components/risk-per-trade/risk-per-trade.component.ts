@@ -175,16 +175,14 @@ export class RiskPerTradeComponent implements OnInit {
     try {
       // Obtener datos del usuario
       const currentUser = this.appContext.currentUser();
-      if (!currentUser) {
-        console.warn('No hay usuario autenticado');
+      if (!currentUser) {// 
         this.actualBalance = 0;
         return;
       }
 
       // Obtener las cuentas del usuario
       const userAccounts = this.appContext.userAccounts();
-      if (!userAccounts || userAccounts.length === 0) {
-        console.warn('No hay cuentas disponibles');
+      if (!userAccounts || userAccounts.length === 0) {// 
         this.actualBalance = 0;
         return;
       }
@@ -218,11 +216,9 @@ export class RiskPerTradeComponent implements OnInit {
         // Actualizar el contexto con los datos obtenidos
         this.appContext.updateReportBalance(balanceData);
       } else {
-        this.actualBalance = 0;
-        console.warn('⚠️ RiskPerTradeComponent: No se pudo obtener el balance');
+        this.actualBalance = 0;// 
       }
-    } catch (error) {
-      console.error('❌ RiskPerTradeComponent: Error loading actual balance:', error);
+    } catch (error) {// 
       this.actualBalance = 0;
     }
   }

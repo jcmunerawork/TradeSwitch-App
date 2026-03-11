@@ -117,8 +117,7 @@ export class AuthService {
     try {
       const token = await user.getIdToken(true);
       await this.cryptoSession.getSessionKey(token);
-    } catch (e) {
-      console.warn('AuthService: no se pudo obtener session key:', e);
+    } catch (e) {// 
     }
   }
 
@@ -148,8 +147,7 @@ export class AuthService {
       if (accounts && accounts.length > 0) {
         await this.loadAccountBalancesOnLogin(userId, accounts);
       }
-    } catch (error) {
-      console.error('❌ AuthService: Error loading account balances:', error);
+    } catch (error) {// 
     }
   }
 
@@ -218,8 +216,7 @@ export class AuthService {
             });
           }
         }
-      } catch (error) {
-        console.error('❌ AuthService: Error cargando balances en batch:', error);
+      } catch (error) {// 
         // Continuar aunque falle el batch - los balances se pueden cargar después
       } finally {
         // Desactivar loading state
@@ -229,8 +226,7 @@ export class AuthService {
       // ✅ Cargar instrumentos UNA SOLA VEZ (son iguales para todas las cuentas)
       await this.loadInstrumentsOnceOnLogin(validAccounts, idToken);
       
-    } catch (error) {
-      console.error('❌ AuthService: Error cargando balances después del login:', error);
+    } catch (error) {// 
       this.appContext.setLoading('balances', false);
     }
   }
@@ -275,8 +271,7 @@ export class AuthService {
           });
         }
       }
-    } catch (error) {
-      console.error('❌ AuthService: Error cargando instrumentos durante login:', error);
+    } catch (error) {// 
       // No lanzar error, los instrumentos se pueden cargar después cuando se necesiten
     }
   }
@@ -312,8 +307,7 @@ export class AuthService {
     try {
       const plans = await this.planService.getAllPlans();
       this.appContext.setGlobalPlans(plans);
-    } catch (error) {
-      console.error('❌ Error cargando planes globales:', error);
+    } catch (error) {// 
     }
   }
 
@@ -387,8 +381,7 @@ export class AuthService {
         status,
         price: plan.price
       } as any);
-    } catch (error) {
-      console.error('Error actualizando user plan desde subscription:', error);
+    } catch (error) {// 
       this.appContext.setUserPlan(null);
     }
   }
@@ -499,8 +492,7 @@ export class AuthService {
 
       // 6. Cerrar sesión en Firebase Auth
       await getAuth().signOut();
-    } catch (error) {
-      console.error('❌ AuthService: Error durante logout:', error);
+    } catch (error) {// 
       // Continuar con el logout incluso si hay un error
       // Asegurarse de limpiar todo lo posible
       if (this.isBrowser) {
@@ -577,8 +569,7 @@ export class AuthService {
       }
 
       return true;
-    } catch (error: any) {
-      console.error('❌ AuthService: Error verificando autenticación:', error);
+    } catch (error: any) {// 
 
       // Si es un error 401, el token es inválido
       if (error.status === 401 || error.response?.status === 401) {
@@ -616,8 +607,7 @@ export class AuthService {
       localStorage.setItem('idToken', newIdToken);
 
       return newIdToken;
-    } catch (error) {
-      console.error('❌ AuthService: Error renovando token:', error);
+    } catch (error) {// 
       await this.redirectToLogin();
       return null;
     }
@@ -638,8 +628,7 @@ export class AuthService {
     // Cerrar sesión en Firebase Auth
     try {
       await getAuth().signOut();
-    } catch (error) {
-      console.error('Error cerrando sesión:', error);
+    } catch (error) {// 
     }
 
     // Redirigir al login (esto se manejará en el componente o guard)
@@ -782,8 +771,7 @@ export class AuthService {
         await this.cryptoSession.getSessionKey(idToken);
       }
       return true;
-    } catch (error) {
-      console.error('❌ AuthService: Error obteniendo session key en waitUntilApiReady:', error);
+    } catch (error) {// 
       return false;
     }
   }
@@ -792,8 +780,7 @@ export class AuthService {
     try {
       if (!this.isBrowser) return null;
       return getAuth().currentUser;
-    } catch (error) {
-      console.error('Error obteniendo usuario actual:', error);
+    } catch (error) {// 
       return null;
     }
   }
@@ -1002,8 +989,7 @@ export class AuthService {
               }
             }
           }
-        } catch (error) {
-          console.error(`❌ AuthService: Error cargando instrumentos para nueva cuenta ${account.accountID}:`, error);
+        } catch (error) {// 
         }
       }
 
@@ -1065,8 +1051,7 @@ export class AuthService {
       }
 
       return user;
-    } catch (error) {
-      console.error('❌ AuthService: Error checking if email exists:', error);
+    } catch (error) {// 
       return null;
     }
   }
@@ -1086,8 +1071,7 @@ export class AuthService {
         accounts: accounts || [],
         strategies: strategies || []
       };
-    } catch (error) {
-      console.error('Error getting user data for validation:', error);
+    } catch (error) {// 
       return {
         accounts: [],
         strategies: []
@@ -1114,8 +1098,7 @@ export class AuthService {
         strategies: strategiesCount
       });
       // Nota: updateUser() ya invalida el caché automáticamente
-    } catch (error) {
-      console.error('Error updating user counts:', error);
+    } catch (error) {// 
     }
   }
 }

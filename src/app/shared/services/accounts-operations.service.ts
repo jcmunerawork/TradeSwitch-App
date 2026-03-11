@@ -97,8 +97,7 @@ export class AccountsOperationsService {
       }
 
       return response.message ?? 'Trading account created successfully.';
-    } catch (error: any) {
-      console.error('Error creating account:', error);
+    } catch (error: any) {// 
       if (error?.status === 409 || (error?.error && error.error?.statusCode === 409)) {
         const message = this.extractErrorMessage(error);
         throw new Error(message);
@@ -243,13 +242,11 @@ export class AccountsOperationsService {
       this.accountsCache.setAccounts(userId, accounts);
       
       return accounts.length > 0 ? accounts : null;
-    } catch (error: any) {
-      console.error('Error getting user accounts:', error);
+    } catch (error: any) {// 
       
       if (error?.status === 429 || (error?.error && error.error.status === 429)) {
         const cached = this.accountsCache.getAccounts(userId);
-        if (cached !== null) {
-          console.warn('Rate limit exceeded (429), returning cached data');
+        if (cached !== null) {// 
           return cached.length > 0 ? cached : null;
         }
       }
@@ -265,8 +262,7 @@ export class AccountsOperationsService {
   private async refreshUserAccounts(userId: string): Promise<void> {
     try {
       await this.fetchUserAccountsFromBackend(userId);
-    } catch (error) {
-      console.error('Error refreshing user accounts:', error);
+    } catch (error) {// 
     }
   }
 
@@ -293,8 +289,7 @@ export class AccountsOperationsService {
       }
       
       return response.data.accounts.length > 0 ? response.data.accounts : null;
-    } catch (error) {
-      console.error('Error getting all accounts:', error);
+    } catch (error) {// 
       return null;
     }
   }
@@ -313,8 +308,7 @@ export class AccountsOperationsService {
       }
       
       return response.data.exists;
-    } catch (error) {
-      console.error('Error checking email exists:', error);
+    } catch (error) {// 
       return false;
     }
   }
@@ -333,8 +327,7 @@ export class AccountsOperationsService {
       }
       
       return response.data.exists;
-    } catch (error) {
-      console.error('Error checking accountID exists:', error);
+    } catch (error) {// 
       return false;
     }
   }
@@ -354,13 +347,7 @@ export class AccountsOperationsService {
       
       if (!response.success) {
         const errorMessage = this.extractErrorMessage(response.error);
-        const errorDetails = this.extractErrorDetails(response.error);
-        
-        console.error('❌ AccountsOperationsService: Error del backend:', {
-          message: errorMessage,
-          details: errorDetails,
-          fullError: response.error
-        });
+        const errorDetails = this.extractErrorDetails(response.error);// 
         
         throw new Error(errorMessage);
       }
@@ -372,34 +359,19 @@ export class AccountsOperationsService {
 
       return response.message ?? 'Trading account updated successfully.';
     } catch (error: any) {
-      // 🔍 LOG DE DEPURACIÓN: Ver la estructura completa del error
-      console.error('❌ AccountsOperationsService: Error completo:', error);
+      // 🔍 LOG DE DEPURACIÓN: Ver la estructura completa del error// 
       
       // Si es HttpErrorResponse, tiene estructura diferente
-      if (error instanceof HttpErrorResponse) {
-        console.error('❌ AccountsOperationsService: Es HttpErrorResponse');
-        console.error('❌ AccountsOperationsService: error.error:', error.error);
-        console.error('❌ AccountsOperationsService: error.error?.error:', error.error?.error);
-        console.error('❌ AccountsOperationsService: error.status:', error.status);
-        console.error('❌ AccountsOperationsService: error.statusText:', error.statusText);
-        console.error('❌ AccountsOperationsService: error.url:', error.url);
-      } else {
-        console.error('❌ AccountsOperationsService: error.error:', error?.error);
-        console.error('❌ AccountsOperationsService: error.error?.error:', error?.error?.error);
-        console.error('❌ AccountsOperationsService: error.status:', error?.status);
-        console.error('❌ AccountsOperationsService: error.statusText:', error?.statusText);
+      if (error instanceof HttpErrorResponse) {// // // // // // 
+      } else {// // // // 
       }
       
       // Extraer mensaje de error del formato del backend
       const errorMessage = this.extractErrorMessage(error);
-      const errorDetails = this.extractErrorDetails(error);
-      
-      console.error('📝 AccountsOperationsService: Mensaje extraído:', errorMessage);
-      console.error('📝 AccountsOperationsService: Detalles extraídos:', errorDetails);
+      const errorDetails = this.extractErrorDetails(error);// // 
       
       // Si hay detalles de validación, mostrarlos también
-      if (errorDetails && errorDetails.length > 0) {
-        console.error('📝 AccountsOperationsService: Errores de validación:', errorDetails.join(', '));
+      if (errorDetails && errorDetails.length > 0) {// 
       }
       
       throw error;
@@ -473,8 +445,7 @@ export class AccountsOperationsService {
       }
       
       return userIdToUse || null;
-    } catch (error) {
-      console.error('Error deleting account:', error);
+    } catch (error) {// 
       throw error;
     }
   }
@@ -499,8 +470,7 @@ export class AccountsOperationsService {
         isValid: response.data.isValid,
         message: response.data.message
       };
-    } catch (error) {
-      console.error('Error validating account uniqueness:', error);
+    } catch (error) {// 
       return {
         isValid: false,
         message: 'Error validating account uniqueness'
@@ -522,8 +492,7 @@ export class AccountsOperationsService {
       }
       
       return response.data.count;
-    } catch (error) {
-      console.error('Error getting accounts count:', error);
+    } catch (error) {// 
       return 0;
     }
   }
@@ -542,8 +511,7 @@ export class AccountsOperationsService {
       }
       
       return response.data.exists;
-    } catch (error) {
-      console.error('Error checking account existence:', error);
+    } catch (error) {// 
       return false;
     }
   }
